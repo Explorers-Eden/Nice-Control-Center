@@ -60,7 +60,7 @@
   const TAB_KEY = 'pn-tab';
 
   function applyPermissions() {
-    document.querySelectorAll('#pn-tabs .np-tab').forEach((b) => { b.hidden = !!b.dataset.perm && !can(b.dataset.perm); });
+    document.querySelectorAll('#pn-app [data-perm]').forEach((el) => { el.hidden = !can(el.dataset.perm); });
     document.querySelector('.np-banner').hidden = !can('server.view');
     $('pn-app').querySelector('.pn-actions').hidden = !can('server.power');
     $('pn-command-form').hidden = !can('console.write');
@@ -79,6 +79,14 @@
   }
 
   let dashboardHash = '';
+  let activeTab = '';
+
+  // Backups and schedules change on their own (progress, next run): refresh the open tab.
+  setInterval(() => {
+    if (!loggedIn || document.hidden) return;
+    if (activeTab === 'backups') loadBackups();
+    if (activeTab === 'schedule') loadSchedule();
+  }, 2000);
 
   /** The dashboard loads once and keeps running in the background while other tabs are open. */
   function showDashboard() {
@@ -99,6 +107,9 @@
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
     try { localStorage.setItem(TAB_KEY, tab); } catch (e) { /* not remembered */ }
     if (tab === 'dashboard') showDashboard();
+    activeTab = tab;
+    if (tab === 'backups') loadBackups();
+    if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
     if (tab === 'account') renderAccount();
@@ -560,6 +571,289 @@
       $('pn-login-msg').textContent = 'Password changed. Log in with the new one.';
     } catch (err) {
       formMsg('pn-password-msg', err.message, false);
+    }
+  });
+
+  // ── Backups ────────────────────────────────────────────────────────────
+
+  const bytes = (b) => b >= 1073741824 ? (b / 1073741824).toFixed(2) + ' GB' : b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+  let backupData = null;
+  let restoreName = null;
+
+  async function loadBackups() {
+    try {
+      backupData = await api('api/backups');
+    } catch (err) {
+      $('pn-backup-status').textContent = err.message;
+      return;
+    }
+    const st = backupData.status;
+    const parts = [];
+    if (st.running) {
+      const pct = st.filesTotal ? Math.round(st.filesDone / st.filesTotal * 100) : 0;
+      parts.push(`<b>${esc(st.phase || 'Working…')}</b>${st.filesTotal ? ` · ${st.filesDone} of ${st.filesTotal} files` : ''}<div class="pn-bar"><span style="width:${pct}%"></span></div>`);
+    } else if (st.lastError) {
+      parts.push(`<span class="np-form-msg error">${esc(st.lastError)}</span>`);
+    } else if (st.lastResult) {
+      parts.push('Last: ' + esc(st.lastResult));
+    }
+    if (st.freeBytes) parts.push(`${bytes(st.freeBytes)} free on the backup disk`);
+    $('pn-backup-status').innerHTML = parts.join(' · ');
+    const manage = can('backup.manage');
+    $('pn-backup-rows').innerHTML = backupData.backups.map((b) => `<tr data-backup="${esc(b.name)}">
+      <td class="name">${esc(dateTime(b.time))}${b.pinned ? ' <i class="bi bi-pin-angle-fill" title="Pinned: never removed automatically"></i>' : ''}<small>${esc(b.name)}</small></td>
+      <td>${esc(b.label)}</td><td class="num">${bytes(b.size)}</td><td>${esc(b.by)}</td>
+      <td><div class="pn-row-actions">
+        <a class="np-btn small" href="api/backups/${encodeURIComponent(b.name)}/download" download><i class="bi bi-download"></i></a>
+        ${manage ? `<button type="button" class="np-btn small" data-backup-act="pin">${b.pinned ? 'Unpin' : 'Pin'}</button>
+        <button type="button" class="np-btn small" data-backup-act="restore">Restore</button>
+        <button type="button" class="np-btn small danger" data-backup-act="delete">Delete</button>` : ''}
+      </div></td></tr>`).join('') || '<tr><td colspan="5" class="np-empty">No backups yet.</td></tr>';
+    const form = $('pn-backup-settings');
+    if (!form.dataset.filled) {
+      form.dataset.filled = '1';
+      form.keepLast.value = backupData.settings.keepLast;
+      form.keepDaily.value = backupData.settings.keepDaily;
+      form.keepWeekly.value = backupData.settings.keepWeekly;
+      form.exclude.value = backupData.settings.exclude.join('\n');
+    }
+    $('pn-backup-form').querySelector('button').disabled = st.running;
+  }
+
+  $('pn-backup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('api/backups', { label: $('pn-backup-label').value.trim() });
+      $('pn-backup-label').value = '';
+      formMsg('pn-backup-msg', 'Backup started.', true);
+      loadBackups();
+    } catch (err) {
+      formMsg('pn-backup-msg', err.message, false);
+    }
+  });
+
+  $('pn-backup-rows').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-backup-act]');
+    if (!b) return;
+    const name = b.closest('tr').dataset.backup;
+    const entry = backupData.backups.find((x) => x.name === name);
+    const act = b.dataset.backupAct;
+    try {
+      if (act === 'pin') await api(`api/backups/${encodeURIComponent(name)}/pin`, { pinned: !entry.pinned });
+      if (act === 'delete') {
+        if (!confirm(`Delete ${name}? This can't be undone.`)) return;
+        await api(`api/backups/${encodeURIComponent(name)}/delete`, {});
+      }
+      if (act === 'restore') return openRestore(name);
+      loadBackups();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  async function openRestore(name) {
+    restoreName = name;
+    $('pn-restore').hidden = false;
+    $('pn-restore-title').textContent = 'Restore ' + name;
+    $('pn-restore-msg').textContent = '';
+    $('pn-restore-items').textContent = 'Loading…';
+    try {
+      const data = await api(`api/backups/${encodeURIComponent(name)}/contents`);
+      $('pn-restore-items').innerHTML = data.contents.map((c) => `<label><input type="checkbox" value="${esc(c.path)}" checked>
+        <span>${esc(c.path)} <small>${c.files} file${c.files === 1 ? '' : 's'} · ${bytes(c.bytes)}</small></span></label>`).join('');
+    } catch (err) {
+      $('pn-restore-items').textContent = err.message;
+    }
+    $('pn-restore').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  $('pn-restore-cancel').addEventListener('click', () => { $('pn-restore').hidden = true; });
+  $('pn-restore-go').addEventListener('click', async () => {
+    const only = [...$('pn-restore-items').querySelectorAll('input:checked')].map((i) => i.value);
+    if (!only.length) return formMsg('pn-restore-msg', 'Choose at least one item.', false);
+    if (!confirm(`Restore ${only.length} item${only.length === 1 ? '' : 's'} from ${restoreName}? The current state is backed up first.`)) return;
+    try {
+      await api(`api/backups/${encodeURIComponent(restoreName)}/restore`, { only });
+      $('pn-restore').hidden = true;
+      loadBackups();
+    } catch (err) {
+      formMsg('pn-restore-msg', err.message, false);
+    }
+  });
+
+  $('pn-backup-settings').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    try {
+      const res = await api('api/backups/settings', {
+        keepLast: Number(form.keepLast.value), keepDaily: Number(form.keepDaily.value), keepWeekly: Number(form.keepWeekly.value),
+        exclude: form.exclude.value.split('\n').map((l) => l.trim()).filter(Boolean),
+      });
+      formMsg('pn-backup-settings-msg', res.deleted.length ? `Saved. ${res.deleted.length} old backup(s) removed.` : 'Saved.', true);
+      loadBackups();
+    } catch (err) {
+      formMsg('pn-backup-settings-msg', err.message, false);
+    }
+  });
+
+  // ── Scheduled tasks ────────────────────────────────────────────────────
+
+  let scheduleData = null;
+  const STEP_LABELS = { restart: 'Restart', stop: 'Stop the server', start: 'Start the server', backup: 'Backup', command: 'Console command', say: 'Chat message', wait: 'Wait' };
+
+  async function loadSchedule() {
+    try {
+      scheduleData = await api('api/schedule');
+    } catch (err) {
+      $('pn-task-list').textContent = err.message;
+      return;
+    }
+    $('pn-zone').textContent = scheduleData.zone;
+    const manage = can('schedule.manage');
+    $('pn-task-list').innerHTML = scheduleData.tasks.map(({ task, next, last, running }) => `<div class="pn-task ${task.enabled ? '' : 'off'}" data-task="${esc(task.id)}">
+      <div><b>${esc(task.name)}</b>
+        <small>${esc(whenText(task))} · ${esc(task.steps.map(stepText).join(' → '))}</small>
+        <small>${running ? `<span class="good">Running: ${esc(running)}</span>` : task.enabled ? 'Next: ' + esc(next ? dateTime(next) : '–') : 'Off'}${last ? ` · last run ${esc(dateTime(last.time))}: <span class="${last.ok ? 'good' : 'bad'}">${esc(last.message)}</span>` : ''}</small>
+      </div>
+      ${manage ? `<div class="pn-row-actions">
+        <button type="button" class="np-btn small" data-task-act="run" ${running ? 'disabled' : ''}>Run now</button>
+        <button type="button" class="np-btn small" data-task-act="toggle">${task.enabled ? 'Turn off' : 'Turn on'}</button>
+        <button type="button" class="np-btn small" data-task-act="edit">Edit</button>
+        <button type="button" class="np-btn small danger" data-task-act="delete">Delete</button></div>` : ''}
+    </div>`).join('') || '<p class="np-empty">No scheduled tasks yet.</p>';
+  }
+
+  function whenText(t) {
+    if (t.when === 'interval') return t.everyMinutes % 60 === 0 ? `every ${t.everyMinutes / 60} h` : `every ${t.everyMinutes} min`;
+    const days = t.days.length && t.days.length < 7 ? ' on ' + t.days.map((d) => scheduleData.days[d - 1]).join(', ') : ' daily';
+    return t.times.join(', ') + days;
+  }
+
+  function stepText(s) {
+    switch (s.type) {
+      case 'restart': return s.minutes ? `restart after ${s.minutes} min countdown` : 'restart';
+      case 'command': return '/' + s.text.replace(/^\//, '');
+      case 'say': return `say "${s.text}"`;
+      case 'wait': return `wait ${s.seconds} s`;
+      case 'backup': return 'backup' + (s.text ? ` (${s.text})` : '');
+      default: return STEP_LABELS[s.type].toLowerCase();
+    }
+  }
+
+  $('pn-task-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-task-act]');
+    if (!b) return;
+    const id = b.closest('.pn-task').dataset.task;
+    const task = scheduleData.tasks.find((x) => x.task.id === id).task;
+    try {
+      switch (b.dataset.taskAct) {
+        case 'run': await api(`api/schedule/${id}/run`, {}); break;
+        case 'toggle': await api('api/schedule', Object.assign({}, task, { enabled: !task.enabled })); break;
+        case 'edit': return openTask(task);
+        case 'delete':
+          if (!confirm(`Delete the task "${task.name}"?`)) return;
+          await api(`api/schedule/${id}/delete`, {});
+          break;
+      }
+      loadSchedule();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  let editingTask = null;
+
+  function openTask(task) {
+    editingTask = task;
+    const form = $('pn-task-form');
+    form.hidden = false;
+    $('pn-task-title').textContent = task.id ? 'Edit ' + task.name : 'New task';
+    $('pn-task-msg').textContent = '';
+    form.name.value = task.name || '';
+    form.when.value = task.when || 'daily';
+    form.times.value = (task.times || []).join(', ');
+    form.everyMinutes.value = task.everyMinutes || 60;
+    form.enabled.checked = task.enabled !== false;
+    $('pn-task-days').innerHTML = scheduleData.days.map((d, i) => `<label><input type="checkbox" value="${i + 1}" ${(task.days || []).includes(i + 1) ? 'checked' : ''}> ${esc(d)}</label>`).join('');
+    renderSteps(task.steps || []);
+    showWhen();
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function showWhen() {
+    const when = $('pn-task-form').when.value;
+    document.querySelectorAll('#pn-task-form .pn-when').forEach((el) => { el.hidden = el.dataset.when !== when; });
+  }
+
+  function stepRow(s) {
+    const opts = Object.entries(STEP_LABELS).map(([k, l]) => `<option value="${k}" ${k === s.type ? 'selected' : ''}>${l}</option>`).join('');
+    let fields = '';
+    if (s.type === 'restart') fields = `<span>after a countdown of</span><input type="number" data-f="minutes" min="0" max="60" value="${s.minutes ?? 5}"><span>min, message</span>
+      <input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="The server restarts in {time}.">`;
+    if (s.type === 'command') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="e.g. save-all">`;
+    if (s.type === 'say') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Message to everyone online">`;
+    if (s.type === 'backup') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Note (optional)">`;
+    if (s.type === 'wait') fields = `<input type="number" data-f="seconds" min="1" max="3600" value="${s.seconds ?? 30}"><span>seconds</span>`;
+    return `<div class="pn-step"><select data-f="type">${opts}</select>${fields}<button type="button" class="np-btn small" data-step-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
+  }
+
+  function renderSteps(steps) {
+    $('pn-steps').innerHTML = steps.map(stepRow).join('');
+  }
+
+  function readSteps() {
+    return [...$('pn-steps').children].map((row) => {
+      const s = { type: row.querySelector('[data-f="type"]').value, text: '', minutes: 5, seconds: 30 };
+      row.querySelectorAll('input[data-f]').forEach((i) => { s[i.dataset.f] = i.type === 'number' ? Number(i.value) : i.value.trim(); });
+      return s;
+    });
+  }
+
+  $('pn-steps').addEventListener('change', (e) => {
+    if (e.target.dataset.f !== 'type') return;
+    const steps = readSteps();
+    renderSteps(steps);
+  });
+  $('pn-steps').addEventListener('click', (e) => {
+    if (!e.target.closest('[data-step-remove]')) return;
+    e.target.closest('.pn-step').remove();
+  });
+  $('pn-step-add').addEventListener('click', () => {
+    $('pn-steps').insertAdjacentHTML('beforeend', stepRow({ type: 'command', text: '' }));
+  });
+  $('pn-task-form').when.addEventListener('change', showWhen);
+  $('pn-task-cancel').addEventListener('click', () => { $('pn-task-form').hidden = true; });
+  $('pn-task-new').addEventListener('click', () => openTask({ name: '', when: 'daily', times: ['04:00'], days: [], steps: [] }));
+  document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.preset === 'restart') {
+      openTask({ name: 'Daily restart', when: 'daily', times: ['04:00'], days: [], steps: [
+        { type: 'backup', text: 'before restart' },
+        { type: 'restart', minutes: 5, text: '' },
+      ] });
+    } else {
+      openTask({ name: 'Backup every 6 hours', when: 'interval', everyMinutes: 360, steps: [{ type: 'backup', text: 'scheduled' }] });
+    }
+  }));
+
+  $('pn-task-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const task = {
+      id: editingTask && editingTask.id ? editingTask.id : null,
+      name: form.name.value.trim(),
+      enabled: form.enabled.checked,
+      when: form.when.value,
+      times: form.times.value.split(',').map((t) => t.trim()).filter(Boolean).map((t) => t.length === 4 ? '0' + t : t),
+      days: [...$('pn-task-days').querySelectorAll('input:checked')].map((i) => Number(i.value)),
+      everyMinutes: Number(form.everyMinutes.value),
+      steps: readSteps(),
+    };
+    try {
+      await api('api/schedule', task);
+      form.hidden = true;
+      loadSchedule();
+    } catch (err) {
+      formMsg('pn-task-msg', err.message, false);
     }
   });
 

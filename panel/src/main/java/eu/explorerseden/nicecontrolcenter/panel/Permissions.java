@@ -19,6 +19,9 @@ public final class Permissions {
 	public static final String SETTINGS_SERVER = "settings.server";
 	public static final String UPDATES_MANAGE = "updates.manage";
 	public static final String SCHEDULE_MANAGE = "schedule.manage";
+	public static final String BACKUP_VIEW = "backup.view";
+	public static final String BACKUP_CREATE = "backup.create";
+	public static final String BACKUP_MANAGE = "backup.manage";
 	public static final String USERS_ADMIN = "users.admin";
 	public static final String AUDIT_VIEW = "audit.view";
 
@@ -32,7 +35,10 @@ public final class Permissions {
 			new Permission(SETTINGS_SERVER, "Settings", "Change server.properties, game rules and data pack settings"),
 			new Permission(SETTINGS_JAVA, "Settings", "Change startup and Java settings"),
 			new Permission(UPDATES_MANAGE, "Settings", "Install and roll back mod and data pack updates"),
-			new Permission(SCHEDULE_MANAGE, "Settings", "Edit and run scheduled commands"),
+			new Permission(SCHEDULE_MANAGE, "Settings", "Edit and run scheduled tasks and commands"),
+			new Permission(BACKUP_VIEW, "Backups", "See and download backups"),
+			new Permission(BACKUP_CREATE, "Backups", "Make a backup"),
+			new Permission(BACKUP_MANAGE, "Backups", "Restore, delete and pin backups, change backup settings"),
 			new Permission(USERS_ADMIN, "Accounts", "Manage users and roles"),
 			new Permission(AUDIT_VIEW, "Accounts", "Read the audit log"));
 

@@ -13,6 +13,7 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -53,6 +54,10 @@ public final class Panel {
 		DashboardProxy dashboard = new DashboardProxy(Integer.parseInt(env("DASHBOARD_PORT", "8765")), server, audit);
 		String publicUrl = env("PANEL_PUBLIC_URL", "");
 		server.panelFlags(() -> dashboard.flags(publicUrl), dashboard.secret());
+		ZoneId zone = zone();
+		Backups backups = new Backups(serverDir, Path.of(env("BACKUP_DIR", "/data/backups")), dataDir.resolve("backups.json"), server, zone);
+		Scheduler scheduler = new Scheduler(dataDir.resolve("schedule.json"), server, backups, audit, zone);
+		scheduler.start();
 		Companion companion = new Companion();
 		server.beforeStart(log -> {
 			if (settings.companionMod) companion.ensure(serverDir, settings.serverJar, log);
@@ -194,6 +199,7 @@ public final class Panel {
 
 			new AccountRoutes(db, accounts, auth, audit).register(routes);
 			dashboard.register(routes);
+			new OpsRoutes(backups, scheduler, audit).register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {
@@ -275,6 +281,17 @@ public final class Panel {
 
 	private static void send(WsContext ctx, String line) {
 		if (ctx.session.isOpen()) ctx.send(Json.GSON.toJson(Map.of("line", line)));
+	}
+
+	/** TIMEZONE or TZ (e.g. Europe/Berlin) for schedules and backup names; the system zone otherwise. */
+	private static ZoneId zone() {
+		String name = env("TIMEZONE", env("TZ", ""));
+		try {
+			return name.isEmpty() ? ZoneId.systemDefault() : ZoneId.of(name);
+		} catch (RuntimeException e) {
+			System.err.println("Unknown time zone " + name + ", using " + ZoneId.systemDefault());
+			return ZoneId.systemDefault();
+		}
 	}
 
 	static String env(String name, String fallback) {

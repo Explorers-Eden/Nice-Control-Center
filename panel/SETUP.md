@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, and has user accounts with roles and an audit log. Backups, schedules, files, updates, Discord and the map follow step by step.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, and has user accounts with roles and an audit log. Files, updates, Discord and the map follow step by step.
 
 ## Deploy with Portainer
 
@@ -36,6 +36,30 @@ The **Dashboard** tab shows the Nice Control Center mod's full dashboard: perfor
 - Everything in the dashboard is covered by the panel's permissions (see [Accounts](#accounts)), and every change goes to the audit log.
 - Set `PANEL_PUBLIC_URL` (e.g. `https://panel.example.com`) so that `/ncc web` in the game links straight to the Dashboard tab.
 
+## Backups
+
+**Backups** makes zip files of the server folder in the backup volume. You can open them anywhere.
+
+- **While the server runs**, saving pauses for the copy (`save-off`, `save-all flush`, then `save-on`), so the world on disk is consistent. Players don't notice.
+- **Leave out** folders and files with one pattern per line, relative to the server folder:
+  - `logs/**` leaves out a folder.
+  - `**/*.log` leaves out a file type anywhere.
+  - `world/DIM-1/**` leaves out the Nether.
+  - By default, logs, crash reports and the files Fabric downloads again by itself (`.fabric`, `libraries`, `versions`) are left out.
+- **Keeping:** the newest N backups, plus one per day for D days and one per week for W weeks. Pinned backups are never removed automatically.
+- **Restore** works while the server is stopped. Choose what to bring back (e.g. only `world/` or only `config/`). Each chosen folder is replaced as a whole, and a safety backup of the current state is made first.
+
+## Scheduled tasks
+
+**Schedule** runs tasks at set times on chosen weekdays, or every few minutes. The times use `TIMEZONE` (e.g. `Europe/Berlin`).
+
+A task is a list of steps:
+- **Restart** after a countdown in chat. The message is configurable, and `{time}` becomes "5 minutes", "30 seconds" and so on.
+- **Stop**, **Start**, **Backup**
+- **Console command**, **Chat message**, **Wait**
+
+The templates set up a daily restart at 04:00 (backup first, then a 5-minute countdown) and a backup every 6 hours. **Run now** starts any task immediately.
+
 ## Accounts
 
 The **container admin** (`PANEL_ADMIN_USER` / `PANEL_ADMIN_PASSWORD`) can always log in and do everything, even while the database is down. Use it to set things up and as a spare key.
@@ -52,7 +76,7 @@ Create an empty database and a user that owns it. The panel creates and updates 
 
 Then, under **Users**:
 - **Users** get one or more roles. Disabling, deleting or changing a user's password logs them out everywhere at once.
-- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, see the dashboard, manage players, change server or Java settings, manage updates and scheduled commands, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
+- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, see the dashboard, manage players, change server or Java settings, manage updates and scheduled tasks, see/make/restore backups, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
 - The **Audit log** records every login (failed ones too), server action, console command, settings change and account change, with who, when and from which IP.
 
 ## Startup & Java
@@ -74,7 +98,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | Path in the container | What's in it |
 |---|---|
 | `/data/server` | the Minecraft server folder: world, mods, config, logs |
-| `/data/backups` | backups (coming) |
+| `/data/backups` | backups |
 | `/data/map` | map tiles for the map subdomain (coming) |
 | `/data/panel` | panel settings and the generated admin password hash |
 
@@ -86,6 +110,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `PANEL_ADMIN_PASSWORD` | generated | login password |
 | `DB_URL` / `DB_USER` / `DB_PASS` | – | Postgres for user accounts and the audit log |
 | `PANEL_PUBLIC_URL` | – | the panel's address, for `/ncc web` links in the game |
+| `TIMEZONE` | the container's | time zone for scheduled tasks and backup names, e.g. `Europe/Berlin` |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
 

@@ -1,3 +1,12 @@
+## 0.5.0
+- Backups: zip files of the server folder, made while the server runs (saving pauses for the copy, so the world is consistent); region files are stored as they are, the rest is compressed quickly
+- Leave folders and files out with patterns (logs, caches, map renders, …), keep the newest N plus one per day and per week, pin backups to keep them forever
+- Download backups, and restore all or only chosen folders/files while the server is stopped (a safety backup is made first)
+- Scheduled tasks: at set times on chosen weekdays or every few minutes; steps: restart after a countdown in chat, stop, start, backup, console command, chat message, wait
+- Templates for a daily restart at 04:00 (backup first, 5-minute countdown) and a backup every 6 hours; run any task now
+- New permissions: see/download backups, make backups, restore/delete/pin backups and change backup settings; Moderators may see and make backups
+- TIMEZONE (e.g. Europe/Berlin) for schedules and backup names
+
 ## 0.4.0
 - Dashboard tab: the Nice Control Center mod's full dashboard (performance, world, players, server, data packs, updates, schedule, reports) inside the panel, with the panel's accounts
 - New permissions for it: see the dashboard, manage players, change server settings (server.properties, game rules, data pack settings), manage updates, edit scheduled commands; Moderator and Viewer get sensible defaults

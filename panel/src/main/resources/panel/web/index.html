@@ -66,6 +66,8 @@
 			<nav class="np-tabs" id="pn-tabs" role="tablist" aria-label="Sections">
 				<button type="button" role="tab" class="np-tab" data-tab="dashboard" data-perm="dashboard.view"><i class="bi bi-speedometer2"></i><span>Dashboard</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="server" data-perm="console.read"><i class="bi bi-terminal"></i><span>Console</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="backups" data-perm="backup.view"><i class="bi bi-archive"></i><span>Backups</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="schedule" data-perm="server.view"><i class="bi bi-calendar-check"></i><span>Schedule</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people"></i><span>Users</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span></button>
@@ -119,6 +121,86 @@
 					</div>
 				</form>
 			</section>
+
+			<div class="np-tab-panel" data-tab="backups" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-archive"></i> Backups</h3>
+					<p class="np-card-intro">Zip files of the server folder. While the server runs, saving pauses for the copy, so the world is consistent. Pinned backups are never removed automatically.</p>
+					<div class="pn-backup-status" id="pn-backup-status"></div>
+					<form class="np-form-actions" id="pn-backup-form" data-perm="backup.create">
+						<input type="text" class="np-console-search" id="pn-backup-label" placeholder="Note (optional), e.g. before update" maxlength="40">
+						<button type="submit" class="np-btn primary"><i class="bi bi-archive"></i> Back up now</button>
+						<span class="np-form-msg" id="pn-backup-msg"></span>
+					</form>
+					<div class="np-table-wrap"><table class="np-table pn-backups">
+						<thead><tr><th>When</th><th>Note</th><th class="num">Size</th><th>By</th><th></th></tr></thead>
+						<tbody id="pn-backup-rows"></tbody>
+					</table></div>
+					<div class="pn-inline-form" id="pn-restore" hidden>
+						<h4 id="pn-restore-title">Restore</h4>
+						<p class="np-card-intro">The server must be stopped. Each chosen folder is replaced as a whole, so files added since this backup disappear from it. A safety backup of the current state is made first.</p>
+						<div class="pn-perm-grid" id="pn-restore-items"></div>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn danger" id="pn-restore-go"><i class="bi bi-arrow-counterclockwise"></i> Restore the chosen items</button>
+							<button type="button" class="np-btn" id="pn-restore-cancel">Cancel</button>
+							<span class="np-form-msg" id="pn-restore-msg"></span>
+						</div>
+					</div>
+				</section>
+				<section class="np-card" data-perm="backup.manage">
+					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Backup settings</h3>
+					<form id="pn-backup-settings">
+						<div class="np-form-grid">
+							<label class="np-form-row">Keep the newest<input type="number" name="keepLast" min="1" max="1000"></label>
+							<label class="np-form-row">Plus one per day, for days<input type="number" name="keepDaily" min="0" max="365"></label>
+							<label class="np-form-row">Plus one per week, for weeks<input type="number" name="keepWeekly" min="0" max="520"></label>
+						</div>
+						<label class="pn-field">Leave out (one pattern per line)<textarea name="exclude" rows="7" spellcheck="false"></textarea></label>
+						<p class="np-card-intro pn-hint"><code>logs/**</code> leaves out a folder, <code>**/*.log</code> a file type anywhere, <code>world/DIM-1/**</code> the Nether, <code>bluemap/**</code> a map render. Paths are relative to the server folder.</p>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-backup-settings-msg"></span>
+						</div>
+					</form>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="schedule" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-calendar-check"></i> Scheduled tasks</h3>
+					<p class="np-card-intro">Restarts with a countdown in chat, backups, commands and messages, at set times or every few minutes. Times are in <b id="pn-zone"></b>.</p>
+					<div id="pn-task-list" class="pn-tasks"></div>
+					<div class="np-form-actions" data-perm="schedule.manage">
+						<button type="button" class="np-btn primary" id="pn-task-new"><i class="bi bi-plus-lg"></i> New task</button>
+						<button type="button" class="np-btn" data-preset="restart"><i class="bi bi-arrow-repeat"></i> Daily restart at 04:00</button>
+						<button type="button" class="np-btn" data-preset="backup"><i class="bi bi-archive"></i> Backup every 6 hours</button>
+					</div>
+					<form class="pn-inline-form" id="pn-task-form" autocomplete="off" hidden>
+						<h4 id="pn-task-title">New task</h4>
+						<div class="pn-form-cols">
+							<label class="pn-field">Name<input type="text" name="name" maxlength="60"></label>
+							<label class="pn-field">When<select name="when"><option value="daily">At set times</option><option value="interval">Every few minutes</option></select></label>
+						</div>
+						<div class="pn-when" data-when="daily">
+							<label class="pn-field">Times (comma-separated)<input type="text" name="times" placeholder="04:00, 16:00" spellcheck="false"></label>
+							<div class="pn-field">Days (none = every day)<div class="np-chips pn-role-picks" id="pn-task-days"></div></div>
+						</div>
+						<div class="pn-when" data-when="interval">
+							<label class="pn-field">Every … minutes<input type="number" name="everyMinutes" min="1" max="10080"></label>
+						</div>
+						<div class="pn-field">Steps, in order<div id="pn-steps" class="pn-steps"></div></div>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn small" id="pn-step-add"><i class="bi bi-plus-lg"></i> Add step</button>
+						</div>
+						<label class="np-check"><input type="checkbox" name="enabled" checked> Enabled</label>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save task</button>
+							<button type="button" class="np-btn" id="pn-task-cancel">Cancel</button>
+							<span class="np-form-msg" id="pn-task-msg"></span>
+						</div>
+					</form>
+				</section>
+			</div>
 
 			<div class="np-tab-panel" data-tab="users" hidden>
 				<p class="pn-notice-line" id="pn-db-notice" hidden></p>

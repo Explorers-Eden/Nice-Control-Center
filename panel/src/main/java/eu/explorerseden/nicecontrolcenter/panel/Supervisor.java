@@ -218,6 +218,57 @@ public final class Supervisor {
 		return new ArrayList<>(lines);
 	}
 
+	public synchronized State state() {
+		return state;
+	}
+
+	public boolean running() {
+		State st = state();
+		return st == State.RUNNING || st == State.STARTING;
+	}
+
+	/** Waits until the server reaches one of the states. Returns false on timeout. */
+	public boolean awaitState(long timeoutMs, State... wanted) throws InterruptedException {
+		long until = System.currentTimeMillis() + timeoutMs;
+		java.util.Set<State> set = java.util.EnumSet.copyOf(java.util.List.of(wanted));
+		while (System.currentTimeMillis() < until) {
+			if (set.contains(state())) return true;
+			Thread.sleep(250);
+		}
+		return set.contains(state());
+	}
+
+	/**
+	 * Sends a command and waits for a console line matching the pattern (e.g. "Saved the game" after
+	 * save-all). Returns false if the line didn't come in time. Not shown as typed by a user.
+	 */
+	public boolean commandAndWait(String command, Pattern expect, long timeoutMs) throws InterruptedException {
+		java.util.concurrent.CountDownLatch seen = new java.util.concurrent.CountDownLatch(1);
+		Consumer<String> listener = line -> {
+			if (expect.matcher(line).find()) seen.countDown();
+		};
+		listen(listener);
+		try {
+			synchronized (this) {
+				if (state != State.RUNNING && state != State.STARTING) return false;
+				if (!send(command)) return false;
+			}
+			return seen.await(timeoutMs, TimeUnit.MILLISECONDS);
+		} finally {
+			unlisten(listener);
+		}
+	}
+
+	/** A command from the panel itself (scheduler, backups), without the "> " echo. */
+	public synchronized boolean quietCommand(String command) {
+		return (state == State.RUNNING || state == State.STARTING) && send(command);
+	}
+
+	/** A note from the panel in the console. */
+	public void note(String text) {
+		panelLine(text);
+	}
+
 	public void listen(Consumer<String> listener) {
 		listeners.add(listener);
 	}
