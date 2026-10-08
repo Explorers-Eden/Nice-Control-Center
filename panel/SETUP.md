@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, bridges to Discord, draws a public web map, and has user accounts with roles and an audit log.
+> The panel runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, bridges to Discord, draws a public web map, and has user accounts with roles and an audit log.
 
 ## Deploy with Portainer
 

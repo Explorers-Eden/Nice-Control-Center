@@ -377,6 +377,8 @@
   function dbNotice(text) {
     $('pn-db-notice').hidden = !text;
     $('pn-db-notice').textContent = text || '';
+    // Without the database there's nothing to list or create, so only the notice stays.
+    document.querySelectorAll('#pn-app .np-tab-panel[data-tab="users"] > .np-card').forEach((c) => { c.hidden = !!text; });
   }
 
   async function loadUsers() {

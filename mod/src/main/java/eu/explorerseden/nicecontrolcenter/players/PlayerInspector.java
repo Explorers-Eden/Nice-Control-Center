@@ -140,7 +140,8 @@ public final class PlayerInspector {
 			}
 			for (UUID playerId : known) {
 				var entry = banList.get(new NameAndId(playerId, name(server, playerId).orElse("")));
-				if (entry != null && !entry.hasExpired()) {
+				// getExpires() is public in every 26.x version (hasExpired() only from 26.2 on).
+				if (entry != null && (entry.getExpires() == null || entry.getExpires().after(new java.util.Date()))) {
 					Map<String, Object> ban = new LinkedHashMap<>();
 					ban.put("reason", entry.getReason());
 					ban.put("by", entry.getSource());

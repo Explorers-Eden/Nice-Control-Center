@@ -5,11 +5,14 @@ Name: Nice Control Center
 
 Meta Data:
   Versions:
+    # One jar per entry (built from versions/<entry>.properties); "26.1" covers 26.1, 26.1.1 and 26.1.2.
     - 26.3
+    - 26.2
+    - 26.1
   Loaders:
     - fabric
 
 Details:
   Version type: Release
-  Version number: 1.2.1
-  Version subtitle: "Release v1.2.1"
+  Version number: 1.3.0
+  Version subtitle: "Release v1.3.0"

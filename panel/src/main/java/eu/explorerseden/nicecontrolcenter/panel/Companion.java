@@ -110,13 +110,17 @@ final class Companion {
 			JsonObject release = element.getAsJsonObject();
 			if (release.get("draft").getAsBoolean()) continue;
 			Matcher tag = TAG.matcher(release.get("tag_name").getAsString());
-			if (!tag.matches() || !tag.group(2).equals(mc)) continue;
+			// A release for "26.1" also serves 26.1.1 and 26.1.2; an exact match wins.
+			if (!tag.matches() || !(tag.group(2).equals(mc) || mc.startsWith(tag.group(2) + "."))) continue;
+			if (best != null && best.mc().equals(mc) && !tag.group(2).equals(mc)) continue;
 			for (JsonElement a : release.getAsJsonArray("assets")) {
 				JsonObject asset = a.getAsJsonObject();
 				String name = asset.get("name").getAsString();
 				if (!name.endsWith(".jar")) continue;
-				if (best == null || compare(tag.group(1), best.version()) > 0) {
-					best = new Release(tag.group(1), mc, asset.get("browser_download_url").getAsString(), name);
+				boolean exact = tag.group(2).equals(mc);
+				boolean bestExact = best != null && best.mc().equals(mc);
+				if (best == null || (exact && !bestExact) || (exact == bestExact && compare(tag.group(1), best.version()) > 0)) {
+					best = new Release(tag.group(1), exact ? mc : tag.group(2), asset.get("browser_download_url").getAsString(), name);
 				}
 			}
 		}

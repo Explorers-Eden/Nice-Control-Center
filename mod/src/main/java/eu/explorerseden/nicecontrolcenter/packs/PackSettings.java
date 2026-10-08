@@ -627,7 +627,7 @@ public final class PackSettings {
 	private static Map<String, String> loadLang(MinecraftServer server) {
 		Map<String, String> result = new java.util.HashMap<>();
 		for (net.minecraft.server.packs.repository.Pack pack : server.getPackRepository().getSelectedPacks()) {
-			try (java.util.stream.Stream<net.minecraft.server.packs.PackResources> resources = pack.open()) {
+			try (java.util.stream.Stream<net.minecraft.server.packs.PackResources> resources = eu.explorerseden.nicecontrolcenter.compat.Packs.open(pack)) {
 				resources.forEach(r -> {
 					try (r) {
 						for (String ns : r.getNamespaces(net.minecraft.server.packs.PackType.CLIENT_RESOURCES)) {

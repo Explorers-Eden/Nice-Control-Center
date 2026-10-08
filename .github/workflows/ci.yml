@@ -61,10 +61,17 @@ jobs:
           echo "panel=$panel" >> "$GITHUB_OUTPUT"
 
   mod-build:
-    name: "Mod: build the jar"
+    name: "Mod: build the jar for Minecraft ${{ matrix.mc }}"
     needs: changes
     if: needs.changes.outputs.mod == 'true'
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Same list as Meta Data -> Versions in mod/tools/release_infos.yml.
+        mc: ["26.3", "26.2", "26.1"]
+    env:
+      MC_TARGET: ${{ matrix.mc }}
     defaults:
       run:
         working-directory: mod
@@ -98,21 +105,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build the mod jar (version ${{ steps.meta.outputs.version_number }})
-        run: ./gradlew build -Pversion=${{ steps.meta.outputs.version_number }}
+        run: ./gradlew build -Pversion=${{ steps.meta.outputs.version_number }} -Pmc_target=${{ matrix.mc }}
 
       - name: Upload the jar as a workflow artifact
         uses: actions/upload-artifact@v7
         with:
-          name: nice-control-center
+          name: nice-control-center-mc${{ matrix.mc }}
           path: mod/build/libs/
 
   mod-release:
-    name: "Mod: publish the GitHub release"
+    name: "Mod: publish the GitHub release for Minecraft ${{ matrix.mc }}"
     needs: [changes, mod-build]
     if: >-
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        mc: ["26.3", "26.2", "26.1"]
+    env:
+      MC_TARGET: ${{ matrix.mc }}
     permissions:
       contents: write
     # Never publish two releases at the same time.
@@ -140,7 +154,7 @@ jobs:
       - name: Download the jar built by the previous job
         uses: actions/download-artifact@v7
         with:
-          name: nice-control-center
+          name: nice-control-center-mc${{ matrix.mc }}
           path: mod/build/libs/
 
       # Pushing without raising the version refreshes the jar of that version's release.

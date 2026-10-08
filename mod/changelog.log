@@ -1,5 +1,6 @@
-# Minecraft Version(s): 26.3
-## 1.2.1
+# Minecraft Version(s): 26.1–26.3
+## 1.3.0
+- One jar each for Minecraft 26.3, 26.2 and 26.1 (26.1, 26.1.1 and 26.1.2)
 - The stat tiles size to their content: MSPT and Memory get more room than the single numbers, so nothing is cut off (one row on wide screens, two rows in between, two per row on phones)
 - With the panel: pregeneration of a square or circle (Chunky-style spiral, only as fast as the server has room for, keeps going while the server would otherwise pause when empty)
 - With the panel: the web map's overlays (players, world border, GOML claims, waypoint hubs) and the map colors of all blocks, modded ones included

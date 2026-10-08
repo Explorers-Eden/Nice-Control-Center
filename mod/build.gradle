@@ -6,6 +6,23 @@ base {
 	archivesName = "nice-control-center"
 }
 
+// The Minecraft version to build for: -Pmc_target=26.2 reads versions/26.2.properties (Minecraft and Fabric API
+// versions, the dependency range and which version-specific sources to add). Without it: the newest.
+def mcTarget = (findProperty("mc_target") ?: "26.3").toString()
+def targetFile = file("versions/${mcTarget}.properties")
+if (!targetFile.exists()) throw new GradleException("No versions/${mcTarget}.properties")
+def target = new Properties()
+targetFile.withInputStream { target.load(it) }
+target.each { key, value -> project.ext.set(key.toString(), value.toString()) }
+
+sourceSets {
+	main {
+		java {
+			srcDir "src/mc/${project.source_dir}/java"
+		}
+	}
+}
+
 repositories {
 	// Mod Menu: optional, only for the in-game settings screen in singleplayer.
 	maven { url = "https://maven.terraformersmc.com/releases/" }
@@ -28,8 +45,10 @@ processResources {
 	def version = project.version
 	inputs.property "version", version
 
+	def minecraftDep = project.minecraft_dep
+	inputs.property "minecraftDep", minecraftDep
 	filesMatching("fabric.mod.json") {
-		expand "version": version
+		expand "version": version, "minecraft_dep": minecraftDep
 	}
 }
 

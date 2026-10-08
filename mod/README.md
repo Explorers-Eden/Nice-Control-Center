@@ -1,6 +1,6 @@
 # Nice Control Center
 
-A web control center for Fabric servers (Minecraft 26.3). At its heart is a live performance monitor that answers one question: **what is slowing the server down, and why?** Around it: the server log with errors traced to data packs and mods, a console, automatic updates for mods, data packs and the server resource pack, and editors for server.properties and data pack settings.
+A web control center for Fabric servers (Minecraft 26.1–26.3). At its heart is a live performance monitor that answers one question: **what is slowing the server down, and why?** Around it: the server log with errors traced to data packs and mods, a console, automatic updates for mods, data packs and the server resource pack, and editors for server.properties and data pack settings.
 
 It starts with the server and runs continuously (you can switch it off). It keeps the last hour and shows it in a web dashboard and in chat. Every cost is converted to the same unit, milliseconds per tick, so a data pack, a mod, a mob type and chunk loading can be compared directly. Each problem comes with a short explanation and a tip.
 
@@ -196,6 +196,6 @@ cd mod
 ./gradlew build
 ```
 
-Requires JDK 25. The jar ends up in `mod/build/libs/`.
+Requires JDK 25. The jar ends up in `mod/build/libs/`. It builds for Minecraft 26.3 by default; `./gradlew build -Pmc_target=26.2` (or `26.1`) builds for an older version. The versions per target are in `versions/<target>.properties`, the few classes that differ in `src/mc/<target>/java`.
 
 GitHub Actions (`.github/workflows/ci.yml` in the repository root) builds the jar on every push and pull request that touches `mod/`. On `main` it also publishes a GitHub release: the version and Minecraft version come from `tools/release_infos.yml`, the release notes from `changelog.log`. Older releases for the same Minecraft version are removed. To release a new version, raise `Version number` and `Version subtitle` in `tools/release_infos.yml` and update `changelog.log`.

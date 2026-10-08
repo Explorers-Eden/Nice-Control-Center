@@ -62,7 +62,7 @@ public final class SourceIndex {
 			if (source.kind() != Kind.DATAPACK) {
 				continue;
 			}
-			try (Stream<PackResources> resources = pack.open()) {
+			try (Stream<PackResources> resources = eu.explorerseden.nicecontrolcenter.compat.Packs.open(pack)) {
 				resources.forEach(r -> {
 					try (r) {
 						for (String ns : r.getNamespaces(PackType.SERVER_DATA)) {

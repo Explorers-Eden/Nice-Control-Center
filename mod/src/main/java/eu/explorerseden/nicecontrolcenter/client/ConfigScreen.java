@@ -270,6 +270,6 @@ public class ConfigScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		this.minecraft.gui.setScreen(parent);
+		eu.explorerseden.nicecontrolcenter.compat.Screens.show(this.minecraft, parent);
 	}
 }

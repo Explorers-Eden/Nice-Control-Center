@@ -1,3 +1,16 @@
+## 1.0.0
+First full release. The panel runs one Fabric server in Docker and manages it from outside:
+- Server: start, stop, restart, kill, live console, crash detection with automatic restarts, Java and memory settings
+- Accounts: users with roles and fine-grained permissions, audit log, container admin that always works
+- Dashboard: the Nice Control Center mod's performance dashboard inside the panel, installed and updated automatically
+- Backups with exclusions, retention, pinning, download and selective restore; scheduled tasks with countdown restarts
+- Files in the browser, config editor with syntax checks and form view, SFTP with SSH keys, log cleanup
+- Versions: Fabric Loader and Minecraft updates with a Modrinth mod check, automatic rollback and undo
+- Discord bridge: linking required to play, chat both ways, event messages, bot status
+- Web map with players, claims, waypoint hubs and the world border, on its own address if wanted
+- World: pregeneration and a Chunky-style trim with a preview on the map
+- Minecraft 26.1 to 26.3
+
 ## 0.10.0
 - World tab: one area (dimension, center, radius, square or circle; fill in from the world border or spawn) for pregenerating and trimming
 - Pregenerate: every chunk in the area, in a spiral from the center, only as fast as the server has room for, also with nobody online; progress, speed and time left (needs the Nice Control Center mod 1.2.1)

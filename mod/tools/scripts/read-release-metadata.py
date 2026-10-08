@@ -37,14 +37,12 @@ changelog_path = next((p for p in ["Changelog.log", "changelog.log"] if os.path.
 if not changelog_path:
     raise FileNotFoundError("Changelog.log or changelog.log not found")
 
-# The jar must be built for the Minecraft version listed first.
-with open("gradle.properties", "r", encoding="utf-8") as f:
-    props = dict(line.strip().split("=", 1) for line in f if "=" in line and not line.lstrip().startswith("#"))
-if props.get("minecraft_version") != game_versions[0]:
-    raise ValueError(
-        f"gradle.properties builds for Minecraft {props.get('minecraft_version')}, "
-        f"but release_infos.yml lists {game_versions[0]} first"
-    )
+# MC_TARGET picks one of the listed versions (CI builds each); without it, the first one.
+target = os.environ.get("MC_TARGET", "").strip() or game_versions[0]
+if target not in game_versions:
+    raise ValueError(f"MC_TARGET {target} isn't listed under Meta Data -> Versions in release_infos.yml")
+if not os.path.exists(f"versions/{target}.properties"):
+    raise FileNotFoundError(f"versions/{target}.properties is missing")
 
 outputs = {
     "project_id": project_id,
@@ -55,9 +53,9 @@ outputs = {
     "release_name": release_name,
     # The Minecraft version is part of the tag so older releases for the same
     # version can be cleaned up (see delete-older-releases.sh).
-    "mc_version": game_versions[0],
-    "tag_name": f"mod-v{version_number}-mc{game_versions[0]}",
-    "jar_name": f"{slug}-{version_number}-mc{game_versions[0]}.jar",
+    "mc_version": target,
+    "tag_name": f"mod-v{version_number}-mc{target}",
+    "jar_name": f"{slug}-{version_number}-mc{target}.jar",
     "built_jar": f"{slug}-{version_number}.jar",
     "version_type": version_type,
     "is_prerelease": "true" if version_type in {"beta", "alpha"} else "false",
