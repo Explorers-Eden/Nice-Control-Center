@@ -16,6 +16,7 @@
 	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 	<link rel="stylesheet" href="app.css">
+	<link rel="stylesheet" href="panel.css">
 </head>
 <body>
 	<header class="navbar">
@@ -24,29 +25,91 @@
 				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-hdd-rack"></i></span>
 				<span class="np-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
 			</h1>
+			<div class="np-nav-right">
+				<span class="np-live" id="pn-state-pill" hidden><span class="np-live-dot"></span><span id="pn-state-text"></span></span>
+				<button type="button" class="np-btn np-theme-btn" id="pn-theme" aria-label="Switch light/dark"><i class="bi bi-moon-stars"></i></button>
+				<button type="button" class="np-btn" id="pn-logout" hidden><i class="bi bi-box-arrow-right"></i><span>Log out</span></button>
+			</div>
 		</div>
 	</header>
 
 	<main class="np-shell">
-		<section class="np-banner">
-			<div class="np-banner-main">
-				<span class="np-status-dot info" id="np-status-dot"></span>
-				<div>
-					<h2 class="np-banner-title" id="np-title">Panel starting…</h2>
-					<p class="np-banner-headline">Server management is on its way: start/stop, console, backups, schedules and more.</p>
+		<section class="np-card pn-login" id="pn-login" hidden>
+			<h3 class="np-card-title"><i class="bi bi-shield-lock"></i> Log in</h3>
+			<form id="pn-login-form" autocomplete="on">
+				<label class="pn-field">Name<input type="text" id="pn-user" name="username" autocomplete="username" required></label>
+				<label class="pn-field">Password<input type="password" id="pn-password" name="password" autocomplete="current-password" required></label>
+				<div class="np-form-actions">
+					<button type="submit" class="np-btn primary"><i class="bi bi-box-arrow-in-right"></i> Log in</button>
+					<span class="np-form-msg" id="pn-login-msg"></span>
 				</div>
-			</div>
+			</form>
 		</section>
+
+		<div id="pn-app" class="pn-app" hidden>
+			<section class="np-banner">
+				<div class="np-banner-main">
+					<span class="np-status-dot info" id="pn-dot"></span>
+					<div>
+						<h2 class="np-banner-title" id="pn-title">Loading…</h2>
+						<p class="np-banner-headline" id="pn-sub"></p>
+					</div>
+				</div>
+				<div class="pn-actions">
+					<button type="button" class="np-btn primary" data-action="start"><i class="bi bi-play-fill"></i> Start</button>
+					<button type="button" class="np-btn" data-action="restart"><i class="bi bi-arrow-repeat"></i> Restart</button>
+					<button type="button" class="np-btn" data-action="stop"><i class="bi bi-stop-fill"></i> Stop</button>
+					<button type="button" class="np-btn danger" data-action="kill" title="Ends the process without saving"><i class="bi bi-x-octagon"></i> Kill</button>
+				</div>
+			</section>
+
+			<section class="np-card pn-notice" id="pn-eula" hidden>
+				<p>The Minecraft server only starts once you accept the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener">Minecraft EULA</a>.</p>
+				<button type="button" class="np-btn primary" id="pn-eula-accept"><i class="bi bi-check2"></i> I accept the EULA</button>
+			</section>
+
+			<section class="np-card">
+				<h3 class="np-card-title"><i class="bi bi-terminal"></i> Console</h3>
+				<div class="np-filters">
+					<input type="search" class="np-console-search" id="pn-console-search" placeholder="Search the log" aria-label="Search the log">
+					<label class="np-check"><input type="checkbox" id="pn-console-follow" checked> Follow</label>
+				</div>
+				<div class="np-console-log pn-log" id="pn-log" role="log" aria-live="polite"></div>
+				<form class="np-console-form" id="pn-command-form" autocomplete="off">
+					<span class="np-console-prompt">/</span>
+					<input type="text" id="pn-command" placeholder="Command, e.g. say Hello" aria-label="Command" spellcheck="false">
+					<button type="submit" class="np-btn primary">Run</button>
+				</form>
+			</section>
+
+			<section class="np-card">
+				<h3 class="np-card-title"><i class="bi bi-cpu"></i> Startup &amp; Java</h3>
+				<p class="np-card-intro">Applies the next time the server starts.</p>
+				<form id="pn-settings">
+					<div class="np-form-grid">
+						<label class="np-form-row">Start the server when the panel starts<span class="np-switch"><input type="checkbox" name="autoStart"><span></span></span></label>
+						<label class="np-form-row">Restart after a crash<span class="np-switch"><input type="checkbox" name="autoRestart"><span></span></span></label>
+						<label class="np-form-row">Minimum memory (MB)<input type="number" name="memoryMinMb" min="128" step="256"></label>
+						<label class="np-form-row">Maximum memory (MB)<input type="number" name="memoryMaxMb" min="512" step="256"></label>
+						<label class="np-form-row">Garbage collector flags<select name="preset"></select></label>
+						<label class="np-form-row">Java runtime<select name="javaPath"></select></label>
+						<label class="np-form-row">Server jar<input type="text" name="serverJar"></label>
+						<label class="np-form-row">Seconds to wait for a clean stop<input type="number" name="stopTimeoutSeconds" min="10" max="600"></label>
+					</div>
+					<label class="pn-field">Extra JVM flags<input type="text" name="customArgs" placeholder="e.g. -Dfile.encoding=UTF-8" spellcheck="false"></label>
+					<p class="pn-preview-label">Command line</p>
+					<pre class="np-pre pn-preview" id="pn-preview"></pre>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-settings-msg"></span>
+					</div>
+				</form>
+			</section>
+		</div>
 	</main>
 
-	<script>
-		fetch('api/health').then(r => r.json()).then(h => {
-			document.getElementById('np-title').textContent = 'Panel ' + h.version + ' is running';
-			document.getElementById('np-status-dot').className = 'np-status-dot good';
-		}).catch(() => {
-			document.getElementById('np-title').textContent = 'Panel not reachable';
-			document.getElementById('np-status-dot').className = 'np-status-dot poor';
-		});
-	</script>
+	<footer class="np-footer">Nice Control Center Panel <span id="pn-version"></span> · made by <a href="https://explorerseden.eu" target="_blank" rel="noopener">Explorer's Eden</a></footer>
+
+	<script src="panel.js"></script>
 </body>
 </html>

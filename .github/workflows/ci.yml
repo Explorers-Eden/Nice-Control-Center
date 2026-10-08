@@ -192,7 +192,8 @@ jobs:
 
       - name: Start the panel and check that it answers
         run: |
-          PANEL_PORT=18080 java -jar build/libs/nice-control-center-panel-*.jar &
+          PANEL_PORT=18080 SERVER_DIR=$RUNNER_TEMP/server PANEL_DATA=$RUNNER_TEMP/panel PANEL_ADMIN_PASSWORD=ci \
+            java -jar build/libs/nice-control-center-panel-*.jar &
           for i in $(seq 1 30); do
             curl -fs http://localhost:18080/api/health && exit 0
             sleep 1

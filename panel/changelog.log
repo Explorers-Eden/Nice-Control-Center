@@ -1,2 +1,11 @@
+## 0.2.0
+- Runs the Minecraft server: start, stop, restart and kill, with the state, uptime and PID in the header
+- Live console over a WebSocket, with search and a command line
+- Crash detection (unexpected exit, crash report name) and automatic restart after 10 s, 30 s, 2 min, then 10 min; gives up after 5 crashes in 15 minutes
+- Starts the server when the panel starts, and stops it cleanly when the container stops
+- Startup & Java settings: memory, garbage collector flags (Aikar's G1 or generational ZGC), extra flags, Java runtime and server jar, with a preview of the command line
+- EULA prompt before the first start
+- Login for one admin (PANEL_ADMIN_USER / PANEL_ADMIN_PASSWORD, or a generated password printed once in the log)
+
 ## 0.1.0
 - First skeleton: the panel starts in Docker, serves its start page in the dashboard's style and answers a health check

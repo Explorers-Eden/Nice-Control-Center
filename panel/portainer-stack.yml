@@ -1,11 +1,15 @@
 # Portainer stack for the Nice Control Center Panel.
-# Paste this into Portainer -> Stacks -> Add stack -> Web editor.
+# Paste this into Portainer -> Stacks -> Add stack -> Web editor, then add PANEL_ADMIN_PASSWORD
+# under "Environment variables" (without it, a password is generated and printed in the container log).
 # Point your reverse proxy (Nginx Proxy Manager, Traefik, ...) at port 8080 for the panel.
 services:
   nicecontrolcenter:
     image: niceron/nicecontrolcenter:latest
     container_name: nicecontrolcenter
     restart: unless-stopped
+    environment:
+      PANEL_ADMIN_USER: ${PANEL_ADMIN_USER:-admin}
+      PANEL_ADMIN_PASSWORD: ${PANEL_ADMIN_PASSWORD:-}
     ports:
       - "${PANEL_PORT:-8080}:8080"
       - "${MINECRAFT_PORT:-25565}:25565"
@@ -15,6 +19,8 @@ services:
       - nicecontrolcenter-backups:/data/backups
       # Map tiles, served on the map subdomain.
       - nicecontrolcenter-map:/data/map
+      # Panel settings (startup, Java flags).
+      - nicecontrolcenter-panel:/data/panel
     # Time for the Minecraft server to save and stop when the container stops.
     stop_grace_period: 120s
 
@@ -22,3 +28,4 @@ volumes:
   nicecontrolcenter-server:
   nicecontrolcenter-backups:
   nicecontrolcenter-map:
+  nicecontrolcenter-panel:

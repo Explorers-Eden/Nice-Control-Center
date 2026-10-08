@@ -12,4 +12,7 @@ services:
       - ./run/server:/data/server
       - ./run/backups:/data/backups
       - ./run/map:/data/map
+      - ./run/panel:/data/panel
+    environment:
+      PANEL_ADMIN_PASSWORD: ${PANEL_ADMIN_PASSWORD:-}
     stop_grace_period: 120s
