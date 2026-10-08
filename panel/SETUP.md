@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, and user accounts with roles and an audit log. Version updates, Discord and the map follow step by step.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, and has user accounts with roles and an audit log. Discord and the map follow step by step.
 
 ## Deploy with Portainer
 
@@ -15,7 +15,7 @@ The image `niceron/nicecontrolcenter:latest` is rebuilt on every change to `main
 
 ## Getting a server into the panel
 
-Until the version manager arrives, the panel runs whatever Fabric server is in the server folder:
+The panel runs the Fabric server in the server folder. To bring in an existing one:
 
 1. Get the Fabric server launcher from [fabricmc.net/use/server](https://fabricmc.net/use/server). It's a jar named like `fabric-server-mc.26.3-loader.0.19.5-launcher.1.1.0.jar`.
 2. Put it in the server volume, together with your `mods/`, `config/`, world and `server.properties` if you're moving an existing server. The easiest way is to bind-mount a host folder instead of the named volume:
@@ -72,6 +72,28 @@ The templates set up a daily restart at 04:00 (backup first, then a 5-minute cou
   - The previous version stays as `<file>.bak`.
   - Most mods read their config at start, so restart afterwards.
 - **Log cleanup** (Files tab): deletes files older than N days in `logs/`, `crash-reports/` and `debug/`, with a preview. It runs daily after 05:00; `latest.log` is never touched.
+
+## Versions
+
+**Versions** shows the installed Minecraft and Fabric Loader versions.
+
+- **Fabric Loader:** when a newer one is out for your Minecraft version, **Update Fabric Loader** prepares the update.
+- **Another Minecraft version:** choose it, then press **Check the mods**. The panel looks up every mod on Modrinth for that version and shows one of:
+  - works as it is
+  - update available
+  - no version yet
+  - not on Modrinth: the panel can't check it, so it stays as it is
+  - needs a newer Fabric Loader
+- **Your choice per mod:** update, keep, or turn off. Turned-off mods get a `.disabled` ending; rename them back in Files to turn them on again.
+- **The update itself:**
+  1. Backup.
+  2. Download and verify the new launcher and mod files.
+  3. Stop the server.
+  4. Swap the files.
+  5. Start the server. If it doesn't come up within 15 minutes, the backup is restored automatically and the old version starts again.
+- **Undo** reverses the last successful update by restoring its backup, world included.
+
+Minecraft itself can't take a world back to an older version, so go back with Undo or a backup, never by picking an older version.
 
 ## SFTP
 

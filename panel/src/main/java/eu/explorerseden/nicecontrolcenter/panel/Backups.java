@@ -76,6 +76,9 @@ public final class Backups {
 	private volatile long filesTotal;
 	private volatile String lastError;
 	private volatile String lastResult;
+	private volatile String lastCreated;
+	/** Backups an operation still needs (an update's rollback point); retention leaves them alone. */
+	private final Set<String> protectedNames = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	public Backups(Path serverDir, Path backupDir, Path settingsFile, Supervisor server, ZoneId zone) {
 		this.serverDir = serverDir;
@@ -136,6 +139,11 @@ public final class Backups {
 		return out;
 	}
 
+	/** File name of the newest backup this panel made. */
+	public String lastCreated() {
+		return lastCreated;
+	}
+
 	public boolean busy() {
 		return running;
 	}
@@ -147,6 +155,19 @@ public final class Backups {
 	 * reason ("manual", "scheduled", "before restore"); by: who asked for it.
 	 */
 	public String create(String label, String by) {
+		return create(label, by, true);
+	}
+
+	public void protect(String name) {
+		if (name != null) protectedNames.add(name);
+	}
+
+	public void unprotect(String name) {
+		if (name != null) protectedNames.remove(name);
+	}
+
+	/** prune = false for safety backups during a restore, so retention can't remove what's about to be restored. */
+	public String create(String label, String by, boolean prune) {
 		synchronized (this) {
 			if (running) return "A backup is already running.";
 			running = true;
@@ -214,10 +235,11 @@ public final class Backups {
 			Files.move(tmp, backupDir.resolve(name), StandardCopyOption.ATOMIC_MOVE);
 			tmp = null;
 			writeMeta(name, label, by, false, files.size());
+			lastCreated = name;
 			long seconds = Math.max(1, (System.currentTimeMillis() - started) / 1000);
 			lastResult = name + " (" + human(Files.size(backupDir.resolve(name))) + ", " + files.size() + " files, " + seconds + " s)";
 			server.note("Backup done: " + lastResult);
-			prune();
+			if (prune) prune();
 			return null;
 		} catch (IOException | InterruptedException | RuntimeException e) {
 			lastError = "Backup failed: " + e.getMessage();
@@ -306,7 +328,7 @@ public final class Backups {
 		Set<LocalDate> days = new LinkedHashSet<>();
 		Set<String> weeks = new LinkedHashSet<>();
 		for (Entry e : all) {
-			if (e.pinned()) keep.add(e.name());
+			if (e.pinned() || protectedNames.contains(e.name())) keep.add(e.name());
 			LocalDate day = Instant.ofEpochMilli(e.time()).atZone(zone).toLocalDate();
 			if (days.size() < s.keepDaily && days.add(day)) keep.add(e.name());
 			String week = day.get(IsoFields.WEEK_BASED_YEAR) + "-" + day.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
@@ -408,7 +430,8 @@ public final class Backups {
 		String blocked = restoreBlocked();
 		if (blocked != null) return lastError = blocked;
 		if (!exists(name)) return lastError = "No such backup.";
-		String safety = create("before restore", by);
+		protect(name);
+		String safety = create("before restore", by, false);
 		if (safety != null) return "The safety backup failed, so nothing was restored: " + safety;
 		synchronized (this) {
 			if (running) return "A backup is already running.";
@@ -452,10 +475,12 @@ public final class Backups {
 			server.note(lastResult);
 			return null;
 		} catch (IOException | RuntimeException e) {
-			lastError = "Restore failed: " + e.getMessage() + ". The safety backup from just before is in the list.";
+			String why = e instanceof java.nio.file.NoSuchFileException ? "a file is missing (" + e.getMessage() + ")" : e.getMessage();
+			lastError = "Restore failed: " + why + ". The safety backup from just before is in the list.";
 			server.note(lastError);
 			return lastError;
 		} finally {
+			unprotect(name);
 			phase = "";
 			running = false;
 		}

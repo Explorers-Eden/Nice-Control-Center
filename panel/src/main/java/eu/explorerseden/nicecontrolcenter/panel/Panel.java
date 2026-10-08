@@ -71,6 +71,14 @@ public final class Panel {
 			}
 		}
 		Companion companion = new Companion();
+		Versions versions = new Versions(serverDir, server, backups, companion, audit, () -> settings.serverJar, jar -> {
+			settings.serverJar = jar;
+			try {
+				settings.save(settingsFile);
+			} catch (IOException e) {
+				System.err.println("Could not save the new server jar: " + e.getMessage());
+			}
+		}, dataDir.resolve("version-history.json"));
 		server.beforeStart(log -> {
 			if (settings.companionMod) companion.ensure(serverDir, settings.serverJar, log);
 		});
@@ -219,6 +227,7 @@ public final class Panel {
 			dashboard.register(routes);
 			new OpsRoutes(backups, scheduler, audit).register(routes);
 			new FileRoutes(files, cleanup, audit).register(routes);
+			new VersionRoutes(versions).register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {

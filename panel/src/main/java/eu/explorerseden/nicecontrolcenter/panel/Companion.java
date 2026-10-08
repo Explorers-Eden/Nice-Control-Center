@@ -100,7 +100,7 @@ final class Companion {
 		return name.find() ? name.group(1) : null;
 	}
 
-	private Release latest(String mc) throws IOException, InterruptedException {
+	Release latest(String mc) throws IOException, InterruptedException {
 		HttpResponse<String> response = client.send(HttpRequest.newBuilder(URI.create("https://api.github.com/repos/" + repo + "/releases?per_page=100"))
 				.timeout(Duration.ofSeconds(15)).header("Accept", "application/vnd.github+json").build(), HttpResponse.BodyHandlers.ofString());
 		if (response.statusCode() != 200) throw new IOException("GitHub answered " + response.statusCode());

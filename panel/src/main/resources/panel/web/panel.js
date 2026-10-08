@@ -91,6 +91,7 @@
     if (!loggedIn || document.hidden) return;
     if (activeTab === 'backups') loadBackups();
     if (activeTab === 'schedule') loadSchedule();
+    if (activeTab === 'versions' && versionState.running) loadVersions(false);
   }, 2000);
 
   /** The dashboard loads once and keeps running in the background while other tabs are open. */
@@ -116,6 +117,7 @@
     if (tab === 'backups') loadBackups();
     if (tab === 'files') { loadFiles(); loadCleanup(); }
     if (tab === 'configs') loadConfigs();
+    if (tab === 'versions') loadVersions(true);
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
@@ -1420,6 +1422,153 @@
     if (await configEditor.open(b.dataset.config)) {
       $('pn-config-empty').hidden = true;
       renderConfigs();
+    }
+  });
+
+  // ── Versions ─────────────────────────────────────────────────────────
+
+  const versionState = { installed: null, games: [], running: false, plan: null };
+  const STATUS_LABEL = { ok: 'works', update: 'update', missing: 'no version yet', unknown: 'not on Modrinth', companion: 'panel mod' };
+
+  /** 26.1+ releases first; "26.3" > "26.1.2" > "1.21.11". */
+  const versionKey = (v) => v.split(/[.\-]/).map((p) => (/^\d+$/.test(p) ? p.padStart(5, '0') : p)).join('.');
+
+  async function loadVersions(full) {
+    let data;
+    try {
+      data = await api('api/versions');
+    } catch (err) {
+      $('pn-installed').textContent = err.message;
+      return;
+    }
+    const inst = data.installed;
+    versionState.installed = inst;
+    versionState.running = data.status.running;
+    $('pn-installed').innerHTML = [
+      `<span class="np-chip">Minecraft ${esc(inst.mc || '?')}</span>`,
+      `<span class="np-chip">Fabric Loader ${esc(inst.loader || '?')}</span>`,
+      inst.installer ? `<span class="np-chip">Launcher ${esc(inst.installer)}</span>` : '',
+      `<span class="np-chip">${esc(inst.jar)}</span>`,
+    ].join('');
+    renderUpdateStatus(data.status);
+    if (full) await loadAvailable();
+  }
+
+  function renderUpdateStatus(st) {
+    const show = st.running || st.log.length;
+    $('pn-update-progress').hidden = !show;
+    $('pn-update-phase').textContent = st.running ? (st.phase || 'Working…') : (st.result || 'Last update');
+    $('pn-update-log').innerHTML = st.log.map((l) => `<li>${esc(l)}</li>`).join('');
+    $('pn-update-go').disabled = st.running;
+    // Only the newest update can be undone, and only if it went through (a rollback already undid itself).
+    const latestBackup = st.history.length && st.history[0].backup && st.history[0].result === 'Done' ? st.history[0] : null;
+    $('pn-version-history').innerHTML = st.history.map((h, i) => `<div class="pn-task">
+      <div><b>${esc(h.to)}</b><small>from ${esc(h.from)} · ${esc(dateTime(h.time))} · ${esc(h.by || '')}</small>
+      <small class="${h.result === 'Done' ? 'good' : 'bad'}">${esc(h.result)}</small></div>
+      ${can('versions.manage') && h.backup && h === latestBackup ? `<div class="pn-row-actions"><button type="button" class="np-btn small" data-undo="${esc(h.backup)}">Undo</button></div>` : ''}
+    </div>`).join('') || '<p class="np-empty">No updates yet.</p>';
+  }
+
+  async function loadAvailable() {
+    const inst = versionState.installed;
+    try {
+      const data = await api('api/versions/available?mc=' + encodeURIComponent(inst.mc || ''));
+      versionState.games = data.games;
+      renderGames();
+      const stable = (data.loaders || []).find((l) => l.stable);
+      $('pn-loader-hint').innerHTML = stable && inst.loader && stable.version !== inst.loader
+        ? `Fabric Loader ${esc(stable.version)} is out for Minecraft ${esc(inst.mc)}. ${can('versions.manage') ? `<button type="button" class="np-btn small" id="pn-loader-quick">Update Fabric Loader</button>` : ''}`
+        : (stable ? `Fabric Loader ${esc(inst.loader)} is the newest for Minecraft ${esc(inst.mc)}.` : '');
+      await loadLoaders();
+    } catch (err) {
+      formMsg('pn-versions-msg', err.message, false);
+    }
+  }
+
+  function renderGames() {
+    const all = $('pn-mc-all').checked;
+    const current = versionState.installed.mc;
+    const list = versionState.games.filter((g) => all || (g.stable && /^(2[6-9]|[3-9]\d)\./.test(g.version)) || g.version === current)
+      .sort((a, b) => versionKey(b.version).localeCompare(versionKey(a.version)));
+    const chosen = $('pn-mc').value || current;
+    $('pn-mc').innerHTML = list.map((g) => `<option value="${esc(g.version)}" ${g.version === chosen ? 'selected' : ''}>${esc(g.version)}${g.version === current ? ' (installed)' : ''}${g.stable ? '' : ' – snapshot'}</option>`).join('');
+  }
+
+  async function loadLoaders() {
+    const mc = $('pn-mc').value;
+    if (!mc) return;
+    try {
+      const data = await api('api/versions/available?mc=' + encodeURIComponent(mc));
+      const stable = data.loaders.find((l) => l.stable) || data.loaders[0];
+      $('pn-loader').innerHTML = data.loaders.slice(0, 25).map((l) => `<option value="${esc(l.version)}" ${stable && l.version === stable.version ? 'selected' : ''}>${esc(l.version)}${l.stable ? '' : ' – beta'}${l.version === versionState.installed.loader && mc === versionState.installed.mc ? ' (installed)' : ''}</option>`).join('');
+    } catch (err) {
+      formMsg('pn-versions-msg', err.message, false);
+    }
+    $('pn-mod-plan').hidden = true;
+  }
+
+  async function checkMods() {
+    const mc = $('pn-mc').value;
+    formMsg('pn-versions-msg', 'Checking the mods on Modrinth…', true);
+    try {
+      const data = await api('api/versions/check', { mc, loader: $('pn-loader').value });
+      versionState.plan = data.mods;
+      formMsg('pn-versions-msg', '', true);
+    } catch (err) {
+      return formMsg('pn-versions-msg', err.message, false);
+    }
+    $('pn-mod-rows').innerHTML = versionState.plan.map((m) => `<tr data-mod="${esc(m.file)}">
+      <td class="name">${esc(m.name)}<small>${esc(m.file)}</small></td><td>${esc(m.version || '')}</td>
+      <td><span class="pn-status ${esc(m.status)}">${esc(STATUS_LABEL[m.status] || m.status)}</span>${m.newVersion ? ' ' + esc(m.newVersion) : ''}
+        ${m.needsLoader ? `<br><span class="pn-status missing">needs Fabric Loader ${esc(m.needsLoader)}</span>` : ''}</td>
+      <td><select class="pn-plan-select">${['keep', 'update', 'disable'].filter((a) => a !== 'update' || m.status === 'update')
+        .map((a) => `<option value="${a}" ${a === m.action ? 'selected' : ''}>${{ keep: 'keep as is', update: 'update', disable: 'turn off' }[a]}</option>`).join('')}</select></td></tr>`).join('')
+      || '<tr><td colspan="4" class="np-empty">No mods installed.</td></tr>';
+    const inst = versionState.installed;
+    const loader = $('pn-loader').value;
+    $('pn-update-label').textContent = mc === inst.mc ? `Update to Fabric Loader ${loader}` : `Update to Minecraft ${mc} with Fabric Loader ${loader}`;
+    $('pn-mod-plan').hidden = false;
+  }
+
+  async function startUpdate() {
+    const mc = $('pn-mc').value;
+    const loader = $('pn-loader').value;
+    const actions = {};
+    $('pn-mod-rows').querySelectorAll('[data-mod]').forEach((row) => { actions[row.dataset.mod] = row.querySelector('select').value; });
+    const blocked = (versionState.plan || []).filter((m) => m.needsLoader && actions[m.file] !== 'disable');
+    if (blocked.length && !confirm(`${blocked.map((m) => m.name).join(', ')} need${blocked.length === 1 ? 's' : ''} a newer Fabric Loader than ${loader}. The server will most likely not start and the update will be rolled back. Continue anyway?`)) return;
+    const off = Object.values(actions).filter((a) => a === 'disable').length;
+    const upd = Object.values(actions).filter((a) => a === 'update').length;
+    if (!confirm(`${$('pn-update-label').textContent}?\n\n1. Backup\n2. Stop the server\n3. New server jar${upd ? `, ${upd} mod update${upd === 1 ? '' : 's'}` : ''}${off ? `, ${off} mod${off === 1 ? '' : 's'} turned off` : ''}\n4. Start; if it doesn't come up, the backup is restored`)) return;
+    try {
+      await api('api/versions/update', { mc, loader, actions });
+      $('pn-mod-plan').hidden = true;
+      loadVersions(false);
+    } catch (err) {
+      formMsg('pn-versions-msg', err.message, false);
+    }
+  }
+
+  $('pn-mc').addEventListener('change', loadLoaders);
+  $('pn-mc-all').addEventListener('change', () => { renderGames(); loadLoaders(); });
+  $('pn-loader').addEventListener('change', () => { $('pn-mod-plan').hidden = true; });
+  $('pn-mods-check').addEventListener('click', checkMods);
+  $('pn-update-go').addEventListener('click', startUpdate);
+  $('pn-loader-hint').addEventListener('click', async (e) => {
+    if (!e.target.closest('#pn-loader-quick')) return;
+    $('pn-mc').value = versionState.installed.mc;
+    await loadLoaders();
+    await checkMods();
+    $('pn-mod-plan').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  $('pn-version-history').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-undo]');
+    if (!b || !confirm(`Undo the last update? The server stops, the backup ${b.dataset.undo} is restored (world included) and the old version starts again.`)) return;
+    try {
+      await api('api/versions/undo', { backup: b.dataset.undo });
+      loadVersions(false);
+    } catch (err) {
+      alert(err.message);
     }
   });
 

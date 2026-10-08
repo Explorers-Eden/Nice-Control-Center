@@ -1,3 +1,11 @@
+## 0.7.0
+- Versions: see the installed Minecraft and Fabric Loader, update Fabric Loader with one click when a newer one is out, or move to another Minecraft version (26.x by default, snapshots and older ones on request)
+- Mod check on Modrinth for the target version: works, update available, no version yet, not on Modrinth; also flags mods that need a newer Fabric Loader; choose per mod: update, keep or turn off
+- Every update: backup first, download and verify, stop, swap the server jar and mods, start; if the server doesn't come up, the backup is restored automatically
+- Undo for the last update; history of all updates
+- Backups an update or restore still needs are never removed by retention
+- New permission: update Fabric and Minecraft
+
 ## 0.6.0
 - Files: browse the server folder, upload (also by drag & drop, with progress), download (folders as zip), rename/move, copy, zip, unzip, new folder, delete to a 7-day trash
 - Edit text files in the panel with line numbers; the world folder is read-only while the server runs
