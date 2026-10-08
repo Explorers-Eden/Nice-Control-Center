@@ -97,7 +97,7 @@ public final class Diagnoser {
 		if (kpi.tps() < kpi.targetTps() * 0.95 || kpi.msptAvg() > b.targetMspt) {
 			status = Severity.POOR;
 			title = "The server is lagging";
-		} else if (load > 70 || kpi.msptP95() > b.targetMspt || countSlowTicks(b) > b.seconds / 20) {
+		} else if (load > 70 || kpi.msptP95() > b.targetMspt || slowTickShare(b) > 0.02) {
 			status = Severity.WARN;
 			title = "The server is keeping up, but close to its limit";
 		} else {
@@ -120,12 +120,21 @@ public final class Diagnoser {
 		return new Health(status, title, headline, summary);
 	}
 
-	private static int countSlowTicks(Breakdown b) {
-		int slow = 0;
-		for (int i = TickHistogram.binForMs(b.targetMspt); i < b.msptHistogram.length; i++) {
-			slow += b.msptHistogram[i];
+	/**
+	 * Share of ticks over budget. A few slow ticks (autosaves, a big chunk load) are normal and the
+	 * server catches up; only when more than 1 in 50 runs over is it really close to its limit.
+	 */
+	private static double slowTickShare(Breakdown b) {
+		long slow = 0;
+		long total = 0;
+		int first = TickHistogram.binForMs(b.targetMspt);
+		for (int i = 0; i < b.msptHistogram.length; i++) {
+			total += b.msptHistogram[i];
+			if (i >= first) {
+				slow += b.msptHistogram[i];
+			}
 		}
-		return slow;
+		return total == 0 ? 0 : (double) slow / total;
 	}
 
 	// ── Data packs ──────────────────────────────────────────────────────────

@@ -25,15 +25,15 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  // Minecraft § formatting codes (the MOTD) as HTML. Black and white keep the theme's text color so
-  // they stay readable on both themes.
+  // Minecraft § formatting codes (the MOTD) as HTML, on one line (also a \n typed into server.properties).
+  // Black and white keep the theme's text color so they stay readable on both themes.
   const MC_COLORS = { 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
     8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55' };
   const MC_STYLES = { l: 'font-weight:700', m: 'text-decoration:line-through', n: 'text-decoration:underline', o: 'font-style:italic' };
   function mcText(text) {
     let color = null;
     let styles = [];
-    return String(text ?? '').replace(/\s*\n\s*/g, ' ').split('§').map((part, i) => {
+    return String(text ?? '').replace(/\s*(?:\n|\\n)\s*/g, ' ').split('§').map((part, i) => {
       if (i > 0) {
         const code = part.charAt(0).toLowerCase();
         part = part.slice(1);
