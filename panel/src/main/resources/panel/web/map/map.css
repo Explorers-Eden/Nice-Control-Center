@@ -1,0 +1,32 @@
+:root { --bg: #0b1018; --card: rgba(18,24,37,.92); --text: #f7fbff; --muted: #cfd7e6; --faint: rgba(255,255,255,.45); --accent: #b6c8ff; --gold: #ffd18b; --line: rgba(255,255,255,.1); }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: Montserrat, Arial, sans-serif; }
+#map { position: absolute; inset: 0; background: var(--bg); }
+.leaflet-container { background: var(--bg); font-family: Montserrat, Arial, sans-serif; }
+.leaflet-tile { image-rendering: pixelated; }
+.mp-panel { position: absolute; top: 12px; left: 12px; z-index: 1000; width: min(280px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); backdrop-filter: blur(6px); }
+.mp-panel h1 { margin: 0 0 10px; font-size: 15px; font-weight: 800; }
+.mp-dims { display: flex; flex-wrap: wrap; gap: 6px; }
+.mp-dims button { border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+.mp-dims button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.mp-coords { margin: 10px 0 6px; font: 600 12.5px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
+.mp-layers { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.mp-layers label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.mp-players { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; font-size: 12.5px; }
+.mp-players:empty { display: none; }
+.mp-players b { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.mp-players button { display: flex; align-items: center; gap: 8px; background: none; border: 0; color: var(--text); font: inherit; padding: 4px; border-radius: 7px; cursor: pointer; text-align: left; }
+.mp-players button:hover { background: rgba(255,255,255,.06); }
+.mp-players img { width: 18px; height: 18px; border-radius: 3px; image-rendering: pixelated; }
+.mp-players small { color: var(--faint); margin-left: auto; }
+.mp-head { border-radius: 4px; box-shadow: 0 0 0 2px var(--bg), 0 2px 6px rgba(0,0,0,.5); image-rendering: pixelated; }
+.mp-hub { color: var(--gold); font-size: 20px; text-shadow: 0 1px 3px rgba(0,0,0,.8); text-align: center; line-height: 24px; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--text); }
+.leaflet-popup-content { font-size: 13px; margin: 10px 12px; }
+.leaflet-popup-content b { display: block; font-size: 14px; margin-bottom: 2px; }
+.leaflet-popup-content small { color: var(--faint); }
+.leaflet-tooltip { background: var(--card); color: var(--text); border: 1px solid var(--line); font-weight: 700; font-size: 12px; }
+.leaflet-tooltip-top:before { border-top-color: var(--line); }
+.leaflet-control-zoom a { background: var(--card) !important; color: var(--text) !important; border-color: var(--line) !important; }
+.mp-offline { margin-top: 6px; font-size: 12px; color: var(--faint); }
+@media (max-width: 640px) { .mp-panel { top: auto; bottom: 12px; max-height: 40vh; } }

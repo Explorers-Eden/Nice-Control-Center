@@ -1,6 +1,8 @@
 # Minecraft Version(s): 26.3
 ## 1.2.0
 - With the Nice Control Center Panel: the Discord bridge's login check (players need a linked Discord account when the panel asks for it) and chat, join, leave, death and advancement messages for Discord
+- The stat tiles size to their content: MSPT and Memory get more room than the single numbers, so nothing is cut off (one row on wide screens, two rows in between, two per row on phones)
+- With the panel: the web map's overlays (players, world border, GOML claims, waypoint hubs) and the map colors of all blocks, modded ones included
 - "Error sending packet clientbound/minecraft:disconnect" and "handleDisconnection() called twice" are marked as harmless (connections closing during a server-list ping or a failed login)
 
 ## 1.1.0

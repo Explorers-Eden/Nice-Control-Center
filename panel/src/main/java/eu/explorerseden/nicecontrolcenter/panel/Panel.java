@@ -57,6 +57,10 @@ public final class Panel {
 		// The mod reaches the panel here for Discord login checks and game events.
 		panelFlags.add("-Dncc.panel.api=http://127.0.0.1:" + port);
 		server.panelFlags(() -> panelFlags, dashboard.secret());
+		MapService map = new MapService(serverDir, Path.of(env("MAP_DIR", "/data/map")), dataDir.resolve("map.json"), server,
+				Integer.parseInt(env("DASHBOARD_PORT", "8765")), dashboard.secret());
+		map.start();
+		MapRoutes mapRoutes = new MapRoutes(map, auth, audit);
 		Discord discord = new Discord(dataDir.resolve("discord.json"), dataDir.resolve("discord-links.json"), server, audit);
 		discord.start();
 		ZoneId zone = zone();
@@ -116,6 +120,7 @@ public final class Panel {
 				web.location = Location.CLASSPATH;
 			});
 			var routes = config.routes;
+			mapRoutes.registerHostFilter(routes);
 
 			// Everything under /api needs a session, except logging in and the health check. Changes also
 			// need the X-NCC header, which a cross-site form can't send.
@@ -234,6 +239,7 @@ public final class Panel {
 			new FileRoutes(files, cleanup, audit).register(routes);
 			new VersionRoutes(versions).register(routes);
 			new DiscordRoutes(discord, dashboard.secret(), audit).register(routes);
+			mapRoutes.register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {

@@ -119,6 +119,7 @@
     if (tab === 'configs') loadConfigs();
     if (tab === 'versions') loadVersions(true);
     if (tab === 'discord') loadDiscord();
+    if (tab === 'map') loadMap();
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
@@ -1647,6 +1648,56 @@
       setTimeout(loadDiscord, 2500);
     } catch (err) {
       formMsg('pn-discord-msg', err.message, false);
+    }
+  });
+
+  // ── Map ────────────────────────────────────────────────────────────────
+
+  let mapData = null;
+
+  async function loadMap() {
+    try {
+      mapData = await api('api/map');
+    } catch (err) {
+      $('pn-map-status').textContent = err.message;
+      return;
+    }
+    const s = mapData.settings;
+    const st = mapData.status;
+    const form = $('pn-map-form');
+    form.enabled.checked = s.enabled;
+    form.title.value = s.title;
+    form.showPlayers.checked = s.showPlayers;
+    form.showClaims.checked = s.showClaims;
+    form.hubs.value = s.hubs;
+    $('pn-map-dims').innerHTML = mapData.dimensions.map((d) => `<label><input type="checkbox" value="${esc(d.id)}" ${s.hidden.includes(d.id) ? '' : 'checked'}> ${esc(d.name)}</label>`).join('');
+    $('pn-map-status').textContent = `${st.status} · ${st.rendered}/${st.regions} regions · colors: ${st.colors}`;
+    $('pn-map-host').innerHTML = mapData.host
+      ? `Public address: <a href="https://${esc(mapData.host)}/" target="_blank" rel="noopener">${esc(mapData.host)}</a>`
+      : 'Set <code>MAP_HOST</code> (e.g. map.example.com) to give the map its own address.';
+  }
+
+  $('pn-map-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const shown = [...$('pn-map-dims').querySelectorAll('input:checked')].map((i) => i.value);
+    try {
+      await api('api/map/settings', {
+        enabled: form.enabled.checked, title: form.title.value.trim(), showPlayers: form.showPlayers.checked, showClaims: form.showClaims.checked,
+        hubs: form.hubs.value, hidden: mapData.dimensions.map((d) => d.id).filter((id) => !shown.includes(id)),
+      });
+      formMsg('pn-map-msg', 'Saved.', true);
+      loadMap();
+    } catch (err) {
+      formMsg('pn-map-msg', err.message, false);
+    }
+  });
+  $('pn-map-rerender').addEventListener('click', async () => {
+    try {
+      await api('api/map/rerender', {});
+      formMsg('pn-map-msg', 'Every region is drawn again over the next minutes.', true);
+    } catch (err) {
+      formMsg('pn-map-msg', err.message, false);
     }
   });
 

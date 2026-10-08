@@ -1,3 +1,12 @@
+## 0.9.0
+- Web map: drawn by the panel from the region files (no load on the server, stays online while it's off), one pixel per block like a vanilla map with relief and water depth, zoomable from 1:1 out to 16,384 blocks per tile
+- Live layers from the mod: online players with their heads, GOML claims, Explorer's Eden waypoint hubs (public ones by default), the world border; the last claims and hubs stay visible while the server is off
+- Modded blocks get their real map colors once the server has run with the mod; until then vanilla colors are built in
+- Its own address with MAP_HOST (e.g. map.example.com): there only the map is reachable, nothing of the panel
+- Map tab: on/off, title, which layers and dimensions are shown, draw everything again
+- Works with 26.x worlds (new block palette format) and older ones
+- New permissions: set up the map; trim and pregenerate the world (used by the world trimmer)
+
 ## 0.8.0
 - Discord bridge: players must link a Discord account to play (a code from the join screen, sent to the bot by direct message; optional: must still be on the Discord server; operators and a list of names can skip it)
 - Chat both ways: game chat to a channel with the player's name and head, Discord messages into the game (chat only, never commands; mentions can't ping)

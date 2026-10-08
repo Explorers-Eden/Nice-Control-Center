@@ -492,7 +492,7 @@ public final class PlayerInspector {
 				t.getStringOr("dimension", "minecraft:overworld"));
 	}
 
-	private static double number(Tag tag) {
+	static double number(Tag tag) {
 		return tag == null ? 0 : tag.asNumber().map(Number::doubleValue).orElse(0.0);
 	}
 

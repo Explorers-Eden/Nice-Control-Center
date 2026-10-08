@@ -71,6 +71,7 @@
 				<button type="button" role="tab" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="versions" data-perm="server.view"><i class="bi bi-box-seam"></i><span>Versions</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="map" data-perm="map.manage"><i class="bi bi-map"></i><span>Map</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="discord" data-perm="discord.manage"><i class="bi bi-discord"></i><span>Discord</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people"></i><span>Users</span></button>
@@ -333,6 +334,29 @@
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-clock-history"></i> History</h3>
 					<div id="pn-version-history" class="pn-tasks"></div>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="map" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-map"></i> Web map</h3>
+					<p class="np-card-intro">A top-down map of your world for everyone, drawn by the panel from the region files (it doesn't slow the server and stays online while the server is off). <b id="pn-map-status"></b></p>
+					<p class="np-card-intro"><a class="np-btn small" id="pn-map-open" href="map/" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Open the map</a> <span id="pn-map-host"></span></p>
+					<form id="pn-map-form">
+						<div class="np-form-grid">
+							<label class="np-form-row">Map on<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+							<label class="np-form-row">Title<input type="text" name="title" maxlength="60"></label>
+							<label class="np-form-row">Show online players<span class="np-switch"><input type="checkbox" name="showPlayers"><span></span></span></label>
+							<label class="np-form-row">Show claims (Get Off My Lawn)<span class="np-switch"><input type="checkbox" name="showClaims"><span></span></span></label>
+							<label class="np-form-row">Waypoint hubs<select name="hubs"><option value="public">Public ones</option><option value="all">All</option><option value="none">None</option></select></label>
+						</div>
+						<div class="pn-field">Dimensions on the map<div class="np-chips pn-role-picks" id="pn-map-dims"></div></div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<button type="button" class="np-btn" id="pn-map-rerender"><i class="bi bi-arrow-clockwise"></i> Draw everything again</button>
+							<span class="np-form-msg" id="pn-map-msg"></span>
+						</div>
+					</form>
 				</section>
 			</div>
 

@@ -186,7 +186,7 @@
       ['Chunks', num(now ? now.chunks : c.chunks), `${num(c.chunkTasks)} tasks waiting`],
       ['Players', num(now ? now.players : c.players), 'online'],
     ];
-    patchHtml($('np-stats'), tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card"${tip ? ` title="${esc(tip)}"` : ''}>
+    patchHtml($('np-stats'), tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}"${tip ? ` title="${esc(tip)}"` : ''}>
       <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join(''));
   }
 

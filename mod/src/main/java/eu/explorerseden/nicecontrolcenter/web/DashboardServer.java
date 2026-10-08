@@ -443,6 +443,9 @@ public final class DashboardServer {
 				result.put("error", error);
 				sendJson(exchange, result);
 			}
+			// For the panel's web map (it renders the tiles itself).
+			case "/api/map" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
+			case "/api/map/colors" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.players.MapExport::colors));
 			case "/api/bloat" -> sendJson(exchange, bloatState());
 			case "/api/bloat/run" -> {
 				if (!requirePost(exchange)) {

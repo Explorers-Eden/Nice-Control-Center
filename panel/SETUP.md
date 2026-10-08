@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, bridges to Discord, and has user accounts with roles and an audit log. The map follows.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, bridges to Discord, draws a public web map, and has user accounts with roles and an audit log.
 
 ## Deploy with Portainer
 
@@ -119,6 +119,16 @@ The **Discord** tab connects a bot. It does four things:
 
 Links are kept in the panel volume, so the login check needs neither the database nor Discord. If the bot isn't connected, players are let in, so a Discord outage can't lock everyone out.
 
+## Web map
+
+The panel draws a top-down map of the world from the region files, one pixel per block like a vanilla map, with relief and water depth.
+
+- **No load on the server:** the panel does the work, and the map stays online while the server is off. New areas appear after the server saves them (every 5 minutes, or at shutdown).
+- **Layers:** online players with their heads, GOML claims, waypoint hubs (public ones by default) and the world border, if one is set.
+- **Colors:** modded blocks get their real map color once the server has run with the Nice Control Center mod.
+- **Own address:** set `MAP_HOST` (e.g. `map.example.com`) and point that subdomain at port 8080 in your reverse proxy. On that address only the map is reachable, nothing of the panel. Without `MAP_HOST` the map is at `/map/` on the panel's address.
+- **Map tab:** choose the layers, hide dimensions, change the title, or have everything drawn again.
+
 ## SFTP
 
 Connect with FileZilla, WinSCP, Cyberduck or `sftp -P 2022 name@your-server` and log in with your panel name and password.
@@ -180,6 +190,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `PANEL_PUBLIC_URL` | – | the panel's address, for `/ncc web` links in the game |
 | `TIMEZONE` | the container's | time zone for scheduled tasks and backup names, e.g. `Europe/Berlin` |
 | `DISCORD_TOKEN` | – | the Discord bot token (instead of saving it in the panel) |
+| `MAP_HOST` | – | the map's own address, e.g. `map.example.com` |
 | `SFTP_PORT` | `2022` | SFTP port inside the container (`off` turns SFTP off) |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
