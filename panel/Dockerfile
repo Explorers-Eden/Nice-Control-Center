@@ -12,7 +12,9 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew shadowJar --no-daemon -q
 FROM eclipse-temurin:25-jre
 # tini forwards `docker stop` (SIGTERM) to the panel, which then stops the Minecraft server cleanly.
 RUN apt-get update && apt-get install -y --no-install-recommends tini curl && rm -rf /var/lib/apt/lists/*
-RUN useradd --uid 1000 --create-home --home-dir /home/panel panel \
+# Ubuntu images ship a user "ubuntu" with uid 1000; the panel takes that uid so existing volumes keep working.
+RUN (userdel --remove ubuntu 2>/dev/null || true) \
+    && useradd --uid 1000 --create-home --home-dir /home/panel panel \
     && mkdir -p /data/server /data/backups /data/map /data/panel \
     && chown -R panel:panel /data
 COPY --from=build /src/panel/build/libs/nice-control-center-panel-*.jar /app/panel.jar
