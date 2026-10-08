@@ -1,3 +1,13 @@
+## 0.3.0
+- User accounts in Postgres (DB_URL, DB_USER, DB_PASS); the panel creates and updates its tables itself
+- Roles with permissions: Admin (everything), Moderator and Viewer built in and adjustable, plus your own roles
+- Permissions per action: see the server, power actions, read and run console commands, change Java settings, manage users, read the audit log; the UI only shows what an account may do
+- Audit log of logins (also failed ones), server actions, console commands, settings changes and account changes, with search
+- Change your own password; changing, disabling or deleting an account logs it out everywhere at once
+- Sessions are kept in the database (survive panel restarts); passwords are Argon2id hashes
+- The container admin (PANEL_ADMIN_USER / PANEL_ADMIN_PASSWORD) can always log in, also while the database is down
+- Tabs: Console, Startup & Java, Users, Audit log, Account
+
 ## 0.2.0
 - Runs the Minecraft server: start, stop, restart and kill, with the state, uptime and PID in the header
 - Live console over a WebSocket, with search and a command line

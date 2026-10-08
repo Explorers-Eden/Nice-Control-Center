@@ -1,26 +1,32 @@
 package eu.explorerseden.nicecontrolcenter.panel;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import eu.explorerseden.nicecontrolcenter.Json;
 import io.javalin.Javalin;
-import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.websocket.WsContext;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-/** Entry point of the Docker panel: login, server control, live console and JVM settings. */
+import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
+
+/** Entry point of the Docker panel: accounts, server control, live console and Java settings. */
 public final class Panel {
 	public static final String VERSION = readVersion();
 
@@ -37,9 +43,26 @@ public final class Panel {
 		Files.createDirectories(dataDir);
 		Path settingsFile = dataDir.resolve("settings.json");
 		settings = PanelSettings.load(settingsFile);
-		Auth auth = new Auth(dataDir);
-		Supplier<PanelSettings> current = () -> settings;
-		Supervisor server = new Supervisor(serverDir, current);
+
+		Db db = Db.connect();
+		Accounts accounts = db == null ? null : new Accounts(db);
+		Auth auth = new Auth(dataDir, accounts);
+		Audit audit = new Audit(accounts);
+		Supervisor server = new Supervisor(serverDir, () -> settings);
+		if (db == null) System.out.println("No DB_URL set: only " + auth.envUser() + " can log in. Set DB_URL, DB_USER and DB_PASS for user accounts.");
+		if (accounts != null) {
+			Executors.newSingleThreadScheduledExecutor(r -> {
+				Thread t = new Thread(r, "session-cleanup");
+				t.setDaemon(true);
+				return t;
+			}).scheduleAtFixedRate(() -> {
+				try {
+					if (db.ready()) accounts.deleteExpiredSessions();
+				} catch (SQLException e) {
+					// Next time.
+				}
+			}, 1, 60, TimeUnit.MINUTES);
+		}
 
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;
@@ -54,66 +77,85 @@ public final class Panel {
 			// need the X-NCC header, which a cross-site form can't send.
 			routes.before("/api/*", ctx -> {
 				String path = ctx.path();
-				if (path.equals("/api/health") || path.equals("/api/login") || path.equals("/api/console")) return;
-				if (auth.session(ctx.cookie(Auth.COOKIE)) == null) {
-					json(ctx.status(HttpStatus.UNAUTHORIZED), Map.of("error", "Please log in"));
+				if (path.equals("/api/health") || path.equals("/api/console")) return;
+				if (!ctx.method().name().equals("GET") && !"1".equals(ctx.header("X-NCC"))) {
+					error(ctx, HttpStatus.FORBIDDEN, "Missing X-NCC header");
 					ctx.skipRemainingHandlers();
 					return;
 				}
-				if (!ctx.method().name().equals("GET") && !"1".equals(ctx.header("X-NCC"))) {
-					json(ctx.status(HttpStatus.FORBIDDEN), Map.of("error", "Missing X-NCC header"));
+				if (path.equals("/api/login")) return;
+				Auth.Session session = auth.session(ctx.cookie(Auth.COOKIE));
+				if (session == null) {
+					error(ctx, HttpStatus.UNAUTHORIZED, "Please log in");
 					ctx.skipRemainingHandlers();
+					return;
 				}
+				ctx.attribute(SESSION, session);
 			});
 
 			routes.get("/api/health", ctx -> json(ctx, Map.of("ok", true, "version", VERSION)));
 
 			routes.post("/api/login", ctx -> {
-				if (!"1".equals(ctx.header("X-NCC"))) {
-					json(ctx.status(HttpStatus.FORBIDDEN), Map.of("error", "Missing X-NCC header"));
-					return;
-				}
-				String ip = clientIp(ctx);
-				if (auth.tooManyFails(ip)) {
-					json(ctx.status(HttpStatus.TOO_MANY_REQUESTS), Map.of("error", "Too many failed attempts. Try again in a few minutes."));
-					return;
-				}
 				JsonObject body = body(ctx);
-				String token = auth.login(str(body, "user"), str(body, "password"), ip);
-				if (token == null) {
-					json(ctx.status(HttpStatus.UNAUTHORIZED), Map.of("error", "Wrong name or password"));
+				String ip = clientIp(ctx);
+				String name = str(body, "user");
+				Auth.LoginResult result = auth.login(name, str(body, "password"), ip, ctx.header("User-Agent"));
+				if (result.token() == null) {
+					audit.log(name.isBlank() ? null : name, "login.failed", result.error(), ip);
+					error(ctx, result.error().startsWith("Too many") ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.UNAUTHORIZED, result.error());
 					return;
 				}
+				audit.log(result.session().name(), "login", null, ip);
 				boolean https = "https".equalsIgnoreCase(ctx.header("X-Forwarded-Proto")) || ctx.scheme().equals("https");
-				ctx.header("Set-Cookie", Auth.COOKIE + "=" + token + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800" + (https ? "; Secure" : ""));
+				ctx.header("Set-Cookie", Auth.COOKIE + "=" + result.token() + "; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800" + (https ? "; Secure" : ""));
 				json(ctx, Map.of("ok", true));
 			});
 
-			routes.post("/api/logout", ctx -> {
+			routes.post("/api/logout", guard(null, (ctx, me) -> {
 				auth.logout(ctx.cookie(Auth.COOKIE));
+				audit.log(me.name(), "logout", null, clientIp(ctx));
 				ctx.header("Set-Cookie", Auth.COOKIE + "=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
 				json(ctx, Map.of("ok", true));
-			});
+			}));
 
-			routes.get("/api/me", ctx -> json(ctx, Map.of("user", auth.session(ctx.cookie(Auth.COOKIE)).user(), "version", VERSION)));
+			routes.get("/api/me", guard(null, (ctx, me) -> {
+				Map<String, Object> out = new LinkedHashMap<>();
+				out.put("user", me.name());
+				out.put("envAdmin", me.envAdmin());
+				out.put("permissions", me.permissions().contains(Permissions.ALL)
+						? Permissions.CATALOG.stream().map(Permissions.Permission::id).toList() : new ArrayList<>(me.permissions()));
+				out.put("version", VERSION);
+				Map<String, Object> database = new LinkedHashMap<>();
+				database.put("configured", db != null);
+				database.put("ready", db != null && db.ready());
+				database.put("problem", db == null ? null : db.problem());
+				out.put("database", database);
+				json(ctx, out);
+			}));
 
-			routes.get("/api/server", ctx -> {
+			routes.get("/api/server", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				Map<String, Object> out = new LinkedHashMap<>(server.status());
 				out.put("eula", server.eulaAccepted());
 				json(ctx, out);
-			});
-			routes.post("/api/server/start", ctx -> result(ctx, server.start()));
-			routes.post("/api/server/stop", ctx -> result(ctx, server.stop()));
-			routes.post("/api/server/restart", ctx -> result(ctx, server.restart()));
-			routes.post("/api/server/kill", ctx -> result(ctx, server.kill()));
-			routes.post("/api/server/command", ctx -> result(ctx, server.command(str(body(ctx), "command"))));
-			routes.post("/api/server/eula", ctx -> {
+			}));
+			routes.post("/api/server/start", guard(Permissions.SERVER_POWER, (ctx, me) -> power(ctx, me, audit, "server.start", server.start())));
+			routes.post("/api/server/stop", guard(Permissions.SERVER_POWER, (ctx, me) -> power(ctx, me, audit, "server.stop", server.stop())));
+			routes.post("/api/server/restart", guard(Permissions.SERVER_POWER, (ctx, me) -> power(ctx, me, audit, "server.restart", server.restart())));
+			routes.post("/api/server/kill", guard(Permissions.SERVER_POWER, (ctx, me) -> power(ctx, me, audit, "server.kill", server.kill())));
+			routes.post("/api/server/command", guard(Permissions.CONSOLE_WRITE, (ctx, me) -> {
+				String command = str(body(ctx), "command");
+				String error = server.command(command);
+				if (error == null) audit.log(me.name(), "console.command", command.strip(), clientIp(ctx));
+				result(ctx, error);
+			}));
+			routes.post("/api/server/eula", guard(Permissions.SERVER_POWER, (ctx, me) -> {
 				server.acceptEula();
+				audit.log(me.name(), "server.eula", "accepted the Minecraft EULA", clientIp(ctx));
 				json(ctx, Map.of("ok", true));
-			});
+			}));
 
-			routes.get("/api/settings", ctx -> json(ctx, settingsView()));
-			routes.post("/api/settings", ctx -> {
+			routes.get("/api/settings", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, settingsView())));
+			routes.post("/api/settings", guard(Permissions.SETTINGS_JAVA, (ctx, me) -> {
 				PanelSettings next;
 				try {
 					next = Json.GSON.fromJson(ctx.body(), PanelSettings.class);
@@ -121,25 +163,34 @@ public final class Panel {
 					next = null;
 				}
 				if (next == null) {
-					json(ctx.status(HttpStatus.BAD_REQUEST), Map.of("error", "Unreadable settings"));
+					error(ctx, HttpStatus.BAD_REQUEST, "Unreadable settings");
 					return;
 				}
 				String error = next.validate(JvmFlags.runtimes());
 				if (error != null) {
-					json(ctx.status(HttpStatus.BAD_REQUEST), Map.of("error", error));
+					error(ctx, HttpStatus.BAD_REQUEST, error);
 					return;
 				}
+				String changes = diff(settings, next);
 				next.save(settingsFile);
 				settings = next;
+				if (!changes.isEmpty()) audit.log(me.name(), "settings.java", changes, clientIp(ctx));
 				json(ctx, settingsView());
-			});
+			}));
+
+			new AccountRoutes(db, accounts, auth, audit).register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {
-				Map<String, Consumer<String>> listeners = new java.util.concurrent.ConcurrentHashMap<>();
+				Map<String, Consumer<String>> listeners = new ConcurrentHashMap<>();
 				ws.onConnect(ctx -> {
-					if (auth.session(ctx.cookie(Auth.COOKIE)) == null) {
+					Auth.Session session = auth.session(ctx.cookie(Auth.COOKIE));
+					if (session == null) {
 						ctx.closeSession(4401, "Please log in");
+						return;
+					}
+					if (!session.can(Permissions.CONSOLE_READ)) {
+						ctx.closeSession(4403, "Not allowed to read the console");
 						return;
 					}
 					ctx.enableAutomaticPings();
@@ -163,13 +214,36 @@ public final class Panel {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			server.shutdown();
 			app.stop();
+			if (db != null) db.close();
 		}, "panel-shutdown"));
 		app.start(port);
 		System.out.println("Nice Control Center Panel " + VERSION + " listening on port " + port + ", server folder " + serverDir);
 		if (settings.autoStart) {
 			String error = server.start();
 			if (error != null) System.out.println("Not starting the server automatically: " + error);
+			else audit.log("panel", "server.start", "automatic start", null);
 		}
+	}
+
+	private static void power(io.javalin.http.Context ctx, Auth.Session me, Audit audit, String action, String error) {
+		if (error == null) audit.log(me.name(), action, null, clientIp(ctx));
+		result(ctx, error);
+	}
+
+	/** "memoryMaxMb 4096 → 8192, preset aikar → zgc" for the audit log. */
+	private static String diff(PanelSettings before, PanelSettings after) {
+		List<String> out = new ArrayList<>();
+		for (Field f : PanelSettings.class.getFields()) {
+			if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+			try {
+				Object a = f.get(before);
+				Object b = f.get(after);
+				if (!Objects.equals(a, b)) out.add(f.getName() + " " + a + " → " + b);
+			} catch (IllegalAccessException e) {
+				// Public fields only.
+			}
+		}
+		return String.join(", ", out);
 	}
 
 	private static Map<String, Object> settingsView() {
@@ -186,33 +260,6 @@ public final class Panel {
 
 	private static void send(WsContext ctx, String line) {
 		if (ctx.session.isOpen()) ctx.send(Json.GSON.toJson(Map.of("line", line)));
-	}
-
-	private static void result(Context ctx, String error) {
-		if (error == null) json(ctx, Map.of("ok", true));
-		else json(ctx.status(HttpStatus.CONFLICT), Map.of("error", error));
-	}
-
-	private static void json(Context ctx, Object value) {
-		ctx.contentType("application/json").header("Cache-Control", "no-store").result(Json.GSON.toJson(value));
-	}
-
-	private static JsonObject body(Context ctx) {
-		try {
-			return JsonParser.parseString(ctx.body()).getAsJsonObject();
-		} catch (RuntimeException e) {
-			return new JsonObject();
-		}
-	}
-
-	private static String str(JsonObject body, String key) {
-		return body.has(key) && body.get(key).isJsonPrimitive() ? body.get(key).getAsString() : "";
-	}
-
-	/** Behind a reverse proxy the client's address is in X-Forwarded-For. */
-	private static String clientIp(Context ctx) {
-		String forwarded = ctx.header("X-Forwarded-For");
-		return forwarded != null && !forwarded.isBlank() ? forwarded.split(",")[0].strip() : ctx.ip();
 	}
 
 	static String env(String name, String fallback) {

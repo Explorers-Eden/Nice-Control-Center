@@ -1,12 +1,12 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings). Backups, schedules, users, files, updates, Discord and the map follow step by step.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings) and has user accounts with roles and an audit log. Backups, schedules, files, updates, Discord and the map follow step by step.
 
 ## Deploy with Portainer
 
 1. Portainer → **Stacks** → **Add stack** → **Web editor**.
 2. Paste [portainer-stack.yml](portainer-stack.yml).
-3. Under **Environment variables**, add `PANEL_ADMIN_PASSWORD`. Optionally add `PANEL_ADMIN_USER`, which defaults to `admin`.
+3. Under **Environment variables**, add `PANEL_ADMIN_PASSWORD`. Optionally add `PANEL_ADMIN_USER`, which defaults to `admin`. For user accounts, also add `DB_URL`, `DB_USER` and `DB_PASS` (see [Accounts](#accounts)).
 4. Deploy and open `http://<host>:8080`.
 
 If you leave `PANEL_ADMIN_PASSWORD` out, the panel generates a password on first start and prints it **once** in the container log (Portainer → Containers → nicecontrolcenter → Logs). To get a new one, delete `admin.hash` in the panel volume and restart.
@@ -26,6 +26,25 @@ Until the version manager arrives, the panel runs whatever Fabric server is in t
    The panel runs as uid 1000, so give it the folder first: `chown -R 1000:1000 /srv/minecraft`.
 3. In the panel under **Startup & Java**, set **Server jar** to that file name. The panel also tells you when it finds a different `fabric-server…jar`.
 4. Accept the EULA when the panel asks, then press **Start**.
+
+## Accounts
+
+The **container admin** (`PANEL_ADMIN_USER` / `PANEL_ADMIN_PASSWORD`) can always log in and do everything, even while the database is down. Use it to set things up and as a spare key.
+
+For everyone else, point the panel at your Postgres:
+
+| Variable | Example |
+|---|---|
+| `DB_URL` | `jdbc:postgresql://postgres:5432/nicecontrolcenter` (a `postgres://…` URL works too) |
+| `DB_USER` | `nicecontrolcenter` |
+| `DB_PASS` | … |
+
+Create an empty database and a user that owns it. The panel creates and updates its tables itself on start. If the database isn't reachable, the panel keeps running, retries every 10 seconds, and only the container admin can log in until it's back.
+
+Then, under **Users**:
+- **Users** get one or more roles. Disabling, deleting or changing a user's password logs them out everywhere at once.
+- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, change Java settings, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
+- The **Audit log** records every login (failed ones too), server action, console command, settings change and account change, with who, when and from which IP.
 
 ## Startup & Java
 
@@ -56,6 +75,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 |---|---|---|
 | `PANEL_ADMIN_USER` | `admin` | login name |
 | `PANEL_ADMIN_PASSWORD` | generated | login password |
+| `DB_URL` / `DB_USER` / `DB_PASS` | – | Postgres for user accounts and the audit log |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
 
 ## Reverse proxy

@@ -32,6 +32,11 @@ dependencies {
 	implementation "io.javalin:javalin:${project.javalin_version}"
 	implementation "com.google.code.gson:gson:${project.gson_version}"
 	implementation "org.slf4j:slf4j-simple:${project.slf4j_version}"
+	implementation "org.postgresql:postgresql:${project.postgres_version}"
+	implementation "com.zaxxer:HikariCP:${project.hikari_version}"
+	implementation "org.flywaydb:flyway-core:${project.flyway_version}"
+	implementation "org.flywaydb:flyway-database-postgresql:${project.flyway_version}"
+	implementation "com.password4j:password4j:${project.password4j_version}"
 }
 
 processResources {
@@ -64,6 +69,9 @@ application {
 
 shadowJar {
 	archiveClassifier = ""
+	// Flyway and JDBC find their plugins through META-INF/services; those lists must be merged, not
+	// overwritten. Shadow 9 only merges files that the duplicates strategy lets through.
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
 	mergeServiceFiles()
 }
 

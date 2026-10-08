@@ -17,9 +17,12 @@
   // ── Login ──────────────────────────────────────────────────────────────
 
   let loggedIn = false;
+  let me = null;
+  const can = (perm) => !!me && me.permissions.includes(perm);
 
   function showLogin() {
     loggedIn = false;
+    me = null;
     $('pn-app').hidden = true;
     $('pn-logout').hidden = true;
     $('pn-state-pill').hidden = true;
@@ -29,15 +32,61 @@
   }
 
   async function showApp() {
+    try {
+      me = await api('api/me');
+    } catch (e) {
+      return showLogin();
+    }
     loggedIn = true;
+    $('pn-version').textContent = me.version;
     $('pn-login').hidden = true;
     $('pn-app').hidden = false;
     $('pn-logout').hidden = false;
-    $('pn-state-pill').hidden = false;
-    openConsole();
-    loadSettings();
-    pollServer();
+    $('pn-logout').title = 'Logged in as ' + me.user;
+    applyPermissions();
+    if (can('console.read')) openConsole();
+    if (can('server.view')) {
+      $('pn-state-pill').hidden = false;
+      loadSettings();
+      pollServer();
+    }
   }
+
+  // ── Tabs and permissions ───────────────────────────────────────────────
+
+  const TAB_KEY = 'pn-tab';
+
+  function applyPermissions() {
+    document.querySelectorAll('#pn-tabs .np-tab').forEach((b) => { b.hidden = !!b.dataset.perm && !can(b.dataset.perm); });
+    document.querySelector('.np-banner').hidden = !can('server.view');
+    $('pn-app').querySelector('.pn-actions').hidden = !can('server.power');
+    $('pn-command-form').hidden = !can('console.write');
+    const editable = can('settings.java');
+    $('pn-settings').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !editable; });
+    let tab = 'server';
+    try { tab = localStorage.getItem(TAB_KEY) || tab; } catch (e) { /* default */ }
+    selectTab(tab);
+  }
+
+  function selectTab(tab) {
+    const visible = [...document.querySelectorAll('#pn-tabs .np-tab')].filter((b) => !b.hidden).map((b) => b.dataset.tab);
+    if (!visible.includes(tab)) tab = visible[0];
+    document.querySelectorAll('#pn-tabs .np-tab').forEach((b) => {
+      b.classList.toggle('active', b.dataset.tab === tab);
+      b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+    });
+    document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
+    try { localStorage.setItem(TAB_KEY, tab); } catch (e) { /* not remembered */ }
+    if (tab === 'users') loadUsers();
+    if (tab === 'audit') loadAudit(true);
+    if (tab === 'account') renderAccount();
+    if (tab === 'server') { const log = $('pn-log'); log.scrollTop = log.scrollHeight; }
+  }
+
+  $('pn-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('.np-tab');
+    if (b) selectTab(b.dataset.tab);
+  });
 
   $('pn-login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -99,7 +148,7 @@
       kill: !!st.pid,
     };
     document.querySelectorAll('[data-action]').forEach((b) => { b.disabled = !enabled[b.dataset.action]; });
-    $('pn-eula').hidden = st.eula;
+    $('pn-eula').hidden = st.eula || !can('server.power');
     $('pn-command').disabled = !running;
   }
 
@@ -179,6 +228,7 @@
     socket.onclose = (e) => {
       socket = null;
       if (e.code === 4401) return showLogin();
+      if (e.code === 4403) return;
       if (loggedIn) reconnect = setTimeout(openConsole, 3000);
     };
   }
@@ -272,6 +322,224 @@
     }
   });
 
+  // ── Users and roles ────────────────────────────────────────────────────
+
+  let accounts = null;
+  const dateTime = (t) => t ? new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'never';
+
+  function dbNotice(text) {
+    $('pn-db-notice').hidden = !text;
+    $('pn-db-notice').textContent = text || '';
+  }
+
+  async function loadUsers() {
+    try {
+      accounts = await api('api/users');
+      dbNotice('');
+      renderUsers();
+      renderRoles();
+    } catch (err) {
+      dbNotice(err.message);
+    }
+  }
+
+  function roleName(id) {
+    const r = accounts.roles.find((x) => x.id === id);
+    return r ? r.name : '?';
+  }
+
+  function renderUsers() {
+    $('pn-env-note').textContent = `${accounts.envAdmin} (from the container settings) can always log in and isn't listed here.`;
+    $('pn-user-rows').innerHTML = accounts.users.map((u) => `<tr class="${u.disabled ? 'disabled' : ''}" data-user="${u.id}">
+      <td class="name">${esc(u.name)}${u.disabled ? '<small>disabled</small>' : ''}</td>
+      <td><div class="np-chips">${u.roles.map((r) => `<span class="np-chip">${esc(roleName(r))}</span>`).join('') || '<span class="np-chip">no role</span>'}</div></td>
+      <td>${esc(dateTime(u.lastLogin))}</td>
+      <td><div class="pn-row-actions">
+        <button type="button" class="np-btn small" data-user-act="edit">Edit</button>
+        <button type="button" class="np-btn small" data-user-act="toggle">${u.disabled ? 'Enable' : 'Disable'}</button>
+        <button type="button" class="np-btn small danger" data-user-act="delete">Delete</button>
+      </div></td></tr>`).join('') || '<tr><td colspan="4" class="np-empty">No users yet. Create the first one below.</td></tr>';
+    resetUserForm();
+  }
+
+  function resetUserForm(user) {
+    const form = $('pn-user-form');
+    form.id.value = user ? user.id : '';
+    form.name.value = user ? user.name : '';
+    form.name.disabled = !!user;
+    form.password.value = '';
+    $('pn-user-form-title').textContent = user ? 'Edit ' + user.name : 'New user';
+    $('pn-user-submit').textContent = user ? 'Save' : 'Create user';
+    $('pn-user-pw-label').textContent = user ? 'New password (leave empty to keep it)' : 'Password';
+    $('pn-user-cancel').hidden = !user;
+    const chosen = user ? user.roles : [];
+    $('pn-user-roles').innerHTML = accounts.roles.map((r) => `<label><input type="checkbox" value="${r.id}" ${chosen.includes(r.id) ? 'checked' : ''}> ${esc(r.name)}</label>`).join('');
+  }
+
+  function formMsg(id, text, ok) {
+    $(id).className = 'np-form-msg ' + (ok ? 'ok' : 'error');
+    $(id).textContent = text;
+  }
+
+  $('pn-user-rows').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-user-act]');
+    if (!b) return;
+    const user = accounts.users.find((u) => u.id === Number(b.closest('tr').dataset.user));
+    if (!user) return;
+    const act = b.dataset.userAct;
+    if (act === 'edit') {
+      resetUserForm(user);
+      $('pn-user-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (act === 'delete' && !confirm(`Delete ${user.name}? This can't be undone.`)) return;
+    try {
+      if (act === 'toggle') await api('api/users/' + user.id, { disabled: !user.disabled });
+      else await api('api/users/' + user.id + '/delete', {});
+      loadUsers();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  $('pn-user-cancel').addEventListener('click', () => resetUserForm());
+
+  $('pn-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const roles = [...$('pn-user-roles').querySelectorAll('input:checked')].map((i) => i.value);
+    try {
+      if (form.id.value) {
+        const body = { roles };
+        if (form.password.value) body.password = form.password.value;
+        await api('api/users/' + form.id.value, body);
+        formMsg('pn-user-msg', 'Saved.', true);
+      } else {
+        await api('api/users', { name: form.name.value.trim(), password: form.password.value, roles });
+        formMsg('pn-user-msg', 'User created.', true);
+      }
+      loadUsers();
+    } catch (err) {
+      formMsg('pn-user-msg', err.message, false);
+    }
+  });
+
+  function permLabel(id) {
+    if (id === '*') return 'Everything';
+    const p = accounts.permissions.find((x) => x.id === id);
+    return p ? p.label : id;
+  }
+
+  function renderRoles() {
+    $('pn-role-list').innerHTML = accounts.roles.map((r) => `<div class="pn-role" data-role="${r.id}">
+      <b>${esc(r.name)}</b>
+      <div class="np-chips">${r.permissions.map((p) => `<span class="np-chip">${esc(permLabel(p))}</span>`).join('') || '<span class="np-chip">nothing</span>'}</div>
+      <small class="np-form-msg">${r.users} user${r.users === 1 ? '' : 's'}</small>
+      <div class="pn-role-actions">
+        ${r.permissions.includes('*') ? '' : '<button type="button" class="np-btn small" data-role-act="edit">Edit</button>'}
+        ${r.builtin ? '' : '<button type="button" class="np-btn small danger" data-role-act="delete">Delete</button>'}
+      </div></div>`).join('');
+    resetRoleForm();
+  }
+
+  function resetRoleForm(role) {
+    const form = $('pn-role-form');
+    form.id.value = role ? role.id : '';
+    form.name.value = role ? role.name : '';
+    form.name.disabled = !!(role && role.builtin);
+    $('pn-role-form-title').textContent = role ? 'Edit ' + role.name : 'New role';
+    $('pn-role-submit').textContent = role ? 'Save' : 'Create role';
+    $('pn-role-cancel').hidden = !role;
+    const chosen = role ? role.permissions : [];
+    $('pn-role-perms').innerHTML = accounts.permissions.map((p) => `<label><input type="checkbox" value="${esc(p.id)}" ${chosen.includes(p.id) ? 'checked' : ''}>
+      <span><small>${esc(p.group)}</small>${esc(p.label)}</span></label>`).join('');
+  }
+
+  $('pn-role-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-role-act]');
+    if (!b) return;
+    const role = accounts.roles.find((r) => r.id === Number(b.closest('.pn-role').dataset.role));
+    if (!role) return;
+    if (b.dataset.roleAct === 'edit') {
+      resetRoleForm(role);
+      $('pn-role-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (!confirm(`Delete the role ${role.name}? Users keep their other roles.`)) return;
+    try {
+      await api('api/roles/' + role.id + '/delete', {});
+      loadUsers();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  $('pn-role-cancel').addEventListener('click', () => resetRoleForm());
+
+  $('pn-role-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const permissions = [...$('pn-role-perms').querySelectorAll('input:checked')].map((i) => i.value);
+    try {
+      await api('api/roles', { id: form.id.value ? Number(form.id.value) : null, name: form.name.value.trim(), permissions });
+      formMsg('pn-role-msg', form.id.value ? 'Saved.' : 'Role created.', true);
+      loadUsers();
+    } catch (err) {
+      formMsg('pn-role-msg', err.message, false);
+    }
+  });
+
+  // ── Audit log ──────────────────────────────────────────────────────────
+
+  let auditOldest = 0;
+
+  async function loadAudit(fresh) {
+    if (fresh) auditOldest = 0;
+    const q = $('pn-audit-search').value.trim();
+    try {
+      const data = await api(`api/audit?before=${auditOldest}&q=${encodeURIComponent(q)}`);
+      const rows = data.entries.map((e) => `<tr><td>${esc(dateTime(e.time))}</td><td class="name">${esc(e.user || '–')}</td>
+        <td><span class="np-chip">${esc(e.action)}</span></td><td>${esc(e.detail || '')}</td><td>${esc(e.ip || '')}</td></tr>`).join('');
+      if (fresh) $('pn-audit-rows').innerHTML = rows || '<tr><td colspan="5" class="np-empty">Nothing logged yet.</td></tr>';
+      else $('pn-audit-rows').insertAdjacentHTML('beforeend', rows);
+      if (data.entries.length) auditOldest = data.entries[data.entries.length - 1].id;
+      $('pn-audit-more').hidden = data.entries.length < 100;
+    } catch (err) {
+      $('pn-audit-rows').innerHTML = `<tr><td colspan="5" class="np-empty">${esc(err.message)}</td></tr>`;
+      $('pn-audit-more').hidden = true;
+    }
+  }
+
+  let auditTimer = null;
+  $('pn-audit-search').addEventListener('input', () => {
+    clearTimeout(auditTimer);
+    auditTimer = setTimeout(() => loadAudit(true), 300);
+  });
+  $('pn-audit-more').addEventListener('click', () => loadAudit(false));
+
+  // ── Own account ────────────────────────────────────────────────────────
+
+  function renderAccount() {
+    $('pn-account-intro').textContent = me.envAdmin
+      ? `You're logged in as ${me.user}, the container's admin account. Its password is set with PANEL_ADMIN_PASSWORD in the container settings, and it can do everything.`
+      : `You're logged in as ${me.user}. Changing your password logs you out everywhere.`;
+    $('pn-password-form').hidden = me.envAdmin;
+  }
+
+  $('pn-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    try {
+      await api('api/me/password', { current: form.current.value, password: form.password.value });
+      form.reset();
+      showLogin();
+      $('pn-login-msg').className = 'np-form-msg ok';
+      $('pn-login-msg').textContent = 'Password changed. Log in with the new one.';
+    } catch (err) {
+      formMsg('pn-password-msg', err.message, false);
+    }
+  });
+
   // ── Theme ──────────────────────────────────────────────────────────────
 
   function renderTheme() {
@@ -289,9 +557,6 @@
 
   // ── Start ──────────────────────────────────────────────────────────────
 
-  api('api/me').then((me) => {
-    $('pn-version').textContent = me.version;
-    showApp();
-  }).catch(() => showLogin());
+  showApp();
   api('api/health').then((h) => { $('pn-version').textContent = h.version; }).catch(() => {});
 })();

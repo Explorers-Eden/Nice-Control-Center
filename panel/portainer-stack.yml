@@ -1,6 +1,8 @@
 # Portainer stack for the Nice Control Center Panel.
-# Paste this into Portainer -> Stacks -> Add stack -> Web editor, then add PANEL_ADMIN_PASSWORD
-# under "Environment variables" (without it, a password is generated and printed in the container log).
+# Paste this into Portainer -> Stacks -> Add stack -> Web editor, then add under "Environment variables":
+#   PANEL_ADMIN_PASSWORD   the container admin's password (without it, one is generated and printed in the log)
+#   DB_URL, DB_USER, DB_PASS   your Postgres, e.g. jdbc:postgresql://postgres:5432/nicecontrolcenter
+#                              (needed for user accounts and the audit log; the panel creates its tables itself)
 # Point your reverse proxy (Nginx Proxy Manager, Traefik, ...) at port 8080 for the panel.
 services:
   nicecontrolcenter:
@@ -10,6 +12,9 @@ services:
     environment:
       PANEL_ADMIN_USER: ${PANEL_ADMIN_USER:-admin}
       PANEL_ADMIN_PASSWORD: ${PANEL_ADMIN_PASSWORD:-}
+      DB_URL: ${DB_URL:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASS: ${DB_PASS:-}
     ports:
       - "${PANEL_PORT:-8080}:8080"
       - "${MINECRAFT_PORT:-25565}:25565"

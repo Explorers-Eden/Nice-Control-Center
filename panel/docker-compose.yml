@@ -15,4 +15,7 @@ services:
       - ./run/panel:/data/panel
     environment:
       PANEL_ADMIN_PASSWORD: ${PANEL_ADMIN_PASSWORD:-}
+      DB_URL: ${DB_URL:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASS: ${DB_PASS:-}
     stop_grace_period: 120s

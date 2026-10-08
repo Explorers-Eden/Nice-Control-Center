@@ -63,12 +63,20 @@
 				</div>
 			</section>
 
+			<nav class="np-tabs" id="pn-tabs" role="tablist" aria-label="Sections">
+				<button type="button" role="tab" class="np-tab" data-tab="server" data-perm="console.read"><i class="bi bi-terminal"></i><span>Console</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people"></i><span>Users</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="account"><i class="bi bi-person-circle"></i><span>Account</span></button>
+			</nav>
+
 			<section class="np-card pn-notice" id="pn-eula" hidden>
 				<p>The Minecraft server only starts once you accept the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener">Minecraft EULA</a>.</p>
 				<button type="button" class="np-btn primary" id="pn-eula-accept"><i class="bi bi-check2"></i> I accept the EULA</button>
 			</section>
 
-			<section class="np-card">
+			<section class="np-card np-tab-panel" data-tab="server" hidden>
 				<h3 class="np-card-title"><i class="bi bi-terminal"></i> Console</h3>
 				<div class="np-filters">
 					<input type="search" class="np-console-search" id="pn-console-search" placeholder="Search the log" aria-label="Search the log">
@@ -82,7 +90,7 @@
 				</form>
 			</section>
 
-			<section class="np-card">
+			<section class="np-card np-tab-panel" data-tab="java" hidden>
 				<h3 class="np-card-title"><i class="bi bi-cpu"></i> Startup &amp; Java</h3>
 				<p class="np-card-intro">Applies the next time the server starts.</p>
 				<form id="pn-settings">
@@ -102,6 +110,74 @@
 					<div class="np-form-actions">
 						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 						<span class="np-form-msg" id="pn-settings-msg"></span>
+					</div>
+				</form>
+			</section>
+
+			<div class="np-tab-panel" data-tab="users" hidden>
+				<p class="pn-notice-line" id="pn-db-notice" hidden></p>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-people"></i> Users</h3>
+					<p class="np-card-intro">Accounts for your team. What each one may do comes from its roles. <span id="pn-env-note"></span></p>
+					<div class="np-table-wrap"><table class="np-table pn-users">
+						<thead><tr><th>Name</th><th>Roles</th><th>Last login</th><th></th></tr></thead>
+						<tbody id="pn-user-rows"></tbody>
+					</table></div>
+					<form class="pn-inline-form" id="pn-user-form" autocomplete="off">
+						<h4 id="pn-user-form-title">New user</h4>
+						<input type="hidden" name="id">
+						<div class="pn-form-cols">
+							<label class="pn-field">Name<input type="text" name="name" autocomplete="off" spellcheck="false"></label>
+							<label class="pn-field"><span id="pn-user-pw-label">Password</span><input type="password" name="password" autocomplete="new-password"></label>
+						</div>
+						<div class="pn-field">Roles<div class="np-chips pn-role-picks" id="pn-user-roles"></div></div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> <span id="pn-user-submit">Create user</span></button>
+							<button type="button" class="np-btn" id="pn-user-cancel" hidden>Cancel</button>
+							<span class="np-form-msg" id="pn-user-msg"></span>
+						</div>
+					</form>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shield-check"></i> Roles</h3>
+					<p class="np-card-intro">Admin can always do everything. Moderator and Viewer can be adjusted; your own roles can be added below.</p>
+					<div id="pn-role-list" class="pn-roles"></div>
+					<form class="pn-inline-form" id="pn-role-form" autocomplete="off">
+						<h4 id="pn-role-form-title">New role</h4>
+						<input type="hidden" name="id">
+						<label class="pn-field">Name<input type="text" name="name" spellcheck="false"></label>
+						<div class="pn-perm-grid" id="pn-role-perms"></div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> <span id="pn-role-submit">Create role</span></button>
+							<button type="button" class="np-btn" id="pn-role-cancel" hidden>Cancel</button>
+							<span class="np-form-msg" id="pn-role-msg"></span>
+						</div>
+					</form>
+				</section>
+			</div>
+
+			<section class="np-card np-tab-panel" data-tab="audit" hidden>
+				<h3 class="np-card-title"><i class="bi bi-journal-text"></i> Audit log</h3>
+				<p class="np-card-intro">Every login, server action, console command and settings change, newest first.</p>
+				<div class="np-filters"><input type="search" class="np-console-search" id="pn-audit-search" placeholder="Search the log" aria-label="Search the audit log"></div>
+				<div class="np-table-wrap"><table class="np-table pn-audit">
+					<thead><tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th><th>IP</th></tr></thead>
+					<tbody id="pn-audit-rows"></tbody>
+				</table></div>
+				<div class="np-form-actions"><button type="button" class="np-btn" id="pn-audit-more" hidden>Load older entries</button></div>
+			</section>
+
+			<section class="np-card np-tab-panel" data-tab="account" hidden>
+				<h3 class="np-card-title"><i class="bi bi-person-circle"></i> Your account</h3>
+				<p class="np-card-intro" id="pn-account-intro"></p>
+				<form id="pn-password-form" autocomplete="off">
+					<div class="pn-form-cols">
+						<label class="pn-field">Current password<input type="password" name="current" autocomplete="current-password"></label>
+						<label class="pn-field">New password<input type="password" name="password" autocomplete="new-password"></label>
+					</div>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-key"></i> Change password</button>
+						<span class="np-form-msg" id="pn-password-msg"></span>
 					</div>
 				</form>
 			</section>
