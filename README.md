@@ -6,7 +6,7 @@ It starts with the server and runs continuously (you can switch it off). It keep
 
 Works on dedicated servers and in singleplayer. Install it on the server only (it needs Fabric API).
 
-## What it shows
+## What it shows 
 
 - **Server health:** TPS, MSPT (min, median, 95th percentile, max), CPU, memory, GC, players, chunks, entities and block entities. Shown live and over the last 1, 5, 15 and 60 minutes.
 - **What's costing performance:** the main causes, ranked, each with the reason and a tip.
