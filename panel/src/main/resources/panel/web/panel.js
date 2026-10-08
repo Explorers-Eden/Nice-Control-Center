@@ -92,6 +92,7 @@
     if (activeTab === 'backups') loadBackups();
     if (activeTab === 'schedule') loadSchedule();
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
+    if (activeTab === 'world') worldTick();
   }, 2000);
 
   /** The dashboard loads once and keeps running in the background while other tabs are open. */
@@ -120,6 +121,7 @@
     if (tab === 'versions') loadVersions(true);
     if (tab === 'discord') loadDiscord();
     if (tab === 'map') loadMap();
+    if (tab === 'world') loadWorld();
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
@@ -1698,6 +1700,148 @@
       formMsg('pn-map-msg', 'Every region is drawn again over the next minutes.', true);
     } catch (err) {
       formMsg('pn-map-msg', err.message, false);
+    }
+  });
+
+  // ── World: pregenerate and trim ────────────────────────────────────────
+
+  let worldDims = [];
+  let worldTicks = 0;
+
+  async function loadWorld() {
+    try {
+      const data = await api('api/trim');
+      worldDims = data.dimensions;
+      const sel = $('pn-area').dimension;
+      const chosen = sel.value;
+      sel.innerHTML = worldDims.map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+      if (chosen) sel.value = chosen;
+      renderTrim(data);
+    } catch (err) {
+      formMsg('pn-area-msg', err.message, false);
+    }
+    loadPregen();
+  }
+
+  function worldTick() {
+    if (++worldTicks % 2) return;
+    loadPregen();
+    api('api/trim').then((d) => renderTrim(d)).catch(() => {});
+  }
+
+  function area() {
+    const f = $('pn-area');
+    return { dimension: f.dimension.value, shape: f.shape.value, x: f.x.value, z: f.z.value, radius: f.radius.value };
+  }
+
+  function currentDim() {
+    return worldDims.find((d) => d.id === $('pn-area').dimension.value);
+  }
+
+  $('pn-area-border').addEventListener('click', () => {
+    const d = currentDim();
+    if (!d || !d.border || d.border.size >= 59999968) return formMsg('pn-area-msg', 'No world border is set in this dimension (or the server hasn\'t run with the mod yet).', false);
+    const f = $('pn-area');
+    f.x.value = Math.round(d.border.x);
+    f.z.value = Math.round(d.border.z);
+    f.radius.value = Math.round(d.border.size / 2);
+    f.shape.value = 'square';
+    formMsg('pn-area-msg', 'Filled in from the world border.', true);
+  });
+  $('pn-area-spawn').addEventListener('click', () => {
+    const d = currentDim();
+    const f = $('pn-area');
+    f.x.value = d && d.spawn ? d.spawn.x : 0;
+    f.z.value = d && d.spawn ? d.spawn.z : 0;
+  });
+  $('pn-area').addEventListener('input', () => { $('pn-trim-run').disabled = true; });
+
+  const duration2 = (sec) => sec < 0 ? '–' : sec >= 3600 ? `${Math.floor(sec / 3600)} h ${Math.round(sec % 3600 / 60)} min` : sec >= 60 ? `${Math.round(sec / 60)} min` : `${sec} s`;
+
+  async function loadPregen() {
+    let st;
+    try {
+      st = await api('dashboard/api/pregen');
+    } catch (err) {
+      $('pn-pregen-status').textContent = /not available|doesn't answer|runs/.test(err.message) ? 'Pregenerating needs the server to run (with the Nice Control Center mod 1.2.1 or newer).' : err.message;
+      return;
+    }
+    const show = st.running ? st : st.last;
+    if (!show) {
+      $('pn-pregen-status').textContent = 'Nothing pregenerated yet.';
+    } else {
+      const pct = show.total ? Math.round(show.done / show.total * 100) : 0;
+      $('pn-pregen-status').innerHTML = `<b>${st.running ? 'Pregenerating' : 'Last run (' + esc(show.result || 'stopped') + ')'}</b> · ${esc(show.dimension)} · ${show.shape} radius ${show.radius} around ${show.x}, ${show.z}<br>
+        ${show.done.toLocaleString()} of ${show.total.toLocaleString()} chunks (${pct}%) · ${show.perSecond}/s${st.running ? ' · about ' + duration2(show.etaSeconds) + ' left' : ''}${show.failed ? ` · ${show.failed} failed` : ''}
+        <div class="pn-bar"><span style="width:${pct}%"></span></div>`;
+    }
+    $('pn-pregen-start').disabled = st.running;
+    $('pn-pregen-stop').disabled = !st.running;
+  }
+
+  $('pn-pregen-start').addEventListener('click', async () => {
+    const a = area();
+    const r = Number(a.radius);
+    const chunks = a.shape === 'circle' ? Math.round(Math.PI * (r / 16) ** 2) : Math.round((2 * r / 16) ** 2);
+    if (!confirm(`Pregenerate about ${chunks.toLocaleString()} chunks in ${a.dimension}? Large areas take hours; it only uses the server's spare time.`)) return;
+    try {
+      const res = await fetch('dashboard/api/pregen/start', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' },
+        body: JSON.stringify({ dimension: a.dimension, x: Number(a.x), z: Number(a.z), radius: r, shape: a.shape }) });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || res.statusText);
+      formMsg('pn-pregen-msg', 'Started.', true);
+      loadPregen();
+    } catch (err) {
+      formMsg('pn-pregen-msg', err.message, false);
+    }
+  });
+  $('pn-pregen-stop').addEventListener('click', async () => {
+    try {
+      await fetch('dashboard/api/pregen/stop', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' }, body: '{}' });
+      loadPregen();
+    } catch (err) {
+      formMsg('pn-pregen-msg', err.message, false);
+    }
+  });
+
+  function renderTrim(st) {
+    $('pn-trim-log').hidden = !st.log.length;
+    $('pn-trim-log').innerHTML = st.log.map((l) => `<li>${esc(l)}</li>`).join('');
+    if (st.running) {
+      $('pn-trim-run').disabled = true;
+      formMsg('pn-trim-msg', st.phase || 'Trimming…', true);
+    }
+  }
+
+  $('pn-trim-preview').addEventListener('click', async () => {
+    const a = Object.assign(area(), { keepVisitedMinutes: $('pn-trim-keep').value });
+    formMsg('pn-trim-msg', 'Looking at the region files…', true);
+    try {
+      const p = await api('api/trim/preview', a);
+      const nothing = !p.regions && !p.partialRegions;
+      formMsg('pn-trim-msg', nothing ? 'Nothing lies outside that area.'
+        : `Would remove ${p.chunks.toLocaleString()} chunks: ${p.regions} whole region file${p.regions === 1 ? '' : 's'} and parts of ${p.partialRegions} more, about ${bytes(p.bytes)}. Red on the map below goes, the green line is the edge.`, !nothing);
+      $('pn-trim-run').disabled = nothing;
+      const d = currentDim();
+      const zoom = Math.max(-5, Math.min(0, Math.floor(Math.log2(900 / (Number(a.radius) * 2.6)))));
+      const frame = $('pn-trim-map');
+      frame.hidden = false;
+      frame.src = `map/#${d ? d.key : ''}/${a.x}/${a.z}/${zoom}`;
+      frame.contentWindow?.location.reload?.();
+    } catch (err) {
+      formMsg('pn-trim-msg', err.message, false);
+    }
+  });
+
+  $('pn-trim-run').addEventListener('click', async () => {
+    const a = Object.assign(area(), { keepVisitedMinutes: $('pn-trim-keep').value });
+    if (!confirm('Trim the world now? Everything shown in red is deleted (a backup is made first). The server must be stopped.')) return;
+    try {
+      await api('api/trim/run', a);
+      $('pn-trim-run').disabled = true;
+      formMsg('pn-trim-msg', 'Trimming…', true);
+    } catch (err) {
+      formMsg('pn-trim-msg', err.message, false);
     }
   });
 

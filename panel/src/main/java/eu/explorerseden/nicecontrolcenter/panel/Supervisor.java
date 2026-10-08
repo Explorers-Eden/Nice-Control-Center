@@ -65,6 +65,16 @@ public final class Supervisor {
 	private Supplier<List<String>> extraFlags = List::of;
 	private String hidden;
 	private BeforeStart beforeStart = log -> { };
+	/** Set while something works on the world files (trim); the server can't start meanwhile. */
+	private volatile String lock;
+
+	public void lock(String why) {
+		lock = why;
+	}
+
+	public void unlock() {
+		lock = null;
+	}
 
 	/** Runs right before the server starts, e.g. to install or update the companion mod. */
 	public interface BeforeStart {
@@ -92,6 +102,7 @@ public final class Supervisor {
 	public synchronized String start() {
 		if (state == State.STARTING || state == State.RUNNING || state == State.STOPPING) return "The server is already " + state.name().toLowerCase() + ".";
 		cancelPending();
+		if (lock != null) return lock;
 		PanelSettings s = settings.get();
 		String problem = checkReady(s);
 		if (problem != null) {

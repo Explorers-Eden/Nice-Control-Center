@@ -129,6 +129,18 @@ The panel draws a top-down map of the world from the region files, one pixel per
 - **Own address:** set `MAP_HOST` (e.g. `map.example.com`) and point that subdomain at port 8080 in your reverse proxy. On that address only the map is reachable, nothing of the panel. Without `MAP_HOST` the map is at `/map/` on the panel's address.
 - **Map tab:** choose the layers, hide dimensions, change the title, or have everything drawn again.
 
+## World: pregenerate and trim
+
+The **World** tab works on one area: dimension, center, radius, square or circle. It can be filled in from the world border or centered on spawn.
+
+- **Pregenerate** creates every chunk in the area ahead of time, so players don't wait for terrain and the map is complete.
+  - It runs while the server is up, in a spiral from the center.
+  - It only works as fast as the server has room for, slowing down when ticks get long.
+  - It keeps going with nobody online.
+- **Trim** deletes everything generated outside the area: whole region files, single chunks along the edge, entities and points of interest. Those areas generate fresh when someone goes there.
+  - **Preview** first: the edge appears in green on a map and what goes in red. **Keep chunks players spent at least N minutes in** protects builds outside the area.
+  - Trimming only works while the server is stopped, and a backup is made first.
+
 ## SFTP
 
 Connect with FileZilla, WinSCP, Cyberduck or `sftp -P 2022 name@your-server` and log in with your panel name and password.

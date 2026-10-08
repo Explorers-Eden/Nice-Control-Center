@@ -106,6 +106,8 @@ public final class Panel {
 			}, 1, 60, TimeUnit.MINUTES);
 		}
 
+		Trimmer trimmer = new Trimmer(map, backups, server, audit);
+
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;
 			// Config files are edited as JSON bodies; uploads go through multipart and may be large (worlds, mod packs).
@@ -240,6 +242,7 @@ public final class Panel {
 			new VersionRoutes(versions).register(routes);
 			new DiscordRoutes(discord, dashboard.secret(), audit).register(routes);
 			mapRoutes.register(routes);
+			new WorldRoutes(trimmer).register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {

@@ -57,6 +57,8 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(NiceControlCenter::start);
 		// Under the panel: Discord linking at login, chat and game events for the Discord bridge.
 		eu.explorerseden.nicecontrolcenter.web.PanelBridge.register();
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.Pregen::tick);
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> eu.explorerseden.nicecontrolcenter.core.Pregen.stop(server, "stopped with the server"));
 		startConfigWatcher();
 		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> ErrorWatcher.reloadStarted());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {

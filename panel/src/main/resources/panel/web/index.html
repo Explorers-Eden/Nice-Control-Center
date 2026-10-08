@@ -71,6 +71,7 @@
 				<button type="button" role="tab" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="versions" data-perm="server.view"><i class="bi bi-box-seam"></i><span>Versions</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="world" data-perm="world.trim"><i class="bi bi-bounding-box"></i><span>World</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="map" data-perm="map.manage"><i class="bi bi-map"></i><span>Map</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="discord" data-perm="discord.manage"><i class="bi bi-discord"></i><span>Discord</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
@@ -334,6 +335,49 @@
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-clock-history"></i> History</h3>
 					<div id="pn-version-history" class="pn-tasks"></div>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="world" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Area</h3>
+					<p class="np-card-intro">The area to pregenerate, or to keep when trimming. Distances are in blocks.</p>
+					<form id="pn-area" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row">Dimension<select name="dimension"></select></label>
+							<label class="np-form-row">Shape<select name="shape"><option value="square">Square</option><option value="circle">Circle</option></select></label>
+							<label class="np-form-row">Center x<input type="number" name="x" value="0"></label>
+							<label class="np-form-row">Center z<input type="number" name="z" value="0"></label>
+							<label class="np-form-row">Radius<input type="number" name="radius" value="2000" min="16"></label>
+						</div>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn small" id="pn-area-border"><i class="bi bi-bounding-box-circles"></i> Use the world border</button>
+							<button type="button" class="np-btn small" id="pn-area-spawn"><i class="bi bi-house"></i> Center on spawn</button>
+							<span class="np-form-msg" id="pn-area-msg"></span>
+						</div>
+					</form>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-grid-3x3-gap"></i> Pregenerate</h3>
+					<p class="np-card-intro">Generates every chunk in the area now, so players don't wait for terrain later and the map is complete. Runs while the server is up, only as fast as the server has room for (it slows down when ticks get long), and keeps going with nobody online.</p>
+					<div class="pn-backup-status" id="pn-pregen-status"></div>
+					<div class="np-form-actions">
+						<button type="button" class="np-btn primary" id="pn-pregen-start"><i class="bi bi-play-fill"></i> Pregenerate the area</button>
+						<button type="button" class="np-btn" id="pn-pregen-stop"><i class="bi bi-stop-fill"></i> Stop</button>
+						<span class="np-form-msg" id="pn-pregen-msg"></span>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-scissors"></i> Trim outside the area</h3>
+					<p class="np-card-intro">Deletes all generated chunks outside the area (whole region files, single chunks along the edge, also entities and points of interest). They generate fresh when someone goes there. Only while the server is stopped; a backup is made first.</p>
+					<label class="np-form-row">Keep chunks players spent at least this many minutes in (0 = off)<input type="number" id="pn-trim-keep" value="0" min="0"></label>
+					<div class="np-form-actions">
+						<button type="button" class="np-btn" id="pn-trim-preview"><i class="bi bi-eye"></i> Preview</button>
+						<button type="button" class="np-btn danger" id="pn-trim-run" disabled><i class="bi bi-scissors"></i> Trim</button>
+						<span class="np-form-msg" id="pn-trim-msg"></span>
+					</div>
+					<iframe class="pn-trim-map" id="pn-trim-map" title="Trim preview" hidden></iframe>
+					<ol class="pn-update-log" id="pn-trim-log" hidden></ol>
 				</section>
 			</div>
 

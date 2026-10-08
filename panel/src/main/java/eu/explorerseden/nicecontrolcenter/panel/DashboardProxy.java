@@ -46,7 +46,9 @@ final class DashboardProxy {
 			Map.entry("/api/recording/start", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/recording/stop", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/bloat/run", Permissions.DASHBOARD_VIEW),
-			Map.entry("/api/monitor", Permissions.DASHBOARD_VIEW));
+			Map.entry("/api/monitor", Permissions.DASHBOARD_VIEW),
+			Map.entry("/api/pregen/start", Permissions.WORLD_TRIM),
+			Map.entry("/api/pregen/stop", Permissions.WORLD_TRIM));
 	/** Reads that show more than the dashboard view: the console. */
 	private static final Map<String, String> GET_PERMISSIONS = Map.of("/api/console", Permissions.CONSOLE_READ);
 	/** Changes that aren't worth an audit entry. */

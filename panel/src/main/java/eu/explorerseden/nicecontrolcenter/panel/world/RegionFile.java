@@ -99,4 +99,72 @@ public final class RegionFile implements AutoCloseable {
 	public void close() throws IOException {
 		file.close();
 	}
+
+	/** Header slots of chunks that exist in the file. */
+	public java.util.List<Integer> existing() {
+		java.util.List<Integer> out = new java.util.ArrayList<>();
+		for (int i = 0; i < 1024; i++) if (offsets[i] != 0) out.add(i);
+		return out;
+	}
+
+	public long fileSize() throws IOException {
+		return file.length();
+	}
+
+	/**
+	 * Writes the region again without the chunks in remove (header slots 0–1023), packed tightly so the
+	 * freed sectors are given back. Their external .mcc files are deleted. Returns the bytes saved; when
+	 * nothing is left the file is deleted.
+	 */
+	public static long rewrite(Path path, java.util.Set<Integer> remove) throws IOException {
+		if (!Files.exists(path) || remove.isEmpty()) return 0;
+		long before = Files.size(path);
+		Path tmp = path.resolveSibling(path.getFileName() + ".trim");
+		int kept = 0;
+		try (RegionFile in = new RegionFile(path); RandomAccessFile out = new RandomAccessFile(tmp.toFile(), "rw")) {
+			out.setLength(0);
+			out.write(new byte[2 * SECTOR]);
+			int[] newOffsets = new int[1024];
+			int[] newTimes = new int[1024];
+			int nextSector = 2;
+			byte[] buffer = new byte[SECTOR];
+			for (int i = 0; i < 1024; i++) {
+				int entry = in.offsets[i];
+				if (entry == 0) continue;
+				int lx = i % 32;
+				int lz = i / 32;
+				if (remove.contains(i)) {
+					Files.deleteIfExists(path.resolveSibling("c." + (in.regionX * 32 + lx) + "." + (in.regionZ * 32 + lz) + ".mcc"));
+					continue;
+				}
+				long sector = (entry >>> 8) & 0xFFFFFF;
+				int count = entry & 0xFF;
+				long available = in.file.length() - sector * SECTOR;
+				if (sector < 2 || available <= 0) continue; // Points past the end: a damaged entry, dropped.
+				in.file.seek(sector * SECTOR);
+				out.seek((long) nextSector * SECTOR);
+				for (int c = 0; c < count; c++) {
+					// The last chunk in a file may be shorter than its sectors; the rest stays zero.
+					java.util.Arrays.fill(buffer, (byte) 0);
+					int n = (int) Math.min(SECTOR, Math.max(0, available - (long) c * SECTOR));
+					if (n > 0) in.file.readFully(buffer, 0, n);
+					out.write(buffer);
+				}
+				newOffsets[i] = (nextSector << 8) | count;
+				newTimes[i] = in.timestamps[i];
+				nextSector += count;
+				kept++;
+			}
+			out.seek(0);
+			for (int o : newOffsets) out.writeInt(o);
+			for (int t : newTimes) out.writeInt(t);
+		}
+		if (kept == 0) {
+			Files.delete(tmp);
+			Files.delete(path);
+			return before;
+		}
+		Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+		return before - Files.size(path);
+	}
 }

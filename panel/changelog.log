@@ -1,3 +1,10 @@
+## 0.10.0
+- World tab: one area (dimension, center, radius, square or circle; fill in from the world border or spawn) for pregenerating and trimming
+- Pregenerate: every chunk in the area, in a spiral from the center, only as fast as the server has room for, also with nobody online; progress, speed and time left (needs the Nice Control Center mod 1.2.1)
+- Trim outside the area like Chunky: whole region files outside, single chunks along the edge (files packed again so the space is freed), entities and points of interest too; optionally keeps chunks players spent time in
+- Trim preview on the map: the edge in green, what goes in red (only for accounts allowed to trim, never on the public map)
+- Trimming only while the server is stopped, always after a backup; the server can't be started while it runs; the map redraws afterwards
+
 ## 0.9.0
 - Web map: drawn by the panel from the region files (no load on the server, stays online while it's off), one pixel per block like a vanilla map with relief and water depth, zoomable from 1:1 out to 16,384 blocks per tile
 - Live layers from the mod: online players with their heads, GOML claims, Explorer's Eden waypoint hubs (public ones by default), the world border; the last claims and hubs stay visible while the server is off

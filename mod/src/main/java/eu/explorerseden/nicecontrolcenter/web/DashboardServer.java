@@ -443,6 +443,26 @@ public final class DashboardServer {
 				result.put("error", error);
 				sendJson(exchange, result);
 			}
+			case "/api/pregen" -> sendJson(exchange, eu.explorerseden.nicecontrolcenter.core.Pregen.status());
+			case "/api/pregen/start" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Pregen.start(minecraft, body.get("dimension").getAsString(),
+						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), "circle".equals(body.get("shape").getAsString())));
+				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
+			}
+			case "/api/pregen/stop" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				onServerThread(() -> {
+					eu.explorerseden.nicecontrolcenter.core.Pregen.stop(minecraft, "stopped");
+					return null;
+				});
+				sendJson(exchange, Map.of("ok", true));
+			}
 			// For the panel's web map (it renders the tiles itself).
 			case "/api/map" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
 			case "/api/map/colors" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.players.MapExport::colors));
