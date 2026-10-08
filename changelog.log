@@ -1,11 +1,13 @@
 # Minecraft Version(s): 26.3
+## 1.0.2
+- \n typed into the MOTD in the server.properties editor is saved as a real second line instead of the text "\n"
+- New GC tile next to Memory: share of time paused for garbage collection, number of pauses and the average pause
+- "Close to its limit" only shows when more than 2% of ticks run over budget, not because of a handful of slow ticks (autosaves) while the server keeps up easily
+
 ## 1.0.1
 - Packs installed as mods show their real name in data pack settings and elsewhere (Warping Wonders instead of "wawo")
 - Data pack settings also find packs that keep their settings in their own storage, like Katters Structures
 - The server name in the dashboard and in reports shows the MOTD's colors and formatting instead of the raw § codes
-- \n typed into the MOTD in the server.properties editor is saved as a real second line instead of the text "\n"
-- New GC tile next to Memory: share of time paused for garbage collection, number of pauses and the average pause
-- "Close to its limit" only shows when more than 2% of ticks run over budget, not because of a handful of slow ticks (autosaves) while the server keeps up easily
 
 ## First release
 - Live monitor that starts with the server: TPS, MSPT (min/med/95%ile/max), CPU, memory, entities, chunks and players for the last 1, 5, 15 and 60 minutes
