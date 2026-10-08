@@ -1,0 +1,15 @@
+# Local testing: builds the image from this repository. For Portainer use portainer-stack.yml.
+#   docker compose -f panel/docker-compose.yml up --build
+services:
+  panel:
+    build:
+      context: ..
+      dockerfile: panel/Dockerfile
+    ports:
+      - "8080:8080"
+      - "25565:25565"
+    volumes:
+      - ./run/server:/data/server
+      - ./run/backups:/data/backups
+      - ./run/map:/data/map
+    stop_grace_period: 120s

@@ -1,0 +1,74 @@
+plugins {
+	id 'java'
+	id 'application'
+	id 'com.gradleup.shadow' version "${shadow_version}"
+}
+
+base {
+	archivesName = "nice-control-center-panel"
+}
+
+repositories {
+	mavenCentral()
+}
+
+// Code and web files shared with the mod are compiled straight from mod/, like NiceMerl's mod bundles
+// ../bot/data. Only Minecraft-free classes may be listed here.
+def modJava = "../mod/src/main/java"
+def modWeb = "../mod/src/main/resources/assets/nicecontrolcenter/web"
+
+sourceSets {
+	main {
+		java {
+			srcDir(modJava)
+			include "eu/explorerseden/nicecontrolcenter/panel/**"
+			include "eu/explorerseden/nicecontrolcenter/Json.java"
+			include "eu/explorerseden/nicecontrolcenter/core/SystemMetrics.java"
+		}
+	}
+}
+
+dependencies {
+	implementation "io.javalin:javalin:${project.javalin_version}"
+	implementation "com.google.code.gson:gson:${project.gson_version}"
+	implementation "org.slf4j:slf4j-simple:${project.slf4j_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("panel/version.txt") {
+		expand "version": version
+	}
+
+	// The dashboard's look (Explorer's Eden style) comes from the mod.
+	from(modWeb) {
+		include "app.css", "img/**"
+		into "panel/web"
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+application {
+	mainClass = "eu.explorerseden.nicecontrolcenter.panel.Panel"
+}
+
+shadowJar {
+	archiveClassifier = ""
+	mergeServiceFiles()
+}
+
+jar {
+	from("LICENSE") {
+		rename { "${it}_nice-control-center-panel" }
+	}
+}

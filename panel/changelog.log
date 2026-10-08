@@ -1,0 +1,2 @@
+## 0.1.0
+- First skeleton: the panel starts in Docker, serves its start page in the dashboard's style and answers a health check

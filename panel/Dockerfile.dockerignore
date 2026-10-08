@@ -1,0 +1,7 @@
+# The build context is the repository root; only the panel and the shared mod sources are needed.
+**
+!mod/src/main/java/**
+!mod/src/main/resources/assets/nicecontrolcenter/web/**
+!panel/**
+panel/build
+panel/.gradle

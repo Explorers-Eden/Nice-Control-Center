@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="referrer" content="no-referrer">
+	<title>Nice Control Center Panel</title>
+	<script>
+		// Same theme choice as the mod's dashboard (dark by default).
+		try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') === 'light' ? 'light' : 'dark'; }
+		catch (e) { document.documentElement.dataset.theme = 'dark'; }
+	</script>
+	<link rel="icon" href="img/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+	<link rel="stylesheet" href="app.css">
+</head>
+<body>
+	<header class="navbar">
+		<div class="navbar-inner">
+			<h1 class="np-brand">
+				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-hdd-rack"></i></span>
+				<span class="np-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
+			</h1>
+		</div>
+	</header>
+
+	<main class="np-shell">
+		<section class="np-banner">
+			<div class="np-banner-main">
+				<span class="np-status-dot info" id="np-status-dot"></span>
+				<div>
+					<h2 class="np-banner-title" id="np-title">Panel starting…</h2>
+					<p class="np-banner-headline">Server management is on its way: start/stop, console, backups, schedules and more.</p>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script>
+		fetch('api/health').then(r => r.json()).then(h => {
+			document.getElementById('np-title').textContent = 'Panel ' + h.version + ' is running';
+			document.getElementById('np-status-dot').className = 'np-status-dot good';
+		}).catch(() => {
+			document.getElementById('np-title').textContent = 'Panel not reachable';
+			document.getElementById('np-status-dot').className = 'np-status-dot poor';
+		});
+	</script>
+</body>
+</html>

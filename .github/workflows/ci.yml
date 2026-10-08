@@ -1,11 +1,13 @@
-# Builds Nice Control Center on every push and pull request.
+# One workflow for everything Nice Control Center:
 #
-#   build     build the jar and keep it as a workflow artifact
-#   release   on main: publish it as a GitHub release (newest per Minecraft version)
+#   Fabric mod  (mod/)     build the jar        → publish it as a GitHub release (newest per Minecraft version)
+#   Panel       (panel/)   build the fat jar    → build the Docker image niceron/nicecontrolcenter and push it to Docker Hub
 #
-# Version, Minecraft version and release title come from tools/release_infos.yml; the release notes
-# are changelog.log. Pushing to main without raising the version refreshes that version's release.
-# Running it by hand (Actions → Nice Control Center → Run workflow) on main builds and releases.
+# Each part only runs when its files changed. The panel also depends on mod/src/main (shared Java classes and
+# the dashboard's web files are compiled into it). Images and releases are only published from main.
+# Version, Minecraft version and release title of the mod come from mod/tools/release_infos.yml; the release notes
+# are mod/changelog.log. Pushing to main without raising the version refreshes that version's release.
+# Running it by hand (Actions → Nice Control Center → Run workflow) on main does everything.
 name: Nice Control Center
 
 on:
@@ -17,16 +19,62 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build the jar
+  changes:
+    name: Find out what changed
     runs-on: ubuntu-24.04
+    outputs:
+      mod: ${{ steps.filter.outputs.mod }}
+      panel: ${{ steps.filter.outputs.panel }}
+    steps:
+      - name: Check out the repository with full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Decide which parts need to run
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          case "$EVENT" in
+            workflow_dispatch)
+              mod=true; panel=true ;;
+            *)
+              base="$BEFORE"
+              [ "$EVENT" = "pull_request" ] && base="$PR_BASE"
+              if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+                changed=$(git diff --name-only "$base" "$GITHUB_SHA")
+              else
+                # New branch or rewritten history: treat everything as changed.
+                changed=$(git ls-files)
+              fi
+              echo "Changed files:"; echo "$changed"
+              mod=false; panel=false
+              echo "$changed" | grep -qE '^(mod/|\.github/workflows/)' && mod=true
+              echo "$changed" | grep -qE '^(panel/|mod/src/main/|\.github/workflows/)' && panel=true
+              ;;
+          esac
+          echo "Mod: $mod, panel: $panel"
+          echo "mod=$mod" >> "$GITHUB_OUTPUT"
+          echo "panel=$panel" >> "$GITHUB_OUTPUT"
+
+  mod-build:
+    name: "Mod: build the jar"
+    needs: changes
+    if: needs.changes.outputs.mod == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mod
     outputs:
       tag_name: ${{ steps.meta.outputs.tag_name }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v6
 
-      - name: Make sure the Gradle wrapper is genuine
+      - name: Make sure the Gradle wrappers are genuine
         uses: gradle/actions/wrapper-validation@v6
 
       - name: Set up Python 3.12 for the release scripts
@@ -56,11 +104,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: nice-control-center
-          path: build/libs/
+          path: mod/build/libs/
 
-  release:
-    name: Publish the GitHub release
-    needs: build
+  mod-release:
+    name: "Mod: publish the GitHub release"
+    needs: [changes, mod-build]
     if: >-
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -69,8 +117,11 @@ jobs:
       contents: write
     # Never publish two releases at the same time.
     concurrency:
-      group: release
+      group: mod-release
       cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: mod
     steps:
       - name: Check out the repository (release scripts and changelog)
         uses: actions/checkout@v6
@@ -90,8 +141,9 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: nice-control-center
-          path: build/libs/
+          path: mod/build/libs/
 
+      # Pushing without raising the version refreshes the jar of that version's release.
       - name: Create or update release ${{ steps.meta.outputs.tag_name }} with changelog.log as notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,3 +162,75 @@ jobs:
           TAG_NAME: ${{ steps.meta.outputs.tag_name }}
           MC_VERSION: ${{ steps.meta.outputs.mc_version }}
         run: bash tools/scripts/delete-older-releases.sh
+
+  panel-build:
+    name: "Panel: build and start the jar"
+    needs: changes
+    if: needs.changes.outputs.panel == 'true'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: panel
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Make sure the Gradle wrappers are genuine
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "microsoft"
+
+      - name: Set up Gradle with caching
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build the panel jar
+        run: ./gradlew shadowJar
+
+      - name: Start the panel and check that it answers
+        run: |
+          PANEL_PORT=18080 java -jar build/libs/nice-control-center-panel-*.jar &
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:18080/api/health && exit 0
+            sleep 1
+          done
+          echo "The panel didn't answer within 30 seconds"; exit 1
+
+  panel-image:
+    name: "Panel: build and push the Docker image"
+    needs: [changes, panel-build]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # The context is the repository root, because the panel compiles shared code from mod/.
+      - name: Build the image and push it as niceron/nicecontrolcenter:latest
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./panel/Dockerfile
+          push: true
+          pull: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            niceron/nicecontrolcenter:latest
+            niceron/nicecontrolcenter:sha-${{ github.sha }}
