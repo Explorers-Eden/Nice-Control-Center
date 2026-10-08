@@ -430,11 +430,28 @@ public final class Backups {
 		String blocked = restoreBlocked();
 		if (blocked != null) return lastError = blocked;
 		if (!exists(name)) return lastError = "No such backup.";
+		// A crashed server may have an automatic restart pending; it must not start on a half-restored world.
+		if (server.state() == Supervisor.State.CRASHED) server.stop();
+		server.lock("A backup is being restored; the server can start again when that's done.");
+		try {
+			return restoreLocked(name, only, by);
+		} finally {
+			server.unlock();
+		}
+	}
+
+	private String restoreLocked(String name, List<String> only, String by) {
 		protect(name);
 		String safety = create("before restore", by, false);
-		if (safety != null) return "The safety backup failed, so nothing was restored: " + safety;
+		if (safety != null) {
+			unprotect(name);
+			return "The safety backup failed, so nothing was restored: " + safety;
+		}
 		synchronized (this) {
-			if (running) return "A backup is already running.";
+			if (running) {
+				unprotect(name);
+				return "A backup is already running.";
+			}
 			running = true;
 		}
 		try {

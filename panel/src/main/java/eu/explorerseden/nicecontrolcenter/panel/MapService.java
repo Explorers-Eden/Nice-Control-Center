@@ -374,11 +374,11 @@ public final class MapService {
 		JsonObject out = new JsonObject();
 		JsonObject o = overlays;
 		Settings s = settings;
-		out.add("players", s.showPlayers && o != null && server.running() && o.has("players") ? o.get("players") : new JsonArray());
-		out.add("claims", s.showClaims && o != null && o.has("claims") ? o.get("claims") : new JsonArray());
+		out.add("players", s.showPlayers && o != null && server.running() ? visible(o, "players", s) : new JsonArray());
+		out.add("claims", s.showClaims && o != null ? visible(o, "claims", s) : new JsonArray());
 		JsonArray hubs = new JsonArray();
-		if (o != null && o.has("hubs") && !s.hubs.equals("none")) {
-			for (JsonElement e : o.getAsJsonArray("hubs")) {
+		if (o != null && !s.hubs.equals("none")) {
+			for (JsonElement e : visible(o, "hubs", s)) {
 				JsonObject h = e.getAsJsonObject();
 				if (s.hubs.equals("all") || "public".equalsIgnoreCase(h.has("access") ? h.get("access").getAsString() : "")) hubs.add(h);
 			}
@@ -389,15 +389,29 @@ public final class MapService {
 		return out;
 	}
 
+	/** The overlay's entries outside hidden dimensions: a hidden dimension gives away no positions. */
+	private static JsonArray visible(JsonObject overlays, String key, Settings s) {
+		JsonArray out = new JsonArray();
+		if (!overlays.has(key) || !overlays.get(key).isJsonArray()) return out;
+		for (JsonElement e : overlays.getAsJsonArray(key)) {
+			if (e.isJsonObject() && e.getAsJsonObject().has("dim") && s.hidden.contains(e.getAsJsonObject().get("dim").getAsString())) continue;
+			out.add(e);
+		}
+		return out;
+	}
+
 	public Path tile(String dimKey, String zoom, String file) {
-		if (!dimKey.matches("[a-z0-9_.-]+") || !zoom.matches("-?\\d") || !file.matches("-?\\d+_-?\\d+\\.png")) return null;
+		if (!dimKey.matches("[a-z0-9_.-]*[a-z0-9_][a-z0-9_.-]*") || !zoom.matches("-?\\d") || !file.matches("-?\\d+_-?\\d+\\.png")) return null;
 		Path f = mapDir.resolve("tiles").resolve(dimKey).resolve(zoom).resolve(file);
 		return Files.isRegularFile(f) ? f : null;
 	}
 
 	/** Deletes a dimension's tiles so they're drawn again from scratch. */
 	public void clearTiles(String dimKey) throws IOException {
-		Path dir = mapDir.resolve("tiles").resolve(dimKey.toLowerCase(Locale.ROOT));
-		if (Files.isDirectory(dir) && dir.startsWith(mapDir.resolve("tiles"))) ServerFiles.deleteRecursively(dir);
+		Path tilesDir = mapDir.resolve("tiles").normalize();
+		Path dir = tilesDir.resolve(dimKey.toLowerCase(Locale.ROOT)).normalize();
+		// "..", "." or "" would be the tiles folder or the map folder itself.
+		if (dir.getParent() == null || !dir.getParent().equals(tilesDir)) return;
+		if (Files.isDirectory(dir)) ServerFiles.deleteRecursively(dir);
 	}
 }

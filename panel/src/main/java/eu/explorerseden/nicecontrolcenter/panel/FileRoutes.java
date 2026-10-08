@@ -200,7 +200,7 @@ final class FileRoutes {
 			files.checkWritable(target);
 			if (Files.exists(target)) throw new IOException(files.rel(target) + " already exists.");
 			try (OutputStream out = Files.newOutputStream(target)) {
-				files.zip(resolved, target.getParent(), out);
+				files.zip(resolved, target.getParent(), out, target);
 			}
 			audit.log(me.name(), "files.zip", String.join(", ", paths) + " → " + files.rel(target), clientIp(ctx));
 			json(ctx, Map.of("ok", true));

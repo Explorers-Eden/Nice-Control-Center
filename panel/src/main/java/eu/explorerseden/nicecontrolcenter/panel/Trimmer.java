@@ -202,8 +202,10 @@ public final class Trimmer {
 		running = true;
 		log.clear();
 		result = null;
+		// Locked before the thread starts, so a pending crash restart can't slip in between.
+		if (server.state() == Supervisor.State.CRASHED) server.stop();
+		server.lock("The world is being trimmed; the server can start again when that's done.");
 		Thread t = new Thread(() -> {
-			server.lock("The world is being trimmed; the server can start again when that's done.");
 			try {
 				result = run(plan, by);
 			} catch (IOException | RuntimeException e) {

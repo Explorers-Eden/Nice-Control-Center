@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.3.1
+- Pregeneration no longer waits for each chunk on the server thread (a large area could stall a tick until the watchdog stopped the server); chunks are now requested in the background, about 250 per second on a fast machine
+- Pregeneration keeps the server awake without writing pause-when-empty-seconds to server.properties, so a crash during a run can't leave it at 0
+
 ## 1.3.0
 - One jar each for Minecraft 26.3, 26.2 and 26.1 (26.1, 26.1.1 and 26.1.2)
 - The stat tiles size to their content: MSPT and Memory get more room than the single numbers, so nothing is cut off (one row on wide screens, two rows in between, two per row on phones)

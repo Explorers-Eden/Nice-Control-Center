@@ -89,7 +89,13 @@ shadowJar {
 	exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC"
 }
 
+// The fat jar is the one that ships; the plain jar gets its own name so the two don't overwrite each other
+// (Gradle refuses `build` otherwise).
 jar {
+	archiveClassifier = "plain"
+}
+
+tasks.withType(Jar).configureEach {
 	from("LICENSE") {
 		rename { "${it}_nice-control-center-panel" }
 	}

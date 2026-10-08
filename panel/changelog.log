@@ -1,3 +1,16 @@
+## 1.0.1
+- Minecraft updates swap the Nice Control Center mod for the build made for the new version (before, the old build stayed because all builds share a version number, Fabric refused to start and the update rolled back); the mod is now saved as nice-control-center-<version>-mc<minecraft>.jar
+- Typing stop in the console (or /stop in game) stops the server instead of counting as a crash and restarting it
+- No automatic crash restart can start the server while a backup is restored or the world is trimmed
+- Unzipping works in the server folder itself; each entry is checked, so nothing lands in the running world or outside the folder
+- Zipping a folder into a zip inside it no longer packs the zip into itself
+- The login limit and the audit log use the client address the reverse proxy reports, which a client can't fake with its own X-Forwarded-For header
+- The public map sends no players, claims or hubs of hidden dimensions
+- Log cleanup rules can't point at the server folder itself or the world
+- Versions: version numbers and Modrinth file names are checked before they become file names
+- Discord: the login check waits at most 1.5 s for Discord, and a missing webhook permission isn't asked again on every chat line
+- `./gradlew build` works again for the panel (the plain jar is now ...-plain.jar)
+
 ## 1.0.0
 First full release. The panel runs one Fabric server in Docker and manages it from outside:
 - Server: start, stop, restart, kill, live console, crash detection with automatic restarts, Java and memory settings

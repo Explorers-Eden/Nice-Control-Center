@@ -101,6 +101,8 @@ public final class Discord {
 	private volatile JDA jda;
 	private volatile String status = "Off";
 	private volatile String webhookUrl;
+	/** When the webhook couldn't be set up (no permission): plain messages until then, instead of asking on every line. */
+	private volatile long webhookRetryAt;
 	private volatile int players;
 	private volatile int maxPlayers;
 	private volatile Supervisor.State lastState;
@@ -163,6 +165,7 @@ public final class Discord {
 		boolean reconnect = !next.token.equals(settings.token) || next.enabled != settings.enabled;
 		settings = next;
 		webhookUrl = null;
+		webhookRetryAt = 0;
 		if (reconnect || jda == null) connect();
 		else lastPresence = "";
 		return null;
@@ -339,14 +342,21 @@ public final class Discord {
 		Guild guild = bot == null ? null : bot.getGuildById(settings.guildId);
 		if (guild == null) return cached == null || cached[0] == 1;
 		try {
-			guild.retrieveMemberById(discordId).complete();
+			// The login check waits on this on the Minecraft server's main thread: never long.
+			guild.retrieveMemberById(discordId).submit().get(1500, TimeUnit.MILLISECONDS);
 			memberCache.put(discordId, new long[] { 1, now });
 			return true;
-		} catch (net.dv8tion.jda.api.exceptions.ErrorResponseException e) {
-			memberCache.put(discordId, new long[] { 0, now });
-			return false;
-		} catch (RuntimeException e) {
-			// Discord unreachable: go with what we knew.
+		} catch (java.util.concurrent.ExecutionException e) {
+			if (e.getCause() instanceof net.dv8tion.jda.api.exceptions.ErrorResponseException) {
+				memberCache.put(discordId, new long[] { 0, now });
+				return false;
+			}
+			return cached == null || cached[0] == 1;
+		} catch (java.util.concurrent.TimeoutException | RuntimeException e) {
+			// Discord slow or unreachable: go with what we knew.
+			return cached == null || cached[0] == 1;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 			return cached == null || cached[0] == 1;
 		}
 	}
@@ -466,13 +476,15 @@ public final class Discord {
 	private String webhook(TextChannel channel) {
 		String url = webhookUrl;
 		if (url != null) return url;
+		if (System.currentTimeMillis() < webhookRetryAt) return null;
 		try {
 			Webhook hook = channel.retrieveWebhooks().complete().stream().filter(w -> "Nice Control Center".equals(w.getName())).findFirst()
 					.orElseGet(() -> channel.createWebhook("Nice Control Center").complete());
 			webhookUrl = hook.getUrl();
 			return webhookUrl;
 		} catch (RuntimeException e) {
-			// No "Manage Webhooks" permission: plain bot messages instead.
+			// No "Manage Webhooks" permission: plain bot messages instead, asking again in 10 minutes.
+			webhookRetryAt = System.currentTimeMillis() + 10 * 60_000;
 			return null;
 		}
 	}

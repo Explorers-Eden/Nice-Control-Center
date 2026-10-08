@@ -30,7 +30,8 @@ import java.util.zip.ZipFile;
  */
 final class Companion {
 	private static final Pattern TAG = Pattern.compile("mod-v([0-9][0-9A-Za-z.+-]*)-mc(.+)");
-	private static final Pattern INSTALLED = Pattern.compile("nice-control-center-([0-9][0-9.]*)(?:-mc[^/]*)?\\.jar");
+	/** Installed as nice-control-center-<version>-mc<release's Minecraft version>.jar, so a Minecraft change is noticed. */
+	private static final Pattern INSTALLED = Pattern.compile("nice-control-center-([0-9][0-9.]*)(?:-mc([^/]*))?\\.jar");
 	private static final Pattern LAUNCHER_NAME = Pattern.compile("fabric-server-mc\\.([0-9][^-]*)-loader");
 
 	private final String repo = Panel.env("COMPANION_REPO", "Explorers-Eden/Nice-Control-Center");
@@ -49,6 +50,7 @@ final class Companion {
 		Path mods = serverDir.resolve("mods");
 		List<Path> installed = installed(mods);
 		String current = installed.isEmpty() ? null : version(installed.getFirst());
+		String currentMc = installed.isEmpty() ? null : builtFor(installed.getFirst());
 		Release latest;
 		try {
 			latest = latest(mc);
@@ -60,7 +62,10 @@ final class Companion {
 			if (current == null) log.accept("There's no Nice Control Center mod release for Minecraft " + mc + " yet; the dashboard stays off");
 			return;
 		}
-		if (current != null && compare(current, latest.version()) >= 0) return;
+		// Every Minecraft version has its own build with the same version number: after a Minecraft
+		// update the jar must be swapped even when the number is the same.
+		boolean sameMc = latest.mc().equals(currentMc);
+		if (current != null && sameMc && compare(current, latest.version()) >= 0) return;
 		try {
 			Files.createDirectories(mods);
 			Path tmp = mods.resolve(".nice-control-center.download");
@@ -71,8 +76,9 @@ final class Companion {
 				Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
 			}
 			for (Path old : installed) Files.deleteIfExists(old);
-			Files.move(tmp, mods.resolve(latest.file()), StandardCopyOption.REPLACE_EXISTING);
+			Files.move(tmp, mods.resolve("nice-control-center-" + latest.version() + "-mc" + latest.mc() + ".jar"), StandardCopyOption.REPLACE_EXISTING);
 			log.accept(current == null ? "Installed the Nice Control Center mod " + latest.version() + " for Minecraft " + mc
+					: !sameMc ? "Installed the Nice Control Center mod " + latest.version() + " built for Minecraft " + latest.mc() + " (was " + current + ")"
 					: "Updated the Nice Control Center mod from " + current + " to " + latest.version());
 		} catch (IOException | InterruptedException e) {
 			log.accept("Couldn't download the Nice Control Center mod: " + e.getMessage());
@@ -137,6 +143,12 @@ final class Companion {
 			// Treated as not installed.
 		}
 		return out;
+	}
+
+	/** The Minecraft version of the release it came from, or null for jars installed by hand or by older panels. */
+	private static String builtFor(Path jar) {
+		Matcher m = INSTALLED.matcher(jar.getFileName().toString());
+		return m.matches() ? m.group(2) : null;
 	}
 
 	private static String version(Path jar) {

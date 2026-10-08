@@ -92,12 +92,40 @@ final class Web {
 		return out;
 	}
 
-	/** Behind a reverse proxy the client's address is in X-Forwarded-For. */
+	/**
+	 * The client's address for the login limit and the audit log. Behind a reverse proxy it's in
+	 * X-Forwarded-For, but only the proxy's own entries can be trusted: a client can send the header
+	 * itself, and proxies append to it. So X-Forwarded-For only counts when the request comes from a
+	 * private address (the proxy), and then its right-most public entry is the client.
+	 */
 	static String clientIp(Context ctx) {
+		String peer = clean(ctx.ip());
 		String forwarded = ctx.header("X-Forwarded-For");
-		String ip = forwarded != null && !forwarded.isBlank() ? forwarded.split(",")[0].strip() : ctx.ip();
+		if (forwarded == null || forwarded.isBlank() || !privateAddress(peer)) return peer;
+		String[] hops = forwarded.split(",");
+		String ip = peer;
+		for (int i = hops.length - 1; i >= 0; i--) {
+			ip = clean(hops[i].strip());
+			if (!privateAddress(ip)) break;
+		}
+		return ip;
+	}
+
+	private static String clean(String ip) {
 		// Jetty writes IPv6 addresses in brackets and long form.
 		ip = ip.replace("[", "").replace("]", "");
 		return ip.equals("0:0:0:0:0:0:0:1") ? "::1" : ip;
+	}
+
+	private static boolean privateAddress(String ip) {
+		// Only literal addresses; anything else (a name, garbage) counts as public and is used as it is.
+		if (!ip.matches("[0-9a-fA-F:.]+")) return false;
+		try {
+			java.net.InetAddress a = java.net.InetAddress.ofLiteral(ip);
+			return a.isLoopbackAddress() || a.isSiteLocalAddress() || a.isLinkLocalAddress()
+					|| (a instanceof java.net.Inet6Address && (a.getAddress()[0] & 0xFE) == 0xFC);
+		} catch (IllegalArgumentException e) {
+			return false;
+		}
 	}
 }

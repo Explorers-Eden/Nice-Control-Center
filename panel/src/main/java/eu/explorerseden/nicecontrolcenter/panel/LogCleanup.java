@@ -111,7 +111,9 @@ public final class LogCleanup {
 		for (Rule r : next.rules) {
 			if (r.folder == null || r.folder.isBlank()) return "Every rule needs a folder.";
 			try {
-				files.resolve(r.folder);
+				Path dir = files.resolve(r.folder);
+				if (dir.equals(files.root())) return "A rule needs a folder inside the server folder, not the server folder itself.";
+				if (inWorld(dir)) return "The world folder isn't a log folder; rules can't delete from it.";
 				FileSystems.getDefault().getPathMatcher("glob:" + r.pattern);
 			} catch (RuntimeException e) {
 				return "Rule for " + r.folder + ": " + e.getMessage();
@@ -138,7 +140,8 @@ public final class LogCleanup {
 			} catch (IOException | RuntimeException e) {
 				continue;
 			}
-			if (!Files.isDirectory(dir)) continue;
+			// Rules saved before these checks existed are skipped the same way.
+			if (!Files.isDirectory(dir) || dir.equals(files.root()) || inWorld(dir)) continue;
 			PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + rule.pattern);
 			long cutoff = now - rule.maxAgeDays * 86_400_000L;
 			try {
@@ -181,6 +184,11 @@ public final class LogCleanup {
 		}
 		lastResult = deleted.isEmpty() ? "Nothing to delete" : "Deleted " + deleted.size() + " file" + (deleted.size() == 1 ? "" : "s") + " (" + Backups.human(bytes) + ")";
 		return deleted;
+	}
+
+	private boolean inWorld(Path dir) {
+		Path world = files.root().resolve(files.worldFolder()).normalize();
+		return dir.startsWith(world) || world.startsWith(dir);
 	}
 
 	public Map<String, Object> view() {

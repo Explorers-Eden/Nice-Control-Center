@@ -39,6 +39,12 @@ public final class Supervisor {
 	private static final Pattern ANSI = Pattern.compile("\u001B\\[[0-9;?]*[ -/]*[@-~]");
 	/** Vanilla's "Done (4.321s)! For help, type "help"" marks the end of startup. */
 	private static final Pattern DONE = Pattern.compile("Done \\([0-9.,]+s\\)!");
+	/**
+	 * The stop command's own feedback, from the console ("]: System chat: Stopping the server" in 26.x,
+	 * "]: Stopping the server" before) or a player ("]: [Name: Stopping the server]"). Not "Stopping
+	 * server", which vanilla also logs after a crash.
+	 */
+	private static final Pattern STOP_COMMAND = Pattern.compile("]: (?:System chat: )?(?:\\[[^\\]:]+: )?Stopping the server]?$");
 
 	private final Path serverDir;
 	private final Supplier<PanelSettings> settings;
@@ -329,6 +335,14 @@ public final class Supervisor {
 						if (process == p && state == State.STARTING) {
 							state = State.RUNNING;
 							runningSince = System.currentTimeMillis();
+						}
+					}
+				} else if (STOP_COMMAND.matcher(line).find()) {
+					// Someone typed stop in the console or in game: a wanted stop, not a crash to restart from.
+					synchronized (this) {
+						if (process == p && !stopRequested) {
+							stopRequested = true;
+							state = State.STOPPING;
 						}
 					}
 				}

@@ -65,6 +65,7 @@ public final class Versions {
 
 	private static final Pattern LAUNCHER = Pattern.compile("fabric-server-mc\\.(.+)-loader\\.(.+)-launcher\\.(.+)\\.jar");
 	private static final String META = "https://meta.fabricmc.net/v2/versions";
+	private static final Pattern VERSION = Pattern.compile("[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}");
 	private static final String MODRINTH = "https://api.modrinth.com/v2";
 
 	private final Path serverDir;
@@ -207,7 +208,12 @@ public final class Versions {
 			if (updates.has(m.sha1)) {
 				JsonObject next = updates.getAsJsonObject(m.sha1);
 				JsonObject file = primaryFile(next);
-				boolean same = file != null && file.getAsJsonObject("hashes").get("sha1").getAsString().equalsIgnoreCase(m.sha1);
+				if (file == null) {
+					m.status = "unknown";
+					m.action = "keep";
+					continue;
+				}
+				boolean same = file.getAsJsonObject("hashes").get("sha1").getAsString().equalsIgnoreCase(m.sha1);
 				if (same) {
 					m.status = "ok";
 					m.action = "keep";
@@ -215,7 +221,13 @@ public final class Versions {
 					m.status = "update";
 					m.action = "update";
 					m.newVersion = next.get("version_number").getAsString();
-					m.newFile = file.get("filename").getAsString();
+					// A plain file name in mods/, whatever Modrinth sends.
+					m.newFile = Path.of(file.get("filename").getAsString().replace('\\', '/')).getFileName().toString();
+					if (!m.newFile.endsWith(".jar") || m.newFile.startsWith(".")) {
+						m.status = "unknown";
+						m.action = "keep";
+						continue;
+					}
 					m.url = file.get("url").getAsString();
 					m.newSha1 = file.getAsJsonObject("hashes").get("sha1").getAsString();
 				}
@@ -304,6 +316,8 @@ public final class Versions {
 		if (running) return "An update is already running.";
 		if (backups.busy()) return "A backup is running; try again in a moment.";
 		if (targetMc == null || loader == null || targetMc.isBlank() || loader.isBlank()) return "Choose a Minecraft and a Fabric Loader version.";
+		// Both end up in a download URL and in the launcher's file name.
+		if (!VERSION.matcher(targetMc).matches() || !VERSION.matcher(loader).matches()) return "That doesn't look like a version number.";
 		running = true;
 		log.clear();
 		result = null;

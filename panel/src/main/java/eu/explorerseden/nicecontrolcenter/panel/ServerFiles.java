@@ -229,16 +229,24 @@ public final class ServerFiles {
 		return target;
 	}
 
-	/** Extracts a zip next to it; entries that would leave the folder are skipped. */
+	/**
+	 * Extracts a zip next to it (also in the server folder itself). Each entry is checked like any other
+	 * change: entries that would leave the folder or go into the running world are skipped.
+	 */
 	public int unzip(Path zipFile, Path into) throws IOException {
-		checkWritable(into);
 		int count = 0;
 		try (ZipFile zip = new ZipFile(zipFile.toFile())) {
 			var entries = zip.entries();
 			while (entries.hasMoreElements()) {
 				ZipEntry e = entries.nextElement();
-				Path target = into.resolve(e.getName()).normalize();
-				if (!target.startsWith(into) || !target.startsWith(root)) continue;
+				Path target;
+				try {
+					target = resolve(rel(into) + "/" + e.getName());
+					if (!target.startsWith(into) || target.equals(root)) continue;
+					checkWritable(target);
+				} catch (SecurityException skipped) {
+					continue;
+				}
 				if (e.isDirectory()) {
 					Files.createDirectories(target);
 					continue;
@@ -256,13 +264,18 @@ public final class ServerFiles {
 
 	/** Writes the files/folders as one zip, paths relative to base. */
 	public void zip(List<Path> paths, Path base, OutputStream out) throws IOException {
+		zip(paths, base, out, null);
+	}
+
+	/** skip: the zip being written, when it lies inside one of the folders. */
+	public void zip(List<Path> paths, Path base, OutputStream out, Path skip) throws IOException {
 		try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(out, 1 << 16))) {
 			zip.setLevel(java.util.zip.Deflater.BEST_SPEED);
 			for (Path p : paths) {
 				Files.walkFileTree(p, new SimpleFileVisitor<>() {
 					@Override
 					public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-						if (!attrs.isRegularFile()) return FileVisitResult.CONTINUE;
+						if (!attrs.isRegularFile() || file.equals(skip)) return FileVisitResult.CONTINUE;
 						ZipEntry entry = new ZipEntry(base.relativize(file).toString().replace('\\', '/'));
 						entry.setTime(attrs.lastModifiedTime().toMillis());
 						zip.putNextEntry(entry);

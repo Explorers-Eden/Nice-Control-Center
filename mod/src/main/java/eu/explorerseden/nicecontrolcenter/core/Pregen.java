@@ -5,23 +5,34 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Generates every chunk inside a square or circle ahead of time, Chunky-style: in a spiral from the
- * center, a few at a time on Minecraft's own world-generation threads, and only as fast as the server
- * has room for (it backs off when a tick takes more than ~40 ms). The empty-server pause is switched
- * off while it runs, so it keeps going without players.
+ * center, a few at a time on Minecraft's own world-generation threads without waiting on the tick, and only as fast as the server
+ * has room for (it backs off when a tick takes more than ~40 ms). The empty-server pause is held off
+ * while it runs (DedicatedServerPauseMixin), so it keeps going without players.
  */
 public final class Pregen {
 	private static final int MAX_IN_FLIGHT = 24;
+	/**
+	 * Chunk requests are made from here, not from the server thread: on the server thread getChunkFuture
+	 * waits until the chunk is generated (and stalls the tick), from any other thread it only queues the
+	 * work and returns a future.
+	 */
+	private static final ExecutorService REQUESTS = Executors.newSingleThreadExecutor(r -> {
+		Thread t = new Thread(r, "Nice Control Center pregen");
+		t.setDaemon(true);
+		return t;
+	});
 	private static volatile Job job;
 	private static volatile Map<String, Object> last;
 
@@ -37,7 +48,6 @@ public final class Pregen {
 		final boolean circle;
 		final long total;
 		final long started = System.currentTimeMillis();
-		final int previousPause;
 		// Square spiral over chunk coordinates around the center chunk.
 		int ring;
 		int step;
@@ -48,14 +58,13 @@ public final class Pregen {
 		boolean finishedQueue;
 		String stopReason;
 
-		Job(ServerLevel level, String dimension, int centerX, int centerZ, int radius, boolean circle, int previousPause) {
+		Job(ServerLevel level, String dimension, int centerX, int centerZ, int radius, boolean circle) {
 			this.level = level;
 			this.dimension = dimension;
 			this.centerX = centerX;
 			this.centerZ = centerZ;
 			this.radius = radius;
 			this.circle = circle;
-			this.previousPause = previousPause;
 			long count = 0;
 			int rc = radius / 16 + 1;
 			for (int dz = -rc; dz <= rc; dz++) for (int dx = -rc; dx <= rc; dx++) if (inside((centerX >> 4) + dx, (centerZ >> 4) + dz)) count++;
@@ -113,12 +122,7 @@ public final class Pregen {
 		Identifier id = Identifier.tryParse(dimension == null ? "" : dimension);
 		ServerLevel level = id == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
 		if (level == null) return "Unknown dimension " + dimension + ".";
-		int previousPause = 0;
-		if (server instanceof DedicatedServer dedicated) {
-			previousPause = dedicated.pauseWhenEmptySeconds();
-			dedicated.setPauseWhenEmptySeconds(0);
-		}
-		job = new Job(level, id.toString(), x, z, radius, circle, previousPause);
+		job = new Job(level, id.toString(), x, z, radius, circle);
 		NiceControlCenter.LOGGER.info("Pregenerating {} chunks in {} around {}, {} (radius {}, {})", job.total, id, x, z, radius, circle ? "circle" : "square");
 		return null;
 	}
@@ -131,7 +135,6 @@ public final class Pregen {
 
 	private static void finish(MinecraftServer server, Job j, String reason) {
 		j.stopReason = reason;
-		if (server instanceof DedicatedServer dedicated) dedicated.setPauseWhenEmptySeconds(j.previousPause);
 		last = status(j);
 		job = null;
 		NiceControlCenter.LOGGER.info("Pregeneration {}: {} of {} chunks", reason, j.done.get(), j.total);
@@ -155,12 +158,24 @@ public final class Pregen {
 				break;
 			}
 			j.inFlight.incrementAndGet();
-			j.level.getChunkSource().getChunkFuture(c[0], c[1], ChunkStatus.FULL, true).whenComplete((result, error) -> {
-				j.inFlight.decrementAndGet();
-				if (error == null && result != null && result.isSuccess()) j.done.incrementAndGet();
-				else j.skipped.incrementAndGet();
+			REQUESTS.execute(() -> {
+				try {
+					j.level.getChunkSource().getChunkFuture(c[0], c[1], ChunkStatus.FULL, true).whenComplete((result, error) -> {
+						j.inFlight.decrementAndGet();
+						if (error == null && result != null && result.isSuccess()) j.done.incrementAndGet();
+						else j.skipped.incrementAndGet();
+					});
+				} catch (RuntimeException e) {
+					j.inFlight.decrementAndGet();
+					j.skipped.incrementAndGet();
+				}
 			});
 		}
+	}
+
+	/** Read by DedicatedServerPauseMixin on every tick. */
+	public static boolean active() {
+		return job != null;
 	}
 
 	public static Map<String, Object> status() {
