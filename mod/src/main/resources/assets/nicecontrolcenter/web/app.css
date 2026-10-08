@@ -157,6 +157,8 @@ button { font: inherit; }
   font-weight: 800;
   color: var(--muted);
   white-space: nowrap;
+  /* Equal-width digits, so "20.0 TPS" → "19.9 TPS" doesn't change the pill's width. */
+  font-variant-numeric: tabular-nums;
 }
 .np-live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .np-live.on .np-live-dot { background: var(--good); }

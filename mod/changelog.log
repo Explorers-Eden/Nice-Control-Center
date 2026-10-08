@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.3
+## 1.0.6
+- The live TPS badge in the header keeps its width when the value changes (e.g. 20.0 → 19.9)
+
 ## 1.0.5
 - The TPS, MSPT, CPU, Memory, entity, chunk and player tiles show the current second (updated every second) instead of the chosen time window; the window's average is the small line underneath. GC stays a window value
 - Charts scroll smoothly out at the left edge instead of the oldest part being cut off
