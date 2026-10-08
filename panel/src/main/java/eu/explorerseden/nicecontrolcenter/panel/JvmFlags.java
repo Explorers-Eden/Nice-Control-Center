@@ -22,6 +22,11 @@ public final class JvmFlags {
 	}
 
 	public static List<String> command(PanelSettings s) {
+		return command(s, List.of());
+	}
+
+	/** extra: flags the panel adds itself (the dashboard link to the mod), right before -jar. */
+	public static List<String> command(PanelSettings s, List<String> extra) {
 		List<String> cmd = new ArrayList<>();
 		cmd.add(s.javaPath);
 		cmd.add("-Xms" + s.memoryMinMb + "M");
@@ -32,6 +37,7 @@ public final class JvmFlags {
 			default -> List.of();
 		});
 		cmd.addAll(split(s.customArgs));
+		cmd.addAll(extra);
 		cmd.add("-jar");
 		cmd.add(s.serverJar);
 		cmd.add("nogui");

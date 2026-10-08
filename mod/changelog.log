@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.3
+## 1.1.0
+- Works with the Nice Control Center Panel (Docker): when the panel runs the server, the dashboard listens only inside the container, the panel shows it in its Dashboard tab with its own accounts and permissions, and /ncc web links open the panel
+- The dashboard follows the panel's light/dark switch and drops its own header when shown inside the panel
+
 ## 1.0.6
 - The live TPS badge in the header keeps its width when the value changes (e.g. 20.0 → 19.9)
 

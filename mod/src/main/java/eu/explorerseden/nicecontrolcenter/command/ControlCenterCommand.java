@@ -375,7 +375,9 @@ public final class ControlCenterCommand {
 		}
 		MutableComponent message = header("Dashboard");
 		message.append("\n").append(dashboardButton(ctx.getSource()));
-		message.append("\n").append(muted("This link contains a private key; don't share it. Use /ncc web regen to make a new one."));
+		message.append("\n").append(muted(eu.explorerseden.nicecontrolcenter.web.PanelMode.active()
+				? "Opens the panel; log in with your panel account."
+				: "This link contains a private key; don't share it. Use /ncc web regen to make a new one."));
 		if (ctx.getSource().getPlayer() == null) {
 			message.append("\n").append(Component.literal(dashboard.link()));
 		}

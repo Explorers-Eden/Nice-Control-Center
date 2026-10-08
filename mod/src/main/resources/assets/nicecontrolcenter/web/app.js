@@ -2720,6 +2720,14 @@
       readColors();
       drawCharts();
     });
+    // Inside the panel: follow the panel's light/dark switch (same origin, same stored choice).
+    window.addEventListener('storage', (e) => {
+      if (e.key !== 'np-theme') return;
+      document.documentElement.dataset.theme = e.newValue === 'light' ? 'light' : 'dark';
+      renderThemeButton();
+      readColors();
+      drawCharts();
+    });
   }
 
   // ── Collapsible sections ───────────────────────────────────────────────
@@ -2848,6 +2856,8 @@
   }
 
   setupEvents();
+  // Shown inside the panel (an iframe): the panel has the header and footer already.
+  try { if (window.top !== window.self) document.body.classList.add('embedded'); } catch (e) { document.body.classList.add('embedded'); }
   setupTheme();
   setupPackSettings();
   setupErrors();

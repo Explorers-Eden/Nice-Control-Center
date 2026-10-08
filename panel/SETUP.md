@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings) and has user accounts with roles and an audit log. Backups, schedules, files, updates, Discord and the map follow step by step.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, and has user accounts with roles and an audit log. Backups, schedules, files, updates, Discord and the map follow step by step.
 
 ## Deploy with Portainer
 
@@ -27,6 +27,15 @@ Until the version manager arrives, the panel runs whatever Fabric server is in t
 3. In the panel under **Startup & Java**, set **Server jar** to that file name. The panel also tells you when it finds a different `fabric-server…jar`.
 4. Accept the EULA when the panel asks, then press **Start**.
 
+## Dashboard
+
+The **Dashboard** tab shows the Nice Control Center mod's full dashboard: performance, world, players, server settings, data packs, updates, scheduled commands and reports. It only works while the server runs.
+
+- The panel installs the mod for your server's Minecraft version and updates it before each start. Switch this off under **Startup & Java** if you'd rather manage it yourself; you need mod version 1.1.0 or newer.
+- The mod only answers the panel: it listens inside the container and doesn't need its own port or login link.
+- Everything in the dashboard is covered by the panel's permissions (see [Accounts](#accounts)), and every change goes to the audit log.
+- Set `PANEL_PUBLIC_URL` (e.g. `https://panel.example.com`) so that `/ncc web` in the game links straight to the Dashboard tab.
+
 ## Accounts
 
 The **container admin** (`PANEL_ADMIN_USER` / `PANEL_ADMIN_PASSWORD`) can always log in and do everything, even while the database is down. Use it to set things up and as a spare key.
@@ -43,7 +52,7 @@ Create an empty database and a user that owns it. The panel creates and updates 
 
 Then, under **Users**:
 - **Users** get one or more roles. Disabling, deleting or changing a user's password logs them out everywhere at once.
-- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, change Java settings, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
+- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, see the dashboard, manage players, change server or Java settings, manage updates and scheduled commands, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
 - The **Audit log** records every login (failed ones too), server action, console command, settings change and account change, with who, when and from which IP.
 
 ## Startup & Java
@@ -76,6 +85,8 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `PANEL_ADMIN_USER` | `admin` | login name |
 | `PANEL_ADMIN_PASSWORD` | generated | login password |
 | `DB_URL` / `DB_USER` / `DB_PASS` | – | Postgres for user accounts and the audit log |
+| `PANEL_PUBLIC_URL` | – | the panel's address, for `/ncc web` links in the game |
+| `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
 
 ## Reverse proxy

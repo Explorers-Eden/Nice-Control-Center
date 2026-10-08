@@ -90,6 +90,7 @@ The mod serves the dashboard itself; nothing is uploaded anywhere. Open it with 
 - **Dedicated server:** listens on `0.0.0.0`. Make sure the port is open; on panel hosts, set `port` to one of your allocated ports. Set `public_url` so the printed link uses your server's address.
 - Sections can be folded by clicking their title, and there is a light/dark switch. Both are remembered per browser.
 - Useful link parameters: `?window=5` (1, 5, 15 or 60 minutes) and `?theme=light`.
+- **With the Nice Control Center Panel** (Docker, see [panel/SETUP.md](../panel/SETUP.md)): the panel installs the mod, the dashboard listens only inside the container, and the panel shows it in its Dashboard tab with its own accounts and permissions. `port`, `bind`, `public_url` and the token don't matter there.
 
 ## Config
 

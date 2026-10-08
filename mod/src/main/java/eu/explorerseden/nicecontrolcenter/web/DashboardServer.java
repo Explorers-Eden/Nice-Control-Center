@@ -74,8 +74,14 @@ public final class DashboardServer {
 		host = config.bind == null || config.bind.isBlank() || config.bind.equals("auto")
 				? (minecraft.isDedicatedServer() ? "0.0.0.0" : "127.0.0.1")
 				: config.bind;
-		for (int attempt = 0; attempt < PORT_ATTEMPTS; attempt++) {
-			int candidate = config.port + attempt;
+		// Under the panel only the panel talks to the dashboard, on the port it chose.
+		boolean panel = PanelMode.active();
+		if (panel) {
+			host = "127.0.0.1";
+		}
+		int firstPort = panel ? PanelMode.port() : config.port;
+		for (int attempt = 0; attempt < (panel ? 1 : PORT_ATTEMPTS); attempt++) {
+			int candidate = firstPort + attempt;
 			try {
 				http = HttpServer.create(new InetSocketAddress(host, candidate), 0);
 				port = candidate;
@@ -100,7 +106,11 @@ public final class DashboardServer {
 		http.setExecutor(executor);
 		http.createContext("/", this::handle);
 		http.start();
-		NiceControlCenter.LOGGER.info("Nice Control Center dashboard listening on {}:{}. Run /ncc web for the link.", host, port);
+		if (panel) {
+			NiceControlCenter.LOGGER.info("Nice Control Center dashboard running for the panel on {}:{}", host, port);
+		} else {
+			NiceControlCenter.LOGGER.info("Nice Control Center dashboard listening on {}:{}. Run /ncc web for the link.", host, port);
+		}
 	}
 
 	public void stop() {
@@ -124,6 +134,11 @@ public final class DashboardServer {
 
 	/** Link with the token, for chat and console. */
 	public String link() {
+		if (PanelMode.active()) {
+			// The panel has its own logins; the link opens its dashboard tab (links may add #tab).
+			String panel = PanelMode.url();
+			return (panel.isEmpty() ? "http://" + configuredAddress() + ":8080" : panel) + "/?tab=dashboard";
+		}
 		String base = config.public_url == null ? "" : config.public_url.trim();
 		if (base.isEmpty()) {
 			String address = host.equals("0.0.0.0") || host.equals("::") ? configuredAddress() : host;
@@ -561,6 +576,10 @@ public final class DashboardServer {
 	// ── Helpers ─────────────────────────────────────────────────────────────
 
 	private boolean authorized(HttpExchange exchange) {
+		if (PanelMode.active()) {
+			// Only the panel, which checks its own users' permissions first.
+			return PanelMode.secretMatches(exchange.getRequestHeaders().getFirst("X-NCC-Secret"));
+		}
 		String header = exchange.getRequestHeaders().getFirst("X-NP-Token");
 		if (header != null && tokenMatches(header)) {
 			return true;

@@ -49,6 +49,14 @@ public final class Panel {
 		Auth auth = new Auth(dataDir, accounts);
 		Audit audit = new Audit(accounts);
 		Supervisor server = new Supervisor(serverDir, () -> settings);
+		// The mod's dashboard: the mod listens inside the container on this port, only for the panel.
+		DashboardProxy dashboard = new DashboardProxy(Integer.parseInt(env("DASHBOARD_PORT", "8765")), server, audit);
+		String publicUrl = env("PANEL_PUBLIC_URL", "");
+		server.panelFlags(() -> dashboard.flags(publicUrl), dashboard.secret());
+		Companion companion = new Companion();
+		server.beforeStart(log -> {
+			if (settings.companionMod) companion.ensure(serverDir, settings.serverJar, log);
+		});
 		if (db == null) System.out.println("No DB_URL set: only " + auth.envUser() + " can log in. Set DB_URL, DB_USER and DB_PASS for user accounts.");
 		if (accounts != null) {
 			Executors.newSingleThreadScheduledExecutor(r -> {
@@ -91,6 +99,12 @@ public final class Panel {
 					return;
 				}
 				ctx.attribute(SESSION, session);
+			});
+
+			// The dashboard pages and their API calls use the same session; the routes check permissions.
+			routes.before("/dashboard*", ctx -> {
+				Auth.Session session = auth.session(ctx.cookie(Auth.COOKIE));
+				if (session != null) ctx.attribute(SESSION, session);
 			});
 
 			routes.get("/api/health", ctx -> json(ctx, Map.of("ok", true, "version", VERSION)));
@@ -179,6 +193,7 @@ public final class Panel {
 			}));
 
 			new AccountRoutes(db, accounts, auth, audit).register(routes);
+			dashboard.register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {

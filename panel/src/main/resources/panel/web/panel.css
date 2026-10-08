@@ -43,4 +43,5 @@
 .pn-users .disabled td.name { text-decoration: line-through; color: var(--faint); }
 .pn-audit td:nth-child(4) { color: var(--text); word-break: break-word; }
 .pn-audit td:first-child, .pn-audit td:last-child { white-space: nowrap; }
+.pn-dashboard iframe { display: block; width: 100%; height: calc(100vh - 120px); min-height: 600px; border: 0; background: transparent; }
 .np-btn.small { padding: 4px 9px; font-size: 12px; }

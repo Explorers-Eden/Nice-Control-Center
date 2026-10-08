@@ -29,6 +29,9 @@
     $('pn-login').hidden = false;
     $('pn-user').focus();
     closeConsole();
+    const frame = $('pn-dashboard-frame');
+    frame.src = 'about:blank';
+    delete frame.dataset.loaded;
   }
 
   async function showApp() {
@@ -63,9 +66,27 @@
     $('pn-command-form').hidden = !can('console.write');
     const editable = can('settings.java');
     $('pn-settings').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !editable; });
-    let tab = 'server';
-    try { tab = localStorage.getItem(TAB_KEY) || tab; } catch (e) { /* default */ }
+    // Links from the game (/ncc web) open ?tab=dashboard, optionally with #<dashboard tab>.
+    const params = new URLSearchParams(location.search);
+    let tab = params.get('tab');
+    if (tab === 'dashboard' && location.hash) dashboardHash = location.hash;
+    if (tab) history.replaceState(null, '', location.pathname);
+    if (!tab) {
+      tab = 'dashboard';
+      try { tab = localStorage.getItem(TAB_KEY) || tab; } catch (e) { /* default */ }
+    }
     selectTab(tab);
+  }
+
+  let dashboardHash = '';
+
+  /** The dashboard loads once and keeps running in the background while other tabs are open. */
+  function showDashboard() {
+    const frame = $('pn-dashboard-frame');
+    if (frame.dataset.loaded && !dashboardHash) return;
+    frame.dataset.loaded = '1';
+    frame.src = 'dashboard/' + dashboardHash;
+    dashboardHash = '';
   }
 
   function selectTab(tab) {
@@ -77,6 +98,7 @@
     });
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
     try { localStorage.setItem(TAB_KEY, tab); } catch (e) { /* not remembered */ }
+    if (tab === 'dashboard') showDashboard();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
     if (tab === 'account') renderAccount();
@@ -284,6 +306,7 @@
     return {
       autoStart: form.autoStart.checked,
       autoRestart: form.autoRestart.checked,
+      companionMod: form.companionMod.checked,
       memoryMinMb: Number(form.memoryMinMb.value),
       memoryMaxMb: Number(form.memoryMaxMb.value),
       preset: form.preset.value,

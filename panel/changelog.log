@@ -1,3 +1,10 @@
+## 0.4.0
+- Dashboard tab: the Nice Control Center mod's full dashboard (performance, world, players, server, data packs, updates, schedule, reports) inside the panel, with the panel's accounts
+- New permissions for it: see the dashboard, manage players, change server settings (server.properties, game rules, data pack settings), manage updates, edit scheduled commands; Moderator and Viewer get sensible defaults
+- Every change made in the dashboard goes to the audit log
+- Installs the Nice Control Center mod for the server's Minecraft version and keeps it up to date before each start (can be switched off under Startup & Java)
+- PANEL_PUBLIC_URL: /ncc web in the game links to the panel's Dashboard tab
+
 ## 0.3.0
 - User accounts in Postgres (DB_URL, DB_USER, DB_PASS); the panel creates and updates its tables itself
 - Roles with permissions: Admin (everything), Moderator and Viewer built in and adjustable, plus your own roles

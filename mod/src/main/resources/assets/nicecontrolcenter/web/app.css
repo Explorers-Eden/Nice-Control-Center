@@ -1212,3 +1212,8 @@ body.charts-more .np-chart--extra { display: block; }
 @keyframes np-toast-in { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .np-toast { animation: none; } }
 body.report .np-toasts { display: none; }
+
+/* Inside the panel: no second header or footer. */
+body.embedded > .navbar, body.embedded > .np-footer { display: none; }
+body.embedded .np-shell { width: 100%; padding: 0 0 16px; }
+body.embedded { background: transparent; }

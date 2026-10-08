@@ -16,6 +16,8 @@ import java.util.List;
 public final class PanelSettings {
 	public boolean autoStart = true;
 	public boolean autoRestart = true;
+	/** Install the Nice Control Center mod and keep it up to date; it gives the panel its dashboard. */
+	public boolean companionMod = true;
 	public int stopTimeoutSeconds = 60;
 	public String serverJar = "fabric-server-launch.jar";
 	public String javaPath = "java";

@@ -14,6 +14,11 @@ public final class Permissions {
 	public static final String CONSOLE_READ = "console.read";
 	public static final String CONSOLE_WRITE = "console.write";
 	public static final String SETTINGS_JAVA = "settings.java";
+	public static final String DASHBOARD_VIEW = "dashboard.view";
+	public static final String PLAYERS_MANAGE = "players.manage";
+	public static final String SETTINGS_SERVER = "settings.server";
+	public static final String UPDATES_MANAGE = "updates.manage";
+	public static final String SCHEDULE_MANAGE = "schedule.manage";
 	public static final String USERS_ADMIN = "users.admin";
 	public static final String AUDIT_VIEW = "audit.view";
 
@@ -22,7 +27,12 @@ public final class Permissions {
 			new Permission(SERVER_POWER, "Server", "Start, stop, restart and kill the server"),
 			new Permission(CONSOLE_READ, "Console", "Read the console"),
 			new Permission(CONSOLE_WRITE, "Console", "Run console commands"),
+			new Permission(DASHBOARD_VIEW, "Dashboard", "See the dashboard: performance, world, players, errors, reports"),
+			new Permission(PLAYERS_MANAGE, "Dashboard", "Message, kick and ban players"),
+			new Permission(SETTINGS_SERVER, "Settings", "Change server.properties, game rules and data pack settings"),
 			new Permission(SETTINGS_JAVA, "Settings", "Change startup and Java settings"),
+			new Permission(UPDATES_MANAGE, "Settings", "Install and roll back mod and data pack updates"),
+			new Permission(SCHEDULE_MANAGE, "Settings", "Edit and run scheduled commands"),
 			new Permission(USERS_ADMIN, "Accounts", "Manage users and roles"),
 			new Permission(AUDIT_VIEW, "Accounts", "Read the audit log"));
 

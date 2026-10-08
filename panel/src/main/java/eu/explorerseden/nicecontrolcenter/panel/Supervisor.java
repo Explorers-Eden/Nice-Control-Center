@@ -62,10 +62,28 @@ public final class Supervisor {
 	private String message = "";
 	private long nextRestartAt;
 	private ScheduledFuture<?> pending;
+	private Supplier<List<String>> extraFlags = List::of;
+	private String hidden;
+	private BeforeStart beforeStart = log -> { };
+
+	/** Runs right before the server starts, e.g. to install or update the companion mod. */
+	public interface BeforeStart {
+		void run(Consumer<String> log);
+	}
 
 	public Supervisor(Path serverDir, Supplier<PanelSettings> settings) {
 		this.serverDir = serverDir;
 		this.settings = settings;
+	}
+
+	/** Flags the panel adds to every start; secret is masked in the console. */
+	public void panelFlags(Supplier<List<String>> flags, String secret) {
+		this.extraFlags = flags;
+		this.hidden = secret;
+	}
+
+	public void beforeStart(BeforeStart hook) {
+		this.beforeStart = hook;
 	}
 
 	// ── Control ────────────────────────────────────────────────────────────
@@ -80,7 +98,8 @@ public final class Supervisor {
 			message = problem;
 			return problem;
 		}
-		List<String> cmd = JvmFlags.command(s);
+		beforeStart.run(this::panelLine);
+		List<String> cmd = JvmFlags.command(s, extraFlags.get());
 		try {
 			process = new ProcessBuilder(cmd).directory(serverDir.toFile()).redirectErrorStream(true).start();
 		} catch (IOException e) {
@@ -95,7 +114,8 @@ public final class Supervisor {
 		runningSince = 0;
 		lastExitCode = null;
 		message = "";
-		panelLine("Starting: " + String.join(" ", cmd));
+		String shown = String.join(" ", cmd);
+		panelLine("Starting: " + (hidden == null ? shown : shown.replace(hidden, "***")));
 		Process p = process;
 		Thread reader = new Thread(() -> pump(p), "server-output");
 		reader.setDaemon(true);
