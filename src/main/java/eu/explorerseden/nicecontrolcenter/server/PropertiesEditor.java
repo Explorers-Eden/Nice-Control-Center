@@ -78,7 +78,7 @@ public final class PropertiesEditor {
 		bool("prevent-proxy-connections", "Players & access", "Kick players whose IP differs from the one Mojang saw.");
 		number("op-permission-level", "Players & access", "Default level for new operators (1–4).", 1, 4);
 		number("function-permission-level", "Players & access", "Permission level of functions (1–4).", 1, 4);
-		text("motd", "Players & access", "Message shown in the server list.");
+		text("motd", "Players & access", "Message shown in the server list. § codes for colors, \\n for a second line.");
 		bool("hide-online-players", "Players & access", "Don't show online player names in the server list.");
 		bool("enable-code-of-conduct", "Players & access", "Show a code of conduct to players when they join.");
 		text("bug-report-link", "Players & access", "Link shown on the client's bug report screen.");
@@ -192,7 +192,20 @@ public final class PropertiesEditor {
 		return result;
 	}
 
+	/**
+	 * The MOTD's line break is a real newline, written as \n in the file. The dashboard field is one
+	 * line, so it shows and takes it as the two characters \n, like people type it into the file.
+	 */
+	private static String shown(String key, String value) {
+		return key.equals("motd") ? value.replace("\n", "\\n") : value;
+	}
+
+	private static String stored(String key, String value) {
+		return key.equals("motd") ? value.replace("\\n", "\n") : value;
+	}
+
 	private static Field field(Key key, String value) {
+		value = shown(key.key(), value);
 		boolean secret = SECRETS.contains(key.key());
 		boolean number = key.type().equals("number");
 		return new Field(key.key(), key.group(), key.type(), key.description(), number ? key.min() : null, number ? key.max() : null,
@@ -272,7 +285,8 @@ public final class PropertiesEditor {
 			settings.update(current -> {
 				Properties copy = new Properties();
 				copy.putAll(raw(current));
-				changes.forEach((key, value) -> copy.setProperty(key, KEYS.containsKey(key) && !KEYS.get(key).type().equals("text") ? value.trim() : value));
+				changes.forEach((key, value) -> copy.setProperty(key,
+						KEYS.containsKey(key) && !KEYS.get(key).type().equals("text") ? value.trim() : stored(key, value)));
 				return new DedicatedServerProperties(copy);
 			});
 		} catch (RuntimeException e) {
