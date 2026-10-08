@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "nicecontrolcenter",
+	"version": "${version}",
+	"name": "Nice Control Center",
+	"description": "A web control center for Fabric servers: a live monitor that shows what is costing performance and why, the server log with errors traced to data packs and mods, a console, automatic mod, data pack and resource pack updates, and editors for server.properties and data pack settings.",
+	"authors": [
+		"NiceRon"
+	],
+	"contact": {
+		"homepage": "https://explorerseden.eu"
+	},
+	"license": "GPL-3.0-only",
+	"icon": "assets/nicecontrolcenter/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"eu.explorerseden.nicecontrolcenter.NiceControlCenter"
+		],
+		"modmenu": [
+			"eu.explorerseden.nicecontrolcenter.client.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"nicecontrolcenter.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

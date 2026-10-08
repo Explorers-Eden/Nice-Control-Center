@@ -1,0 +1,49 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+	archivesName = "nice-control-center"
+}
+
+repositories {
+	// Mod Menu: optional, only for the in-game settings screen in singleplayer.
+	maven { url = "https://maven.terraformersmc.com/releases/" }
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Permission nodes for LuckPerms (or any other Fabric permissions mod).
+	// Falls back to vanilla operator levels when no permissions mod is installed.
+	implementation "me.lucko:fabric-permissions-api:${project.fabric_permissions_api_version}"
+	include "me.lucko:fabric-permissions-api:${project.fabric_permissions_api_version}"
+
+	compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	from("LICENSE") {
+		rename { "${it}_nice-control-center" }
+	}
+}

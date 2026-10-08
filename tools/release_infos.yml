@@ -1,0 +1,15 @@
+Project-ID: ""
+Mod-ID: nicecontrolcenter
+Slug: nice-control-center
+Name: Nice Control Center
+
+Meta Data:
+  Versions:
+    - 26.3
+  Loaders:
+    - fabric
+
+Details:
+  Version type: Release
+  Version number: 1.0.0
+  Version subtitle: "Release v1.0.0"

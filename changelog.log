@@ -1,0 +1,25 @@
+# Minecraft Version(s): 26.3
+## First release
+- Live monitor that starts with the server: TPS, MSPT (min/med/95%ile/max), CPU, memory, entities, chunks and players for the last 1, 5, 15 and 60 minutes
+- "What's costing performance": plain-language findings with the cause and a tip, all in ms per tick
+- Data pack functions timed down to single command lines, mods found with a stack sampler, entity and block entity types, busiest chunks and lag spikes with their causes
+- World generation cost per step, structure and feature, grouped by data pack or mod
+- Player view, redstone clock finder, settings advisor and bloat check
+- Lag alerts in chat and automatic lag reports, plus manual recordings as shareable HTML reports and a before/after comparison
+- Data pack settings from in-game settings menus, editable in the dashboard (same options and limits as the menu)
+- In-game date and time in the dashboard header (Nice Actions calendar or the Minecraft day counter)
+- Web dashboard in the Explorer's Eden style with light and dark mode, /ncc commands, an in-game boss bar and LuckPerms permission nodes
+- Errors & warnings from the server log, grouped and credited to data packs and mods, with a chat message after a /reload that broke something
+- Console in the dashboard: live log and a command line
+- Automatic updates for mods and data packs from Modrinth and GitHub, installed at restart, with backups and rollback (/ncc updates)
+- Dashboard split into tabs
+- Server resource pack kept up to date from a link, GitHub or Modrinth, with the SHA-1 worked out by the mod
+- server.properties editor in the dashboard
+- Live player inspector: online and offline players, inventories, homes, graves, waypoints and claims
+- Gamerule editor in the dashboard
+- Data pack settings laid out like the packs' in-game menus, with search
+- In-game settings screen through Mod Menu (singleplayer)
+- Smoother live charts and in-game clock; calmer layout with a compact header on every tab but the Overview
+- Scheduled commands: once, daily, on weekdays or every few minutes, several commands per task
+- Private messages with players (they answer with /nccreply), ban and unban in the player inspector
+- Scheduled tasks can be chained (run after another task, with a delay), and commands can be spaced out with wait lines or a pause

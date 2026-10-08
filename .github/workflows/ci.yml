@@ -1,0 +1,112 @@
+# Builds Nice Control Center on every push and pull request.
+#
+#   build     build the jar and keep it as a workflow artifact
+#   release   on main: publish it as a GitHub release (newest per Minecraft version)
+#
+# Version, Minecraft version and release title come from tools/release_infos.yml; the release notes
+# are changelog.log. Pushing to main without raising the version refreshes that version's release.
+# Running it by hand (Actions → Nice Control Center → Run workflow) on main builds and releases.
+name: Nice Control Center
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build the jar
+    runs-on: ubuntu-24.04
+    outputs:
+      tag_name: ${{ steps.meta.outputs.tag_name }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Make sure the Gradle wrapper is genuine
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Python 3.12 for the release scripts
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Read version and Minecraft version from tools/release_infos.yml
+        id: meta
+        run: |
+          pip install pyyaml
+          python tools/scripts/read-release-metadata.py
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "microsoft"
+
+      - name: Set up Gradle with caching
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build the mod jar (version ${{ steps.meta.outputs.version_number }})
+        run: ./gradlew build -Pversion=${{ steps.meta.outputs.version_number }}
+
+      - name: Upload the jar as a workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nice-control-center
+          path: build/libs/
+
+  release:
+    name: Publish the GitHub release
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    # Never publish two releases at the same time.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - name: Check out the repository (release scripts and changelog)
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 for the release scripts
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Read version, tag and release name from tools/release_infos.yml
+        id: meta
+        run: |
+          pip install pyyaml
+          python tools/scripts/read-release-metadata.py
+
+      - name: Download the jar built by the previous job
+        uses: actions/download-artifact@v7
+        with:
+          name: nice-control-center
+          path: build/libs/
+
+      - name: Create or update release ${{ steps.meta.outputs.tag_name }} with changelog.log as notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.sha }}
+          TAG_NAME: ${{ steps.meta.outputs.tag_name }}
+          RELEASE_NAME: ${{ steps.meta.outputs.release_name }}
+          CHANGELOG_PATH: ${{ steps.meta.outputs.changelog_path }}
+          JAR_NAME: ${{ steps.meta.outputs.jar_name }}
+          BUILT_JAR: ${{ steps.meta.outputs.built_jar }}
+          IS_PRERELEASE: ${{ steps.meta.outputs.is_prerelease }}
+        run: bash tools/scripts/create-or-update-github-release.sh
+
+      - name: Delete older releases for Minecraft ${{ steps.meta.outputs.mc_version }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.meta.outputs.tag_name }}
+          MC_VERSION: ${{ steps.meta.outputs.mc_version }}
+        run: bash tools/scripts/delete-older-releases.sh

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="referrer" content="no-referrer">
+	<title>Nice Control Center</title>
+	<script>
+		// Dark by default; remembers the viewer's choice. Runs before styles load so there's no flash.
+		try {
+			var asked = new URLSearchParams(location.search).get('theme');
+			document.documentElement.dataset.theme = (asked || localStorage.getItem('np-theme')) === 'light' ? 'light' : 'dark';
+		}
+		catch (e) { document.documentElement.dataset.theme = 'dark'; }
+	</script>
+	<link rel="icon" href="img/favicon.ico">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+	<link rel="stylesheet" href="app.css">
+</head>
+<body>
+	<header class="navbar">
+		<div class="navbar-inner">
+			<h1 class="np-brand">
+				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-speedometer2"></i></span>
+				<span class="np-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
+			</h1>
+			<div class="np-nav-right">
+				<span class="np-clock" id="np-clock" hidden></span>
+				<span class="np-live" id="np-live" title="Live data"><span class="np-live-dot"></span><span id="np-live-text">Connecting…</span></span>
+				<button type="button" class="np-btn np-theme-btn" id="np-theme-toggle"></button>
+				<button type="button" class="np-btn np-monitor-btn" id="np-monitor-toggle" hidden><i class="bi bi-pause-fill"></i><span>Pause</span></button>
+			</div>
+		</div>
+	</header>
+
+	<main class="np-shell">
+		<section class="np-banner" id="np-banner">
+			<div class="np-banner-main">
+				<span class="np-status-dot info" id="np-status-dot"></span>
+				<div>
+					<h2 class="np-banner-title" id="np-health-title">Waiting for data…</h2>
+					<p class="np-banner-headline" id="np-health-headline"></p>
+					<p class="np-banner-summary" id="np-health-summary"></p>
+				</div>
+			</div>
+			<div class="np-banner-side">
+				<div class="np-window" id="np-window" role="tablist" aria-label="Time window">
+					<button type="button" data-window="1" class="active" role="tab">1 min</button>
+					<button type="button" data-window="5" role="tab">5 min</button>
+					<button type="button" data-window="15" role="tab">15 min</button>
+					<button type="button" data-window="60" role="tab">60 min</button>
+				</div>
+				<div class="np-banner-meta" id="np-meta"></div>
+			</div>
+		</section>
+
+		<div class="np-notice" id="np-notice" hidden>
+			<i class="bi bi-pause-circle"></i>
+			<span><b>Monitoring is off.</b> Nothing is being measured, so there is no overhead. You're seeing the last measurements.</span>
+			<button type="button" class="np-btn primary" data-monitor="1"><i class="bi bi-play-fill"></i> Turn on</button>
+		</div>
+
+		<section class="np-stats-row" id="np-stats"></section>
+
+		<nav class="np-tabs" id="np-tabs" role="tablist" aria-label="Sections">
+			<button type="button" role="tab" class="np-tab" data-tab="overview" id="tabbtn-overview" aria-controls="tab-overview"><i class="bi bi-speedometer"></i><span>Overview</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="performance" id="tabbtn-performance" aria-controls="tab-performance"><i class="bi bi-stopwatch"></i><span>Performance</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="world" id="tabbtn-world" aria-controls="tab-world"><i class="bi bi-globe-americas"></i><span>World</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="players" id="tabbtn-players" aria-controls="tab-players"><i class="bi bi-people"></i><span>Players</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="server" id="tabbtn-server" aria-controls="tab-server"><i class="bi bi-hdd-stack"></i><span>Server</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="packs" id="tabbtn-packs" aria-controls="tab-packs"><i class="bi bi-toggles"></i><span>Data packs</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="updates" id="tabbtn-updates" aria-controls="tab-updates"><i class="bi bi-cloud-arrow-down"></i><span>Updates</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="console" id="tabbtn-console" aria-controls="tab-console"><i class="bi bi-terminal"></i><span>Console</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="schedule" id="tabbtn-schedule" aria-controls="tab-schedule"><i class="bi bi-calendar-check"></i><span>Schedule</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="reports" id="tabbtn-reports" aria-controls="tab-reports"><i class="bi bi-record-circle"></i><span>Reports</span><span class="np-tab-badge" hidden></span></button>
+		</nav>
+
+		<section class="np-tab-panel" id="tab-overview" data-tab="overview" role="tabpanel" hidden>
+			<section class="np-card" data-open>
+				<h3 class="np-card-title"><i class="bi bi-activity"></i> Over time</h3>
+				<div class="np-charts" id="np-charts">
+					<figure class="np-chart np-chart--wide"><figcaption>MSPT <span class="np-chart-legend"><span class="dot dot-good"></span>OK <span class="dot dot-warn"></span>Busy <span class="dot dot-poor"></span>Lagging <span class="np-legend-line"></span>Budget</span></figcaption><div class="np-chart-wrap"><canvas data-chart="mspt"></canvas><div class="np-tooltip"></div></div></figure>
+					<figure class="np-chart"><figcaption>TPS <span class="np-chart-legend"><span class="np-legend-line"></span>Target</span></figcaption><div class="np-chart-wrap"><canvas data-chart="tps"></canvas><div class="np-tooltip"></div></div></figure>
+					<figure class="np-chart"><figcaption>CPU <span class="np-chart-legend"><span class="dot dot-accent"></span>Server <span class="dot dot-muted"></span>Whole machine</span></figcaption><div class="np-chart-wrap"><canvas data-chart="cpu"></canvas><div class="np-tooltip"></div></div></figure>
+					<figure class="np-chart"><figcaption>Memory <span class="np-chart-legend"><span class="dot dot-warn"></span>After GC <span class="dot dot-muted"></span>Incl. garbage <span class="np-legend-line"></span>Limit</span></figcaption><div class="np-chart-wrap"><canvas data-chart="memory"></canvas><div class="np-tooltip"></div></div></figure>
+					<figure class="np-chart np-chart--extra"><figcaption>Entities</figcaption><div class="np-chart-wrap"><canvas data-chart="entities"></canvas><div class="np-tooltip"></div></div></figure>
+					<figure class="np-chart np-chart--extra"><figcaption>Loaded chunks</figcaption><div class="np-chart-wrap"><canvas data-chart="chunks"></canvas><div class="np-tooltip"></div></div></figure>
+					<figure class="np-chart np-chart--extra"><figcaption>Players</figcaption><div class="np-chart-wrap"><canvas data-chart="players"></canvas><div class="np-tooltip"></div></div></figure>
+					<button type="button" class="np-more np-charts-more" id="np-charts-more">More charts: entities, chunks, players</button>
+				</div>
+			</section>
+			<section class="np-card" data-open id="np-findings-card">
+				<h3 class="np-card-title"><i class="bi bi-search-heart"></i> What's costing performance</h3>
+				<p class="np-card-intro">Everything is measured in milliseconds per tick. A tick has a budget of <span id="np-budget">50</span> ms; when the total goes over it, the server lags.</p>
+				<div class="np-findings" id="np-findings"></div>
+				<button type="button" class="np-notes-link" id="np-notes-link" hidden></button>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-performance" data-tab="performance" role="tabpanel" hidden>
+			<p class="np-tab-intro">What the server spends each tick on, from the overall split down to single data pack lines, mods and mob types.</p>
+			<section class="np-card" data-open>
+				<h3 class="np-card-title"><i class="bi bi-pie-chart"></i> Where the tick goes</h3>
+				<div class="np-breakdown-list" id="np-phases"></div>
+			</section>
+			<div class="np-columns">
+				<div class="np-column">
+					<section class="np-card">
+						<h3 class="np-card-title"><i class="bi bi-box-seam"></i> Data packs &amp; functions</h3>
+						<p class="np-card-intro">Open a data pack to see its functions, and a function to see which command lines cost the most.</p>
+						<div class="np-breakdown-list" id="np-packs"></div>
+					</section>
+					<section class="np-card">
+						<h3 class="np-card-title"><i class="bi bi-bug"></i> Entities</h3>
+						<div class="np-table-wrap"><table class="np-table" id="np-entities"></table></div>
+					</section>
+				</div>
+				<div class="np-column">
+					<section class="np-card">
+						<h3 class="np-card-title"><i class="bi bi-puzzle"></i> Mods</h3>
+						<p class="np-card-intro" id="np-mods-intro">Sampled from the server thread: "own code" is the mod itself running, "vanilla code it called" is game code the mod asked for.</p>
+						<div class="np-breakdown-list" id="np-mods"></div>
+					</section>
+					<section class="np-card">
+						<h3 class="np-card-title"><i class="bi bi-boxes"></i> Block entities</h3>
+						<div class="np-table-wrap"><table class="np-table" id="np-block-entities"></table></div>
+					</section>
+				</div>
+			</div>
+			<section class="np-card">
+				<h3 class="np-card-title"><i class="bi bi-lightning"></i> Lag spikes</h3>
+				<div id="np-spikes"></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-world" data-tab="world" role="tabpanel" hidden>
+			<p class="np-tab-intro">Where things happen: new terrain, crowded chunks, busy redstone and what is loaded around players.</p>
+			<section class="np-card" id="np-worldgen-card">
+				<h3 class="np-card-title"><i class="bi bi-globe2"></i> World generation</h3>
+				<p class="np-card-intro">New chunks are generated on worker threads. That doesn't slow the tick, but players wait for terrain to appear. Times are per new chunk.</p>
+				<div id="np-worldgen"></div>
+			</section>
+			<div class="np-columns">
+				<div class="np-column">
+					<section class="np-card">
+						<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Busiest chunks</h3>
+						<div class="np-table-wrap"><table class="np-table" id="np-hotspots"></table></div>
+					</section>
+				</div>
+				<div class="np-column">
+					<section class="np-card">
+						<h3 class="np-card-title"><i class="bi bi-lightning-charge"></i> Redstone &amp; block updates</h3>
+						<p class="np-card-intro">Places with the most scheduled block ticks and block events: redstone clocks, piston machines, flowing liquids.</p>
+						<div class="np-table-wrap"><table class="np-table" id="np-block-updates"></table></div>
+					</section>
+				</div>
+			</div>
+			<section class="np-card">
+				<h3 class="np-card-title"><i class="bi bi-people"></i> Players</h3>
+				<p class="np-card-intro">What's loaded around each player, and how much new terrain is generated near them.</p>
+				<div class="np-table-wrap"><table class="np-table" id="np-players"></table></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-players" data-tab="players" role="tabpanel" hidden>
+			<section class="np-card" id="np-inspector-card">
+				<h3 class="np-card-title"><i class="bi bi-people"></i> Player inspector</h3>
+				<p class="np-card-intro">Everyone who has played here. Online players are live; offline players show what was saved when they left. Homes, graves and waypoints come from the Explorer's Eden player database when it's there.</p>
+				<div class="np-inspector">
+					<div class="np-inspector-list">
+						<label class="np-inspector-search"><i class="bi bi-search"></i><input type="search" id="np-player-search" placeholder="Search players" autocomplete="off"></label>
+						<div id="np-player-list"></div>
+					</div>
+					<div class="np-inspector-detail" id="np-player-detail"><div class="np-empty">Pick a player.</div></div>
+				</div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-server" data-tab="server" role="tabpanel" hidden>
+			<div class="np-subtabs" id="np-server-sub" role="tablist" aria-label="Server sections">
+				<button type="button" class="np-filter active" data-sub="health"><i class="bi bi-heart-pulse"></i> Health</button>
+				<button type="button" class="np-filter" data-sub="properties"><i class="bi bi-file-earmark-text"></i> server.properties</button>
+				<button type="button" class="np-filter" data-sub="gamerules"><i class="bi bi-dice-5"></i> Gamerules</button>
+			</div>
+			<section class="np-card" id="np-errors-card" data-sub="health">
+				<h3 class="np-card-title"><i class="bi bi-exclamation-octagon"></i> Errors &amp; warnings</h3>
+				<p class="np-card-intro">Errors and warnings from the server log, grouped and traced back to the data pack or mod they come from.</p>
+				<div id="np-errors"></div>
+			</section>
+			<div class="np-columns" data-sub="health">
+				<div class="np-column">
+					<section class="np-card" id="np-settings-card">
+						<h3 class="np-card-title"><i class="bi bi-sliders"></i> Server settings</h3>
+						<p class="np-card-intro">Settings that often affect performance, checked every minute.</p>
+						<div class="np-settings" id="np-settings"></div>
+					</section>
+				</div>
+				<div class="np-column">
+					<section class="np-card" id="np-bloat-card">
+						<h3 class="np-card-title"><i class="bi bi-archive"></i> Bloat check</h3>
+						<p class="np-card-intro">Looks for leftovers that slowly make saving and commands slower: huge scoreboards, big command storage, many entity tags and large world files. Runs on demand.</p>
+						<div class="np-bloat-actions"><button type="button" class="np-btn primary" id="np-bloat-run"><i class="bi bi-search"></i> Run check</button><span class="np-rec-text" id="np-bloat-status"></span></div>
+						<div id="np-bloat"></div>
+					</section>
+				</div>
+			</div>
+			<section class="np-card" id="np-properties-card" data-sub="properties" hidden>
+				<h3 class="np-card-title"><i class="bi bi-file-earmark-text"></i> server.properties</h3>
+				<p class="np-card-intro">Every setting from server.properties. Changes are saved right away (with a backup in nicecontrolcenter/backups/) and most take effect at the next restart.</p>
+				<div id="np-properties"></div>
+			</section>
+			<section class="np-card" id="np-gamerules-card" data-sub="gamerules" hidden>
+				<h3 class="np-card-title"><i class="bi bi-dice-5"></i> Gamerules</h3>
+				<p class="np-card-intro">All gamerules with their in-game names. Changes apply right away, the same as /gamerule.</p>
+				<div id="np-gamerules"></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-packs" data-tab="packs" role="tabpanel" hidden>
+			<section class="np-card" id="np-packsettings-card">
+				<h3 class="np-card-title"><i class="bi bi-toggles"></i> Data pack settings</h3>
+				<p class="np-card-intro">The settings of your data packs, laid out like their in-game menus. Pick a project on the left or search; saving runs the pack's own confirm command, like pressing "Confirm" in the menu.</p>
+				<div id="np-packsettings"></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-updates" data-tab="updates" role="tabpanel" hidden>
+			<section class="np-card" id="np-updates-card">
+				<h3 class="np-card-title"><i class="bi bi-cloud-arrow-down"></i> Updates</h3>
+				<p class="np-card-intro">New versions of your mods, data packs and server resource pack, installed at the next restart.</p>
+				<div id="np-updates"></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-console" data-tab="console" role="tabpanel" hidden>
+			<section class="np-card" id="np-console-card">
+				<h3 class="np-card-title"><i class="bi bi-terminal"></i> Console</h3>
+				<div id="np-console"></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-schedule" data-tab="schedule" role="tabpanel" hidden>
+			<section class="np-card" id="np-schedule-card">
+				<h3 class="np-card-title"><i class="bi bi-calendar-check"></i> Scheduled commands</h3>
+				<p class="np-card-intro">Commands that run on their own: once, every day, on chosen weekdays or every few minutes. Each task can run several commands in a row.</p>
+				<div id="np-sched-editor"></div>
+				<div id="np-sched-list"></div>
+			</section>
+		</section>
+		<section class="np-tab-panel" id="tab-reports" data-tab="reports" role="tabpanel" hidden>
+			<p class="np-tab-intro">Longer recordings, automatic lag reports and before/after comparisons.</p>
+			<section class="np-card" id="np-recording-card">
+				<h3 class="np-card-title"><i class="bi bi-record-circle"></i> Recordings</h3>
+				<p class="np-card-intro">The live monitor keeps the last hour. For longer sessions, record and download a report you can share; it opens offline in any browser.</p>
+				<div class="np-recording" id="np-recording"></div>
+				<div class="np-reports" id="np-reports"></div>
+				<div class="np-compare">
+					<h4>Compare</h4>
+					<p class="np-card-intro">See what got better or worse, e.g. before and after updating a data pack or adding a mod.</p>
+					<div class="np-compare-pick">
+						<label>Before <select id="np-compare-a"></select></label>
+						<label>After <select id="np-compare-b"></select></label>
+						<button type="button" class="np-btn primary" id="np-compare-run"><i class="bi bi-arrow-left-right"></i> Compare</button>
+					</div>
+					<div id="np-compare-result"></div>
+				</div>
+			</section>
+		</section>
+	</main>
+
+	<footer class="np-footer">Nice Control Center · made by <a href="https://explorerseden.eu" target="_blank" rel="noopener">Explorer's Eden</a></footer>
+
+	<script src="app.js"></script>
+</body>
+</html>

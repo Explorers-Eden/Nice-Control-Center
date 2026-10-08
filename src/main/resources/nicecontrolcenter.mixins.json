@@ -1,0 +1,29 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "eu.explorerseden.nicecontrolcenter.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"mixins": [
+		"BlockUpdatesMixin",
+		"BoundTickingBlockEntityMixin",
+		"BuildContextsMixin",
+		"CallFunctionMixin",
+		"ChunkGeneratorMixin",
+		"DedicatedServerAccessor",
+		"DedicatedServerSettingsAccessor",
+		"CommandQueueEntryMixin",
+		"ExecutionContextMixin",
+		"FeaturePlacerMixin",
+		"LevelAccessor",
+		"MinecraftServerAccessor",
+		"MinecraftServerMixin",
+		"NoiseBasedChunkGeneratorMixin",
+		"ServerLevelAccessor",
+		"ServerLevelMixin",
+		"SettingsAccessor",
+		"StructureStartMixin"
+	]
+}
