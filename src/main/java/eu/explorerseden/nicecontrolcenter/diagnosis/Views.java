@@ -27,7 +27,7 @@ public final class Views {
 
 	public record Kpi(double tps, double targetTps, double msptAvg, double msptMin, double msptMedian, double msptP95, double msptMax, double budget,
 			double cpuProcess, double cpuSystem, double cpuProcessMax, long heapUsed, long heapUsedMax, long heapMax, long heapLive, long heapLiveMax,
-			double gcPercent, long gcCount, Breakdown.Counts counts, Breakdown.Counts countsMax, int seconds, long samples,
+			double gcPercent, long gcCount, long gcTimeMs, Breakdown.Counts counts, Breakdown.Counts countsMax, int seconds, long samples,
 			int cores) {
 	}
 
@@ -83,7 +83,7 @@ public final class Views {
 		return new Kpi(b.tps(targetTps), targetTps, b.msptAvg(), b.tickNsMin / 1e6, TickHistogram.percentile(b.msptHistogram, 0.5),
 				TickHistogram.percentile(b.msptHistogram, 0.95), b.tickNsMax / 1e6, b.targetMspt,
 				b.cpuProcessAvg(), b.cpuSystemAvg(), b.cpuProcessMax, b.heapUsedAvg(), b.heapUsedMax, b.heapMax, b.heapLive, b.heapLiveMax,
-				gcPercent, b.gcCount, b.latest, b.max, b.seconds, b.samples,
+				gcPercent, b.gcCount, b.gcTimeMs, b.latest, b.max, b.seconds, b.samples,
 				eu.explorerseden.nicecontrolcenter.core.SystemMetrics.cores());
 	}
 

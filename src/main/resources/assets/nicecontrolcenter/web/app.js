@@ -132,6 +132,9 @@
     const livePeak = k.heapMax ? ((k.heapLiveMax || k.heapUsedMax) / k.heapMax) * 100 : 0;
     const heapClass = livePeak < 80 ? 'good' : livePeak < 90 ? 'warn' : 'poor';
     const cpuClass = k.cpuSystem >= 90 ? 'poor' : k.cpuSystem >= 70 ? 'warn' : 'good';
+    // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts.
+    const gcClass = k.gcPercent >= 10 ? 'poor' : k.gcPercent >= 5 ? 'warn' : 'good';
+    const gcAvg = k.gcCount ? (k.gcTimeMs || 0) / k.gcCount : 0;
     const c = k.counts || {};
     const m = k.countsMax || {};
     // One short line instead of every number; the details are in the tooltip and the tiles.
@@ -147,7 +150,10 @@
       ['CPU', `<span class="${cpuClass}">${fixed(k.cpuProcess, 0)}%</span>`, `machine ${fixed(k.cpuSystem, 0)}%`, null,
         `Server ${fixed(k.cpuProcess, 0)}% · whole machine ${fixed(k.cpuSystem, 0)}% · ${k.cores} cores`],
       ['Memory', `<span class="${heapClass}">${bytes(k.heapLive || k.heapUsed)}</span><small> / ${bytes(k.heapMax)}</small>`, 'in use after GC', null,
-        `Still in use after garbage collection. ${bytes(k.heapUsed)} including garbage not collected yet · GC pauses ${fixed(k.gcPercent, 1)}% of the time`],
+        `Still in use after garbage collection. ${bytes(k.heapUsed)} including garbage not collected yet`],
+      ['GC', `<span class="${gcClass}">${fixed(k.gcPercent, 1)}%</span><small> paused</small>`,
+        `${num(k.gcCount)} pauses${k.gcCount ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''}`, null,
+        `Share of time the server was paused for garbage collection: ${num(k.gcTimeMs || 0)} ms over ${num(k.gcCount)} pauses${k.gcCount ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
       ['Entities', num(c.entities), `max ${num(m.entities)}`],
       ['Block entities', num(c.blockEntities), 'ticking'],
       ['Chunks', num(c.chunks), `${num(c.chunkTasks)} tasks waiting`],
