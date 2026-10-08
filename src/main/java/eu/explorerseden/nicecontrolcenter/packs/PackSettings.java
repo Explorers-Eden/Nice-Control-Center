@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,16 +32,16 @@ import eu.explorerseden.nicecontrolcenter.core.SourceIndex;
 /**
  * Data pack settings, read from the packs' own in-game settings dialogs.
  *
- * <p>Explorer's Eden packs keep their settings in the command storage {@code eden:settings} and open
- * a settings dialog with {@code function <ns>:dialog/... with storage eden:settings <path>}. That
- * dialog describes every setting (label, type, options, range) and its "Confirm" button runs a
- * command template. This class reads those dialogs, shows the current values, and applies changes
- * by running the same command the dialog would, so the pack's own follow-up work still happens.
+ * <p>Explorer's Eden packs keep their settings in the command storage {@code eden:settings} (others,
+ * like Katters Structures, in a storage of their own) and open a settings dialog with
+ * {@code function <ns>:dialog/... with storage <storage> <path>}. That dialog describes every setting
+ * (label, type, options, range) and its "Confirm" button runs a command template. This class reads
+ * those dialogs, shows the current values, and applies changes by running the same command the
+ * dialog would, so the pack's own follow-up work still happens.
  */
 public final class PackSettings {
-	private static final Identifier SETTINGS = Identifier.fromNamespaceAndPath("eden", "settings");
 	private static final Pattern CALL = Pattern.compile(
-			"function\\s+([a-z0-9_.-]+:[a-z0-9_/.-]+)\\s+with\\s+storage\\s+eden:settings\\s+([A-Za-z0-9_.]+)");
+			"function\\s+([a-z0-9_.-]+:[a-z0-9_/.-]+)\\s+with\\s+storage\\s+([a-z0-9_.-]+:[a-z0-9_/.-]+)\\s+([A-Za-z0-9_.]+)");
 	private static final Pattern VAR = Pattern.compile("\\$\\(([A-Za-z0-9_]+)\\)");
 
 	/** One setting in a dialog. {@code value} is the current value as the dialog would send it. */
@@ -69,8 +68,13 @@ public final class PackSettings {
 	}
 
 	/** How to rebuild a dialog: kept server-side only. */
-	private record Definition(String id, String pack, String title, String storagePath, String function, JsonArray inputs,
-			String template) {
+	private record Definition(String id, String pack, String title, Identifier storage, String storagePath, String function,
+			JsonArray inputs, String template) {
+	}
+
+	/** Dialog id for a "function … with storage … path" call. */
+	private static String callId(Matcher call) {
+		return call.group(1) + "@" + call.group(2) + "/" + call.group(3);
 	}
 
 	private static volatile List<Definition> definitions;
@@ -199,7 +203,7 @@ public final class PackSettings {
 			} else if (type.endsWith("run_command") && action.has("command")) {
 				Matcher matcher = CALL.matcher(str(action, "command"));
 				if (matcher.find()) {
-					String id = matcher.group(1) + "@" + matcher.group(2);
+					String id = callId(matcher);
 					if (byId.containsKey(id)) {
 						reached.add(id);
 						children.add(new Node(label.isEmpty() ? byId.get(id).title() : label, tooltip, id, List.of()));
@@ -213,15 +217,14 @@ public final class PackSettings {
 	/** All settings dialogs with current values. Server thread. */
 	public static List<Dialog> list(MinecraftServer server) {
 		List<Dialog> result = new ArrayList<>();
-		CompoundTag settings = server.getCommandStorage().get(SETTINGS);
 		for (Definition definition : definitions(server)) {
-			CompoundTag data = at(settings, definition.storagePath());
+			CompoundTag data = at(server.getCommandStorage().get(definition.storage()), definition.storagePath());
 			if (data == null) {
 				continue;
 			}
 			List<Setting> list = new ArrayList<>();
 			for (JsonElement element : definition.inputs()) {
-				Setting setting = setting(element.getAsJsonObject(), data);
+				Setting setting = element.isJsonObject() ? setting(element.getAsJsonObject(), data) : null;
 				if (setting != null) {
 					list.add(setting);
 				}
@@ -242,14 +245,14 @@ public final class PackSettings {
 		if (definition == null || !inMenus(server, dialogId)) {
 			return "Unknown settings dialog.";
 		}
-		CompoundTag data = at(server.getCommandStorage().get(SETTINGS), definition.storagePath());
+		CompoundTag data = at(server.getCommandStorage().get(definition.storage()), definition.storagePath());
 		if (data == null) {
 			return "The data pack hasn't stored its settings yet.";
 		}
 		Map<String, String> args = new LinkedHashMap<>();
 		List<String> changes = new ArrayList<>();
 		for (JsonElement element : definition.inputs()) {
-			Setting setting = setting(element.getAsJsonObject(), data);
+			Setting setting = element.isJsonObject() ? setting(element.getAsJsonObject(), data) : null;
 			if (setting == null) {
 				continue;
 			}
@@ -382,10 +385,14 @@ public final class PackSettings {
 				List<Option> options = new ArrayList<>();
 				String selected = null;
 				for (JsonElement element : input.getAsJsonArray("options")) {
+					// A trailing comma ("},]") reads as null in lenient JSON.
+					if (element.isJsonNull()) {
+						continue;
+					}
 					JsonObject option = element.isJsonObject() ? element.getAsJsonObject() : null;
 					String id = option == null ? element.getAsString() : str(option, "id");
 					options.add(new Option(id, option == null ? id : text(option.get("display"), id)));
-					if (option != null && selected == null && "true".equals(resolve(option.get("initial"), data))) {
+					if (option != null && selected == null && isTrue(resolve(option.get("initial"), data))) {
 						selected = id;
 					}
 				}
@@ -397,7 +404,7 @@ public final class PackSettings {
 			case "boolean" -> {
 				String onTrue = input.has("on_true") ? str(input, "on_true") : "true";
 				String onFalse = input.has("on_false") ? str(input, "on_false") : "false";
-				boolean on = "true".equals(resolve(input.get("initial"), data));
+				boolean on = isTrue(resolve(input.get("initial"), data));
 				return new Setting(key, type, label, on ? onTrue : onFalse, List.of(), null, null, null, onTrue, onFalse, null);
 			}
 			case "text" -> {
@@ -427,6 +434,11 @@ public final class PackSettings {
 		}
 		matcher.appendTail(out);
 		return out.toString();
+	}
+
+	/** An SNBT boolean as the dialog would read it: "true", or a byte stored with "set value true" (1). */
+	private static boolean isTrue(String value) {
+		return "true".equals(value) || "1".equals(value);
 	}
 
 	private static String numberText(Number number) {
@@ -470,29 +482,32 @@ public final class PackSettings {
 		return cached;
 	}
 
-	/** Finds every "function … with storage eden:settings …" call and parses the dialog it opens. */
+	/** Finds every "function … with storage …" call and parses the dialog it opens. */
 	private static List<Definition> scan(MinecraftServer server) {
 		lang = loadLang(server);
-		Set<String> calls = new LinkedHashSet<>();
+		Map<String, String[]> calls = new LinkedHashMap<>();
 		Map<Identifier, Resource> files = new LinkedHashMap<>();
 		files.putAll(server.getResourceManager().listResources("function", id -> id.getPath().endsWith(".mcfunction")));
 		files.putAll(server.getResourceManager().listResources("dialog", id -> id.getPath().endsWith(".json")));
 		for (Resource resource : files.values()) {
 			String content = read(resource);
-			if (content == null || !content.contains("eden:settings")) {
+			if (content == null || !content.contains("with storage")) {
 				continue;
 			}
 			Matcher matcher = CALL.matcher(content);
 			while (matcher.find()) {
-				calls.add(matcher.group(1) + " " + matcher.group(2));
+				// Scratch storages (eden:temp, kattersstructures:temp) feed in-game tools, not settings.
+				if (!matcher.group(2).endsWith(":temp")) {
+					calls.putIfAbsent(callId(matcher), new String[] {matcher.group(1), matcher.group(2), matcher.group(3)});
+				}
 			}
 		}
 
 		List<Definition> result = new ArrayList<>();
-		for (String call : calls) {
-			String[] parts = call.split(" ");
+		for (String[] parts : calls.values()) {
 			Identifier function = Identifier.tryParse(parts[0]);
-			if (function == null) {
+			Identifier storage = Identifier.tryParse(parts[1]);
+			if (function == null || storage == null) {
 				continue;
 			}
 			Optional<Resource> file = server.getResourceManager().getResource(
@@ -500,7 +515,7 @@ public final class PackSettings {
 			if (file.isEmpty()) {
 				continue;
 			}
-			Definition definition = parseDialog(function, parts[1], read(file.get()));
+			Definition definition = parseDialog(function, storage, parts[2], read(file.get()));
 			if (definition != null) {
 				result.add(definition);
 			}
@@ -509,7 +524,7 @@ public final class PackSettings {
 		return result;
 	}
 
-	private static Definition parseDialog(Identifier function, String storagePath, String source) {
+	private static Definition parseDialog(Identifier function, Identifier storage, String storagePath, String source) {
 		if (source == null) {
 			return null;
 		}
@@ -554,7 +569,8 @@ public final class PackSettings {
 		}
 		String title = text(dialog.get("title"), function.toString());
 		String pack = SourceIndex.namespace(function.getNamespace()).name();
-		return new Definition(function + "@" + storagePath, pack, title, storagePath, function.toString(), inputs, template);
+		return new Definition(function + "@" + storage + "/" + storagePath, pack, title, storage, storagePath, function.toString(), inputs,
+				template);
 	}
 
 	/** The command run by the confirm button (confirmation dialogs) or the first dynamic action. */

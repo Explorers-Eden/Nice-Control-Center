@@ -1,5 +1,9 @@
 package eu.explorerseden.nicecontrolcenter.core;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +36,8 @@ public final class SourceIndex {
 	private static final Map<String, Source> namespaces = new ConcurrentHashMap<>();
 	/** Which enabled data pack adds content under a namespace (worldgen, functions, …). */
 	private static final Map<String, Source> packNamespaces = new ConcurrentHashMap<>();
+	/** Which mod ships data under a namespace that isn't its mod id (Warping Wonders: mr_warping_wonders → wawo). */
+	private static volatile Map<String, Source> modNamespaces;
 
 	private SourceIndex() {
 	}
@@ -141,8 +147,46 @@ public final class SourceIndex {
 				return new Source(ns, mod.get().getMetadata().getName(), Kind.MOD);
 			}
 			Source pack = packNamespaces.get(ns);
-			return pack != null ? pack : new Source(ns, ns, Kind.MOD);
+			if (pack != null) {
+				return pack;
+			}
+			Source owner = modNamespaces().get(ns);
+			return owner != null ? owner : new Source(ns, ns, Kind.MOD);
 		});
+	}
+
+	/** data/<namespace> folders inside the mod jars. Mods don't change while running, so this is read once. */
+	private static Map<String, Source> modNamespaces() {
+		Map<String, Source> cached = modNamespaces;
+		if (cached != null) {
+			return cached;
+		}
+		Map<String, Source> result = new HashMap<>();
+		for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
+			String id = mod.getMetadata().getId();
+			if (id.equals("minecraft") || id.equals("java")) {
+				continue;
+			}
+			Source source = new Source(id, mod.getMetadata().getName(), Kind.MOD);
+			for (Path root : mod.getRootPaths()) {
+				Path data = root.resolve("data");
+				if (!Files.isDirectory(data)) {
+					continue;
+				}
+				try (Stream<Path> folders = Files.list(data)) {
+					folders.filter(Files::isDirectory).forEach(folder -> {
+						String ns = folder.getFileName().toString().replace("/", "");
+						if (!ns.equals("minecraft")) {
+							result.putIfAbsent(ns, source);
+						}
+					});
+				} catch (IOException e) {
+					// Unreadable jar; its namespaces just show up by name.
+				}
+			}
+		}
+		modNamespaces = result;
+		return result;
 	}
 
 	/** A data pack or mod that really uses this namespace, or null. Used to guess where scoreboard names come from. */
@@ -155,7 +199,7 @@ public final class SourceIndex {
 			return pack;
 		}
 		return FabricLoader.getInstance().getModContainer(namespace)
-				.map(mod -> new Source(namespace, mod.getMetadata().getName(), Kind.MOD)).orElse(null);
+				.map(mod -> new Source(namespace, mod.getMetadata().getName(), Kind.MOD)).orElseGet(() -> modNamespaces().get(namespace));
 	}
 
 	public static Source mod(String modId) {

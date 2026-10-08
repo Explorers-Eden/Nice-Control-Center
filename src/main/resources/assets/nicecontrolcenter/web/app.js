@@ -24,6 +24,31 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Minecraft § formatting codes (the MOTD) as HTML. Black and white keep the theme's text color so
+  // they stay readable on both themes.
+  const MC_COLORS = { 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
+    8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55' };
+  const MC_STYLES = { l: 'font-weight:700', m: 'text-decoration:line-through', n: 'text-decoration:underline', o: 'font-style:italic' };
+  function mcText(text) {
+    let color = null;
+    let styles = [];
+    return String(text ?? '').replace(/\s*\n\s*/g, ' ').split('§').map((part, i) => {
+      if (i > 0) {
+        const code = part.charAt(0).toLowerCase();
+        part = part.slice(1);
+        if (/[0-9a-fr]/.test(code)) {
+          color = MC_COLORS[code] || null;
+          styles = [];
+        } else if (MC_STYLES[code] && !styles.includes(MC_STYLES[code])) {
+          styles.push(MC_STYLES[code]);
+        }
+      }
+      if (!part) return '';
+      const css = (color ? [`color:${color}`] : []).concat(styles).join(';');
+      return css ? `<span style="${css}">${esc(part)}</span>` : esc(part);
+    }).join('');
+  }
   const md = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
   const fixed = (v, d) => (Number.isFinite(v) ? v.toFixed(d) : '–');
   const ms = (v) => (v >= 10 ? fixed(v, 1) : fixed(v, 2)) + ' ms';
@@ -2512,7 +2537,7 @@
   function renderMeta(server, monitorSince, lagSince) {
     const tags = [
       lagSince ? `<span class="np-tag np-tag--lag" title="A lag report is being recorded"><i class="bi bi-exclamation-triangle"></i>Lag since ${new Date(lagSince).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : '',
-      `<span class="np-tag"><i class="bi bi-hdd-network"></i>${esc(server.name || 'Server')}</span>`,
+      `<span class="np-tag"><i class="bi bi-hdd-network"></i>${server.name ? mcText(server.name) : 'Server'}</span>`,
       `<span class="np-tag"><i class="bi bi-box"></i>${esc(server.version)}</span>`,
       `<span class="np-tag"><i class="bi bi-puzzle"></i>${num(server.mods)} mods</span>`,
       `<span class="np-tag"><i class="bi bi-clock-history"></i>monitoring for ${duration(Date.now() - monitorSince)}</span>`,
@@ -2696,7 +2721,7 @@
     document.title = 'Nice Control Center report · ' + dateTime(meta.start);
     setLive('report', 'Report');
     $('np-meta').innerHTML = [
-      `<span class="np-tag"><i class="bi bi-hdd-network"></i>${esc(meta.server || 'Server')}</span>`,
+      `<span class="np-tag"><i class="bi bi-hdd-network"></i>${meta.server ? mcText(meta.server) : 'Server'}</span>`,
       `<span class="np-tag"><i class="bi bi-box"></i>${esc(meta.version)}</span>`,
       `<span class="np-tag"><i class="bi bi-calendar-event"></i>${dateTime(meta.start)} – ${new Date(meta.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`,
       `<span class="np-tag"><i class="bi bi-stopwatch"></i>${duration(meta.end - meta.start)}</span>`,

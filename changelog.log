@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.3
+## 1.0.1
+- Packs installed as mods show their real name in data pack settings and elsewhere (Warping Wonders instead of "wawo")
+- Data pack settings also find packs that keep their settings in their own storage, like Katters Structures
+- The server name in the dashboard and in reports shows the MOTD's colors and formatting instead of the raw § codes
+
 ## First release
 - Live monitor that starts with the server: TPS, MSPT (min/med/95%ile/max), CPU, memory, entities, chunks and players for the last 1, 5, 15 and 60 minutes
 - "What's costing performance": plain-language findings with the cause and a tip, all in ms per tick
