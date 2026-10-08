@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, and has user accounts with roles and an audit log. Discord and the map follow step by step.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, updates Fabric and Minecraft, bridges to Discord, and has user accounts with roles and an audit log. The map follows.
 
 ## Deploy with Portainer
 
@@ -95,6 +95,30 @@ The templates set up a daily restart at 04:00 (backup first, then a 5-minute cou
 
 Minecraft itself can't take a world back to an older version, so go back with Undo or a backup, never by picking an older version.
 
+## Discord
+
+The **Discord** tab connects a bot. It does four things:
+
+1. **Linking required to play:**
+   - Someone without a linked Discord account sees a code on the join screen. They send it to the bot as a direct message and can join right after.
+   - Optionally they must also still be on your Discord server.
+   - Operators and a list of names can skip it.
+   - Players send `unlink` to the bot to remove their link; admins can unlink in the tab.
+2. **Chat both ways:**
+   - Game chat appears in the channel with the player's name and head.
+   - Discord messages appear in the game as `[Discord] Name: text`.
+   - Only chat is relayed, never commands, and mentions can't ping anyone.
+3. **Event messages:** joins, leaves, deaths, advancements, server online/offline and crashes. Each can be switched off and has its own text.
+4. **Bot status:** e.g. "3/20 players online" or "Server offline".
+
+**Setting up the bot** (the tab has the same steps):
+1. On [discord.com/developers](https://discord.com/developers/applications): **New Application** → **Bot** → **Reset Token** and copy the token. Switch on **Message Content Intent**.
+2. **OAuth2** → **URL Generator**: scope `bot`, permissions *View Channels*, *Send Messages*, *Read Message History*, *Manage Webhooks*. Open the link and add the bot to your server.
+3. In Discord, turn on **Developer Mode**, then copy the server ID and the chat channel's ID.
+4. Paste the token and both IDs in the panel, switch the bridge on and save. The token can also come from `DISCORD_TOKEN`.
+
+Links are kept in the panel volume, so the login check needs neither the database nor Discord. If the bot isn't connected, players are let in, so a Discord outage can't lock everyone out.
+
 ## SFTP
 
 Connect with FileZilla, WinSCP, Cyberduck or `sftp -P 2022 name@your-server` and log in with your panel name and password.
@@ -155,6 +179,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `DB_URL` / `DB_USER` / `DB_PASS` | – | Postgres for user accounts and the audit log |
 | `PANEL_PUBLIC_URL` | – | the panel's address, for `/ncc web` links in the game |
 | `TIMEZONE` | the container's | time zone for scheduled tasks and backup names, e.g. `Europe/Berlin` |
+| `DISCORD_TOKEN` | – | the Discord bot token (instead of saving it in the panel) |
 | `SFTP_PORT` | `2022` | SFTP port inside the container (`off` turns SFTP off) |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |

@@ -71,6 +71,7 @@
 				<button type="button" role="tab" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="versions" data-perm="server.view"><i class="bi bi-box-seam"></i><span>Versions</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="discord" data-perm="discord.manage"><i class="bi bi-discord"></i><span>Discord</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people"></i><span>Users</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span></button>
@@ -332,6 +333,59 @@
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-clock-history"></i> History</h3>
 					<div id="pn-version-history" class="pn-tasks"></div>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="discord" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-discord"></i> Discord bridge</h3>
+					<p class="np-card-intro">Players link their Discord account to play, chat goes both ways (chat only, never commands), game events are posted, and the bot's status shows the server. <b id="pn-discord-status"></b></p>
+					<details class="pn-howto">
+						<summary>Setting up the bot (once)</summary>
+						<ol>
+							<li>On <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">discord.com/developers</a>: <b>New Application</b> → <b>Bot</b> → <b>Reset Token</b> and copy the token.</li>
+							<li>On the same page, switch on <b>Message Content Intent</b>.</li>
+							<li><b>OAuth2</b> → <b>URL Generator</b>: scope <code>bot</code>; permissions <i>View Channels</i>, <i>Send Messages</i>, <i>Read Message History</i>, <i>Manage Webhooks</i>. Open the link and add the bot to your server.</li>
+							<li>In Discord: <b>Settings</b> → <b>Advanced</b> → <b>Developer Mode</b>. Right-click your server → <b>Copy Server ID</b>, right-click the chat channel → <b>Copy Channel ID</b>.</li>
+						</ol>
+					</details>
+					<form id="pn-discord-form" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row">Bridge on<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+							<label class="np-form-row">Bot token<input type="password" name="token" placeholder="paste the bot token" autocomplete="off"></label>
+							<label class="np-form-row">Discord server ID<input type="text" name="guildId" inputmode="numeric"></label>
+							<label class="np-form-row">Chat channel ID<input type="text" name="channelId" inputmode="numeric"></label>
+						</div>
+						<h4 class="pn-subhead">Linking</h4>
+						<div class="np-form-grid">
+							<label class="np-form-row">Players must link a Discord account to play<span class="np-switch"><input type="checkbox" name="requireLink"><span></span></span></label>
+							<label class="np-form-row">…and still be on the Discord server<span class="np-switch"><input type="checkbox" name="requireMember"><span></span></span></label>
+							<label class="np-form-row">Operators don't need a link<span class="np-switch"><input type="checkbox" name="opsBypass"><span></span></span></label>
+						</div>
+						<label class="pn-field">Players who don't need a link (one name per line)<textarea name="bypass" rows="3" spellcheck="false"></textarea></label>
+						<label class="pn-field"><span>Message when someone isn't linked yet (<code>{code}</code> and <code>{bot}</code> are filled in)</span><textarea name="kickMessage" rows="4"></textarea></label>
+						<h4 class="pn-subhead">Chat and events</h4>
+						<div class="np-form-grid">
+							<label class="np-form-row">Game chat → Discord<span class="np-switch"><input type="checkbox" name="chatToDiscord"><span></span></span></label>
+							<label class="np-form-row">Discord → game chat<span class="np-switch"><input type="checkbox" name="chatToGame"><span></span></span></label>
+							<label class="np-form-row">Bot status shows the server<span class="np-switch"><input type="checkbox" name="presence"><span></span></span></label>
+						</div>
+						<div id="pn-discord-events" class="pn-steps"></div>
+						<p class="np-card-intro pn-hint"><code>{player}</code>, <code>{message}</code> (the death message) and <code>{advancement}</code> are filled in. Deaths and advancements follow the game rules showDeathMessages and announceAdvancements.</p>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-discord-msg"></span>
+						</div>
+					</form>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> Linked accounts</h3>
+					<p class="np-card-intro">Players link by sending the code from the join screen to the bot. They can send <code>unlink</code> to the bot to remove it.</p>
+					<input type="search" class="np-console-search" id="pn-link-search" placeholder="Search players" aria-label="Search linked accounts">
+					<div class="np-table-wrap"><table class="np-table">
+						<thead><tr><th>Player</th><th>Discord</th><th>Linked</th><th></th></tr></thead>
+						<tbody id="pn-link-rows"></tbody>
+					</table></div>
 				</section>
 			</div>
 

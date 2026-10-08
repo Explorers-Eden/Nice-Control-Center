@@ -5,6 +5,7 @@
 #                              (needed for user accounts and the audit log; the panel creates its tables itself)
 #   PANEL_PUBLIC_URL           the panel's address, e.g. https://panel.example.com (for /ncc web links in the game)
 #   TIMEZONE                   for scheduled tasks and backup names, e.g. Europe/Berlin
+#   DISCORD_TOKEN              optional: the Discord bot token (can also be pasted in the panel)
 # Point your reverse proxy (Nginx Proxy Manager, Traefik, ...) at port 8080 for the panel.
 services:
   nicecontrolcenter:
@@ -19,6 +20,7 @@ services:
       DB_PASS: ${DB_PASS:-}
       PANEL_PUBLIC_URL: ${PANEL_PUBLIC_URL:-}
       TIMEZONE: ${TIMEZONE:-Europe/Berlin}
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
     ports:
       - "${PANEL_PORT:-8080}:8080"
       - "${MINECRAFT_PORT:-25565}:25565"

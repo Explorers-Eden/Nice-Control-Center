@@ -27,6 +27,7 @@ public final class Permissions {
 	public static final String FILES_CONFIG = "files.config";
 	public static final String FILES_SFTP = "files.sftp";
 	public static final String VERSIONS_MANAGE = "versions.manage";
+	public static final String DISCORD_MANAGE = "discord.manage";
 	public static final String USERS_ADMIN = "users.admin";
 	public static final String AUDIT_VIEW = "audit.view";
 
@@ -49,6 +50,7 @@ public final class Permissions {
 			new Permission(FILES_CONFIG, "Files", "Edit mod configs (only the config folder)"),
 			new Permission(FILES_SFTP, "Files", "Log in with SFTP (read-only without \"Upload, edit…\")"),
 			new Permission(VERSIONS_MANAGE, "Server", "Update Fabric and Minecraft, undo updates"),
+			new Permission(DISCORD_MANAGE, "Settings", "Set up the Discord bridge and manage linked accounts"),
 			new Permission(USERS_ADMIN, "Accounts", "Manage users and roles"),
 			new Permission(AUDIT_VIEW, "Accounts", "Read the audit log"));
 

@@ -1,3 +1,12 @@
+## 0.8.0
+- Discord bridge: players must link a Discord account to play (a code from the join screen, sent to the bot by direct message; optional: must still be on the Discord server; operators and a list of names can skip it)
+- Chat both ways: game chat to a channel with the player's name and head, Discord messages into the game (chat only, never commands; mentions can't ping)
+- Event messages for joins, leaves, deaths, advancements, server online/offline and crashes, each switchable with its own text
+- The bot's status shows whether the server is up and how many play
+- Linked accounts list with unlink; players can send "unlink" to the bot
+- Needs the Nice Control Center mod 1.2.0 (installed automatically) for the login check and game events
+- New permission: Discord bridge and linked accounts
+
 ## 0.7.0
 - Versions: see the installed Minecraft and Fabric Loader, update Fabric Loader with one click when a newer one is out, or move to another Minecraft version (26.x by default, snapshots and older ones on request)
 - Mod check on Modrinth for the target version: works, update available, no version yet, not on Modrinth; also flags mods that need a newer Fabric Loader; choose per mod: update, keep or turn off

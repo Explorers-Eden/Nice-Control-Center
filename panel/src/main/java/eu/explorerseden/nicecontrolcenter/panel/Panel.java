@@ -53,7 +53,12 @@ public final class Panel {
 		// The mod's dashboard: the mod listens inside the container on this port, only for the panel.
 		DashboardProxy dashboard = new DashboardProxy(Integer.parseInt(env("DASHBOARD_PORT", "8765")), server, audit);
 		String publicUrl = env("PANEL_PUBLIC_URL", "");
-		server.panelFlags(() -> dashboard.flags(publicUrl), dashboard.secret());
+		java.util.List<String> panelFlags = new java.util.ArrayList<>(dashboard.flags(publicUrl));
+		// The mod reaches the panel here for Discord login checks and game events.
+		panelFlags.add("-Dncc.panel.api=http://127.0.0.1:" + port);
+		server.panelFlags(() -> panelFlags, dashboard.secret());
+		Discord discord = new Discord(dataDir.resolve("discord.json"), dataDir.resolve("discord-links.json"), server, audit);
+		discord.start();
 		ZoneId zone = zone();
 		Backups backups = new Backups(serverDir, Path.of(env("BACKUP_DIR", "/data/backups")), dataDir.resolve("backups.json"), server, zone);
 		Scheduler scheduler = new Scheduler(dataDir.resolve("schedule.json"), server, backups, audit, zone);
@@ -228,6 +233,7 @@ public final class Panel {
 			new OpsRoutes(backups, scheduler, audit).register(routes);
 			new FileRoutes(files, cleanup, audit).register(routes);
 			new VersionRoutes(versions).register(routes);
+			new DiscordRoutes(discord, dashboard.secret(), audit).register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {
@@ -262,6 +268,7 @@ public final class Panel {
 		// `docker stop` sends SIGTERM: save and stop Minecraft first, then the web server.
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			server.shutdown();
+			discord.stop();
 			sftp.stop();
 			app.stop();
 			if (db != null) db.close();

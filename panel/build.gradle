@@ -43,6 +43,11 @@ dependencies {
 	implementation "org.bouncycastle:bcprov-jdk18on:${project.bouncycastle_version}"
 	implementation "org.bouncycastle:bcpkix-jdk18on:${project.bouncycastle_version}"
 	implementation "org.tomlj:tomlj:${project.tomlj_version}"
+	// Discord bridge; voice isn't used.
+	implementation("net.dv8tion:JDA:${project.jda_version}") {
+		exclude module: "opus-java"
+		exclude module: "tink"
+	}
 	implementation "org.yaml:snakeyaml:${project.snakeyaml_version}"
 }
 

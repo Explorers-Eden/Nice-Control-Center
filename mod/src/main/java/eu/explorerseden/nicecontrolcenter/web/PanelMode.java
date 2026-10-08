@@ -13,6 +13,8 @@ public final class PanelMode {
 	private static final String PORT = System.getProperty("ncc.panel.port", "");
 	private static final String SECRET = System.getProperty("ncc.panel.secret", "");
 	private static final String URL = System.getProperty("ncc.panel.url", "");
+	/** The panel's own API inside the container, for login checks and game events (Discord). */
+	private static final String API = System.getProperty("ncc.panel.api", "");
 
 	private PanelMode() {
 	}
@@ -31,6 +33,15 @@ public final class PanelMode {
 
 	public static boolean secretMatches(String value) {
 		return value != null && active() && MessageDigest.isEqual(value.getBytes(StandardCharsets.UTF_8), SECRET.getBytes(StandardCharsets.UTF_8));
+	}
+
+	public static String api() {
+		String api = API.trim();
+		return api.endsWith("/") ? api.substring(0, api.length() - 1) : api;
+	}
+
+	public static String secret() {
+		return SECRET;
 	}
 
 	/** The panel's address for links in chat, without a trailing slash; empty if the panel didn't say. */

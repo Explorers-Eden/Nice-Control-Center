@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.3
+## 1.2.0
+- With the Nice Control Center Panel: the Discord bridge's login check (players need a linked Discord account when the panel asks for it) and chat, join, leave, death and advancement messages for Discord
+- "Error sending packet clientbound/minecraft:disconnect" and "handleDisconnection() called twice" are marked as harmless (connections closing during a server-list ping or a failed login)
+
 ## 1.1.0
 - Works with the Nice Control Center Panel (Docker): when the panel runs the server, the dashboard listens only inside the container, the panel shows it in its Dashboard tab with its own accounts and permissions, and /ncc web links open the panel
 - The dashboard follows the panel's light/dark switch and drops its own header when shown inside the panel

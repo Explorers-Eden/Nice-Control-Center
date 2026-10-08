@@ -118,6 +118,7 @@
     if (tab === 'files') { loadFiles(); loadCleanup(); }
     if (tab === 'configs') loadConfigs();
     if (tab === 'versions') loadVersions(true);
+    if (tab === 'discord') loadDiscord();
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
@@ -1569,6 +1570,83 @@
       loadVersions(false);
     } catch (err) {
       alert(err.message);
+    }
+  });
+
+  // ── Discord ────────────────────────────────────────────────────────────
+
+  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline', crash: 'Crash' };
+  let discordData = null;
+
+  async function loadDiscord() {
+    try {
+      discordData = await api('api/discord');
+    } catch (err) {
+      $('pn-discord-status').textContent = err.message;
+      return;
+    }
+    const s = discordData.settings;
+    const form = $('pn-discord-form');
+    for (const key of ['enabled', 'requireLink', 'requireMember', 'opsBypass', 'chatToDiscord', 'chatToGame', 'presence']) form[key].checked = !!s[key];
+    form.token.value = '';
+    form.token.placeholder = discordData.tokenFromEnv ? 'set with DISCORD_TOKEN' : s.token ? 'saved (paste a new one to replace it)' : 'paste the bot token';
+    form.token.disabled = discordData.tokenFromEnv;
+    form.guildId.value = s.guildId || '';
+    form.channelId.value = s.channelId || '';
+    form.bypass.value = (s.bypass || []).join('\n');
+    form.kickMessage.value = s.kickMessage || '';
+    $('pn-discord-events').innerHTML = Object.keys(EVENT_LABELS).map((k) => `<div class="pn-step" data-event="${k}">
+      <label class="np-check"><input type="checkbox" ${s.events[k] ? 'checked' : ''}> <span class="pn-event-name">${EVENT_LABELS[k]}</span></label>
+      <input type="text" value="${esc(s.templates[k] || '')}"></div>`).join('');
+    $('pn-discord-status').textContent = 'Bot: ' + discordData.status;
+    renderLinks();
+  }
+
+  function renderLinks() {
+    const q = $('pn-link-search').value.trim().toLowerCase();
+    const rows = discordData.links.filter((l) => !q || l.name.toLowerCase().includes(q) || l.discordName.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    $('pn-link-rows').innerHTML = rows.map((l) => `<tr data-link="${esc(l.uuid)}"><td class="name">${esc(l.name)}<small>${esc(l.uuid)}</small></td>
+      <td>${esc(l.discordName)}</td><td>${esc(dateTime(l.linkedAt))}</td>
+      <td><div class="pn-row-actions"><button type="button" class="np-btn small danger" data-unlink>Unlink</button></div></td></tr>`).join('')
+      || '<tr><td colspan="4" class="np-empty">No linked accounts yet.</td></tr>';
+  }
+
+  $('pn-link-search').addEventListener('input', renderLinks);
+  $('pn-link-rows').addEventListener('click', async (e) => {
+    if (!e.target.closest('[data-unlink]')) return;
+    const row = e.target.closest('[data-link]');
+    if (!confirm('Unlink this player? They need a new code to join again.')) return;
+    try {
+      await api(`api/discord/links/${encodeURIComponent(row.dataset.link)}/delete`, {});
+      loadDiscord();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  $('pn-discord-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const events = {};
+    const templates = {};
+    $('pn-discord-events').querySelectorAll('[data-event]').forEach((row) => {
+      events[row.dataset.event] = row.querySelector('input[type="checkbox"]').checked;
+      templates[row.dataset.event] = row.querySelector('input[type="text"]').value;
+    });
+    const body = {
+      enabled: form.enabled.checked, token: form.token.value.trim(), guildId: form.guildId.value.trim(), channelId: form.channelId.value.trim(),
+      requireLink: form.requireLink.checked, requireMember: form.requireMember.checked, opsBypass: form.opsBypass.checked,
+      bypass: form.bypass.value.split('\n').map((l) => l.trim()).filter(Boolean), kickMessage: form.kickMessage.value,
+      notMemberMessage: discordData.settings.notMemberMessage,
+      chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates,
+    };
+    try {
+      await api('api/discord/settings', body);
+      formMsg('pn-discord-msg', 'Saved.', true);
+      setTimeout(loadDiscord, 2500);
+    } catch (err) {
+      formMsg('pn-discord-msg', err.message, false);
     }
   });
 
