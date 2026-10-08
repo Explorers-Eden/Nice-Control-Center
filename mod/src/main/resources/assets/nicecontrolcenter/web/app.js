@@ -125,48 +125,69 @@
     return v <= budget * 0.7 ? 'good' : v <= budget ? 'warn' : 'poor';
   }
 
+  /** One short line instead of every number; the details are in the tooltip and the tiles. */
+  function renderHeadline(k) {
+    const headline = $('np-health-headline');
+    const full = headline.textContent;
+    headline.textContent = `${fixed(k.tps, 1)} TPS · ${fixed(k.msptMedian, 1)} ms per tick · ${fixed(k.budget ? k.msptAvg / k.budget * 100 : 0, 0)}% of the ${fixed(k.budget, 0)} ms budget`;
+    headline.title = full;
+  }
+
+  /** The newest one-second point, if it's fresh; reports and stale data fall back to the window. */
+  function livePoint() {
+    if (REPORT || !state.points.length) return null;
+    const p = state.points[state.points.length - 1];
+    return Date.now() - p.t < 10000 ? p : null;
+  }
+
   function renderStats(k) {
     const budget = k.budget;
-    const tpsClass = k.tps >= k.targetTps * 0.97 ? 'good' : k.tps >= k.targetTps * 0.85 ? 'warn' : 'poor';
+    // The tiles show the current second; the chosen window's average is the small line underneath.
+    const now = livePoint();
+    const span = REPORT ? 'recording' : `${state.window} min`;
+    const tps = now ? now.tps : k.tps;
+    const cpu = now ? now.cpuProcess : k.cpuProcess;
+    const cpuMachine = now ? now.cpuSystem : k.cpuSystem;
+    const heapLive = now ? now.heapLive : k.heapLive;
+    const heapUsed = now ? now.heapUsed : k.heapUsed;
+    const heapMax = (now && now.heapMax) || k.heapMax;
+    const tpsClass = tps >= k.targetTps * 0.97 ? 'good' : tps >= k.targetTps * 0.85 ? 'warn' : 'poor';
     // Judged by memory still in use after garbage collection; "used" includes garbage not collected yet.
-    const livePeak = k.heapMax ? ((k.heapLiveMax || k.heapUsedMax) / k.heapMax) * 100 : 0;
-    const heapClass = livePeak < 80 ? 'good' : livePeak < 90 ? 'warn' : 'poor';
+    const livePct = heapMax ? ((heapLive || heapUsed) / heapMax) * 100 : 0;
+    const heapClass = livePct < 80 ? 'good' : livePct < 90 ? 'warn' : 'poor';
     // Garbage piling up is normal, so the total only turns yellow/red when the heap is nearly full.
-    const usedPct = k.heapMax ? k.heapUsed / k.heapMax * 100 : 0;
+    const usedPct = heapMax ? heapUsed / heapMax * 100 : 0;
     const usedClass = usedPct < 85 ? 'good' : usedPct < 95 ? 'warn' : 'poor';
-    const cpuClass = k.cpuSystem >= 90 ? 'poor' : k.cpuSystem >= 70 ? 'warn' : 'good';
+    const cpuClass = cpuMachine >= 90 ? 'poor' : cpuMachine >= 70 ? 'warn' : 'good';
     // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts.
     const gcClass = k.gcPercent >= 10 ? 'poor' : k.gcPercent >= 5 ? 'warn' : 'good';
     const gcAvg = k.gcCount ? (k.gcTimeMs || 0) / k.gcCount : 0;
     const c = k.counts || {};
     const m = k.countsMax || {};
-    // One short line instead of every number; the details are in the tooltip and the tiles.
-    const headline = $('np-health-headline');
-    const full = headline.textContent;
-    headline.textContent = `${fixed(k.tps, 1)} TPS · ${fixed(k.msptMedian, 1)} ms per tick · ${fixed(k.budget ? k.msptAvg / k.budget * 100 : 0, 0)}% of the ${fixed(k.budget, 0)} ms budget`;
-    headline.title = full;
+    const ms = (v) => v >= 100 ? fixed(v, 0) : fixed(v, 1);
+    // MSPT: this second's average next to the window's spread (a spread needs a time span).
+    const msptCols = [...(now ? [['now', now.mspt]] : [['min', k.msptMin]]), ['med', k.msptMedian], ['95%ile', k.msptP95], ['max', k.msptMax]];
+    const memCols = [[heapLive ? 'after GC' : 'in use', heapLive || heapUsed, heapClass], ...(heapLive ? [['w/ garbage', heapUsed, usedClass]] : []), ['max', heapMax, '']];
     const tiles = [
-      ['TPS', `<span class="${tpsClass}">${fixed(k.tps, 1)}</span>`, `target ${fixed(k.targetTps, 0)}`],
-      ['MSPT', null, null, `<div class="np-mspt">${[['min', k.msptMin], ['med', k.msptMedian], ['95%ile', k.msptP95], ['max', k.msptMax]]
-        .map(([l, v]) => `<span class="${msptClass(v, budget)}">${v >= 100 ? fixed(v, 0) : fixed(v, 1)}<small>${l}</small></span>`).join('')}</div>`,
-        `Milliseconds per tick (median). Min ${fixed(k.msptMin, 1)} · median ${fixed(k.msptMedian, 1)} · 95% of ticks under ${fixed(k.msptP95, 1)} · slowest ${fixed(k.msptMax, 1)}`],
-      ['CPU', `<span class="${cpuClass}">${fixed(k.cpuProcess, 0)}%</span>`, `machine ${fixed(k.cpuSystem, 0)}%`, null,
-        `Server ${fixed(k.cpuProcess, 0)}% · whole machine ${fixed(k.cpuSystem, 0)}% · ${k.cores} cores`],
+      ['TPS', `<span class="${tpsClass}">${fixed(tps, 1)}</span>`, now ? `⌀ ${fixed(k.tps, 1)} · ${span}` : `target ${fixed(k.targetTps, 0)}`, null,
+        `${now ? `Now ${fixed(tps, 1)} · ` : ''}average ${fixed(k.tps, 1)} over the ${span} · target ${fixed(k.targetTps, 0)}`],
+      ['MSPT', null, null, `<div class="np-mspt">${msptCols.map(([l, v]) => `<span class="${msptClass(v, budget)}">${ms(v)}<small>${l}</small></span>`).join('')}</div>`,
+        `Milliseconds per tick. ${now ? `Now ${ms(now.mspt)} · ` : ''}over the ${span}: min ${fixed(k.msptMin, 1)} · median ${fixed(k.msptMedian, 1)} · 95% of ticks under ${fixed(k.msptP95, 1)} · slowest ${fixed(k.msptMax, 1)}`],
+      ['CPU', `<span class="${cpuClass}">${fixed(cpu, 0)}%</span>`, now ? `machine ${fixed(cpuMachine, 0)}% · ⌀ ${fixed(k.cpuProcess, 0)}%` : `machine ${fixed(cpuMachine, 0)}%`, null,
+        `Server ${fixed(cpu, 0)}% · whole machine ${fixed(cpuMachine, 0)}% · ${k.cores} cores. Average over the ${span}: server ${fixed(k.cpuProcess, 0)}%, machine ${fixed(k.cpuSystem, 0)}%`],
       // Laid out like MSPT; the unit is small so three sizes fit next to each other.
-      ['Memory', null, null, `<div class="np-mspt">${[[k.heapLive ? 'after GC' : 'in use', k.heapLive || k.heapUsed, heapClass],
-        ...(k.heapLive ? [['w/ garbage', k.heapUsed, usedClass]] : []), ['max', k.heapMax, '']]
-        .map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
-        `Still in use after garbage collection: ${bytes(k.heapLive || k.heapUsed)} · including garbage not collected yet: ${bytes(k.heapUsed)} · maximum: ${bytes(k.heapMax)}`],
+      ['Memory', null, null, `<div class="np-mspt">${memCols.map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
+        `Still in use after garbage collection: ${bytes(heapLive || heapUsed)} · including garbage not collected yet: ${bytes(heapUsed)} · maximum: ${bytes(heapMax)}`],
       ['GC', `<span class="${gcClass}">${fixed(k.gcPercent, 1)}%</span><small> paused</small>`,
-        `${num(k.gcCount)} pauses${k.gcCount ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''}`, null,
-        `Share of time the server was paused for garbage collection: ${num(k.gcTimeMs || 0)} ms over ${num(k.gcCount)} pauses${k.gcCount ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
-      ['Entities', num(c.entities), `max ${num(m.entities)}`],
-      ['Block entities', num(c.blockEntities), 'ticking'],
-      ['Chunks', num(c.chunks), `${num(c.chunkTasks)} tasks waiting`],
-      ['Players', num(c.players), 'online'],
+        `${num(k.gcCount)} pauses${k.gcCount ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${span}`, null,
+        `Share of time the server was paused for garbage collection over the ${span}: ${num(k.gcTimeMs || 0)} ms over ${num(k.gcCount)} pauses${k.gcCount ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
+      ['Entities', num(now ? now.entities : c.entities), `max ${num(m.entities)}`],
+      ['Block entities', num(now ? now.blockEntities : c.blockEntities), 'ticking'],
+      ['Chunks', num(now ? now.chunks : c.chunks), `${num(c.chunkTasks)} tasks waiting`],
+      ['Players', num(now ? now.players : c.players), 'online'],
     ];
-    $('np-stats').innerHTML = tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card"${tip ? ` title="${esc(tip)}"` : ''}>
-      <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join('');
+    patchHtml($('np-stats'), tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card"${tip ? ` title="${esc(tip)}"` : ''}>
+      <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join(''));
   }
 
   function renderFindings(findings, k) {
@@ -424,6 +445,7 @@
     state.view = view;
     const k = view.kpi;
     renderHealth(view.diagnosis.health);
+    renderHeadline(k);
     renderStats(k);
     renderNotesLink(view.diagnosis.notes || []);
     setTabBadge('server', (view.diagnosis.notes || []).length, (view.diagnosis.notes || []).some((n) => n.severity === 'WARN' || n.severity === 'POOR'));
@@ -593,7 +615,9 @@
 
   function visiblePoints() {
     if (REPORT) return state.points;
-    const from = Date.now() - state.window * 60000;
+    // A margin before the left edge: the oldest slots stay whole and slide out under the clip
+    // instead of shrinking and vanishing inside the chart.
+    const from = Date.now() - LIVE_LAG - state.window * 60000 * 1.05 - 5000;
     return state.points.filter((p) => p.t >= from);
   }
 
@@ -802,7 +826,9 @@
     const x = (t) => PAD.left + ((t - from) / span) * pw;
     const size = buckets.size || 1000;
     const slotW = (size / span) * pw;
-    let maxValue = cfg.max(buckets);
+    // The scale (and guide lines) only follow what's on screen, not the margin left of it.
+    const shown = buckets.filter((b) => b.t2 >= from);
+    let maxValue = cfg.max(shown.length ? shown : buckets);
     if (cfg.cap) maxValue = Math.min(cfg.cap, maxValue);
     const base = typeof cfg.base === 'function' ? cfg.base(maxValue) : cfg.base;
     const nice = cfg.fixedMax ? { ticks: niceTicks(maxValue, 3).ticks.filter((t) => t <= maxValue), top: maxValue } : niceTicks(maxValue, 3, base);
@@ -900,7 +926,7 @@
     ctx.restore();
 
     // Budget / target / heap limit
-    const guide = typeof cfg.guide === 'function' ? cfg.guide(buckets) : cfg.guide;
+    const guide = typeof cfg.guide === 'function' ? cfg.guide(shown.length ? shown : buckets) : cfg.guide;
     if (guide) {
       const gy = Math.round(y(guide)) + 0.5;
       ctx.setLineDash([4, 4]);
@@ -2584,6 +2610,8 @@
         if (!data.recording.active && state.recording && state.recording.active) setTimeout(loadReports, 2500);
         renderRecording(data.recording);
       }
+      // The tiles follow the newest second, between the window refreshes.
+      if (state.view) renderStats(state.view.kpi);
       drawCharts();
       setTimeout(pollLive, 1000);
     } catch (e) {

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.3
+## 1.0.5
+- The TPS, MSPT, CPU, Memory, entity, chunk and player tiles show the current second (updated every second) instead of the chosen time window; the window's average is the small line underneath. GC stays a window value
+- Charts scroll smoothly out at the left edge instead of the oldest part being cut off
+
 ## 1.0.4
 - Answers to admin messages pop up as a notification on every tab (click to open the conversation), with the count in the browser tab title
 - Player inspector: the last grave shows who looted it (highlighted if it wasn't the owner) or that it expired, instead of just "removed"
