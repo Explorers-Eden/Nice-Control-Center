@@ -492,6 +492,7 @@ public final class DashboardServer {
 		result.put("clock", eu.explorerseden.nicecontrolcenter.core.WorldClock.current());
 		result.put("lagging", eu.explorerseden.nicecontrolcenter.alert.AlertWatcher.lagging());
 		result.put("lagSince", eu.explorerseden.nicecontrolcenter.alert.AlertWatcher.lagSince());
+		result.put("replies", eu.explorerseden.nicecontrolcenter.players.Conversations.unreadReplies());
 		return result;
 	}
 

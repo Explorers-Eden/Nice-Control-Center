@@ -1414,6 +1414,13 @@
     return `execute in ${loc.dimensionId || 'minecraft:overworld'} run tp @s ${loc.x} ${loc.y} ${loc.z}`;
   }
 
+  // Looted or expired graves are marked removed and keep who opened them; the name is the more useful part.
+  function graveStatus(g) {
+    if (g.openedBy === 'expired') return 'expired';
+    if (g.openedBy) return g.openedByOwner ? `looted by ${esc(g.openedBy)} (owner)` : `<span class="warn">looted by ${esc(g.openedBy)}</span>`;
+    return g.removed ? 'removed' : 'not looted yet';
+  }
+
   function locTile(p, icon, title, loc, extra) {
     if (!loc) return '';
     return `<div class="np-loc-tile"><p class="np-loc-title"><i class="bi ${icon}"></i> ${esc(title)}</p>
@@ -1453,7 +1460,7 @@
     const statusBits = s ? [`<i class="bi bi-heart-fill"></i> ${s.health}/20`, `<i class="bi bi-egg-fried"></i> ${s.food}/20`,
       `<i class="bi bi-star-fill"></i> Level ${s.xpLevel}`, esc(s.gameMode), p.online && s.ping != null ? `${s.ping} ms` : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') : '';
     const grave = p.grave ? locTile(p, 'bi-flower1', 'Last grave', p.grave,
-      p.grave.removed ? 'removed' : p.grave.openedBy ? (p.grave.openedBy === 'expired' ? 'expired' : 'opened by ' + esc(p.grave.openedBy)) : 'not opened yet') : '';
+      graveStatus(p.grave)) : '';
     // Messages on top, moderation at the very bottom, so Kick/Ban are never next to "Send".
     const thread = (p.messages || []).map((m) => `<div class="np-msg ${m.fromPlayer ? 'in' : 'out'}"><span>${esc(m.text)}</span><small>${m.fromPlayer ? esc(p.name) : 'Admin'} · ${clock(m.time)}</small></div>`).join('');
     const actions = p.uuid && d.actions && (p.online || thread) ? `<div class="np-player-chat">
@@ -2572,6 +2579,7 @@
       else if (latest && latest.paused) setLive('paused', 'Server paused');
       else setLive('on', latest ? `Live · ${fixed(latest.tps, 1)} TPS` : 'Live');
       renderMeta(data.server, data.server.monitorSince, data.lagging ? data.lagSince : 0);
+      renderReplies(data.replies || []);
       if (data.recording.active || (state.recording && state.recording.active)) {
         if (!data.recording.active && state.recording && state.recording.active) setTimeout(loadReports, 2500);
         renderRecording(data.recording);
@@ -2581,6 +2589,72 @@
     } catch (e) {
       setLive('off', 'Disconnected, retrying…');
       setTimeout(pollLive, 3000);
+    }
+  }
+
+  // ── Reply notifications ────────────────────────────────────────────────
+
+  // Answers to admin messages pop up on every tab, one card per player, until they're read or dismissed.
+  const REPLIES_KEY = 'np-replies-seen';
+  const baseTitle = document.title;
+  let repliesSeen = 0;
+  try { repliesSeen = Number(localStorage.getItem(REPLIES_KEY)) || 0; } catch (e) { /* not remembered */ }
+  let hadReplies = false;
+
+  function openConversation(uuid) {
+    playersState.selected = uuid;
+    playersState.message = '';
+    delete $('np-player-detail').dataset.html;
+    if (activeTab === 'players') loadPlayers();
+    else selectTab('players');
+  }
+
+  function renderReplies(replies) {
+    const total = replies.reduce((n, r) => n + r.unread, 0);
+    document.title = total ? `(${total}) ${baseTitle}` : baseTitle;
+    if (total) setTabBadge('players', total, true);
+    else if (hadReplies) setTabBadge('players', 0);
+    hadReplies = total > 0;
+
+    let box = $('np-toasts');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'np-toasts';
+      box.className = 'np-toasts';
+      box.setAttribute('aria-live', 'polite');
+      document.body.appendChild(box);
+      box.addEventListener('click', (e) => {
+        const toast = e.target.closest('.np-toast');
+        if (!toast) return;
+        toast.remove();
+        if (!e.target.closest('.np-toast-close')) openConversation(toast.dataset.uuid);
+      });
+    }
+    const open = new Set();
+    let newest = repliesSeen;
+    for (const r of replies) {
+      // The open conversation already shows it (and marks it read).
+      if (activeTab === 'players' && playersState.selected === r.uuid) continue;
+      let toast = box.querySelector(`.np-toast[data-uuid="${r.uuid}"]`);
+      if (!toast && r.time <= repliesSeen) continue;
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'np-toast';
+        toast.dataset.uuid = r.uuid;
+        toast.setAttribute('role', 'button');
+        toast.title = 'Open the conversation';
+        box.appendChild(toast);
+      }
+      open.add(r.uuid);
+      newest = Math.max(newest, r.time);
+      const html = `${face(r, 32)}<div class="np-toast-body"><b>${esc(r.name)} answered${r.unread > 1 ? ` <span class="np-tab-badge warn">${r.unread}</span>` : ''}</b>
+        <span>${esc(r.text)}</span></div><button type="button" class="np-toast-close" aria-label="Dismiss"><i class="bi bi-x"></i></button>`;
+      if (toast.dataset.html !== html) { toast.innerHTML = html; toast.dataset.html = html; }
+    }
+    box.querySelectorAll('.np-toast').forEach((t) => { if (!open.has(t.dataset.uuid)) t.remove(); });
+    if (newest > repliesSeen) {
+      repliesSeen = newest;
+      try { localStorage.setItem(REPLIES_KEY, String(newest)); } catch (e) { /* not remembered */ }
     }
   }
 

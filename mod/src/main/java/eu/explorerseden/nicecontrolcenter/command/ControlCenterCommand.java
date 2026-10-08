@@ -495,11 +495,11 @@ public final class ControlCenterCommand {
 		if (text.length() > 256) {
 			text = text.substring(0, 256);
 		}
-		if (!eu.explorerseden.nicecontrolcenter.players.Conversations.fromPlayer(player.getUUID(), text)) {
+		String name = player.getGameProfile().name();
+		if (!eu.explorerseden.nicecontrolcenter.players.Conversations.fromPlayer(player.getUUID(), name, text)) {
 			ctx.getSource().sendFailure(Component.literal("Slow down a little; try again in a few seconds."));
 			return 0;
 		}
-		String name = player.getGameProfile().name();
 		ctx.getSource().sendSystemMessage(Component.literal("Sent to the admins; only they can see it.").withStyle(Style.EMPTY.withColor(MUTED)));
 		String shown = text;
 		NiceControlCenter.notifyAdmins(Component.literal("[Reply from " + name + "] ").withStyle(Style.EMPTY.withColor(GOLD))

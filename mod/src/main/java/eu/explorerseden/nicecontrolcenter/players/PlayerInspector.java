@@ -335,7 +335,11 @@ public final class PlayerInspector {
 			entry.getCompound("last_grave").ifPresent(grave -> {
 				Map<String, Object> g = storedLoc(Optional.of(grave));
 				g.put("removed", grave.getBooleanOr("removed", false));
-				g.put("openedBy", grave.getCompoundOrEmpty("opened_by").getString("name").orElse(null));
+				// Nice Keep Inventory writes the looter's name (or "expired") and UUID when the grave goes away.
+				CompoundTag opened = grave.getCompoundOrEmpty("opened_by");
+				g.put("openedBy", opened.getString("name").orElse(null));
+				g.put("openedByOwner", opened.getIntArray("uuid").filter(a -> a.length == 4)
+						.map(a -> UUIDUtil.uuidFromIntArray(a).toString().equals(card.get("uuid"))).orElse(false));
 				g.put("contents", items(grave.getListOrEmpty("contents"), ops));
 				card.put("grave", g);
 			});
