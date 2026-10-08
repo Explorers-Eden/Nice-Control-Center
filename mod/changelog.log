@@ -1,6 +1,6 @@
 # Minecraft Version(s): 26.3
 ## 1.0.3
-- The Memory tile is laid out like MSPT: in use after GC, including garbage not collected yet, and the maximum
+- The Memory tile is laid out like MSPT: in use after GC, with garbage not collected yet (both color-coded), and the maximum
 
 ## 1.0.2
 - \n typed into the MOTD in the server.properties editor is saved as a real second line instead of the text "\n"

@@ -131,6 +131,9 @@
     // Judged by memory still in use after garbage collection; "used" includes garbage not collected yet.
     const livePeak = k.heapMax ? ((k.heapLiveMax || k.heapUsedMax) / k.heapMax) * 100 : 0;
     const heapClass = livePeak < 80 ? 'good' : livePeak < 90 ? 'warn' : 'poor';
+    // Garbage piling up is normal, so the total only turns yellow/red when the heap is nearly full.
+    const usedPct = k.heapMax ? k.heapUsed / k.heapMax * 100 : 0;
+    const usedClass = usedPct < 85 ? 'good' : usedPct < 95 ? 'warn' : 'poor';
     const cpuClass = k.cpuSystem >= 90 ? 'poor' : k.cpuSystem >= 70 ? 'warn' : 'good';
     // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts.
     const gcClass = k.gcPercent >= 10 ? 'poor' : k.gcPercent >= 5 ? 'warn' : 'good';
@@ -151,7 +154,7 @@
         `Server ${fixed(k.cpuProcess, 0)}% · whole machine ${fixed(k.cpuSystem, 0)}% · ${k.cores} cores`],
       // Laid out like MSPT; the unit is small so three sizes fit next to each other.
       ['Memory', null, null, `<div class="np-mspt">${[[k.heapLive ? 'after GC' : 'in use', k.heapLive || k.heapUsed, heapClass],
-        ...(k.heapLive ? [['incl. garbage', k.heapUsed, '']] : []), ['max', k.heapMax, '']]
+        ...(k.heapLive ? [['w/ garbage', k.heapUsed, usedClass]] : []), ['max', k.heapMax, '']]
         .map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
         `Still in use after garbage collection: ${bytes(k.heapLive || k.heapUsed)} · including garbage not collected yet: ${bytes(k.heapUsed)} · maximum: ${bytes(k.heapMax)}`],
       ['GC', `<span class="${gcClass}">${fixed(k.gcPercent, 1)}%</span><small> paused</small>`,
