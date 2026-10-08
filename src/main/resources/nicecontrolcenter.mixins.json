@@ -12,6 +12,7 @@
 		"BuildContextsMixin",
 		"CallFunctionMixin",
 		"ChunkGeneratorMixin",
+		"ClientBrandMixin",
 		"DedicatedServerAccessor",
 		"DedicatedServerSettingsAccessor",
 		"CommandQueueEntryMixin",

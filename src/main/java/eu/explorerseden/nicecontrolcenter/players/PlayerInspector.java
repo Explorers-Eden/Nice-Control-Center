@@ -153,6 +153,14 @@ public final class PlayerInspector {
 		return new Live(online, byName, hubs, bans);
 	}
 
+	/** The x-ray check for a list or card entry: live counts for online players, the saved file otherwise. */
+	private static Map<String, Object> mining(MinecraftServer server, Map<String, Object> p) {
+		Object live = p.get("_counts");
+		XrayCheck.Counts counts = live instanceof XrayCheck.Counts c ? c
+				: p.get("uuid") == null ? null : XrayCheck.counts(server, UUID.fromString((String) p.get("uuid")));
+		return XrayCheck.judge(server, counts);
+	}
+
 	private static Map<String, Object> onlineSummary(ServerPlayer player) {
 		Map<String, Object> p = new LinkedHashMap<>();
 		p.put("uuid", player.getUUID().toString());
@@ -161,6 +169,9 @@ public final class PlayerInspector {
 		raceAndClass(player.entityTags(), p);
 		p.put("dimension", dimension(player.level().dimension().identifier().toString()));
 		p.put("ping", player.connection.latency());
+		p.put("client", ClientInfo.brandLabel(player.getUUID()));
+		// Live mining statistics; judged later off the server thread (the comparison reads files).
+		p.put("_counts", XrayCheck.counts(player));
 		return p;
 	}
 
@@ -180,6 +191,7 @@ public final class PlayerInspector {
 		status.put("ping", player.connection.latency());
 		p.put("status", status);
 		p.put("tags", List.copyOf(player.entityTags()));
+		p.put("clientInfo", ClientInfo.describe(player));
 
 		Inventory inventory = player.getInventory();
 		List<Map<String, Object>> items = new ArrayList<>();
@@ -254,6 +266,9 @@ public final class PlayerInspector {
 			p.put("hasData", live.storageByName().containsKey(lower));
 			p.put("banned", p.get("uuid") != null && live.bans().containsKey((String) p.get("uuid")));
 			p.put("unread", p.get("uuid") != null ? Conversations.unread(UUID.fromString((String) p.get("uuid"))) : 0);
+			Map<String, Object> mining = mining(server, p);
+			p.put("xray", mining == null ? List.of() : mining.get("flags"));
+			p.remove("_counts");
 		}
 		live.storageByName().forEach((lower, entry) -> {
 			if (!names.contains(lower)) {
@@ -275,7 +290,10 @@ public final class PlayerInspector {
 		String name = null;
 		if (key.startsWith("name:")) {
 			name = key.substring(5);
-			uuid = server.services().nameToIdCache().get(name).map(NameAndId::id).orElse(null);
+			// Only what the server already knows: looking a name up by itself would ask Mojang every refresh.
+			String wanted = name;
+			uuid = live.online().stream().filter(o -> wanted.equalsIgnoreCase((String) o.get("name"))).findFirst()
+					.map(o -> UUID.fromString((String) o.get("uuid"))).orElse(null);
 		} else {
 			try {
 				uuid = UUID.fromString(key);
@@ -333,7 +351,9 @@ public final class PlayerInspector {
 			UUID who = UUID.fromString((String) p.get("uuid"));
 			Conversations.markRead(who);
 			p.put("messages", Conversations.thread(who));
+			p.put("mining", mining(server, p));
 		}
+		p.remove("_counts");
 		return p;
 	}
 

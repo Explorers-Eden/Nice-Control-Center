@@ -122,6 +122,8 @@ public final class UpdateManager {
 	private static Path base;
 	private static Path datapackDir;
 	private static boolean dedicated;
+	/** The singleplayer "install when the game quits" hook is added once per game, not per world. */
+	private static boolean shutdownHook;
 
 	private UpdateManager() {
 	}
@@ -170,7 +172,10 @@ public final class UpdateManager {
 			applyPending();
 		} else {
 			// Singleplayer: the game keeps running after the world closes; mods are swapped when it quits.
-			Runtime.getRuntime().addShutdownHook(new Thread(UpdateManager::applyPending, "Nice Control Center Update Install"));
+			if (!shutdownHook) {
+				shutdownHook = true;
+				Runtime.getRuntime().addShutdownHook(new Thread(UpdateManager::applyPending, "Nice Control Center Update Install"));
+			}
 		}
 	}
 

@@ -89,7 +89,7 @@ public final class LogCapture extends AbstractAppender {
 	/** Lines with a sequence number above {@code after}, oldest first. */
 	public static synchronized List<Line> after(long after) {
 		List<Line> result = new ArrayList<>();
-		long from = Math.max(after + 1, nextSeq - CAPACITY);
+		long from = Math.max(Math.max(after + 1, nextSeq - CAPACITY), 0);
 		for (long seq = from; seq < nextSeq; seq++) {
 			Line line = ring[(int) (seq % CAPACITY)];
 			if (line != null && line.seq() == seq) {

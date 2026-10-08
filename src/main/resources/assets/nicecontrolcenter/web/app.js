@@ -474,6 +474,10 @@
     let sub = 'health';
     try { sub = localStorage.getItem('np-server-sub') || 'health'; } catch (e) { /* default */ }
     selectSub(sub);
+  }
+
+  /** "More charts" works the same in the live dashboard and in exported reports. */
+  function setupMoreCharts() {
     let more = false;
     try { more = localStorage.getItem('np-charts-more') === '1'; } catch (e) { /* default */ }
     const apply = () => {
@@ -1363,7 +1367,8 @@
     patchHtml($('np-player-list'), `<div class="np-inspector-count">${online} online · ${d.players.length} total</div>` + (players.map((p) => {
       const sub = [p.race, p.class].filter(Boolean).join(' · ') || (p.online ? p.dimension : p.lastSeen ? 'Last seen ' + dateTime(p.lastSeen) : '');
       return `<button type="button" class="np-player-row ${playerKey(p) === playersState.selected ? 'active' : ''}" data-player="${esc(playerKey(p))}">
-        ${face(p, 32)}<span class="np-player-name"><b>${esc(p.name)}${p.banned ? ' <span class="np-banned">banned</span>' : ''}</b><small>${esc(sub || '')}</small></span>
+        ${face(p, 32)}<span class="np-player-name"><b>${esc(p.name)}${p.banned ? ' <span class="np-banned">banned</span>' : ''}</b><small>${esc(sub || '')}</small>
+          ${p.client || (p.xray && p.xray.length) ? `<span class="np-player-badges">${p.client ? `<span class="np-client">${esc(p.client)}</span>` : ''}${p.xray && p.xray.length ? '<span class="np-xray" title="Mined unusually little stone per ore; see the player card">x-ray hint</span>' : ''}</span>` : ''}</span>
         ${p.unread ? `<span class="np-tab-badge warn" title="${p.unread} new ${p.unread === 1 ? 'answer' : 'answers'}">${p.unread}</span>` : `<span class="np-live-dot ${p.online ? 'on' : ''}" title="${p.online ? 'Online' : 'Offline'}"></span>`}</button>`;
     }).join('') || '<div class="np-empty">No players match.</div>'));
   }
@@ -1453,6 +1458,8 @@
       ${p.claims && p.claims.length ? `<h4 class="np-subhead">Claims</h4><div class="np-loc-grid">${p.claims.map((c) =>
         locTile(p, 'bi-bounding-box', c.anchor, c, c.trusted.length ? 'trusted: ' + esc(c.trusted.join(', ')) : 'nobody trusted')).join('')}</div>` : ''}
       ${p.tags && p.tags.length ? `<h4 class="np-subhead">Tags</h4><div class="np-chips">${p.tags.map((t) => `<span class="np-tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${clientSection(p)}
+      ${miningSection(p)}
       ${moderation}`);
     if (changed && $('np-msgs') && atBottom) $('np-msgs').scrollTop = $('np-msgs').scrollHeight;
     if (changed && focused) {
@@ -1460,6 +1467,40 @@
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
+  }
+
+  /** What the player's game reports: brand and mods seen through their network channels. */
+  function clientSection(p) {
+    const c = p.clientInfo;
+    if (!p.online || !c) return '';
+    const mods = c.mods.length ? c.mods.map((m) => `<span class="np-tag">${esc(m)}</span>`).join('') : '<span class="np-loc-sub">none recognised</span>';
+    const other = c.other.length ? `<p class="np-loc-sub">Other channels: ${c.other.map(esc).join(', ')}</p>` : '';
+    return `<h4 class="np-subhead">Client</h4>
+      <div class="np-client-box"><p><b>${esc(c.brand || 'Unknown')}</b>${c.brandRaw && c.brandRaw !== c.brand ? ` <span class="np-loc-sub">(${esc(c.brandRaw)})</span>` : ''}</p>
+        <div class="np-chips">${mods}</div>${other}
+        <p class="np-loc-sub">Only mods that talk to the server show up here, and the brand is what the game says about itself. Client-only mods (Sodium, shaders, most cheat clients) can't be seen.</p></div>`;
+  }
+
+  /** The x-ray hint with the numbers behind it, so an admin can judge it. */
+  function miningSection(p) {
+    const m = p.mining;
+    if (!m) return '';
+    const per = (v) => v == null ? '–' : Math.round(v).toLocaleString('en-US');
+    const row = (label, ore, base, ratio, median, min, flagged) => {
+      if (ore < min) return `<div class="np-mine-row"><span>${label}</span><span class="np-loc-sub">${ore} mined; needs ${min} to judge</span></div>`;
+      return `<div class="np-mine-row ${flagged ? 'flagged' : ''}"><span>${label}</span>
+        <span><b>${per(ratio)}</b> blocks dug per ore <small>(${num(base)} for ${num(ore)})</small></span>
+        <span class="np-loc-sub">${median != null ? `server typical: ${per(median)}` : 'not enough players to compare yet'}</span></div>`;
+    };
+    const flags = m.flags || [];
+    return `<h4 class="np-subhead">Mining check</h4>
+      <div class="np-client-box">
+        ${flags.length ? `<p class="np-xray-note"><i class="bi bi-exclamation-triangle"></i> Possible x-ray: unusually little stone dug per ${flags.map((f) => f === 'diamonds' ? 'diamond' : 'ancient debris').join(' and ')}. A hint, not proof.</p>`
+          : '<p class="np-loc-sub">Nothing unusual.</p>'}
+        ${row('Diamonds', m.diamonds, m.stone, m.diamondRatio, m.diamondMedian, m.minDiamonds, flags.includes('diamonds'))}
+        ${row('Ancient debris', m.debris, m.netherStone, m.debrisRatio, m.debrisMedian, m.minDebris, flags.includes('debris'))}
+        <p class="np-loc-sub">From the game's statistics. Legit players dig through a lot of stone, deepslate or netherrack per ore; x-ray users go almost straight to it. Caves, lucky finds, and bed or TNT mining for debris can also look like this.</p>
+      </div>`;
   }
 
   async function playerAction(uuid, action, text) {
@@ -2682,6 +2723,7 @@
   setupTabs();
   setupChartHover();
   if (!REPORT) setupSubs();
+  setupMoreCharts();
   requestAnimationFrame(chartLoop);
   if (REPORT) {
     startReport();

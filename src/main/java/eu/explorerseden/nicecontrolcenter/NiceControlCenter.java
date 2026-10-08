@@ -66,6 +66,7 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STOPPING.register(NiceControlCenter::stop);
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> UpdateManager.stop());
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sendLaterMessages(handler.player));
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> eu.explorerseden.nicecontrolcenter.players.ClientInfo.forget(handler.player.getUUID()));
 	}
 
 	public static ControlCenterConfig config() {
@@ -140,6 +141,7 @@ public class NiceControlCenter implements ModInitializer {
 
 		restartDashboard(server);
 		UpdateManager.start(server, config);
+		eu.explorerseden.nicecontrolcenter.players.XrayCheck.reset();
 		eu.explorerseden.nicecontrolcenter.schedule.Scheduler.start(server);
 		LOGGER.info(config.monitor_enabled ? "Nice Control Center is monitoring the server"
 				: "Nice Control Center is ready; monitoring is off (turn it on with /ncc monitor on)");

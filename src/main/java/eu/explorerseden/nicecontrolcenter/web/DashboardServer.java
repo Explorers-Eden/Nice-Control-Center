@@ -246,7 +246,7 @@ public final class DashboardServer {
 					sendJson(exchange, Map.of("error", "Running commands from the dashboard is switched off (web_console_commands)."));
 					return;
 				}
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				String command = body.get("command").getAsString();
 				if (command.length() > 32_500 || command.contains("\n")) {
 					sendJson(exchange, Map.of("error", "That isn't a single command."));
@@ -279,7 +279,7 @@ public final class DashboardServer {
 					return;
 				}
 				Map<String, String> values = new LinkedHashMap<>();
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				body.getAsJsonObject("values").entrySet().forEach(e -> values.put(e.getKey(), e.getValue().getAsString()));
 				String dialog = body.get("dialog").getAsString();
 				String error = onServerThread(() -> PackSettings.apply(minecraft, dialog, values, "web dashboard"));
@@ -304,7 +304,7 @@ public final class DashboardServer {
 				if (!requirePost(exchange)) {
 					return;
 				}
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				String error = UpdateManager.action(body.get("action").getAsString(), body.get("key").getAsString());
 				Map<String, Object> result = UpdateManager.summary(config);
 				result.put("error", error);
@@ -314,7 +314,7 @@ public final class DashboardServer {
 				if (!requirePost(exchange)) {
 					return;
 				}
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				String error = UpdateManager.rollback(body.get("backup").getAsString());
 				Map<String, Object> result = UpdateManager.summary(config);
 				result.put("error", error);
@@ -331,7 +331,7 @@ public final class DashboardServer {
 				if (!requirePost(exchange)) {
 					return;
 				}
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				String source = body.get("source").getAsString().trim();
 				if (!source.isEmpty() && !source.matches("(https?://\\S+|github:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(@[^\\s#]+)?(#\\S+)?|modrinth:[A-Za-z0-9_-]+)")) {
 					sendJson(exchange, Map.of("error", "Use a https:// link, github:owner/repo (optionally @tag and #file name part) or modrinth:project."));
@@ -353,7 +353,7 @@ public final class DashboardServer {
 					return;
 				}
 				Map<String, String> changes = new LinkedHashMap<>();
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				body.getAsJsonObject("changes").entrySet().forEach(e -> changes.put(e.getKey(), e.getValue().getAsString()));
 				String error = onServerThread(() -> GameRuleEditor.save(minecraft, changes, "web dashboard"));
 				Map<String, Object> result = gamerules();
@@ -382,7 +382,7 @@ public final class DashboardServer {
 					sendJson(exchange, Map.of("error", "Player actions from the dashboard are switched off (web_player_actions)."));
 					return;
 				}
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				String uuid = body.get("uuid").getAsString();
 				String action = body.get("action").getAsString();
 				String text = body.has("text") ? body.get("text").getAsString() : "";
@@ -400,7 +400,7 @@ public final class DashboardServer {
 					sendJson(exchange, Map.of("error", "Scheduled commands from the dashboard are switched off (web_schedule)."));
 					return;
 				}
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				String error = switch (path) {
 					case "/api/schedule/save" -> Scheduler.save(Json.GSON.fromJson(body.get("task"), Scheduler.Task.class), "web dashboard");
 					case "/api/schedule/delete" -> Scheduler.delete(body.get("id").getAsString(), "web dashboard");
@@ -421,7 +421,7 @@ public final class DashboardServer {
 					return;
 				}
 				Map<String, String> changes = new LinkedHashMap<>();
-				JsonObject body = JsonParser.parseString(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject body = jsonBody(exchange);
 				body.getAsJsonObject("changes").entrySet().forEach(e -> changes.put(e.getKey(), e.getValue().getAsString()));
 				String error = onServerThread(() -> PropertiesEditor.save(minecraft, changes, "web dashboard"));
 				Map<String, Object> result = properties();
@@ -598,6 +598,15 @@ public final class DashboardServer {
 
 	private boolean tokenMatches(String token) {
 		return MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), config.token.getBytes(StandardCharsets.UTF_8));
+	}
+
+	/** The request body as JSON, at most 2 MB; anything larger or malformed is answered with 400. */
+	private static JsonObject jsonBody(HttpExchange exchange) throws IOException {
+		byte[] bytes = exchange.getRequestBody().readNBytes(2 * 1024 * 1024 + 1);
+		if (bytes.length > 2 * 1024 * 1024) {
+			throw new com.google.gson.JsonParseException("Request too large");
+		}
+		return JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
 	}
 
 	private static boolean requirePost(HttpExchange exchange) throws IOException {

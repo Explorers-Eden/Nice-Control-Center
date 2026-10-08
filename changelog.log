@@ -23,3 +23,4 @@
 - Scheduled commands: once, daily, on weekdays or every few minutes, several commands per task
 - Private messages with players (they answer with /nccreply), ban and unban in the player inspector
 - Scheduled tasks can be chained (run after another task, with a delay), and commands can be spaced out with wait lines or a pause
+- Player inspector shows each player's client and recognised mods, and an x-ray hint from mining statistics
