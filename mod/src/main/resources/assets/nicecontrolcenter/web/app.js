@@ -149,8 +149,11 @@
         `Milliseconds per tick (median). Min ${fixed(k.msptMin, 1)} · median ${fixed(k.msptMedian, 1)} · 95% of ticks under ${fixed(k.msptP95, 1)} · slowest ${fixed(k.msptMax, 1)}`],
       ['CPU', `<span class="${cpuClass}">${fixed(k.cpuProcess, 0)}%</span>`, `machine ${fixed(k.cpuSystem, 0)}%`, null,
         `Server ${fixed(k.cpuProcess, 0)}% · whole machine ${fixed(k.cpuSystem, 0)}% · ${k.cores} cores`],
-      ['Memory', `<span class="${heapClass}">${bytes(k.heapLive || k.heapUsed)}</span><small> / ${bytes(k.heapMax)}</small>`, 'in use after GC', null,
-        `Still in use after garbage collection. ${bytes(k.heapUsed)} including garbage not collected yet`],
+      // Laid out like MSPT; the unit is small so three sizes fit next to each other.
+      ['Memory', null, null, `<div class="np-mspt">${[[k.heapLive ? 'after GC' : 'in use', k.heapLive || k.heapUsed, heapClass],
+        ...(k.heapLive ? [['incl. garbage', k.heapUsed, '']] : []), ['max', k.heapMax, '']]
+        .map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
+        `Still in use after garbage collection: ${bytes(k.heapLive || k.heapUsed)} · including garbage not collected yet: ${bytes(k.heapUsed)} · maximum: ${bytes(k.heapMax)}`],
       ['GC', `<span class="${gcClass}">${fixed(k.gcPercent, 1)}%</span><small> paused</small>`,
         `${num(k.gcCount)} pauses${k.gcCount ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''}`, null,
         `Share of time the server was paused for garbage collection: ${num(k.gcTimeMs || 0)} ms over ${num(k.gcCount)} pauses${k.gcCount ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
