@@ -174,6 +174,50 @@ final class AccountRoutes {
 			json(ctx, Map.of("entries", accounts.auditLog(before, 100, ctx.queryParam("q"))));
 		}));
 
+		routes.get("/api/me/keys", guard(null, (ctx, me) -> {
+			if (me.envAdmin()) {
+				json(ctx, Map.of("keys", List.of(), "note", "The container admin logs in to SFTP with its password."));
+				return;
+			}
+			if (!dbReady(ctx)) return;
+			json(ctx, Map.of("keys", accounts.keys(me.userId()).stream()
+					.map(k -> Map.of("id", k.id(), "name", k.name(), "fingerprint", k.fingerprint(), "createdAt", k.createdAt(), "lastUsed", k.lastUsed())).toList()));
+		}));
+
+		routes.post("/api/me/keys", guard(null, (ctx, me) -> {
+			if (me.envAdmin()) {
+				error(ctx, HttpStatus.BAD_REQUEST, "The container admin logs in to SFTP with its password.");
+				return;
+			}
+			if (!dbReady(ctx)) return;
+			String line = str(body(ctx), "key").strip();
+			String fingerprint;
+			String name;
+			try {
+				var entry = org.apache.sshd.common.config.keys.AuthorizedKeyEntry.parseAuthorizedKeyEntry(line);
+				var key = entry == null ? null : entry.resolvePublicKey(null, org.apache.sshd.common.config.keys.PublicKeyEntryResolver.IGNORING);
+				if (key == null) throw new IllegalArgumentException();
+				fingerprint = org.apache.sshd.common.config.keys.KeyUtils.getFingerPrint(key);
+				name = entry.getComment() == null || entry.getComment().isBlank() ? org.apache.sshd.common.config.keys.KeyUtils.getKeyType(key) : entry.getComment().strip();
+			} catch (Exception e) {
+				error(ctx, HttpStatus.BAD_REQUEST, "That isn't a public key. Paste one line from a .pub file, like ssh-ed25519 AAAA… name@pc.");
+				return;
+			}
+			if (accounts.keys(me.userId()).stream().anyMatch(k -> k.fingerprint().equals(fingerprint))) {
+				error(ctx, HttpStatus.CONFLICT, "This key is already added.");
+				return;
+			}
+			accounts.addKey(me.userId(), name.length() > 60 ? name.substring(0, 60) : name, line, fingerprint);
+			audit.log(me.name(), "user.sshkey.add", name + " " + fingerprint, clientIp(ctx));
+			json(ctx, Map.of("ok", true));
+		}));
+
+		routes.post("/api/me/keys/{id}/delete", guard(null, (ctx, me) -> {
+			if (me.envAdmin() || !dbReady(ctx)) return;
+			if (accounts.deleteKey(me.userId(), Integer.parseInt(ctx.pathParam("id")))) audit.log(me.name(), "user.sshkey.delete", ctx.pathParam("id"), clientIp(ctx));
+			json(ctx, Map.of("ok", true));
+		}));
+
 		routes.post("/api/me/password", guard(null, (ctx, me) -> {
 			if (me.envAdmin()) {
 				error(ctx, HttpStatus.BAD_REQUEST, "This account's password is set with PANEL_ADMIN_PASSWORD in the container settings.");

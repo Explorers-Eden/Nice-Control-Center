@@ -10,7 +10,11 @@
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 && path !== 'api/login') showLogin();
-    if (!res.ok) throw new Error(data.error || res.statusText);
+    if (!res.ok) {
+      const err = new Error(data.error || res.statusText);
+      err.data = data;
+      throw err;
+    }
     return data;
   }
 
@@ -61,6 +65,7 @@
 
   function applyPermissions() {
     document.querySelectorAll('#pn-app [data-perm]').forEach((el) => { el.hidden = !can(el.dataset.perm); });
+    document.querySelectorAll('#pn-app [data-perm-any]').forEach((el) => { el.hidden = !el.dataset.permAny.split(' ').some(can); });
     document.querySelector('.np-banner').hidden = !can('server.view');
     $('pn-app').querySelector('.pn-actions').hidden = !can('server.power');
     $('pn-command-form').hidden = !can('console.write');
@@ -109,6 +114,8 @@
     if (tab === 'dashboard') showDashboard();
     activeTab = tab;
     if (tab === 'backups') loadBackups();
+    if (tab === 'files') { loadFiles(); loadCleanup(); }
+    if (tab === 'configs') loadConfigs();
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
@@ -558,7 +565,49 @@
       ? `You're logged in as ${me.user}, the container's admin account. Its password is set with PANEL_ADMIN_PASSWORD in the container settings, and it can do everything.`
       : `You're logged in as ${me.user}. Changing your password logs you out everywhere.`;
     $('pn-password-form').hidden = me.envAdmin;
+    loadKeys();
   }
+
+  async function loadKeys() {
+    if (me.envAdmin) {
+      $('pn-keys').innerHTML = '<p class="np-card-intro">The container admin logs in to SFTP with its password (PANEL_ADMIN_PASSWORD).</p>';
+      $('pn-key-form').hidden = true;
+      return;
+    }
+    $('pn-key-form').hidden = false;
+    try {
+      const data = await api('api/me/keys');
+      $('pn-keys').innerHTML = data.keys.map((k) => `<div class="pn-role" data-key="${k.id}"><b>${esc(k.name)}</b>
+        <div class="np-chips"><span class="np-chip">${esc(k.fingerprint)}</span></div>
+        <small class="np-form-msg">${k.lastUsed ? 'last used ' + esc(dateTime(k.lastUsed)) : 'not used yet'}</small>
+        <div class="pn-role-actions"><button type="button" class="np-btn small danger" data-key-remove>Remove</button></div></div>`).join('')
+        || '<p class="np-card-intro">No keys yet.</p>';
+    } catch (err) {
+      $('pn-keys').textContent = err.message;
+    }
+  }
+
+  $('pn-keys').addEventListener('click', async (e) => {
+    if (!e.target.closest('[data-key-remove]')) return;
+    try {
+      await api(`api/me/keys/${e.target.closest('[data-key]').dataset.key}/delete`, {});
+      loadKeys();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  $('pn-key-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('api/me/keys', { key: e.target.key.value.trim() });
+      e.target.reset();
+      formMsg('pn-key-msg', 'Key added.', true);
+      loadKeys();
+    } catch (err) {
+      formMsg('pn-key-msg', err.message, false);
+    }
+  });
 
   $('pn-password-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -854,6 +903,523 @@
       loadSchedule();
     } catch (err) {
       formMsg('pn-task-msg', err.message, false);
+    }
+  });
+
+  // ── Text editor (files and configs) ────────────────────────────────────
+
+  const extOf = (path) => (path.match(/\.([^./]+)$/) || [])[1]?.toLowerCase() || '';
+
+  /** Fields a form view can show: key/value lines (properties, flat TOML) or a JSON object of plain values. */
+  function parseForm(path, text, flatJson) {
+    const ext = extOf(path);
+    const lines = text.split('\n');
+    const fields = [];
+    let section = '';
+    let comments = [];
+    if (ext === 'json' && flatJson) {
+      const obj = JSON.parse(text);
+      for (const [key, value] of Object.entries(obj)) fields.push({ key, value, type: typeof value === 'boolean' ? 'bool' : typeof value === 'number' ? 'number' : 'text', json: true });
+      return fields.length ? { kind: 'json', fields, indent: (text.match(/\n([ \t]+)"/) || [])[1] || '  ' } : null;
+    }
+    if (ext !== 'properties' && ext !== 'toml') return null;
+    lines.forEach((line, i) => {
+      const t = line.trim();
+      if (!t) { comments = []; return; }
+      if (t.startsWith('#') || t.startsWith('!')) { comments.push(t.replace(/^[#!]\s?/, '')); return; }
+      if (ext === 'toml') {
+        const sec = t.match(/^\[\[?([^\]]+)\]\]?$/);
+        if (sec) { section = sec[1]; comments = []; return; }
+        const m = line.match(/^(\s*)([A-Za-z0-9_.\-]+|"[^"]*")(\s*=\s*)(true|false|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|"(?:[^"\\]|\\.)*")(\s*(?:#.*)?)$/);
+        if (m) {
+          const raw = m[4];
+          const type = raw === 'true' || raw === 'false' ? 'bool' : raw.startsWith('"') ? 'text' : 'number';
+          fields.push({ line: i, prefix: m[1] + m[2] + m[3], suffix: m[5], key: m[2].replace(/^"|"$/g, ''), section, comment: comments.join(' '), type,
+            value: type === 'bool' ? raw === 'true' : type === 'number' ? Number(raw) : JSON.parse(raw) });
+        }
+      } else {
+        const m = line.match(/^(\s*)([^=:\s][^=:]*?)(\s*[=:]\s*)(.*)$/);
+        if (m) {
+          const raw = m[4];
+          const type = raw === 'true' || raw === 'false' ? 'bool' : /^-?\d+(\.\d+)?$/.test(raw) ? 'number' : 'text';
+          fields.push({ line: i, prefix: m[1] + m[2] + m[3], suffix: '', key: m[2], section: '', comment: comments.join(' '), type, value: type === 'bool' ? raw === 'true' : raw });
+        }
+      }
+      comments = [];
+    });
+    return fields.length ? { kind: ext, fields } : null;
+  }
+
+  function makeEditor(root) {
+    const text = root.querySelector('.pn-text');
+    const gutter = root.querySelector('.pn-gutter');
+    const code = root.querySelector('.pn-code');
+    const formView = root.querySelector('.pn-form-view');
+    const modes = root.querySelector('.pn-editor-modes');
+    const msg = root.querySelector('.pn-editor-msg');
+    const force = root.querySelector('.pn-editor-force');
+    const editor = { path: null, onClose: null, onSaved: null };
+    let form = null;
+    let mode = 'text';
+    let original = '';
+
+    function numbers() {
+      const n = text.value.split('\n').length;
+      if (gutter.dataset.n !== String(n)) {
+        gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n');
+        gutter.dataset.n = String(n);
+      }
+      gutter.scrollTop = text.scrollTop;
+    }
+
+    function note(t, ok) {
+      msg.className = 'np-form-msg pn-editor-msg ' + (ok === true ? 'ok' : ok === false ? 'error' : '');
+      msg.textContent = t;
+    }
+
+    function goToLine(line, column) {
+      const lines = text.value.split('\n');
+      let pos = 0;
+      for (let i = 0; i < Math.min(line - 1, lines.length); i++) pos += lines[i].length + 1;
+      pos += Math.max(0, (column || 1) - 1);
+      text.focus();
+      text.setSelectionRange(pos, Math.min(text.value.length, pos + 1));
+      const lineHeight = parseFloat(getComputedStyle(text).lineHeight) || 19;
+      text.scrollTop = Math.max(0, (line - 5) * lineHeight);
+      numbers();
+    }
+
+    function renderForm() {
+      const groups = new Map();
+      form.fields.forEach((f, i) => {
+        const g = f.section || '';
+        if (!groups.has(g)) groups.set(g, []);
+        groups.get(g).push([f, i]);
+      });
+      formView.innerHTML = [...groups].map(([g, list]) => (g ? `<h5>${esc(g)}</h5>` : '') + list.map(([f, i]) => {
+        const label = `<span>${esc(f.key)}${f.comment ? `<span class="pn-comment">${esc(f.comment)}</span>` : ''}</span>`;
+        if (f.type === 'bool') return `<label class="np-form-row">${label}<span class="np-switch"><input type="checkbox" data-field="${i}" ${f.value ? 'checked' : ''}><span></span></span></label>`;
+        return `<label class="np-form-row">${label}<input type="${f.type === 'number' ? 'number' : 'text'}" step="any" data-field="${i}" value="${esc(f.value)}"></label>`;
+      }).join('')).join('');
+    }
+
+    /** The form's values written back into the text, keeping comments and layout. */
+    function fromForm() {
+      formView.querySelectorAll('[data-field]').forEach((input) => {
+        const f = form.fields[Number(input.dataset.field)];
+        f.value = f.type === 'bool' ? input.checked : f.type === 'number' ? (input.value === '' ? 0 : Number(input.value)) : input.value;
+      });
+      if (form.kind === 'json') {
+        const obj = {};
+        form.fields.forEach((f) => { obj[f.key] = f.value; });
+        return JSON.stringify(obj, null, form.indent) + (text.value.endsWith('\n') ? '\n' : '');
+      }
+      const lines = text.value.split('\n');
+      for (const f of form.fields) {
+        const token = form.kind === 'toml' && f.type === 'text' ? JSON.stringify(f.value) : String(f.value);
+        lines[f.line] = f.prefix + token + f.suffix;
+      }
+      return lines.join('\n');
+    }
+
+    function setMode(next) {
+      if (next === mode) return;
+      if (next === 'form') {
+        form = parseForm(editor.path, text.value, extOf(editor.path) === 'json' && (() => { try { const o = JSON.parse(text.value); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => v === null || typeof v !== 'object'); } catch (e) { return false; } })());
+        if (!form) return note('This file can only be edited as text right now (check it for errors).', false);
+        renderForm();
+      } else if (form) {
+        text.value = fromForm();
+        numbers();
+      }
+      mode = next;
+      code.hidden = mode !== 'text';
+      formView.hidden = mode !== 'form';
+      modes.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+    }
+
+    async function save(forced) {
+      if (mode === 'form') {
+        text.value = fromForm();
+        numbers();
+      }
+      try {
+        await api('api/files/write', { path: editor.path, text: text.value, force: !!forced });
+        original = text.value;
+        force.hidden = true;
+        note('Saved.', true);
+        if (editor.onSaved) editor.onSaved();
+      } catch (err) {
+        const d = err.data || {};
+        note(d.line ? `Line ${d.line}${d.column ? ', column ' + d.column : ''}: ${err.message}` : err.message, false);
+        force.hidden = !d.line && !/JSON|TOML|YAML|expected|Expected/.test(err.message);
+        if (d.line) {
+          if (mode === 'form') setMode('text');
+          goToLine(d.line, d.column);
+        }
+      }
+    }
+
+    editor.open = async (path) => {
+      if (editor.path && text.value !== original && !confirm('Discard the unsaved changes?')) return false;
+      let data;
+      try {
+        data = await api('api/files/read?path=' + encodeURIComponent(path));
+      } catch (err) {
+        alert(err.message);
+        return false;
+      }
+      if (data.text === null) {
+        alert(`${path} isn't a text file (or is over 5 MB), so it can't be edited here. Download it instead.`);
+        return false;
+      }
+      editor.path = data.path;
+      root.hidden = false;
+      root.querySelector('.pn-editor-name').textContent = data.path;
+      text.value = original = data.text;
+      text.scrollTop = 0;
+      gutter.dataset.n = '';
+      numbers();
+      mode = 'text';
+      form = null;
+      code.hidden = false;
+      formView.hidden = true;
+      modes.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === 'text'));
+      modes.hidden = !parseFormSafe(data);
+      force.hidden = true;
+      note('');
+      const editable = can('files.write') || (can('files.config') && data.path.startsWith('config/'));
+      text.readOnly = !editable;
+      root.querySelector('.pn-editor-save').hidden = !editable;
+      return true;
+    };
+
+    function parseFormSafe(data) {
+      try {
+        return !!parseForm(data.path, data.text, data.flatJson);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    editor.close = () => {
+      if (editor.path && text.value !== original && !confirm('Discard the unsaved changes?')) return;
+      editor.path = null;
+      root.hidden = true;
+      if (editor.onClose) editor.onClose();
+    };
+
+    text.addEventListener('input', numbers);
+    text.addEventListener('scroll', () => { gutter.scrollTop = text.scrollTop; });
+    text.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        save(false);
+      } else if (e.key === 'Tab' && !text.readOnly) {
+        e.preventDefault();
+        const indent = /\n\t/.test(text.value) ? '\t' : '  ';
+        const start = text.selectionStart;
+        text.setRangeText(indent, start, text.selectionEnd, 'end');
+        numbers();
+      }
+    });
+    root.addEventListener('keydown', (e) => {
+      if (mode === 'form' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        save(false);
+      }
+    });
+    modes.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
+    root.querySelector('.pn-editor-save').addEventListener('click', () => save(false));
+    force.addEventListener('click', () => { if (confirm('Save even though the file has errors? The mod may fail to load it.')) save(true); });
+    root.querySelector('.pn-editor-close').addEventListener('click', () => editor.close());
+    return editor;
+  }
+
+  // ── Files ──────────────────────────────────────────────────────────────
+
+  const fileEditor = makeEditor($('pn-file-editor'));
+  fileEditor.onSaved = () => loadFiles();
+  let cwd = '';
+  let fileData = null;
+
+  async function loadFiles(path) {
+    if (path !== undefined) cwd = path;
+    try {
+      fileData = await api('api/files/list?path=' + encodeURIComponent(cwd));
+    } catch (err) {
+      $('pn-files-msg').className = 'np-form-msg error';
+      $('pn-files-msg').textContent = err.message;
+      return;
+    }
+    cwd = fileData.path;
+    const parts = cwd ? cwd.split('/') : [];
+    $('pn-crumbs').innerHTML = `<button type="button" data-crumb=""><i class="bi bi-hdd"></i> server</button>`
+      + parts.map((p, i) => `<span>/</span><button type="button" data-crumb="${esc(parts.slice(0, i + 1).join('/'))}">${esc(p)}</button>`).join('');
+    const running = $('pn-state-text').textContent === 'Running' || $('pn-state-text').textContent === 'Starting…';
+    const write = can('files.write');
+    $('pn-file-rows').innerHTML = (cwd ? `<tr><td></td><td class="name"><button type="button" data-open="${esc(parts.slice(0, -1).join('/'))}" data-dir="1"><i class="bi bi-arrow-90deg-up"></i>..</button></td><td></td><td></td><td></td></tr>` : '')
+      + fileData.entries.map((f) => {
+        const path = (cwd ? cwd + '/' : '') + f.name;
+        const locked = running && (path === fileData.world || path.startsWith(fileData.world + '/'));
+        const icon = f.dir ? 'bi-folder-fill' : /\.(zip|jar)$/i.test(f.name) ? 'bi-file-zip' : /\.(json5?|toml|ya?ml|properties|txt|cfg|conf|ini|mcfunction|log)$/i.test(f.name) ? 'bi-file-text' : 'bi-file-earmark';
+        return `<tr data-path="${esc(path)}" data-dir="${f.dir ? 1 : ''}" class="${locked ? 'locked' : ''}">
+          <td class="pn-check">${write ? `<input type="checkbox" data-select aria-label="Select ${esc(f.name)}">` : ''}</td>
+          <td class="name"><button type="button" data-open="${esc(path)}" data-dir="${f.dir ? 1 : ''}"><i class="bi ${icon}"></i>${esc(f.name)}</button></td>
+          <td class="num">${f.dir ? '' : bytes(f.size)}</td><td>${esc(dateTime(f.time))}</td>
+          <td><div class="pn-row-actions">
+            <a class="np-btn small" href="api/files/download?path=${encodeURIComponent(path)}" title="${f.dir ? 'Download as zip' : 'Download'}"><i class="bi bi-download"></i></a>
+            ${write ? `<button type="button" class="np-btn small" data-file-act="rename" title="Rename or move"><i class="bi bi-pencil"></i></button>
+            <button type="button" class="np-btn small" data-file-act="copy" title="Copy"><i class="bi bi-files"></i></button>
+            ${/\.zip$/i.test(f.name) ? '<button type="button" class="np-btn small" data-file-act="unzip" title="Extract here"><i class="bi bi-box-arrow-up"></i></button>' : ''}
+            <button type="button" class="np-btn small danger" data-file-act="delete" title="Delete"><i class="bi bi-trash"></i></button>` : ''}
+          </div></td></tr>`;
+      }).join('');
+    $('pn-select-all').checked = false;
+    updateSelection();
+  }
+
+  function selected() {
+    return [...$('pn-file-rows').querySelectorAll('[data-select]:checked')].map((c) => c.closest('tr').dataset.path);
+  }
+
+  function updateSelection() {
+    const n = selected().length;
+    $('pn-zip-selected').disabled = !n;
+    $('pn-delete-selected').disabled = !n;
+  }
+
+  function filesNote(t, ok) {
+    $('pn-files-msg').className = 'np-form-msg ' + (ok ? 'ok' : 'error');
+    $('pn-files-msg').textContent = t;
+  }
+
+  $('pn-crumbs').addEventListener('click', (e) => { const b = e.target.closest('[data-crumb]'); if (b) loadFiles(b.dataset.crumb); });
+  $('pn-file-rows').addEventListener('change', updateSelection);
+  $('pn-select-all').addEventListener('change', () => {
+    $('pn-file-rows').querySelectorAll('[data-select]').forEach((c) => { c.checked = $('pn-select-all').checked; });
+    updateSelection();
+  });
+
+  $('pn-file-rows').addEventListener('click', async (e) => {
+    const open = e.target.closest('[data-open]');
+    if (open) {
+      if (open.dataset.dir) return loadFiles(open.dataset.open);
+      if (await fileEditor.open(open.dataset.open)) $('pn-file-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const b = e.target.closest('[data-file-act]');
+    if (!b) return;
+    const path = b.closest('tr').dataset.path;
+    const name = path.split('/').pop();
+    try {
+      switch (b.dataset.fileAct) {
+        case 'rename': {
+          const to = prompt('New name or path (relative to the server folder):', path);
+          if (!to || to === path) return;
+          await api('api/files/move', { from: path, to });
+          break;
+        }
+        case 'copy': {
+          const to = prompt('Copy to (relative to the server folder):', path.replace(/(\.[^./]+)?$/, ' copy$1'));
+          if (!to) return;
+          await api('api/files/copy', { from: path, to });
+          break;
+        }
+        case 'unzip': {
+          const res = await api('api/files/unzip', { path });
+          filesNote(`Extracted ${res.files} files.`, true);
+          break;
+        }
+        case 'delete':
+          if (!confirm(`Delete ${name}? It stays in .panel-trash for 7 days.`)) return;
+          await api('api/files/delete', { paths: [path] });
+          break;
+      }
+      loadFiles();
+    } catch (err) {
+      filesNote(err.message, false);
+    }
+  });
+
+  $('pn-mkdir').addEventListener('click', async () => {
+    const name = prompt('Folder name:');
+    if (!name) return;
+    try {
+      await api('api/files/mkdir', { path: (cwd ? cwd + '/' : '') + name });
+      loadFiles();
+    } catch (err) {
+      filesNote(err.message, false);
+    }
+  });
+
+  $('pn-delete-selected').addEventListener('click', async () => {
+    const paths = selected();
+    if (!confirm(`Delete ${paths.length} item${paths.length === 1 ? '' : 's'}? They stay in .panel-trash for 7 days.`)) return;
+    try {
+      await api('api/files/delete', { paths });
+      loadFiles();
+    } catch (err) {
+      filesNote(err.message, false);
+    }
+  });
+
+  $('pn-zip-selected').addEventListener('click', async () => {
+    const paths = selected();
+    const to = prompt('Name of the zip file:', (cwd ? cwd + '/' : '') + (paths.length === 1 ? paths[0].split('/').pop() : 'files') + '.zip');
+    if (!to) return;
+    try {
+      await api('api/files/zip', { paths, to });
+      loadFiles();
+    } catch (err) {
+      filesNote(err.message, false);
+    }
+  });
+
+  /** Uploads with progress (fetch has none); overwrite asks first. */
+  function upload(fileList, overwrite) {
+    const files = [...fileList];
+    if (!files.length) return;
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f, f.name));
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `api/files/upload?path=${encodeURIComponent(cwd)}${overwrite ? '&overwrite=1' : ''}`);
+    xhr.setRequestHeader('X-NCC', '1');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) filesNote(`Uploading ${files.length} file${files.length === 1 ? '' : 's'}… ${Math.round(e.loaded / e.total * 100)}%`, true);
+    };
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
+      if (xhr.status === 400 && /already exists/.test(data.error || '') && !overwrite) {
+        if (confirm(data.error + ' Replace it?')) return upload(files, true);
+      }
+      if (xhr.status >= 400) filesNote(data.error || 'Upload failed', false);
+      else filesNote(`Uploaded ${data.saved.length} file${data.saved.length === 1 ? '' : 's'}.`, true);
+      loadFiles();
+    };
+    xhr.onerror = () => filesNote('Upload failed (connection).', false);
+    xhr.send(form);
+  }
+
+  $('pn-upload').addEventListener('change', (e) => { upload(e.target.files, false); e.target.value = ''; });
+  const drop = $('pn-drop');
+  drop.addEventListener('dragover', (e) => {
+    if (!can('files.write') || !e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    drop.classList.add('dragging');
+  });
+  drop.addEventListener('dragleave', (e) => { if (!drop.contains(e.relatedTarget)) drop.classList.remove('dragging'); });
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('dragging');
+    if (can('files.write')) upload(e.dataTransfer.files, false);
+  });
+
+  // ── Log cleanup ────────────────────────────────────────────────────────
+
+  function cleanupRow(r) {
+    return `<div class="pn-step"><span>In</span><input type="text" data-f="folder" value="${esc(r.folder || '')}" placeholder="logs" style="flex:0 1 160px;min-width:100px">
+      <span>delete</span><input type="text" data-f="pattern" value="${esc(r.pattern || '*')}" style="flex:0 1 140px;min-width:80px">
+      <span>older than</span><input type="number" data-f="maxAgeDays" min="1" max="3650" value="${r.maxAgeDays || 14}"><span>days</span>
+      <label class="np-check"><input type="checkbox" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}> on</label>
+      <button type="button" class="np-btn small" data-rule-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
+  }
+
+  function readCleanup() {
+    return {
+      daily: $('pn-cleanup-daily').checked,
+      rules: [...$('pn-cleanup-rules').children].map((row) => ({
+        folder: row.querySelector('[data-f="folder"]').value.trim(),
+        pattern: row.querySelector('[data-f="pattern"]').value.trim() || '*',
+        maxAgeDays: Number(row.querySelector('[data-f="maxAgeDays"]').value),
+        enabled: row.querySelector('[data-f="enabled"]').checked,
+      })),
+    };
+  }
+
+  function renderCleanup(view) {
+    $('pn-cleanup-daily').checked = view.settings.daily;
+    $('pn-cleanup-rules').innerHTML = view.settings.rules.map(cleanupRow).join('');
+    const total = view.preview.reduce((n, c) => n + c.size, 0);
+    $('pn-cleanup-preview').textContent = view.preview.length
+      ? `Right now this would delete ${view.preview.length} file${view.preview.length === 1 ? '' : 's'} (${bytes(total)}), e.g. ${view.preview.slice(0, 3).map((c) => c.path).join(', ')}.`
+      : 'Right now there is nothing old enough to delete.';
+  }
+
+  async function loadCleanup() {
+    if (!can('files.write')) return;
+    try {
+      renderCleanup(await api('api/cleanup'));
+    } catch (err) {
+      formMsg('pn-cleanup-msg', err.message, false);
+    }
+  }
+
+  $('pn-cleanup-rules').addEventListener('click', (e) => { if (e.target.closest('[data-rule-remove]')) e.target.closest('.pn-step').remove(); });
+  $('pn-cleanup-add').addEventListener('click', () => $('pn-cleanup-rules').insertAdjacentHTML('beforeend', cleanupRow({ folder: '', pattern: '*', maxAgeDays: 14 })));
+  $('pn-cleanup-save').addEventListener('click', async () => {
+    try {
+      renderCleanup(await api('api/cleanup/settings', readCleanup()));
+      formMsg('pn-cleanup-msg', 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-cleanup-msg', err.message, false);
+    }
+  });
+  $('pn-cleanup-run').addEventListener('click', async () => {
+    if (!confirm('Delete the old log files listed above now?')) return;
+    try {
+      const res = await api('api/cleanup/run', {});
+      formMsg('pn-cleanup-msg', res.result + '.', true);
+      loadCleanup();
+    } catch (err) {
+      formMsg('pn-cleanup-msg', err.message, false);
+    }
+  });
+
+  // ── Config editor ──────────────────────────────────────────────────────
+
+  const configEditor = makeEditor($('pn-config-editor'));
+  configEditor.onClose = () => {
+    $('pn-config-empty').hidden = false;
+    $('pn-config-files').querySelectorAll('.active').forEach((b) => b.classList.remove('active'));
+  };
+  let configFiles = [];
+
+  async function loadConfigs() {
+    try {
+      configFiles = (await api('api/configs')).files;
+    } catch (err) {
+      $('pn-config-files').textContent = err.message;
+      return;
+    }
+    renderConfigs();
+  }
+
+  function renderConfigs() {
+    const q = $('pn-config-search').value.trim().toLowerCase();
+    const groups = new Map();
+    for (const f of configFiles) {
+      const rel = f.path.replace(/^config\//, '');
+      if (q && !rel.toLowerCase().includes(q)) continue;
+      const slash = rel.indexOf('/');
+      const group = slash < 0 ? '' : rel.slice(0, slash);
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push([f, slash < 0 ? rel : rel.slice(slash + 1)]);
+    }
+    $('pn-config-files').innerHTML = [...groups].sort((a, b) => a[0].localeCompare(b[0])).map(([g, list]) =>
+      (g ? `<div class="pn-config-group">${esc(g)}</div>` : '')
+      + list.map(([f, name]) => `<button type="button" class="pn-config-file ${f.path === configEditor.path ? 'active' : ''}" data-config="${esc(f.path)}" title="${esc(f.path)}">${esc(name)}</button>`).join('')
+    ).join('') || '<p class="np-empty">No config files found.</p>';
+  }
+
+  $('pn-config-search').addEventListener('input', renderConfigs);
+  $('pn-config-files').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-config]');
+    if (!b) return;
+    if (await configEditor.open(b.dataset.config)) {
+      $('pn-config-empty').hidden = true;
+      renderConfigs();
     }
   });
 

@@ -1,6 +1,6 @@
 # Nice Control Center Panel: setup
 
-> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, and has user accounts with roles and an audit log. Files, updates, Discord and the map follow step by step.
+> The panel is in development. It runs the Minecraft server (start/stop, console, crash restart, Java settings), shows the Nice Control Center dashboard, makes backups, runs scheduled tasks, has a file explorer, config editor and SFTP, and user accounts with roles and an audit log. Version updates, Discord and the map follow step by step.
 
 ## Deploy with Portainer
 
@@ -60,6 +60,28 @@ A task is a list of steps:
 
 The templates set up a daily restart at 04:00 (backup first, then a 5-minute countdown) and a backup every 6 hours. **Run now** starts any task immediately.
 
+## Files and configs
+
+- **Files:** the server folder in the browser.
+  - Upload (drag files onto the list), download (folders come as a zip), rename or move, copy, zip and unzip, new folders, delete, and edit text files.
+  - Deleted files go to `.panel-trash` for 7 days.
+  - While the server runs, the world folder is read-only, so a running world can't be damaged.
+- **Configs:** every file in `config/`, grouped by mod.
+  - JSON, JSON5, TOML, YAML and properties are checked before saving; on an error the editor jumps to the line. **Save anyway** stays possible.
+  - Simple files can be switched to **Form**: switches, numbers and text, with the comments as hints, while the file's layout and comments are kept.
+  - The previous version stays as `<file>.bak`.
+  - Most mods read their config at start, so restart afterwards.
+- **Log cleanup** (Files tab): deletes files older than N days in `logs/`, `crash-reports/` and `debug/`, with a preview. It runs daily after 05:00; `latest.log` is never touched.
+
+## SFTP
+
+Connect with FileZilla, WinSCP, Cyberduck or `sftp -P 2022 name@your-server` and log in with your panel name and password.
+- **SSH keys:** add a public key under **Account** to log in without a password.
+- **Permissions:** the account needs the SFTP permission. Without "Upload, edit…" it's read-only.
+- **Scope:** SFTP shows the server folder and nothing outside it. The world folder is read-only while the server runs.
+- **Audit:** uploads, renames and deletes go to the audit log.
+- **Port:** forward 2022 (or set `SFTP_PORT`) in the stack; this is plain TCP, not through the reverse proxy.
+
 ## Accounts
 
 The **container admin** (`PANEL_ADMIN_USER` / `PANEL_ADMIN_PASSWORD`) can always log in and do everything, even while the database is down. Use it to set things up and as a spare key.
@@ -76,7 +98,7 @@ Create an empty database and a user that owns it. The panel creates and updates 
 
 Then, under **Users**:
 - **Users** get one or more roles. Disabling, deleting or changing a user's password logs them out everywhere at once.
-- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, see the dashboard, manage players, change server or Java settings, manage updates and scheduled tasks, see/make/restore backups, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
+- **Roles** decide what a user may do: see the server, start/stop it, read the console, run commands, see the dashboard, manage players, change server or Java settings, manage updates and scheduled tasks, see/make/restore backups, browse or change files, edit mod configs, use SFTP, manage users, read the audit log. **Admin** can do everything. **Moderator** and **Viewer** are built in and adjustable, and you can add your own. The panel only shows each account what it's allowed to use.
 - The **Audit log** records every login (failed ones too), server action, console command, settings change and account change, with who, when and from which IP.
 
 ## Startup & Java
@@ -111,6 +133,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `DB_URL` / `DB_USER` / `DB_PASS` | – | Postgres for user accounts and the audit log |
 | `PANEL_PUBLIC_URL` | – | the panel's address, for `/ncc web` links in the game |
 | `TIMEZONE` | the container's | time zone for scheduled tasks and backup names, e.g. `Europe/Berlin` |
+| `SFTP_PORT` | `2022` | SFTP port inside the container (`off` turns SFTP off) |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
 

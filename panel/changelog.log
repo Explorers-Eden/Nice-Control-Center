@@ -1,3 +1,11 @@
+## 0.6.0
+- Files: browse the server folder, upload (also by drag & drop, with progress), download (folders as zip), rename/move, copy, zip, unzip, new folder, delete to a 7-day trash
+- Edit text files in the panel with line numbers; the world folder is read-only while the server runs
+- Configs: every file in config/, grouped by mod, with a syntax check before saving (JSON, JSON5, TOML, YAML, properties) that points to the line of the problem; simple files also as a form (switches, numbers, text), keeping comments and layout; the previous version stays as .bak
+- SFTP on port 2022 with the panel accounts: password or SSH keys (added under Account), read-only without write permission, can't leave the server folder, uploads/renames/deletes in the audit log
+- Log cleanup: delete old files in logs, crash-reports and debug by age, with a preview; runs daily after 05:00
+- New permissions: browse/download files, change files, edit mod configs (only config/), SFTP
+
 ## 0.5.0
 - Backups: zip files of the server folder, made while the server runs (saving pauses for the copy, so the world is consistent); region files are stored as they are, the rest is compressed quickly
 - Leave folders and files out with patterns (logs, caches, map renders, …), keep the newest N plus one per day and per week, pin backups to keep them forever

@@ -153,6 +153,51 @@ public final class Auth {
 		}
 	}
 
+	// ── Without a web session (SFTP) ───────────────────────────────────────
+
+	/** Checks name and password like a login, with the same failed-attempt limit, but creates no session. */
+	public Session verify(String name, String password, String ip) {
+		if (tooManyFails(ip) || name == null || password == null) return null;
+		if (name.strip().equalsIgnoreCase(envUser)) {
+			if (checkEnvPassword(password)) return envSession();
+			failed(ip);
+			return null;
+		}
+		if (accounts == null) return null;
+		try {
+			Accounts.Login login = accounts.findLogin(name.strip());
+			if (login == null) {
+				checkPassword(password, dummyHash);
+				failed(ip);
+				return null;
+			}
+			if (login.disabled() || !checkPassword(password, login.passwordHash())) {
+				failed(ip);
+				return null;
+			}
+			clearFails(ip);
+			return new Session(login.id(), login.name(), accounts.permissions(login.id()));
+		} catch (SQLException e) {
+			return null;
+		}
+	}
+
+	/** An enabled database user by name, with permissions (for SSH key logins). */
+	public Session user(String name) {
+		if (accounts == null || name == null) return null;
+		try {
+			Accounts.Login login = accounts.findLogin(name.strip());
+			if (login == null || login.disabled()) return null;
+			return new Session(login.id(), login.name(), accounts.permissions(login.id()));
+		} catch (SQLException e) {
+			return null;
+		}
+	}
+
+	public Accounts accounts() {
+		return accounts;
+	}
+
 	// ── Sessions ───────────────────────────────────────────────────────────
 
 	public Session session(String token) {

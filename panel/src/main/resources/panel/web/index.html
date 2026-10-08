@@ -68,6 +68,8 @@
 				<button type="button" role="tab" class="np-tab" data-tab="server" data-perm="console.read"><i class="bi bi-terminal"></i><span>Console</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="backups" data-perm="backup.view"><i class="bi bi-archive"></i><span>Backups</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="schedule" data-perm="server.view"><i class="bi bi-calendar-check"></i><span>Schedule</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span></button>
+				<button type="button" role="tab" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people"></i><span>Users</span></button>
 				<button type="button" role="tab" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span></button>
@@ -202,6 +204,97 @@
 				</section>
 			</div>
 
+			<div class="np-tab-panel" data-tab="files" hidden>
+				<section class="np-card pn-files" id="pn-files">
+					<h3 class="np-card-title"><i class="bi bi-folder2-open"></i> Files</h3>
+					<div class="pn-files-bar">
+						<div class="pn-crumbs" id="pn-crumbs"></div>
+						<div class="pn-row-actions" data-perm="files.write">
+							<label class="np-btn small"><i class="bi bi-upload"></i> Upload<input type="file" id="pn-upload" multiple hidden></label>
+							<button type="button" class="np-btn small" id="pn-mkdir"><i class="bi bi-folder-plus"></i> New folder</button>
+							<button type="button" class="np-btn small" id="pn-zip-selected" disabled><i class="bi bi-file-zip"></i> Zip</button>
+							<button type="button" class="np-btn small danger" id="pn-delete-selected" disabled><i class="bi bi-trash"></i> Delete</button>
+						</div>
+					</div>
+					<p class="np-form-msg" id="pn-files-msg"></p>
+					<div class="pn-drop" id="pn-drop">
+						<div class="np-table-wrap"><table class="np-table pn-file-table">
+							<thead><tr><th class="pn-check"><input type="checkbox" id="pn-select-all" aria-label="Select all"></th><th>Name</th><th class="num">Size</th><th>Changed</th><th></th></tr></thead>
+							<tbody id="pn-file-rows"></tbody>
+						</table></div>
+						<div class="pn-drop-hint">Drop files here to upload them into this folder</div>
+					</div>
+					<p class="np-card-intro pn-hint">Deleted files go to <code>.panel-trash</code> for 7 days. While the server runs, the world folder can't be changed. SFTP: port 2022 with your panel login.</p>
+					<div class="pn-editor" id="pn-file-editor" hidden>
+						<div class="pn-editor-head">
+							<b class="pn-editor-name"></b>
+							<div class="pn-editor-modes" hidden>
+								<button type="button" class="np-filter active" data-mode="text">Text</button>
+								<button type="button" class="np-filter" data-mode="form">Form</button>
+							</div>
+							<span class="np-form-msg pn-editor-msg"></span>
+						</div>
+						<div class="pn-code"><pre class="pn-gutter" aria-hidden="true"></pre><textarea class="pn-text" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea></div>
+						<div class="pn-form-view" hidden></div>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn primary pn-editor-save"><i class="bi bi-check2"></i> Save</button>
+							<button type="button" class="np-btn danger pn-editor-force" hidden>Save anyway</button>
+							<button type="button" class="np-btn pn-editor-close">Close</button>
+							<span class="np-form-msg pn-editor-hint">Ctrl/⌘ + S saves. The previous version is kept as .bak.</span>
+						</div>
+					</div>
+				</section>
+				<section class="np-card" data-perm="files.write">
+					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Log cleanup</h3>
+					<p class="np-card-intro">Deletes old log files once a day after 05:00 (latest.log is never touched). Patterns work like in backups.</p>
+					<div id="pn-cleanup-rules" class="pn-steps"></div>
+					<div class="np-form-actions">
+						<button type="button" class="np-btn small" id="pn-cleanup-add"><i class="bi bi-plus-lg"></i> Add rule</button>
+						<label class="np-check"><input type="checkbox" id="pn-cleanup-daily"> Run daily</label>
+					</div>
+					<p class="np-form-msg" id="pn-cleanup-preview"></p>
+					<div class="np-form-actions">
+						<button type="button" class="np-btn primary" id="pn-cleanup-save"><i class="bi bi-check2"></i> Save</button>
+						<button type="button" class="np-btn" id="pn-cleanup-run"><i class="bi bi-trash3"></i> Clean up now</button>
+						<span class="np-form-msg" id="pn-cleanup-msg"></span>
+					</div>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="configs" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-gear"></i> Mod configs</h3>
+					<p class="np-card-intro">Everything in <code>config/</code>. The format is checked before saving (JSON, JSON5, TOML, YAML, properties); simple files can also be edited as a form. Most mods read their config at start, so restart the server afterwards.</p>
+					<div class="pn-configs">
+						<div class="pn-config-list">
+							<input type="search" class="np-console-search" id="pn-config-search" placeholder="Search configs" aria-label="Search configs">
+							<div id="pn-config-files"></div>
+						</div>
+						<div class="pn-config-edit">
+							<p class="np-empty" id="pn-config-empty">Choose a file on the left.</p>
+							<div class="pn-editor" id="pn-config-editor" hidden>
+						<div class="pn-editor-head">
+							<b class="pn-editor-name"></b>
+							<div class="pn-editor-modes" hidden>
+								<button type="button" class="np-filter active" data-mode="text">Text</button>
+								<button type="button" class="np-filter" data-mode="form">Form</button>
+							</div>
+							<span class="np-form-msg pn-editor-msg"></span>
+						</div>
+						<div class="pn-code"><pre class="pn-gutter" aria-hidden="true"></pre><textarea class="pn-text" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea></div>
+						<div class="pn-form-view" hidden></div>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn primary pn-editor-save"><i class="bi bi-check2"></i> Save</button>
+							<button type="button" class="np-btn danger pn-editor-force" hidden>Save anyway</button>
+							<button type="button" class="np-btn pn-editor-close">Close</button>
+							<span class="np-form-msg pn-editor-hint">Ctrl/⌘ + S saves. The previous version is kept as .bak.</span>
+						</div>
+					</div>
+						</div>
+					</div>
+				</section>
+			</div>
+
 			<div class="np-tab-panel" data-tab="users" hidden>
 				<p class="pn-notice-line" id="pn-db-notice" hidden></p>
 				<section class="np-card">
@@ -255,7 +348,8 @@
 				<div class="np-form-actions"><button type="button" class="np-btn" id="pn-audit-more" hidden>Load older entries</button></div>
 			</section>
 
-			<section class="np-card np-tab-panel" data-tab="account" hidden>
+			<div class="np-tab-panel" data-tab="account" hidden>
+			<section class="np-card">
 				<h3 class="np-card-title"><i class="bi bi-person-circle"></i> Your account</h3>
 				<p class="np-card-intro" id="pn-account-intro"></p>
 				<form id="pn-password-form" autocomplete="off">
@@ -269,6 +363,19 @@
 					</div>
 				</form>
 			</section>
+			<section class="np-card" id="pn-keys-card">
+				<h3 class="np-card-title"><i class="bi bi-key"></i> SSH keys for SFTP</h3>
+				<p class="np-card-intro">Log in to SFTP (port 2022) with your panel name and password, or add a public key to log in without a password. Your account needs the SFTP permission.</p>
+				<div id="pn-keys" class="pn-roles"></div>
+				<form class="pn-inline-form" id="pn-key-form" autocomplete="off">
+					<label class="pn-field">Public key (one line from a .pub file)<input type="text" name="key" placeholder="ssh-ed25519 AAAA… name@pc" spellcheck="false"></label>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-plus-lg"></i> Add key</button>
+						<span class="np-form-msg" id="pn-key-msg"></span>
+					</div>
+				</form>
+			</section>
+			</div>
 		</div>
 	</main>
 

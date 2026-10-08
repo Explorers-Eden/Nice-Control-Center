@@ -248,6 +248,11 @@ public final class Backups {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 				if (dir.toAbsolutePath().normalize().equals(backupsInside)) return FileVisitResult.SKIP_SUBTREE;
+				// The file explorer's trash and upload temp files never belong in a backup.
+				String name = dir.getFileName() == null ? "" : dir.getFileName().toString();
+				if (dir.getParent() != null && dir.getParent().equals(serverDir) && (name.equals(ServerFiles.TRASH) || name.equals(ServerFiles.TMP))) {
+					return FileVisitResult.SKIP_SUBTREE;
+				}
 				if (!dir.equals(serverDir) && excluded(folders, serverDir.relativize(dir))) return FileVisitResult.SKIP_SUBTREE;
 				return FileVisitResult.CONTINUE;
 			}

@@ -22,6 +22,10 @@ public final class Permissions {
 	public static final String BACKUP_VIEW = "backup.view";
 	public static final String BACKUP_CREATE = "backup.create";
 	public static final String BACKUP_MANAGE = "backup.manage";
+	public static final String FILES_READ = "files.read";
+	public static final String FILES_WRITE = "files.write";
+	public static final String FILES_CONFIG = "files.config";
+	public static final String FILES_SFTP = "files.sftp";
 	public static final String USERS_ADMIN = "users.admin";
 	public static final String AUDIT_VIEW = "audit.view";
 
@@ -39,6 +43,10 @@ public final class Permissions {
 			new Permission(BACKUP_VIEW, "Backups", "See and download backups"),
 			new Permission(BACKUP_CREATE, "Backups", "Make a backup"),
 			new Permission(BACKUP_MANAGE, "Backups", "Restore, delete and pin backups, change backup settings"),
+			new Permission(FILES_READ, "Files", "Browse and download all server files"),
+			new Permission(FILES_WRITE, "Files", "Upload, edit, rename and delete server files, clean up logs"),
+			new Permission(FILES_CONFIG, "Files", "Edit mod configs (only the config folder)"),
+			new Permission(FILES_SFTP, "Files", "Log in with SFTP (read-only without \"Upload, edit…\")"),
 			new Permission(USERS_ADMIN, "Accounts", "Manage users and roles"),
 			new Permission(AUDIT_VIEW, "Accounts", "Read the audit log"));
 

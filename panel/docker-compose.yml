@@ -8,6 +8,7 @@ services:
     ports:
       - "8080:8080"
       - "25565:25565"
+      - "2022:2022"
     volumes:
       - ./run/server:/data/server
       - ./run/backups:/data/backups

@@ -58,6 +58,18 @@ public final class Panel {
 		Backups backups = new Backups(serverDir, Path.of(env("BACKUP_DIR", "/data/backups")), dataDir.resolve("backups.json"), server, zone);
 		Scheduler scheduler = new Scheduler(dataDir.resolve("schedule.json"), server, backups, audit, zone);
 		scheduler.start();
+		ServerFiles files = new ServerFiles(serverDir, server);
+		LogCleanup cleanup = new LogCleanup(files, dataDir.resolve("cleanup.json"), audit, zone);
+		cleanup.start();
+		Sftp sftp = new Sftp(files, auth, audit);
+		String sftpPort = env("SFTP_PORT", "2022");
+		if (!sftpPort.equals("0") && !sftpPort.equalsIgnoreCase("off")) {
+			try {
+				sftp.start(Integer.parseInt(sftpPort), dataDir.resolve("sftp_host_key"));
+			} catch (IOException | RuntimeException e) {
+				System.err.println("SFTP could not start on port " + sftpPort + ": " + e.getMessage());
+			}
+		}
 		Companion companion = new Companion();
 		server.beforeStart(log -> {
 			if (settings.companionMod) companion.ensure(serverDir, settings.serverJar, log);
@@ -79,10 +91,16 @@ public final class Panel {
 
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;
-			config.staticFiles.add(files -> {
-				files.hostedPath = "/";
-				files.directory = "/panel/web";
-				files.location = Location.CLASSPATH;
+			// Config files are edited as JSON bodies; uploads go through multipart and may be large (worlds, mod packs).
+			config.http.maxRequestSize = 20L * 1024 * 1024;
+			config.jetty.multipartConfig.cacheDirectory(serverDir.resolve(ServerFiles.TMP).toString());
+			config.jetty.multipartConfig.maxFileSize(8, io.javalin.config.SizeUnit.GB);
+			config.jetty.multipartConfig.maxTotalRequestSize(16, io.javalin.config.SizeUnit.GB);
+			config.jetty.multipartConfig.maxInMemoryFileSize(1, io.javalin.config.SizeUnit.MB);
+			config.staticFiles.add(web -> {
+				web.hostedPath = "/";
+				web.directory = "/panel/web";
+				web.location = Location.CLASSPATH;
 			});
 			var routes = config.routes;
 
@@ -200,6 +218,7 @@ public final class Panel {
 			new AccountRoutes(db, accounts, auth, audit).register(routes);
 			dashboard.register(routes);
 			new OpsRoutes(backups, scheduler, audit).register(routes);
+			new FileRoutes(files, cleanup, audit).register(routes);
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {
@@ -234,6 +253,7 @@ public final class Panel {
 		// `docker stop` sends SIGTERM: save and stop Minecraft first, then the web server.
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			server.shutdown();
+			sftp.stop();
 			app.stop();
 			if (db != null) db.close();
 		}, "panel-shutdown"));

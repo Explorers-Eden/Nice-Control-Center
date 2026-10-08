@@ -257,6 +257,46 @@ public final class Accounts {
 		}
 	}
 
+	// ── SSH keys ───────────────────────────────────────────────────────────
+
+	public record SshKey(int id, String name, String fingerprint, long createdAt, long lastUsed, String publicKey) {
+	}
+
+	public List<SshKey> keys(int userId) throws SQLException {
+		List<SshKey> out = new ArrayList<>();
+		try (Connection c = db.connection(); PreparedStatement st = c.prepareStatement(
+				"SELECT id, name, fingerprint, created_at, last_used, public_key FROM user_ssh_keys WHERE user_id = ? ORDER BY id")) {
+			st.setInt(1, userId);
+			try (ResultSet rs = st.executeQuery()) {
+				while (rs.next()) out.add(new SshKey(rs.getInt(1), rs.getString(2), rs.getString(3), millis(rs.getTimestamp(4)), millis(rs.getTimestamp(5)), rs.getString(6)));
+			}
+		}
+		return out;
+	}
+
+	public void addKey(int userId, String name, String publicKey, String fingerprint) throws SQLException {
+		try (Connection c = db.connection(); PreparedStatement st = c.prepareStatement(
+				"INSERT INTO user_ssh_keys (user_id, name, public_key, fingerprint) VALUES (?, ?, ?, ?)")) {
+			st.setInt(1, userId);
+			st.setString(2, name);
+			st.setString(3, publicKey);
+			st.setString(4, fingerprint);
+			st.executeUpdate();
+		}
+	}
+
+	public boolean deleteKey(int userId, int keyId) throws SQLException {
+		try (Connection c = db.connection(); PreparedStatement st = c.prepareStatement("DELETE FROM user_ssh_keys WHERE id = ? AND user_id = ?")) {
+			st.setInt(1, keyId);
+			st.setInt(2, userId);
+			return st.executeUpdate() > 0;
+		}
+	}
+
+	public void touchKey(int keyId) throws SQLException {
+		update("UPDATE user_ssh_keys SET last_used = now() WHERE id = ?", keyId);
+	}
+
 	// ── Audit log ──────────────────────────────────────────────────────────
 
 	public void audit(String user, String action, String detail, String ip) throws SQLException {
