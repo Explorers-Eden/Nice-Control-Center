@@ -117,6 +117,13 @@ final class Sources {
 		return result != null && result.isJsonObject() ? result.getAsJsonObject() : null;
 	}
 
+	/** The newest GitHub releases of "owner/repo" (newest first), or an empty array. */
+	static JsonArray githubReleases(String repo) throws IOException {
+		JsonElement result = send(request("https://api.github.com/repos/" + repo + "/releases?per_page=30")
+				.header("Accept", "application/vnd.github+json").GET().build());
+		return result != null && result.isJsonArray() ? result.getAsJsonArray() : new JsonArray();
+	}
+
 	/** GitHub release of "owner/repo" with the given tag (or the latest if null), or null. */
 	static JsonObject githubRelease(String repo, String tag) throws IOException {
 		if (tag == null || tag.isEmpty()) {

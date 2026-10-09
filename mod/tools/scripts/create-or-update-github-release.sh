@@ -10,12 +10,14 @@ if gh release view "$TAG_NAME" >/dev/null 2>&1; then
   gh release edit "$TAG_NAME" \
     --title "$RELEASE_NAME" \
     --notes-file "$CHANGELOG_PATH" \
+    --latest="${IS_LATEST:-false}" \
     $PRERELEASE_FLAG
 else
   gh release create "$TAG_NAME" \
     --target "${TARGET_SHA:-$GITHUB_SHA}" \
     --title "$RELEASE_NAME" \
     --notes-file "$CHANGELOG_PATH" \
+    --latest="${IS_LATEST:-false}" \
     $PRERELEASE_FLAG
 fi
 

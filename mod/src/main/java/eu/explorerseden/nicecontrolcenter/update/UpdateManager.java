@@ -495,31 +495,33 @@ public final class UpdateManager {
 	private static void githubEntry(Entry entry, Installed.Item item, String repo, String gameVersion) throws IOException {
 		entry.source = "github";
 		entry.projectUrl = "https://github.com/" + repo;
-		JsonObject release = Sources.githubLatest(repo);
+		String extension = item.kind().equals("mod") ? ".jar" : ".zip";
+		JsonObject release = null;
+		JsonObject asset = null;
+		// Not /releases/latest: a repo that publishes one release per Minecraft version (tags ending
+		// in -mc<version>) marks just one of them as latest, which may be for another Minecraft version.
+		for (JsonElement element : Sources.githubReleases(repo)) {
+			JsonObject candidate = element.getAsJsonObject();
+			if (candidate.get("draft").getAsBoolean() || candidate.get("prerelease").getAsBoolean()) {
+				continue;
+			}
+			JsonObject match = githubAsset(candidate, extension, gameVersion);
+			if (match != null) {
+				release = candidate;
+				asset = match;
+				break;
+			}
+		}
 		if (release == null) {
 			entry.status = Status.NOT_FOUND;
-			entry.reason = "No release found in " + repo + ".";
+			entry.reason = "No release with a " + extension + " file for Minecraft " + gameVersion + " found in " + repo + ".";
 			return;
-		}
-		String extension = item.kind().equals("mod") ? ".jar" : ".zip";
-		JsonObject asset = null;
-		for (JsonElement element : release.getAsJsonArray("assets")) {
-			JsonObject candidate = element.getAsJsonObject();
-			String name = str(candidate, "name");
-			if (name.endsWith(extension) && (asset == null || name.contains(gameVersion))) {
-				asset = candidate;
-			}
 		}
 		String tag = str(release, "tag_name");
 		entry.latestVersion = tag;
 		entry.latestVersionId = tag;
 		entry.changelog = str(release, "body");
 		entry.published = str(release, "published_at");
-		if (asset == null) {
-			entry.status = Status.FAILED;
-			entry.reason = "The latest release has no " + extension + " file.";
-			return;
-		}
 		entry.latestFile = str(asset, "name");
 		boolean same = entry.latestFile.equals(entry.file)
 				|| (!item.version().isEmpty() && normaliseTag(tag).equals(item.version()));
@@ -529,6 +531,40 @@ public final class UpdateManager {
 		}
 		entry.status = Status.AVAILABLE;
 		entry.download = str(asset, "browser_download_url") + "|size:" + asset.get("size").getAsLong();
+	}
+
+	private static final java.util.regex.Pattern MC_TAG = java.util.regex.Pattern.compile("-mc([0-9][0-9.]*)$");
+	private static final java.util.regex.Pattern MC_NAME = java.util.regex.Pattern.compile("mc[0-9]+\\.[0-9]");
+
+	/**
+	 * The release's file for this Minecraft version, or null. A tag ending in -mc26.1 serves 26.1 and
+	 * 26.1.x; a file named after the Minecraft version wins; a file named after another one never fits.
+	 */
+	private static JsonObject githubAsset(JsonObject release, String extension, String gameVersion) {
+		java.util.regex.Matcher tagMc = MC_TAG.matcher(str(release, "tag_name"));
+		boolean tagFits = false;
+		if (tagMc.find()) {
+			String mc = tagMc.group(1);
+			if (!gameVersion.equals(mc) && !gameVersion.startsWith(mc + ".")) {
+				return null;
+			}
+			tagFits = true;
+		}
+		JsonObject fallback = null;
+		for (JsonElement element : release.getAsJsonArray("assets")) {
+			JsonObject candidate = element.getAsJsonObject();
+			String name = str(candidate, "name");
+			if (!name.endsWith(extension)) {
+				continue;
+			}
+			if (name.contains(gameVersion)) {
+				return candidate;
+			}
+			if (fallback == null && (tagFits || !MC_NAME.matcher(name).find())) {
+				fallback = candidate;
+			}
+		}
+		return fallback;
 	}
 
 	private static String normaliseTag(String tag) {

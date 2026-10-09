@@ -168,6 +168,7 @@ jobs:
           JAR_NAME: ${{ steps.meta.outputs.jar_name }}
           BUILT_JAR: ${{ steps.meta.outputs.built_jar }}
           IS_PRERELEASE: ${{ steps.meta.outputs.is_prerelease }}
+          IS_LATEST: ${{ steps.meta.outputs.is_latest }}
         run: bash tools/scripts/create-or-update-github-release.sh
 
       - name: Delete older releases for Minecraft ${{ steps.meta.outputs.mc_version }}

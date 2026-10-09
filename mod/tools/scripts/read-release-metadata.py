@@ -59,6 +59,9 @@ outputs = {
     "built_jar": f"{slug}-{version_number}.jar",
     "version_type": version_type,
     "is_prerelease": "true" if version_type in {"beta", "alpha"} else "false",
+    # Only the first (newest) Minecraft version's release is GitHub's "Latest": the repo page and
+    # /releases/latest would otherwise point at whichever target was published last.
+    "is_latest": "true" if target == game_versions[0] else "false",
     "changelog_path": changelog_path,
     "game_versions_json": json.dumps(game_versions),
     "loaders_json": json.dumps(loaders),
