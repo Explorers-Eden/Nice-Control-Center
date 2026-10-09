@@ -1012,7 +1012,9 @@ summary.np-update-row:hover { background: rgba(var(--ink),.03); }
 
 /* Player inspector */
 .np-inspector { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start; }
-.np-inspector-list { border-right: 1px solid rgba(var(--ink),.08); padding-right: 14px; max-height: 760px; overflow: auto; }
+/* Fills the window below the sticky navbar and tabs and stays put while a long detail scrolls. */
+.np-inspector-list { border-right: 1px solid rgba(var(--ink),.08); padding-right: 14px; height: calc(100vh - 148px); min-height: 320px; overflow: auto;
+  position: sticky; top: 132px; }
 .np-inspector-search { display: flex; align-items: center; gap: 8px; background: var(--inset); border: 1px solid rgba(var(--ink),.12);
   border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; color: var(--muted); }
 .np-inspector-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; outline: none; }
@@ -1055,7 +1057,7 @@ summary.np-update-row:hover { background: rgba(var(--ink),.03); }
 
 @media (max-width: 760px) {
   .np-inspector { grid-template-columns: minmax(0, 1fr); }
-  .np-inspector-list { border-right: 0; padding-right: 0; max-height: 300px; border-bottom: 1px solid rgba(var(--ink),.08); padding-bottom: 10px; }
+  .np-inspector-list { border-right: 0; padding-right: 0; height: auto; min-height: 0; max-height: 300px; position: static; border-bottom: 1px solid rgba(var(--ink),.08); padding-bottom: 10px; }
 }
 
 /* Data pack settings navigation */

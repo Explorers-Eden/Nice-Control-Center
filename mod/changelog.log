@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.3.2
+- The player inspector's list fills the window height and stays in view while a long player detail scrolls
+
 ## 1.3.1
 - Pregeneration no longer waits for each chunk on the server thread (a large area could stall a tick until the watchdog stopped the server); chunks are now requested in the background, about 250 per second on a fast machine
 - Pregeneration keeps the server awake without writing pause-when-empty-seconds to server.properties, so a crash during a run can't leave it at 0
