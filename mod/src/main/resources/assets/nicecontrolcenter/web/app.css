@@ -1102,7 +1102,7 @@ summary.np-update-row:hover { background: rgba(var(--ink),.03); }
 }
 
 /* Compact header on every tab but the Overview */
-body.compact-head #np-stats, body.compact-head #np-meta, body.compact-head .np-banner-summary { display: none; }
+body.compact-head #np-meta, body.compact-head .np-banner-summary { display: none; }
 body.compact-head .np-banner { padding-top: 12px; padding-bottom: 12px; }
 body.compact-head .np-banner-title { font-size: 17px; }
 body.compact-head .np-banner-headline { margin-bottom: 0; }

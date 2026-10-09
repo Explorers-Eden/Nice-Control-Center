@@ -91,6 +91,38 @@ public final class History {
 		return merged;
 	}
 
+	/** Tick times and GC pauses of the last few seconds: what the server is doing right now. */
+	public record Recent(int seconds, long ticks, double msptMin, double msptMedian, double msptP95, double msptMax, long wallMs,
+			long gcTimeMs, long gcCount) {
+	}
+
+	/** Cheaper than {@link #lastSeconds}: only the tick times and GC of the last {@code count} seconds. */
+	public static synchronized Recent recent(int count) {
+		int[] histogram = new int[eu.explorerseden.nicecontrolcenter.core.TickHistogram.BINS];
+		int n = 0;
+		long ticks = 0, minNs = Long.MAX_VALUE, maxNs = 0, wallMs = 0, gcTimeMs = 0, gcCount = 0;
+		Iterator<Breakdown> it = seconds.descendingIterator();
+		while (it.hasNext() && n < count) {
+			Breakdown b = it.next();
+			n++;
+			wallMs += b.wallMs;
+			gcTimeMs += b.gcTimeMs;
+			gcCount += b.gcCount;
+			if (b.ticks == 0) {
+				continue;
+			}
+			ticks += b.ticks;
+			minNs = Math.min(minNs, b.tickNsMin);
+			maxNs = Math.max(maxNs, b.tickNsMax);
+			for (int i = 0; i < histogram.length; i++) {
+				histogram[i] += b.msptHistogram[i];
+			}
+		}
+		return new Recent(n, ticks, ticks == 0 ? 0 : minNs / 1e6,
+				eu.explorerseden.nicecontrolcenter.core.TickHistogram.percentile(histogram, 0.5),
+				eu.explorerseden.nicecontrolcenter.core.TickHistogram.percentile(histogram, 0.95), maxNs / 1e6, wallMs, gcTimeMs, gcCount);
+	}
+
 	/** The last minutes as chart points plus per-minute breakdowns, to start a lag recording with. */
 	public record PreRoll(List<Point> points, List<Breakdown> minutes) {
 	}

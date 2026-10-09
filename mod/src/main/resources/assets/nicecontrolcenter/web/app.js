@@ -142,9 +142,12 @@
 
   function renderStats(k) {
     const budget = k.budget;
-    // The tiles show the current second; the chosen window's average is the small line underneath.
+    // The tiles always show the server right now: this second, and the last few seconds for the
+    // MSPT spread and GC. Reports and stale data fall back to the window.
     const now = livePoint();
+    const cur = now && state.current && state.current.seconds ? state.current : null;
     const span = REPORT ? 'recording' : `${state.window} min`;
+    const recent = cur ? `last ${cur.seconds} s` : span;
     const tps = now ? now.tps : k.tps;
     const cpu = now ? now.cpuProcess : k.cpuProcess;
     const cpuMachine = now ? now.cpuSystem : k.cpuSystem;
@@ -159,29 +162,30 @@
     const usedPct = heapMax ? heapUsed / heapMax * 100 : 0;
     const usedClass = usedPct < 85 ? 'good' : usedPct < 95 ? 'warn' : 'poor';
     const cpuClass = cpuMachine >= 90 ? 'poor' : cpuMachine >= 70 ? 'warn' : 'good';
+    const gc = cur ? { percent: cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0, count: cur.gcCount, timeMs: cur.gcTimeMs }
+      : { percent: k.gcPercent, count: k.gcCount, timeMs: k.gcTimeMs || 0 };
     // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts.
-    const gcClass = k.gcPercent >= 10 ? 'poor' : k.gcPercent >= 5 ? 'warn' : 'good';
-    const gcAvg = k.gcCount ? (k.gcTimeMs || 0) / k.gcCount : 0;
+    const gcClass = gc.percent >= 10 ? 'poor' : gc.percent >= 5 ? 'warn' : 'good';
+    const gcAvg = gc.count ? gc.timeMs / gc.count : 0;
     const c = k.counts || {};
-    const m = k.countsMax || {};
     const ms = (v) => v >= 100 ? fixed(v, 0) : fixed(v, 1);
-    // MSPT: this second's average next to the window's spread (a spread needs a time span).
-    const msptCols = [...(now ? [['now', now.mspt]] : [['min', k.msptMin]]), ['med', k.msptMedian], ['95%ile', k.msptP95], ['max', k.msptMax]];
+    const mspt = cur || k;
+    const msptCols = [['min', mspt.msptMin], ['med', mspt.msptMedian], ['95%ile', mspt.msptP95], ['max', mspt.msptMax]];
     const memCols = [[heapLive ? 'after GC' : 'in use', heapLive || heapUsed, heapClass], ...(heapLive ? [['w/ garbage', heapUsed, usedClass]] : []), ['max', heapMax, '']];
     const tiles = [
-      ['TPS', `<span class="${tpsClass}">${fixed(tps, 1)}</span>`, now ? `⌀ ${fixed(k.tps, 1)} · ${span}` : `target ${fixed(k.targetTps, 0)}`, null,
-        `${now ? `Now ${fixed(tps, 1)} · ` : ''}average ${fixed(k.tps, 1)} over the ${span} · target ${fixed(k.targetTps, 0)}`],
+      ['TPS', `<span class="${tpsClass}">${fixed(tps, 1)}</span>`, `target ${fixed(k.targetTps, 0)}`, null,
+        `${now ? 'This second' : `Average over the ${span}`}: ${fixed(tps, 1)} · target ${fixed(k.targetTps, 0)}`],
       ['MSPT', null, null, `<div class="np-mspt">${msptCols.map(([l, v]) => `<span class="${msptClass(v, budget)}">${ms(v)}<small>${l}</small></span>`).join('')}</div>`,
-        `Milliseconds per tick. ${now ? `Now ${ms(now.mspt)} · ` : ''}over the ${span}: min ${fixed(k.msptMin, 1)} · median ${fixed(k.msptMedian, 1)} · 95% of ticks under ${fixed(k.msptP95, 1)} · slowest ${fixed(k.msptMax, 1)}`],
-      ['CPU', `<span class="${cpuClass}">${fixed(cpu, 0)}%</span>`, now ? `machine ${fixed(cpuMachine, 0)}% · ⌀ ${fixed(k.cpuProcess, 0)}%` : `machine ${fixed(cpuMachine, 0)}%`, null,
-        `Server ${fixed(cpu, 0)}% · whole machine ${fixed(cpuMachine, 0)}% · ${k.cores} cores. Average over the ${span}: server ${fixed(k.cpuProcess, 0)}%, machine ${fixed(k.cpuSystem, 0)}%`],
+        `Milliseconds per tick over the ${recent}: fastest ${fixed(mspt.msptMin, 1)} · median ${fixed(mspt.msptMedian, 1)} · 95% of ticks under ${fixed(mspt.msptP95, 1)} · slowest ${fixed(mspt.msptMax, 1)}`],
+      ['CPU', `<span class="${cpuClass}">${fixed(cpu, 0)}%</span>`, `machine ${fixed(cpuMachine, 0)}%`, null,
+        `${now ? 'This second' : `Average over the ${span}`}: server ${fixed(cpu, 0)}% · whole machine ${fixed(cpuMachine, 0)}% · ${k.cores} cores`],
       // Laid out like MSPT; the unit is small so three sizes fit next to each other.
       ['Memory', null, null, `<div class="np-mspt">${memCols.map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
         `Still in use after garbage collection: ${bytes(heapLive || heapUsed)} · including garbage not collected yet: ${bytes(heapUsed)} · maximum: ${bytes(heapMax)}`],
-      ['GC', `<span class="${gcClass}">${fixed(k.gcPercent, 1)}%</span><small> paused</small>`,
-        `${num(k.gcCount)} pauses${k.gcCount ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${span}`, null,
-        `Share of time the server was paused for garbage collection over the ${span}: ${num(k.gcTimeMs || 0)} ms over ${num(k.gcCount)} pauses${k.gcCount ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
-      ['Entities', num(now ? now.entities : c.entities), `max ${num(m.entities)}`],
+      ['GC', `<span class="${gcClass}">${fixed(gc.percent, 1)}%</span><small> paused</small>`,
+        `${num(gc.count)} pauses${gc.count ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${recent}`, null,
+        `Share of time the server was paused for garbage collection over the ${recent}: ${num(gc.timeMs)} ms over ${num(gc.count)} pauses${gc.count ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
+      ['Entities', num(now ? now.entities : c.entities), 'loaded'],
       ['Block entities', num(now ? now.blockEntities : c.blockEntities), 'ticking'],
       ['Chunks', num(now ? now.chunks : c.chunks), `${num(c.chunkTasks)} tasks waiting`],
       ['Players', num(now ? now.players : c.players), 'online'],
@@ -2593,6 +2597,7 @@
   async function pollLive() {
     try {
       const data = await api('api/live?after=' + state.lastT);
+      state.current = data.current || null;
       if (data.points.length) {
         state.points.push(...data.points);
         if (state.points.length > MAX_POINTS) state.points.splice(0, state.points.length - MAX_POINTS);

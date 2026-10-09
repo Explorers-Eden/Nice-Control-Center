@@ -518,6 +518,8 @@ public final class DashboardServer {
 		result.put("now", System.currentTimeMillis());
 		result.put("latest", latest);
 		result.put("points", History.pointsAfter(after));
+		// The stat tiles show the server right now; one second has too few ticks for a median and 95%ile.
+		result.put("current", History.recent(10));
 		Map<String, Object> server = new LinkedHashMap<>();
 		server.put("name", minecraft.getMotd());
 		server.put("version", minecraft.getServerVersion());
