@@ -266,15 +266,7 @@ body.report .np-clock { display: none; }
 /* Each column stacks on its own, so a short or folded section never leaves a gap beside a tall one. */
 .np-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.np-card, .np-banner, /* MSPT and Memory (.wide, several values) get more room than the single numbers:
-   two rows on medium screens (TPS · MSPT · CPU · Memory, then the five others), one row when there's
-   room for MSPT's four values, and two per row on narrow screens with MSPT and Memory full width. */
-.np-stats-row {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(20, minmax(0, 1fr));
-}
-.np-stats-row > .np-stat-card {
+.np-card, .np-banner, .np-stat-card {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 14px;
@@ -510,7 +502,7 @@ body.report .np-clock { display: none; }
 
 /* MSPT and Memory (.wide, several values) get more room than the single numbers:
    two rows on medium screens (TPS · MSPT · CPU · Memory, then the five others), one row when there's
-   room for MSPT's four values, and two per row on narrow screens with MSPT and Memory full width. */
+   room for MSPT's four values, and one sideways-scrolling row on narrow screens. */
 .np-stats-row {
   display: grid;
   gap: 10px;
