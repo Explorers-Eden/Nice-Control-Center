@@ -137,7 +137,8 @@
   function livePoint() {
     if (REPORT || !state.points.length) return null;
     const p = state.points[state.points.length - 1];
-    return Date.now() - p.t < 10000 ? p : null;
+    // Judged by the server's clock, which can differ from the browser's (another machine, a container).
+    return Date.now() + (state.clockSkew || 0) - p.t < 10000 ? p : null;
   }
 
   function renderStats(k) {
@@ -1586,9 +1587,50 @@
 
   function itemTile(item) {
     const icon = item.head ? 'bi-person-bounding-box' : item.enchantments.length ? 'bi-stars' : 'bi-box-seam';
-    const tip = [item.id, ...item.enchantments].join('\n');
-    return `<div class="np-item-tile ${item.enchantments.length ? 'enchanted' : ''}" title="${esc(tip)}">
+    const tip = [item.name + (item.count > 1 ? ` ×${item.count}` : ''), item.id, ...item.enchantments].join('\n');
+    return `<div class="np-item-tile ${item.enchantments.length ? 'enchanted' : ''}" data-tip="${esc(tip)}">
       <i class="bi ${icon}"></i><span class="np-item-name">${esc(item.name)}</span>${item.count > 1 ? `<span class="np-item-count">×${item.count}</span>` : ''}</div>`;
+  }
+
+  /**
+   * Item tooltips that show right away (a title attribute waits about a second), drawn like the game's:
+   * name, the enchantments, then the item id. One box for the page, following the cursor.
+   */
+  function setupItemTips() {
+    const box = document.createElement('div');
+    box.className = 'np-hovertip';
+    box.hidden = true;
+    document.body.appendChild(box);
+    let current = null;
+    const place = (e) => {
+      const pad = 14;
+      const w = box.offsetWidth;
+      const h = box.offsetHeight;
+      let x = e.clientX + pad;
+      let y = e.clientY + pad;
+      if (x + w > window.innerWidth - 4) x = Math.max(4, e.clientX - pad - w);
+      if (y + h > window.innerHeight - 4) y = Math.max(4, e.clientY - pad - h);
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+    };
+    const update = (e) => {
+      const el = e.target.closest && e.target.closest('[data-tip]');
+      if (!el) {
+        current = null;
+        box.hidden = true;
+        return;
+      }
+      if (el.dataset.tip !== current) {
+        current = el.dataset.tip;
+        const [name, id, ...rest] = current.split('\n');
+        box.innerHTML = `<b>${esc(name)}</b>${rest.map((l) => `<span class="ench">${esc(l)}</span>`).join('')}${id ? `<span class="id">${esc(id)}</span>` : ''}`;
+        box.hidden = false;
+      }
+      place(e);
+    };
+    document.addEventListener('mouseover', update);
+    document.addEventListener('mousemove', (e) => { if (current) update(e); });
+    document.addEventListener('scroll', () => { current = null; box.hidden = true; }, true);
   }
 
   function itemSection(title, items, note) {
@@ -2723,6 +2765,7 @@
   async function pollLive() {
     try {
       const data = await api('api/live?after=' + state.lastT);
+      state.clockSkew = data.now - Date.now();
       state.current = data.current || null;
       if (data.points.length) {
         state.points.push(...data.points);
@@ -3004,6 +3047,7 @@
   setupChartHover();
   if (!REPORT) setupSubs();
   setupMoreCharts();
+  setupItemTips();
   requestAnimationFrame(chartLoop);
   if (REPORT) {
     startReport();

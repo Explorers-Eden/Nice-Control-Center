@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.4.3
+- Item tooltips in the player inspector show right away when hovering, drawn like the game's (name, enchantments, item id)
+- The stat tiles keep following the server live when the browser's clock differs from the server's (another machine or a container); before, they could fall back to slower window values
+
 ## 1.4.2
 - The stat tiles (TPS, MSPT, CPU, memory, GC, entities, block entities, chunks, players) are pinned in the top bar and stay in view while scrolling, also inside the panel; details are in each tile's tooltip, and less important tiles step aside on narrower screens
 - The live badge only shows the connection state (Live, paused, disconnected), no TPS

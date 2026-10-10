@@ -1381,3 +1381,11 @@ body.embedded .np-nt-p2, body.embedded .np-nt-p3 { display: flex; }
 body.embedded .np-shell { width: 100%; padding: 0 0 16px; }
 body.embedded { background: transparent; }
 .np-chat-error { color: var(--poor); font-size: 12.5px; margin-top: 6px; }
+/* Item tooltips, shown right away, like the game's. */
+.np-hovertip { position: fixed; z-index: 50; pointer-events: none; display: flex; flex-direction: column; gap: 1px; max-width: 320px;
+  padding: 6px 9px; border-radius: 4px; background: rgba(16, 0, 16, .94); border: 2px solid #2a0a5e; box-shadow: inset 0 0 0 1px #5000ff40, 0 8px 22px rgba(0,0,0,.35);
+  font-size: 12.5px; line-height: 1.35; color: #fff; }
+.np-hovertip[hidden] { display: none; }
+.np-hovertip b { font-weight: 700; }
+.np-hovertip .ench { color: #a8a8a8; }
+.np-hovertip .id { color: #545454; font-size: 11.5px; }
