@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.4.2
+- The stat tiles (TPS, MSPT, CPU, memory, GC, entities, block entities, chunks, players) are pinned in the top bar and stay in view while scrolling, also inside the panel; details are in each tile's tooltip, and less important tiles step aside on narrower screens
+- The live badge only shows the connection state (Live, paused, disconnected), no TPS
+
 ## 1.4.1
 - The Chat tab is a copy of the in-game chat: everything players get in their chat window, with Minecraft's colors and formatting (bold, italic, underline, links), including tellraw, /msg, command feedback, joins, leaves, deaths, advancements and Discord messages
 - A message sent to several players at once is one line; messages only some players got show who got them (→ names) and can be hidden with "Private messages"
