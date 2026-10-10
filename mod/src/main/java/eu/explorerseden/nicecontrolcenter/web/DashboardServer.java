@@ -274,7 +274,9 @@ public final class DashboardServer {
 				Map<String, Object> result = new LinkedHashMap<>();
 				result.put("enabled", config.web_console);
 				result.put("send", config.web_console && config.web_console_commands);
-				result.put("lines", config.web_console ? ChatLog.after(parseLong(query.get("after"), 0)) : List.of());
+				if (config.web_console) {
+					result.putAll(ChatLog.after(parseLong(query.get("after"), 0)));
+				}
 				sendJson(exchange, result);
 			}
 			case "/api/chat/send" -> {

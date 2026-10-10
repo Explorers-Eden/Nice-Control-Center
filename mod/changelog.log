@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.4.1
+- The Chat tab is a copy of the in-game chat: everything players get in their chat window, with Minecraft's colors and formatting (bold, italic, underline, links), including tellraw, /msg, command feedback, joins, leaves, deaths, advancements and Discord messages
+- A message sent to several players at once is one line; messages only some players got show who got them (→ names) and can be hidden with "Private messages"
+- Messages to everyone while nobody is online (/say, Discord) are kept too
+
 ## 1.4.0
 - New Chat tab in the dashboard: player chat, /say and /me, joins, leaves, deaths and advancements, and messages from Discord (Discord: JustSync, or the panel's Discord bridge), with filters, search and a box to send a message to everyone (as /say)
 - The console no longer has its own Chat filter; chat lives in the Chat tab

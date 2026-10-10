@@ -791,13 +791,13 @@ body.report #np-packsettings-card { display: none; }
 .np-con-out span:last-child { color: var(--strong); }
 .np-con-err span:last-child { color: var(--poor); }
 .np-chat-line { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; white-space: pre-wrap; word-break: break-word; }
-.np-chat-name { font-weight: 700; color: var(--strong); }
-.np-chat-src { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 6px; margin-right: 6px; border-radius: 999px; background: rgba(var(--ink),.08); color: var(--muted); }
-.np-chat-discord .np-chat-src { background: rgba(88,101,242,.18); color: #7983f5; }
-.np-chat-say .np-chat-msg, .np-chat-emote .np-chat-msg { color: var(--accent); }
-.np-chat-emote .np-chat-msg { font-style: italic; }
-.np-chat-event .np-chat-msg, .np-chat-system .np-chat-msg { color: var(--muted); }
-.np-chat-reply { color: var(--faint); font-weight: 500; }
+/* Like Minecraft's chat: white text on dark, whatever the dashboard theme, so the game's colors read the same. */
+.np-chat-log { background: #16181c; color: #fff; }
+.np-chat-log .np-con-time { color: #8a8f98; }
+.np-chat-log .np-empty { color: #8a8f98; }
+.np-chat-log a { color: inherit; }
+.np-chat-to { margin-left: 8px; font-size: 11px; color: #8a8f98; white-space: nowrap; }
+.np-chat-obf { filter: blur(3px); }
 .np-console-form { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .np-console-form[hidden] { display: none; }
 .np-console-prompt { font-family: ui-monospace, Menlo, monospace; color: var(--accent); font-weight: 700; }

@@ -1171,8 +1171,8 @@
 
   // ── Chat ───────────────────────────────────────────────────────────────
 
-  const chatState = { lines: [], last: 0, filter: 'all', search: '', follow: true, timer: null, ready: false };
-  const CHAT_FILTERS = { all: null, players: ['chat', 'say', 'emote'], discord: ['discord'], events: ['event', 'system'] };
+  const chatState = { lines: [], bySeq: new Map(), last: 0, filter: 'all', search: '', private: true, follow: true, timer: null, ready: false };
+  const CHAT_FILTERS = { all: null, chat: ['chat'], discord: ['discord'], events: ['event'], system: ['system'] };
 
   function openChat() {
     if (!chatState.ready) setupChat();
@@ -1181,11 +1181,12 @@
 
   function setupChat() {
     chatState.ready = true;
-    const chips = [['all', 'All'], ['players', 'Game chat'], ['discord', 'Discord'], ['events', 'Events']];
+    const chips = [['all', 'All'], ['chat', 'Player chat'], ['discord', 'Discord'], ['events', 'Joins, deaths, advancements'], ['system', 'Server messages']];
     $('np-chat').innerHTML = `<div class="np-filters">${chips.map(([k, l]) => `<button type="button" class="np-filter ${k === 'all' ? 'active' : ''}" data-chatfilter="${k}">${l}</button>`).join('')}
         <input type="search" class="np-console-search" id="np-chat-search" placeholder="Search the chat" aria-label="Search the chat">
+        <label class="np-check" title="Messages only some players got: /msg, command feedback, tellraw to one player"><input type="checkbox" id="np-chat-private" checked> Private messages</label>
         <label class="np-check"><input type="checkbox" id="np-chat-follow" checked> Follow</label></div>
-      <div class="np-console-log" id="np-chat-log" role="log" aria-live="polite"></div>
+      <div class="np-console-log np-chat-log" id="np-chat-log" role="log" aria-live="polite"></div>
       <form class="np-console-form" id="np-chat-form" autocomplete="off" hidden>
         <input type="text" id="np-chat-input" placeholder="Message everyone (sent as /say)" aria-label="Message" maxlength="256">
         <button type="submit" class="np-btn primary">Send</button>
@@ -1202,6 +1203,10 @@
     $('np-chat-follow').addEventListener('change', (e) => {
       chatState.follow = e.target.checked;
       if (chatState.follow) log.scrollTop = log.scrollHeight;
+    });
+    $('np-chat-private').addEventListener('change', (e) => {
+      chatState.private = e.target.checked;
+      renderChat(true);
     });
     $('np-chat').addEventListener('click', (e) => {
       const chip = e.target.closest('[data-chatfilter]');
@@ -1237,34 +1242,51 @@
     clearTimeout(chatState.timer);
     if (activeTab !== 'chat') return;
     try {
-      const data = await api('api/chat?after=' + chatState.last);
+      let data = await api('api/chat?after=' + chatState.last);
       $('np-chat-form').hidden = !data.send;
       if (!data.enabled) {
         $('np-chat-log').innerHTML = '<div class="np-empty">The chat is switched off with the console (web_console in the config).</div>';
         return;
       }
-      if (data.lines.length) {
-        if (data.lines[0].seq <= chatState.last) chatState.lines = []; // the server restarted
-        chatState.lines.push(...data.lines);
-        chatState.last = data.lines[data.lines.length - 1].seq;
-        if (chatState.lines.length > 1000) chatState.lines.splice(0, chatState.lines.length - 1000);
+      if (data.latest < chatState.last) {
+        // The server restarted: start over.
+        chatState.lines = [];
+        chatState.bySeq.clear();
+        chatState.last = 0;
+        data = await api('api/chat?after=0');
       }
+      for (const l of data.lines) {
+        // Lines still collecting recipients come again; replace them.
+        const old = chatState.bySeq.get(l.seq);
+        if (old) Object.assign(old, l);
+        else {
+          chatState.lines.push(l);
+          chatState.bySeq.set(l.seq, l);
+        }
+      }
+      chatState.last = data.next;
+      if (chatState.lines.length > 1000) chatState.lines.splice(0, chatState.lines.length - 1000).forEach((l) => chatState.bySeq.delete(l.seq));
       renderChat(false);
     } catch (e) { /* the live badge shows connection problems */ }
-    chatState.timer = setTimeout(pollChat, 1500);
+    chatState.timer = setTimeout(pollChat, 1000);
+  }
+
+  function chatSegment(p) {
+    const style = [];
+    if (p.c) style.push('color:' + p.c);
+    if (p.b) style.push('font-weight:700');
+    if (p.i) style.push('font-style:italic');
+    const deco = [p.u && 'underline', p.s && 'line-through'].filter(Boolean).join(' ');
+    if (deco) style.push('text-decoration:' + deco);
+    const cls = p.o ? ' class="np-chat-obf"' : '';
+    const body = `<span${cls}${style.length ? ` style="${style.join(';')}"` : ''}>${esc(p.t)}</span>`;
+    return p.url && /^https?:\/\//i.test(p.url) ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${body}</a>` : body;
   }
 
   function chatLine(l) {
     const t = new Date(l.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-    const src = l.kind === 'discord' ? '<span class="np-chat-src">Discord</span>' : '';
-    let who = '';
-    if (l.name) {
-      const reply = l.replyTo ? ` <span class="np-chat-reply">↪ ${esc(l.replyTo)}</span>` : '';
-      who = l.kind === 'emote' ? `* <span class="np-chat-name">${esc(l.name)}</span> `
-        : l.kind === 'say' ? `<span class="np-chat-name">[${esc(l.name)}]</span> `
-        : `<span class="np-chat-name">${esc(l.name)}</span>${reply}: `;
-    }
-    return `<div class="np-chat-line np-chat-${l.kind}"><span class="np-con-time">${t}</span><span>${src}${who}<span class="np-chat-msg">${esc(l.text)}</span></span></div>`;
+    const to = l.to ? `<span class="np-chat-to" title="Only these players got it">→ ${esc(l.to.join(', '))}</span>` : '';
+    return `<div class="np-chat-line"><span class="np-con-time">${t}</span><span class="np-chat-msg">${l.parts.map(chatSegment).join('')}${to}</span></div>`;
   }
 
   function renderChat(full) {
@@ -1272,7 +1294,8 @@
     if (!log) return;
     const kinds = CHAT_FILTERS[chatState.filter];
     const q = chatState.search;
-    const lines = chatState.lines.filter((l) => (!kinds || kinds.includes(l.kind)) && (!q || (l.name + ' ' + l.text).toLowerCase().includes(q))).slice(-800);
+    const lines = chatState.lines.filter((l) => (!kinds || kinds.includes(l.kind)) && (chatState.private || !l.to)
+      && (!q || l.text.toLowerCase().includes(q))).slice(-800);
     log.innerHTML = lines.map(chatLine).join('') || `<div class="np-empty">${chatState.lines.length ? 'No messages match.' : 'No messages since the server started.'}</div>`;
     if (chatState.follow || full) log.scrollTop = log.scrollHeight;
   }

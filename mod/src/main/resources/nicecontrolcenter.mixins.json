@@ -23,9 +23,11 @@
 		"MinecraftServerAccessor",
 		"MinecraftServerMixin",
 		"NoiseBasedChunkGeneratorMixin",
+		"PlayerListChatMixin",
 		"PlayerListLoginMixin",
 		"ServerLevelAccessor",
 		"ServerLevelMixin",
+		"ServerPlayerChatMixin",
 		"SettingsAccessor",
 		"StructureStartMixin"
 	]
