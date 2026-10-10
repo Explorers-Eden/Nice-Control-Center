@@ -563,6 +563,7 @@
     if (tab === 'packs' && !packSettings.loaded) loadPackSettings();
     if (tab === 'reports') loadReports();
     if (tab === 'console' && typeof openConsole === 'function') openConsole();
+    if (tab === 'chat') openChat();
     if (tab === 'updates') loadUpdates();
     if (tab === 'server') {
       loadErrors();
@@ -1046,7 +1047,7 @@
 
   function setupConsole() {
     consoleState.ready = true;
-    const chips = [['all', 'All'], ['errors', 'Errors'], ['warnings', 'Warnings'], ['chat', 'Chat'], ['ncc', 'Nice Control Center']];
+    const chips = [['all', 'All'], ['errors', 'Errors'], ['warnings', 'Warnings'], ['ncc', 'Nice Control Center']];
     $('np-console').innerHTML = `<div class="np-filters">${chips.map(([k, l]) => `<button type="button" class="np-filter ${k === 'all' ? 'active' : ''}" data-confilter="${k}">${l}</button>`).join('')}
         <input type="search" class="np-console-search" id="np-console-search" placeholder="Search the log" aria-label="Search the log">
         <label class="np-check" title="Detailed loader and mod messages, hidden by default"><input type="checkbox" id="np-console-debug"> Show debug</label>
@@ -1146,7 +1147,6 @@
     if (!l.local) {
       if (f === 'errors' && l.level !== 'ERROR' && l.level !== 'FATAL') return false;
       if (f === 'warnings' && l.level !== 'WARN') return false;
-      if (f === 'chat' && !/^(\[Not Secure\] )?<[^>]+>|^\[[^\]]+: /.test(l.message)) return false;
       if (f === 'ncc' && l.logger !== 'Nice Control Center') return false;
       if (!consoleState.debug && (l.level === 'DEBUG' || l.level === 'TRACE')) return false;
     }
@@ -1167,6 +1167,114 @@
     const lines = consoleState.lines.filter(consoleMatches).slice(-800);
     log.innerHTML = lines.map(consoleLine).join('') || '<div class="np-empty">No lines match.</div>';
     if (consoleState.follow || full) log.scrollTop = log.scrollHeight;
+  }
+
+  // ── Chat ───────────────────────────────────────────────────────────────
+
+  const chatState = { lines: [], last: 0, filter: 'all', search: '', follow: true, timer: null, ready: false };
+  const CHAT_FILTERS = { all: null, players: ['chat', 'say', 'emote'], discord: ['discord'], events: ['event', 'system'] };
+
+  function openChat() {
+    if (!chatState.ready) setupChat();
+    pollChat();
+  }
+
+  function setupChat() {
+    chatState.ready = true;
+    const chips = [['all', 'All'], ['players', 'Game chat'], ['discord', 'Discord'], ['events', 'Events']];
+    $('np-chat').innerHTML = `<div class="np-filters">${chips.map(([k, l]) => `<button type="button" class="np-filter ${k === 'all' ? 'active' : ''}" data-chatfilter="${k}">${l}</button>`).join('')}
+        <input type="search" class="np-console-search" id="np-chat-search" placeholder="Search the chat" aria-label="Search the chat">
+        <label class="np-check"><input type="checkbox" id="np-chat-follow" checked> Follow</label></div>
+      <div class="np-console-log" id="np-chat-log" role="log" aria-live="polite"></div>
+      <form class="np-console-form" id="np-chat-form" autocomplete="off" hidden>
+        <input type="text" id="np-chat-input" placeholder="Message everyone (sent as /say)" aria-label="Message" maxlength="256">
+        <button type="submit" class="np-btn primary">Send</button>
+      </form>
+      <div class="np-chat-error" id="np-chat-error" hidden></div>`;
+    const log = $('np-chat-log');
+    log.addEventListener('scroll', () => {
+      const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 30;
+      if (chatState.follow !== atBottom) {
+        chatState.follow = atBottom;
+        $('np-chat-follow').checked = atBottom;
+      }
+    });
+    $('np-chat-follow').addEventListener('change', (e) => {
+      chatState.follow = e.target.checked;
+      if (chatState.follow) log.scrollTop = log.scrollHeight;
+    });
+    $('np-chat').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-chatfilter]');
+      if (!chip) return;
+      chatState.filter = chip.dataset.chatfilter;
+      document.querySelectorAll('[data-chatfilter]').forEach((c) => c.classList.toggle('active', c === chip));
+      renderChat(true);
+    });
+    $('np-chat-search').addEventListener('input', (e) => {
+      chatState.search = e.target.value.toLowerCase();
+      renderChat(true);
+    });
+    $('np-chat-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = $('np-chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      let error = '';
+      try {
+        const res = await api('api/chat/send', { method: 'POST', body: JSON.stringify({ text }) });
+        error = res.error || '';
+      } catch (err) {
+        error = 'The server did not respond: ' + err.message;
+      }
+      $('np-chat-error').textContent = error;
+      $('np-chat-error').hidden = !error;
+      pollChat();
+    });
+  }
+
+  async function pollChat() {
+    clearTimeout(chatState.timer);
+    if (activeTab !== 'chat') return;
+    try {
+      const data = await api('api/chat?after=' + chatState.last);
+      $('np-chat-form').hidden = !data.send;
+      if (!data.enabled) {
+        $('np-chat-log').innerHTML = '<div class="np-empty">The chat is switched off with the console (web_console in the config).</div>';
+        return;
+      }
+      if (data.lines.length) {
+        if (data.lines[0].seq <= chatState.last) chatState.lines = []; // the server restarted
+        chatState.lines.push(...data.lines);
+        chatState.last = data.lines[data.lines.length - 1].seq;
+        if (chatState.lines.length > 1000) chatState.lines.splice(0, chatState.lines.length - 1000);
+      }
+      renderChat(false);
+    } catch (e) { /* the live badge shows connection problems */ }
+    chatState.timer = setTimeout(pollChat, 1500);
+  }
+
+  function chatLine(l) {
+    const t = new Date(l.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const src = l.kind === 'discord' ? '<span class="np-chat-src">Discord</span>' : '';
+    let who = '';
+    if (l.name) {
+      const reply = l.replyTo ? ` <span class="np-chat-reply">↪ ${esc(l.replyTo)}</span>` : '';
+      who = l.kind === 'emote' ? `* <span class="np-chat-name">${esc(l.name)}</span> `
+        : l.kind === 'say' ? `<span class="np-chat-name">[${esc(l.name)}]</span> `
+        : `<span class="np-chat-name">${esc(l.name)}</span>${reply}: `;
+    }
+    return `<div class="np-chat-line np-chat-${l.kind}"><span class="np-con-time">${t}</span><span>${src}${who}<span class="np-chat-msg">${esc(l.text)}</span></span></div>`;
+  }
+
+  function renderChat(full) {
+    const log = $('np-chat-log');
+    if (!log) return;
+    const kinds = CHAT_FILTERS[chatState.filter];
+    const q = chatState.search;
+    const lines = chatState.lines.filter((l) => (!kinds || kinds.includes(l.kind)) && (!q || (l.name + ' ' + l.text).toLowerCase().includes(q))).slice(-800);
+    log.innerHTML = lines.map(chatLine).join('') || `<div class="np-empty">${chatState.lines.length ? 'No messages match.' : 'No messages since the server started.'}</div>`;
+    if (chatState.follow || full) log.scrollTop = log.scrollHeight;
   }
 
   // ── Errors & warnings ──────────────────────────────────────────────────

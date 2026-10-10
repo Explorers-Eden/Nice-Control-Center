@@ -107,6 +107,8 @@ public final class Discord {
 	private volatile int maxPlayers;
 	private volatile Supervisor.State lastState;
 	private volatile String lastPresence = "";
+	/** Hands Discord messages to the mod (Chat tab and log); set once the dashboard proxy exists. */
+	private volatile DashboardProxy dashboard;
 
 	public Discord(Path settingsFile, Path linksFile, Supervisor server, Audit audit) {
 		this.settingsFile = settingsFile;
@@ -123,6 +125,10 @@ public final class Discord {
 		}
 		settings = s != null ? s : new Settings();
 		links = l != null ? new ArrayList<>(l) : new ArrayList<>();
+	}
+
+	void useDashboard(DashboardProxy dashboard) {
+		this.dashboard = dashboard;
 	}
 
 	public void start() {
@@ -319,6 +325,9 @@ public final class Discord {
 		if (text.isEmpty()) return;
 		if (text.length() > 256) text = text.substring(0, 256) + "…";
 		String name = message.getMember() != null ? message.getMember().getEffectiveName() : message.getAuthor().getEffectiveName();
+		DashboardProxy mod = dashboard;
+		if (mod != null && mod.relayChat(name, text)) return;
+		// Mods before 1.4.0 can't take it: tellraw, which players see but the log and Chat tab don't.
 		JsonArray parts = new JsonArray();
 		parts.add("");
 		parts.add(part("[Discord] ", "#7289da"));

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.4.0
+- New Chat tab in the dashboard: player chat, /say and /me, joins, leaves, deaths and advancements, and messages from Discord (Discord: JustSync, or the panel's Discord bridge), with filters, search and a box to send a message to everyone (as /say)
+- The console no longer has its own Chat filter; chat lives in the Chat tab
+
 ## 1.3.3
 - The stat tiles always show the server right now: MSPT as min / median / 95%ile / max of the last 10 seconds, GC over the last 10 seconds, and no window averages underneath
 - The stat tiles are on every tab, not only the Overview

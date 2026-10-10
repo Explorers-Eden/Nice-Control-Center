@@ -1,3 +1,7 @@
+## 1.1.0
+- Discord messages relayed into the game also show in the console log and the dashboard's new Chat tab (needs mod 1.4.0; older mods still get them as before, only in game)
+- The dashboard's Chat tab needs "console.read" to see and "console.write" to send, like the console
+
 ## 1.0.1
 - Minecraft updates swap the Nice Control Center mod for the build made for the new version (before, the old build stayed because all builds share a version number, Fabric refused to start and the update rolled back); the mod is now saved as nice-control-center-<version>-mc<minecraft>.jar
 - Typing stop in the console (or /stop in game) stops the server instead of counting as a crash and restarting it

@@ -62,6 +62,7 @@ public final class Panel {
 		map.start();
 		MapRoutes mapRoutes = new MapRoutes(map, auth, audit);
 		Discord discord = new Discord(dataDir.resolve("discord.json"), dataDir.resolve("discord-links.json"), server, audit);
+		discord.useDashboard(dashboard);
 		discord.start();
 		ZoneId zone = zone();
 		Backups backups = new Backups(serverDir, Path.of(env("BACKUP_DIR", "/data/backups")), dataDir.resolve("backups.json"), server, zone);

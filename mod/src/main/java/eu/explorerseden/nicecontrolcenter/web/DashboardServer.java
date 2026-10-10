@@ -37,6 +37,7 @@ import eu.explorerseden.nicecontrolcenter.data.Point;
 import eu.explorerseden.nicecontrolcenter.diagnosis.BloatCheck;
 import eu.explorerseden.nicecontrolcenter.diagnosis.Comparison;
 import eu.explorerseden.nicecontrolcenter.diagnosis.Views;
+import eu.explorerseden.nicecontrolcenter.log.ChatLog;
 import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
 import eu.explorerseden.nicecontrolcenter.log.ErrorWatcher;
 import eu.explorerseden.nicecontrolcenter.log.LogCapture;
@@ -268,6 +269,47 @@ public final class DashboardServer {
 					return;
 				}
 				sendJson(exchange, Map.of("output", onServerThread(() -> ConsoleRunner.run(minecraft, command))));
+			}
+			case "/api/chat" -> {
+				Map<String, Object> result = new LinkedHashMap<>();
+				result.put("enabled", config.web_console);
+				result.put("send", config.web_console && config.web_console_commands);
+				result.put("lines", config.web_console ? ChatLog.after(parseLong(query.get("after"), 0)) : List.of());
+				sendJson(exchange, result);
+			}
+			case "/api/chat/send" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				if (!config.web_console || !config.web_console_commands) {
+					sendJson(exchange, Map.of("error", "Sending messages from the dashboard is switched off (web_console_commands)."));
+					return;
+				}
+				String text = jsonBody(exchange).get("text").getAsString().replaceAll("[\\r\\n]+", " ").strip();
+				if (text.isEmpty() || text.length() > 256) {
+					sendJson(exchange, Map.of("error", "Messages are 1 to 256 characters."));
+					return;
+				}
+				ConsoleRunner.Result result = onServerThread(() -> ConsoleRunner.runChecked(minecraft, "say " + text, "Dashboard chat"));
+				sendJson(exchange, result.ok() ? Map.of("ok", true) : Map.of("error", String.join(" ", result.lines())));
+			}
+			case "/api/chat/relay" -> {
+				// The panel's Discord bridge: Discord → game chat. Only the panel can call this.
+				if (!requirePost(exchange)) {
+					return;
+				}
+				if (!PanelMode.active()) {
+					sendText(exchange, 404, "application/json", "{\"error\":\"Not found\"}");
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String name = body.get("name").getAsString();
+				String text = body.get("text").getAsString();
+				onServerThread(() -> {
+					ChatLog.relay(minecraft, name, text);
+					return null;
+				});
+				sendJson(exchange, Map.of("ok", true));
 			}
 			case "/api/errors" -> {
 				boolean sinceReload = "reload".equals(query.get("since"));

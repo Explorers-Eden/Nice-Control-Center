@@ -1,5 +1,6 @@
 package eu.explorerseden.nicecontrolcenter.panel;
 
+import com.google.gson.JsonObject;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.router.JavalinDefaultRoutingApi;
@@ -29,6 +30,7 @@ final class DashboardProxy {
 	/** Changes in the dashboard and the permission each needs. Anything else that changes something needs "*". */
 	private static final Map<String, String> POST_PERMISSIONS = Map.ofEntries(
 			Map.entry("/api/console/run", Permissions.CONSOLE_WRITE),
+			Map.entry("/api/chat/send", Permissions.CONSOLE_WRITE),
 			Map.entry("/api/players/action", Permissions.PLAYERS_MANAGE),
 			Map.entry("/api/properties/save", Permissions.SETTINGS_SERVER),
 			Map.entry("/api/gamerules/save", Permissions.SETTINGS_SERVER),
@@ -49,8 +51,10 @@ final class DashboardProxy {
 			Map.entry("/api/monitor", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/pregen/start", Permissions.WORLD_TRIM),
 			Map.entry("/api/pregen/stop", Permissions.WORLD_TRIM));
-	/** Reads that show more than the dashboard view: the console. */
-	private static final Map<String, String> GET_PERMISSIONS = Map.of("/api/console", Permissions.CONSOLE_READ);
+	/** Reads that show more than the dashboard view: the console and the chat. */
+	private static final Map<String, String> GET_PERMISSIONS = Map.of("/api/console", Permissions.CONSOLE_READ, "/api/chat", Permissions.CONSOLE_READ);
+	/** Only the panel itself calls these. */
+	private static final Set<String> INTERNAL = Set.of("/api/chat/relay");
 	/** Changes that aren't worth an audit entry. */
 	private static final Set<String> NOT_AUDITED = Set.of("/api/monitor");
 
@@ -89,6 +93,10 @@ final class DashboardProxy {
 				error(ctx, HttpStatus.FORBIDDEN, "Request from another site");
 				return;
 			}
+			if (INTERNAL.contains(path)) {
+				error(ctx, HttpStatus.FORBIDDEN, "Only the panel can do that.");
+				return;
+			}
 			String needed = POST_PERMISSIONS.getOrDefault(path, Permissions.ALL);
 			if (!me.can(needed)) {
 				error(ctx, HttpStatus.FORBIDDEN, "Your account isn't allowed to do that.");
@@ -100,6 +108,28 @@ final class DashboardProxy {
 						clientIp(ctx));
 			}
 		}));
+	}
+
+	/**
+	 * Discord → game chat through the mod, so the message is also in the log and the Chat tab.
+	 * False when the mod can't take it (not running, or older than 1.4.0).
+	 */
+	boolean relayChat(String name, String text) {
+		JsonObject body = new JsonObject();
+		body.addProperty("name", name);
+		body.addProperty("text", text);
+		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/chat/relay"))
+				.timeout(Duration.ofSeconds(5)).header("X-NCC-Secret", secret).header("Content-Type", "application/json")
+				.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+		try {
+			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			return response.statusCode() == 200 && response.body().contains("\"ok\"");
+		} catch (IOException e) {
+			return false;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
+		}
 	}
 
 	/** Returns true when the mod answered with a success status. */
