@@ -100,7 +100,8 @@ public final class ReportWriter {
 		String html = resource("index.html");
 		String css = resource("app.css");
 		String js = resource("app.js");
-		Map<String, String> images = Map.of("img/favicon.ico", dataUri("img/favicon.ico", "image/x-icon"));
+		Map<String, String> images = Map.of("img/favicon.ico", dataUri("img/favicon.ico", "image/x-icon"),
+				"img/apple-touch-icon.png", dataUri("img/apple-touch-icon.png", "image/png"));
 		for (Map.Entry<String, String> image : images.entrySet()) {
 			html = html.replace(image.getKey(), image.getValue());
 			css = css.replace(image.getKey(), image.getValue());

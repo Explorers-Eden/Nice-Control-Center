@@ -37,6 +37,7 @@ public class ConfigScreen extends Screen {
 			new Category("Dashboard", List.of(
 					bool("web_enabled", "Web dashboard", "Serve the dashboard in your browser while a world is open."),
 					number("port", "Port", "Port the dashboard listens on (127.0.0.1 in singleplayer).", 1, 65535),
+					number("token_hours", "New link after (hours)", "Hours a dashboard link works before it's replaced. 0 = a new link every time the world opens.", 0, 8760),
 					bool("web_console", "Show server log", "Show the live log in the dashboard's Console tab."),
 					bool("web_console_commands", "Run commands", "Allow running commands from the dashboard console."))),
 			new Category("Monitor", List.of(

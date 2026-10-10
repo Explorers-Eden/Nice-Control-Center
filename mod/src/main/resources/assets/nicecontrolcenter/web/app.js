@@ -159,6 +159,9 @@
     // Judged by memory still in use after garbage collection; "used" includes garbage not collected yet.
     const livePct = heapMax ? ((heapLive || heapUsed) / heapMax) * 100 : 0;
     const heapClass = livePct < 80 ? 'good' : livePct < 90 ? 'warn' : 'poor';
+    // Garbage piling up is normal, so the total only turns yellow/red when the heap is nearly full.
+    const usedPct = heapMax ? heapUsed / heapMax * 100 : 0;
+    const usedClass = usedPct < 85 ? 'good' : usedPct < 95 ? 'warn' : 'poor';
     const cpuClass = cpuMachine >= 90 ? 'poor' : cpuMachine >= 70 ? 'warn' : 'good';
     const gc = cur ? { percent: cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0, count: cur.gcCount, timeMs: cur.gcTimeMs }
       : { percent: k.gcPercent, count: k.gcCount, timeMs: k.gcTimeMs || 0 };
@@ -168,26 +171,28 @@
     const c = k.counts || {};
     const ms = (v) => v >= 100 ? fixed(v, 0) : fixed(v, 1);
     const mspt = cur || k;
-    const memNow = heapLive || heapUsed;
-    // [label, value html, tooltip, priority]: lower-priority tiles drop out first on narrower screens.
+    const msptCols = [['min', mspt.msptMin], ['med', mspt.msptMedian], ['95%ile', mspt.msptP95], ['max', mspt.msptMax]];
+    const memCols = [[heapLive ? 'after GC' : 'in use', heapLive || heapUsed, heapClass], ...(heapLive ? [['w/ garbage', heapUsed, usedClass]] : []), ['max', heapMax, '']];
     const tiles = [
-      ['TPS', `<span class="${tpsClass}">${fixed(tps, 1)}</span>`,
-        `${now ? 'This second' : `Average over the ${span}`}: ${fixed(tps, 1)} · target ${fixed(k.targetTps, 0)}`, 1],
-      ['MSPT', [mspt.msptMedian, mspt.msptP95, mspt.msptMax].map((v) => `<span class="${msptClass(v, budget)}">${ms(v)}</span>`).join('<i>·</i>'),
-        `Milliseconds per tick over the ${recent} (median · 95% of ticks under · slowest): fastest ${fixed(mspt.msptMin, 1)} · median ${fixed(mspt.msptMedian, 1)} · 95%ile ${fixed(mspt.msptP95, 1)} · slowest ${fixed(mspt.msptMax, 1)} · budget ${fixed(budget, 0)}`, 1],
-      ['CPU', `<span class="${cpuClass}">${fixed(cpu, 0)}%</span>`,
-        `${now ? 'This second' : `Average over the ${span}`}: server ${fixed(cpu, 0)}% · whole machine ${fixed(cpuMachine, 0)}% · ${k.cores} cores`, 1],
-      ['Memory', `<span class="${heapClass}">${bytes(memNow)}</span><i>/</i>${bytes(heapMax)}`,
-        `Still in use after garbage collection: ${bytes(memNow)} · including garbage not collected yet: ${bytes(heapUsed)} · maximum: ${bytes(heapMax)}`, 1],
-      ['GC', `<span class="${gcClass}">${fixed(gc.percent, 1)}%</span>`,
-        `Share of time the server was paused for garbage collection over the ${recent}: ${num(gc.timeMs)} ms over ${num(gc.count)} pauses${gc.count ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`, 2],
-      ['Entities', num(now ? now.entities : c.entities), 'Entities loaded', 3],
-      ['Block ent.', num(now ? now.blockEntities : c.blockEntities), 'Block entities ticking', 3],
-      ['Chunks', num(now ? now.chunks : c.chunks), `Chunks loaded · ${num(c.chunkTasks)} tasks waiting`, 3],
-      ['Players', num(now ? now.players : c.players), 'Players online', 2],
+      ['TPS', `<span class="${tpsClass}">${fixed(tps, 1)}</span>`, `target ${fixed(k.targetTps, 0)}`, null,
+        `${now ? 'This second' : `Average over the ${span}`}: ${fixed(tps, 1)} · target ${fixed(k.targetTps, 0)}`],
+      ['MSPT', null, null, `<div class="np-mspt">${msptCols.map(([l, v]) => `<span class="${msptClass(v, budget)}">${ms(v)}<small>${l}</small></span>`).join('')}</div>`,
+        `Milliseconds per tick over the ${recent}: fastest ${fixed(mspt.msptMin, 1)} · median ${fixed(mspt.msptMedian, 1)} · 95% of ticks under ${fixed(mspt.msptP95, 1)} · slowest ${fixed(mspt.msptMax, 1)}`],
+      ['CPU', `<span class="${cpuClass}">${fixed(cpu, 0)}%</span>`, `machine ${fixed(cpuMachine, 0)}%`, null,
+        `${now ? 'This second' : `Average over the ${span}`}: server ${fixed(cpu, 0)}% · whole machine ${fixed(cpuMachine, 0)}% · ${k.cores} cores`],
+      // Laid out like MSPT; the unit is small so three sizes fit next to each other.
+      ['Memory', null, null, `<div class="np-mspt">${memCols.map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
+        `Still in use after garbage collection: ${bytes(heapLive || heapUsed)} · including garbage not collected yet: ${bytes(heapUsed)} · maximum: ${bytes(heapMax)}`],
+      ['GC', `<span class="${gcClass}">${fixed(gc.percent, 1)}%</span><small> paused</small>`,
+        `${num(gc.count)} pauses${gc.count ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${recent}`, null,
+        `Share of time the server was paused for garbage collection over the ${recent}: ${num(gc.timeMs)} ms over ${num(gc.count)} pauses${gc.count ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
+      ['Entities', num(now ? now.entities : c.entities), 'loaded'],
+      ['Block entities', num(now ? now.blockEntities : c.blockEntities), 'ticking'],
+      ['Chunks', num(now ? now.chunks : c.chunks), `${num(c.chunkTasks)} tasks waiting`],
+      ['Players', num(now ? now.players : c.players), 'online'],
     ];
-    patchHtml($('np-stats'), tiles.map(([label, value, tip, prio]) => `<div class="np-nt np-nt-p${prio}" title="${esc(tip)}">
-      <span class="np-nt-l">${label}</span><span class="np-nt-v">${value}</span></div>`).join(''));
+    patchHtml($('np-stats'), tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}"${tip ? ` title="${esc(tip)}"` : ''}>
+      <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join(''));
   }
 
   function renderFindings(findings, k) {
@@ -1590,6 +1595,16 @@
     const tip = [item.name + (item.count > 1 ? ` ×${item.count}` : ''), item.id, ...item.enchantments].join('\n');
     return `<div class="np-item-tile ${item.enchantments.length ? 'enchanted' : ''}" data-tip="${esc(tip)}">
       <i class="bi ${icon}"></i><span class="np-item-name">${esc(item.name)}</span>${item.count > 1 ? `<span class="np-item-count">×${item.count}</span>` : ''}</div>`;
+  }
+
+  /** The header grows with the stat cards; things that stick below it follow its real height. */
+  function trackHeaderHeight() {
+    const header = document.querySelector('header.navbar');
+    if (!header) return;
+    const apply = () => document.documentElement.style.setProperty('--nav-h', header.offsetHeight + 'px');
+    apply();
+    if (window.ResizeObserver) new ResizeObserver(apply).observe(header);
+    else window.addEventListener('resize', apply);
   }
 
   /**
@@ -3048,6 +3063,7 @@
   if (!REPORT) setupSubs();
   setupMoreCharts();
   setupItemTips();
+  trackHeaderHeight();
   requestAnimationFrame(chartLoop);
   if (REPORT) {
     startReport();

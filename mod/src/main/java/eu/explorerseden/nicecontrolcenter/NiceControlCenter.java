@@ -89,6 +89,16 @@ public class NiceControlCenter implements ModInitializer {
 			return thread;
 		});
 		watcher.scheduleWithFixedDelay(() -> {
+			MinecraftServer running = server;
+			if (config != null && running != null && config.tokenExpired()) {
+				running.execute(() -> {
+					if (config.tokenExpired()) {
+						config.renewToken();
+						config.save();
+						LOGGER.info("The dashboard token is older than token_hours ({}), made a new one; run /ncc web for the link", config.token_hours);
+					}
+				});
+			}
 			if (config == null || !ControlCenterConfig.changedOnDisk()) {
 				return;
 			}
@@ -128,6 +138,12 @@ public class NiceControlCenter implements ModInitializer {
 		NiceControlCenter.server = server;
 		Migration.dataFolder(server.getServerDirectory());
 		config = ControlCenterConfig.load();
+		if (config.token_hours <= 0 || config.tokenExpired()) {
+			// Without token_hours a dashboard link only works until the next restart.
+			config.renewToken();
+			config.save();
+			LOGGER.info("New dashboard token; run /ncc web for the link");
+		}
 		History.clear();
 		SourceIndex.reload(server);
 		Tracker.spikeThresholdNs = Math.max(1, config.spike_threshold_ms) * 1_000_000L;

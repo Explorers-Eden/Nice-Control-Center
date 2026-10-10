@@ -1,7 +1,7 @@
 /* Nice Control Center dashboard. Tokens and components follow explorerseden.eu (site.css, profiling.css). */
 
 :root {
-  /* Height of the sticky navbar; sticky things below it start here. */
+  /* Height of the sticky header (the script keeps it right as the stat cards wrap). */
   --nav-h: 64px;
   /* Dark theme (default). --ink is the base of all white-on-dark tints and borders. */
   --ink: 255,255,255;
@@ -91,18 +91,20 @@ button { font: inherit; }
   top: 0;
   z-index: 20;
   width: 100%;
-  height: var(--nav-h);
-  padding: 6px 32px;
+  min-height: 64px;
+  padding: 6px 32px 10px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
   background: var(--nav);
   border-bottom: 1px solid rgba(var(--ink),.08);
 }
 
 .navbar-inner {
+  min-height: 52px;
   width: 100%;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 28px;
 }
@@ -143,27 +145,6 @@ button { font: inherit; }
   font-weight: 900;
   letter-spacing: -.01em;
   color: var(--strong);
-}
-
-/* The stat tiles, pinned in the navbar. */
-.np-nav-stats { display: flex; justify-content: safe center; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.np-nav-stats::-webkit-scrollbar { display: none; }
-.np-nt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 4px 10px; border-radius: 10px;
-  background: rgba(var(--ink),.05); border: 1px solid rgba(var(--ink),.08); white-space: nowrap; flex: 0 0 auto; cursor: default; }
-.np-nt-l { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); line-height: 1.2; }
-.np-nt-v { font-size: 14px; font-weight: 700; color: var(--strong); font-variant-numeric: tabular-nums; line-height: 1.2; }
-.np-nt-v i { font-style: normal; font-weight: 500; color: var(--faint); margin: 0 3px; }
-.np-nt-v .good { color: var(--good); }
-.np-nt-v .warn { color: var(--accent-2); }
-.np-nt-v .poor { color: var(--poor); }
-@media (max-width: 1500px) { .np-nt-p3 { display: none; } }
-@media (max-width: 1380px) { .np-nt-p2 { display: none; } }
-/* Narrower: the tiles get their own row in the navbar, all of them, scrolling sideways. */
-@media (max-width: 1250px) {
-  :root { --nav-h: 112px; }
-  .navbar-inner { grid-template-columns: auto 1fr; row-gap: 6px; }
-  .np-nav-stats { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
-  .np-nt-p2, .np-nt-p3 { display: flex; }
 }
 
 .np-nav-right { justify-self: end; display: flex; align-items: center; gap: 10px; }
@@ -285,7 +266,15 @@ body.report .np-clock { display: none; }
 /* Each column stacks on its own, so a short or folded section never leaves a gap beside a tall one. */
 .np-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.np-card, .np-banner, .np-stat-card {
+.np-card, .np-banner, /* MSPT and Memory (.wide, several values) get more room than the single numbers:
+   two rows on medium screens (TPS · MSPT · CPU · Memory, then the five others), one row when there's
+   room for MSPT's four values, and two per row on narrow screens with MSPT and Memory full width. */
+.np-stats-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+}
+.np-stats-row > .np-stat-card {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 14px;
@@ -533,10 +522,12 @@ body.report .np-clock { display: none; }
   .np-stats-row { grid-template-columns: 1fr 1.8fr 1fr 1.8fr 1.15fr 1fr 1fr 1fr 1fr; }
   .np-stats-row > .np-stat-card, .np-stats-row > .np-stat-card.wide { grid-column: auto; }
 }
+/* Narrow screens: one row that scrolls sideways, so the pinned header stays short. */
 @media (max-width: 860px) {
-  .np-stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; }
-  .np-stats-row > .np-stat-card { grid-column: span 1; }
-  .np-stats-row > .np-stat-card.wide, .np-stats-row > .np-stat-card:last-child { grid-column: 1 / -1; }
+  .np-stats-row { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .np-stats-row::-webkit-scrollbar { display: none; }
+  .np-stats-row > .np-stat-card { flex: 0 0 auto; min-width: 104px; }
+  .np-stats-row > .np-stat-card.wide { min-width: 210px; }
 }
 
 .np-stat-card {
@@ -1373,12 +1364,9 @@ body.report .np-toasts { display: none; }
 
 /* Inside the panel: no second header or footer; the navbar keeps only the stat tiles, pinned at the top. */
 body.embedded > .np-footer, body.embedded .np-brand, body.embedded .np-nav-right { display: none; }
-body.embedded { --nav-h: 56px; }
-body.embedded > .navbar { padding: 4px 0; border-bottom: 0; background: var(--bg); }
-body.embedded .navbar-inner { grid-template-columns: minmax(0, 1fr); }
-body.embedded .np-nav-stats { grid-column: auto; grid-row: auto; justify-content: flex-start; }
-body.embedded .np-nt-p2, body.embedded .np-nt-p3 { display: flex; }
-body.embedded .np-shell { width: 100%; padding: 0 0 16px; }
+body.embedded .navbar-inner { display: none; }
+body.embedded > .navbar { padding: 0 0 8px; border-bottom: 0; background: var(--bg); min-height: 0; }
+body.embedded .np-shell { width: 100%; padding: 6px 0 16px; }
 body.embedded { background: transparent; }
 .np-chat-error { color: var(--poor); font-size: 12.5px; margin-top: 6px; }
 /* Item tooltips, shown right away, like the game's. */
@@ -1389,3 +1377,5 @@ body.embedded { background: transparent; }
 .np-hovertip b { font-weight: 700; }
 .np-hovertip .ench { color: #a8a8a8; }
 .np-hovertip .id { color: #545454; font-size: 11.5px; }
+/* Phones: the clock steps aside so the live badge and buttons fit next to the logo. */
+@media (max-width: 480px) { .navbar .np-clock { display: none; } }

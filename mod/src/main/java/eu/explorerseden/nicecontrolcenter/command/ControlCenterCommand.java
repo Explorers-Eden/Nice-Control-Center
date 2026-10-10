@@ -387,7 +387,7 @@ public final class ControlCenterCommand {
 
 	private static int regen(CommandContext<CommandSourceStack> ctx) {
 		ControlCenterConfig config = NiceControlCenter.config();
-		config.token = ControlCenterConfig.newToken();
+		config.renewToken();
 		config.save();
 		ctx.getSource().sendSuccess(() -> header("New dashboard link created. Old links stop working.")
 				.append("\n").append(dashboardButton(ctx.getSource())), false);

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.4.4
+- Dashboard links are renewed at every server start by default; the new token_hours setting keeps a link working for that many hours instead (also across restarts), then makes a new one
+- The stat cards are back to their previous look and sit in a second row of the pinned top bar (one row that scrolls sideways on phones)
+- The Explorer's Eden icon for home-screen shortcuts (apple-touch-icon), like on the website
+
 ## 1.4.3
 - Item tooltips in the player inspector show right away when hovering, drawn like the game's (name, enchantments, item id)
 - The stat tiles keep following the server live when the browser's clock differs from the server's (another machine or a container); before, they could fall back to slower window values

@@ -27,8 +27,15 @@ public final class ControlCenterConfig {
 	public int port = 8765;
 	/** Base URL to print in links, e.g. "http://play.example.com:8765". Empty = work it out. */
 	public String public_url = "";
-	/** Secret part of the dashboard link. Generated on first start; change it with /ncc web regen. */
+	/** Secret part of the dashboard link. Made by the mod (see token_hours); /ncc web regen makes a new one now. */
 	public String token = "";
+	/**
+	 * Hours a dashboard link works before the mod replaces its token (old links stop working), also
+	 * across restarts. 0 = a new token at every server start.
+	 */
+	public int token_hours = 0;
+	/** When the current token was made (milliseconds since 1970). Kept by the mod. */
+	public long token_created = 0;
 	/** How often the sampler looks at the server thread. Lower = more detail, more overhead. */
 	public int sampler_interval_ms = 20;
 	/** Ticks slower than this are recorded as lag spikes. */
@@ -165,7 +172,7 @@ public final class ControlCenterConfig {
 			config.resource_pack_webhook_token = "";
 		}
 		if (config.token == null || config.token.isBlank()) {
-			config.token = newToken();
+			config.renewToken();
 		}
 		return config;
 	}
@@ -231,6 +238,17 @@ public final class ControlCenterConfig {
 		} catch (IOException e) {
 			NiceControlCenter.LOGGER.warn("Could not save {}", path(), e);
 		}
+	}
+
+	/** A new dashboard token; old links stop working. */
+	public void renewToken() {
+		token = newToken();
+		token_created = System.currentTimeMillis();
+	}
+
+	/** True when token_hours is set and the token is older than that. */
+	public boolean tokenExpired() {
+		return token_hours > 0 && System.currentTimeMillis() - token_created >= token_hours * 3_600_000L;
 	}
 
 	public static String newToken() {
