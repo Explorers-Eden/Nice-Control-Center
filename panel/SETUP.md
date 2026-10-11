@@ -9,6 +9,8 @@
 3. Under **Environment variables**, add `PANEL_ADMIN_PASSWORD`. Optionally add `PANEL_ADMIN_USER`, which defaults to `admin`. For user accounts, also add `DB_URL`, `DB_USER` and `DB_PASS` (see [Accounts](#accounts)).
 4. Deploy and open `http://<host>:8080`.
 
+Running **Traefik**? Use [portainer-stack-traefik.yml](portainer-stack-traefik.yml) instead and set `PANEL_DOMAIN` (e.g. `panel.example.com`). The panel is then only reachable at `https://<PANEL_DOMAIN>` (see [Reverse proxy](#reverse-proxy)).
+
 If you leave `PANEL_ADMIN_PASSWORD` out, the panel generates a password on first start and prints it **once** in the container log (Portainer → Containers → nicecontrolcenter → Logs). To get a new one, delete `admin.hash` in the panel volume and restart.
 
 The image `niceron/nicecontrolcenter:latest` is rebuilt on every change to `main`. Watchtower picks it up like any other container. When the container stops, the panel stops Minecraft cleanly first. `stop_grace_period: 120s` in the stack gives it time to save.
@@ -210,6 +212,15 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 ## Reverse proxy
 
 Point the panel's subdomain (for example `panel.example.com`) at port 8080 and enable WebSocket support (in Nginx Proxy Manager: "Websockets Support"), so the live console works. Behind HTTPS the login cookie is marked `Secure` automatically (via `X-Forwarded-Proto`). The map gets its own subdomain on the same port later.
+
+**Traefik:** [portainer-stack-traefik.yml](portainer-stack-traefik.yml) does this with labels, so there's nothing to set up in Traefik itself.
+
+- Set `PANEL_DOMAIN`. `PANEL_PUBLIC_URL` becomes `https://<PANEL_DOMAIN>` by itself.
+- Optionally set `MAP_HOST`: the map domain goes on the same router and gets its own certificate.
+- Like a Crafty stack behind the same Traefik, the router listens on all entrypoints and needs no extra Docker network. It uses the certificate resolver `le`; set `TRAEFIK_CERTRESOLVER` if yours is called differently.
+- If Crafty runs on the same host, it already publishes ports 25500–25600. While both run, set `MINECRAFT_PORT` to a free port outside that range (for example 25601).
+- Port 8080 isn't published. Minecraft (25565) and SFTP (2022) stay on their own ports, because they're plain TCP.
+- Traefik passes WebSockets and `X-Forwarded-Proto` through by itself, so the live console and the secure login cookie work without extra settings. Redirecting HTTP to HTTPS is up to your Traefik entrypoint.
 
 ## Building locally
 

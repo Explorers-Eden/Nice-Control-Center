@@ -1,0 +1,61 @@
+# Portainer stack for the Nice Control Center Panel behind Traefik.
+# Same as portainer-stack.yml, but the panel (and the map) are only reachable through Traefik with HTTPS;
+# Minecraft and SFTP stay on their own ports (plain TCP, not through Traefik).
+#
+# Paste this into Portainer -> Stacks -> Add stack -> Web editor, then add under "Environment variables":
+#   PANEL_DOMAIN               the panel's domain, e.g. panel.explorerseden.eu (its DNS must point at the Traefik host)
+#   PANEL_ADMIN_PASSWORD       the container admin's password (without it, one is generated and printed in the log)
+#   DB_URL, DB_USER, DB_PASS   your Postgres, e.g. jdbc:postgresql://postgres:5432/nicecontrolcenter
+#   TIMEZONE                   for scheduled tasks and backup names, e.g. Europe/Berlin
+#   DISCORD_TOKEN              optional: the Discord bot token (can also be pasted in the panel)
+#   MAP_HOST                   optional: the web map's own domain, e.g. map.explorerseden.eu (gets its own certificate)
+#   MINECRAFT_PORT             the port players connect to (default 25565). Crafty publishes 25500-25600 on the same
+#                              host: while both run, pick a free port outside that range (e.g. 25601), or stop Crafty.
+#   TRAEFIK_CERTRESOLVER       only if yours isn't called "le" (Crafty's stack uses "le")
+# Like the Crafty stack, the router listens on all of Traefik's entrypoints and no extra network is needed.
+# Traefik passes WebSockets (the live console) and X-Forwarded-Proto (secure login cookie) through by itself.
+services:
+  nicecontrolcenter:
+    image: niceron/nicecontrolcenter:latest
+    container_name: nicecontrolcenter
+    restart: unless-stopped
+    environment:
+      PANEL_ADMIN_USER: ${PANEL_ADMIN_USER:-admin}
+      PANEL_ADMIN_PASSWORD: ${PANEL_ADMIN_PASSWORD:-}
+      DB_URL: ${DB_URL:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASS: ${DB_PASS:-}
+      PANEL_PUBLIC_URL: https://${PANEL_DOMAIN:?Set PANEL_DOMAIN to the panel's domain}
+      TIMEZONE: ${TIMEZONE:-Europe/Berlin}
+      TZ: ${TIMEZONE:-Europe/Berlin}
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      MAP_HOST: ${MAP_HOST:-}
+    ports:
+      - "${MINECRAFT_PORT:-25565}:25565"
+      # SFTP with the panel's accounts.
+      - "${SFTP_PORT:-2022}:2022"
+    labels:
+      - traefik.enable=true
+      # One router for the panel and the map domain: the panel itself only shows the map on MAP_HOST.
+      # Without MAP_HOST the second Host() is the panel's domain again.
+      - traefik.http.routers.nicecontrolcenter.rule=Host(`${PANEL_DOMAIN}`) || Host(`${MAP_HOST:-${PANEL_DOMAIN}}`)
+      - traefik.http.routers.nicecontrolcenter.tls=true
+      - traefik.http.routers.nicecontrolcenter.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}
+      - traefik.http.routers.nicecontrolcenter.service=nicecontrolcenter
+      - traefik.http.services.nicecontrolcenter.loadbalancer.server.port=8080
+    volumes:
+      # The Minecraft server folder (world, mods, config, logs).
+      - nicecontrolcenter-server:/data/server
+      - nicecontrolcenter-backups:/data/backups
+      # Map tiles, served on the map subdomain.
+      - nicecontrolcenter-map:/data/map
+      # Panel settings (startup, Java flags).
+      - nicecontrolcenter-panel:/data/panel
+    # Time for the Minecraft server to save and stop when the container stops.
+    stop_grace_period: 120s
+
+volumes:
+  nicecontrolcenter-server:
+  nicecontrolcenter-backups:
+  nicecontrolcenter-map:
+  nicecontrolcenter-panel:
