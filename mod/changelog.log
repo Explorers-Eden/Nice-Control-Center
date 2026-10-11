@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.4.5
+- New keep_reports_days setting (default 14): recordings and reports older than that are deleted at server start, after each new report and once an hour; 0 keeps them forever
+
 ## 1.4.4
 - Dashboard links are renewed at every server start by default; the new token_hours setting keeps a link working for that many hours instead (also across restarts), then makes a new one
 - The stat cards are back to their previous look and sit in a second row of the pinned top bar (one row that scrolls sideways on phones)

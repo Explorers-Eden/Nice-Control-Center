@@ -114,6 +114,7 @@ Settings are in `config/nicecontrolcenter.json`. Changes are picked up within a 
   "sampler_interval_ms": 20,
   "spike_threshold_ms": 100,
   "max_recording_hours": 24,
+  "keep_reports_days": 14,
   "web_console": true,
   "web_console_commands": true,
   "web_settings_edit": true,
@@ -187,6 +188,7 @@ Settings are in `config/nicecontrolcenter.json`. Changes are picked up within a 
 | `sampler_interval_ms` | `20` | How often the mod sampler runs. Higher = less overhead, less detail. |
 | `spike_threshold_ms` | `100` | Ticks slower than this count as lag spikes. |
 | `max_recording_hours` | `24` | Recordings stop on their own after this long. |
+| `keep_reports_days` | `14` | Recordings and reports (manual and lag) older than this many days are deleted. `0` = keep them forever. |
 | `error_ignore` | `[]` | Regular expressions for log messages to ignore in Errors and warnings. |
 
 **Lag alerts and reports**

@@ -44,7 +44,8 @@ public class ConfigScreen extends Screen {
 					bool("monitor_enabled", "Live monitor", "Measure what costs performance while a world is open."),
 					number("sampler_interval_ms", "Sampler interval (ms)", "How often mods are sampled. Lower = more detail, more overhead.", 1, 1000),
 					number("spike_threshold_ms", "Lag spike from (ms)", "Ticks slower than this are listed as lag spikes.", 1, 10000),
-					number("max_recording_hours", "Max recording (hours)", "Recordings stop on their own after this long.", 1, 168))),
+					number("max_recording_hours", "Max recording (hours)", "Recordings stop on their own after this long.", 1, 168),
+					number("keep_reports_days", "Keep reports (days)", "Recordings and reports older than this are deleted. 0 = keep them forever.", 0, 3650))),
 			new Category("Alerts", List.of(
 					bool("alerts_enabled", "Lag alerts in chat", "Tell you in chat when the game lags, and why."),
 					decimal("alert_mspt", "Alert above MSPT", "Lag = average milliseconds per tick above this…", 1, 1000),

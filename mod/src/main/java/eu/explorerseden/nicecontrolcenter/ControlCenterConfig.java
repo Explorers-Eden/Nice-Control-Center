@@ -42,6 +42,8 @@ public final class ControlCenterConfig {
 	public int spike_threshold_ms = 100;
 	/** Recordings stop on their own after this long. */
 	public int max_recording_hours = 24;
+	/** Recordings and reports older than this many days are deleted. 0 = keep them forever. */
+	public int keep_reports_days = 14;
 
 	/** Show the live server log in the dashboard. */
 	public boolean web_console = true;

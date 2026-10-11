@@ -155,6 +155,7 @@ public class NiceControlCenter implements ModInitializer {
 		sampler.start();
 
 		Recorder.announcer(message -> notifyAdmins(ControlCenterCommand.reportReady(message), message));
+		Recorder.cleanUp(server);
 		AlertWatcher.reset();
 		Advisor.reset();
 		BossBarMonitor.load();

@@ -51,6 +51,7 @@ public final class Recorder {
 
 	private static Recording current;
 	private static Consumer<String> announcer = message -> { };
+	private static long lastCleanUp;
 
 	private Recorder() {
 	}
@@ -174,6 +175,9 @@ public final class Recorder {
 
 	/** Called every second on the server thread. */
 	public static void onSecond(MinecraftServer server, Breakdown second, Point point) {
+		if (System.currentTimeMillis() - lastCleanUp >= 3_600_000L) {
+			cleanUp(server);
+		}
 		Recording r;
 		synchronized (Recorder.class) {
 			r = current;
@@ -237,6 +241,7 @@ public final class Recorder {
 				ReportWriter.write(r.file, report, new ReportWriter.Meta(serverName, version, r.startedBy, r.startedAt, System.currentTimeMillis(), r.reason));
 				announcer.accept((r.automatic ? "Lag report saved: " : "Recording saved: ") + report.getFileName());
 				result.complete(report);
+				cleanUp(server);
 			} catch (IOException | RuntimeException e) {
 				NiceControlCenter.LOGGER.error("Could not write report", e);
 				announcer.accept("Could not write the report: " + e.getMessage());
@@ -244,6 +249,52 @@ public final class Recorder {
 			}
 		});
 		return result;
+	}
+
+	/**
+	 * Deletes recordings and reports older than keep_reports_days in the background (0 = keep all).
+	 * The recording that is still running is never touched.
+	 */
+	public static void cleanUp(MinecraftServer server) {
+		lastCleanUp = System.currentTimeMillis();
+		int days = NiceControlCenter.config().keep_reports_days;
+		if (days <= 0) {
+			return;
+		}
+		long cutoff = System.currentTimeMillis() - days * 86_400_000L;
+		List<Path> dirs = List.of(baseDir(server).resolve("recordings"), reportsDir(server));
+		Path running;
+		synchronized (Recorder.class) {
+			running = current == null ? null : current.file;
+		}
+		IO.execute(() -> {
+			int deleted = 0;
+			for (Path dir : dirs) {
+				if (!Files.isDirectory(dir)) {
+					continue;
+				}
+				try (Stream<Path> stream = Files.list(dir)) {
+					for (Path p : (Iterable<Path>) stream::iterator) {
+						String name = p.getFileName().toString();
+						if (!(name.endsWith(".ndjson") || name.endsWith(".html")) || p.equals(running)) {
+							continue;
+						}
+						try {
+							if (Files.getLastModifiedTime(p).toMillis() < cutoff && Files.deleteIfExists(p)) {
+								deleted++;
+							}
+						} catch (IOException e) {
+							NiceControlCenter.LOGGER.warn("Could not delete old report {}", p, e);
+						}
+					}
+				} catch (IOException e) {
+					NiceControlCenter.LOGGER.warn("Could not clean up {}", dir, e);
+				}
+			}
+			if (deleted > 0) {
+				NiceControlCenter.LOGGER.info("Deleted {} recordings and reports older than {} days", deleted, days);
+			}
+		});
 	}
 
 	public static List<ReportFile> reports(MinecraftServer server) {
