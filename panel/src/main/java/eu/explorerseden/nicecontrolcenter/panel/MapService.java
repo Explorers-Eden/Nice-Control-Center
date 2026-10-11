@@ -269,13 +269,28 @@ public final class MapService {
 
 	// ── Rendering ──────────────────────────────────────────────────────────
 
+	/** Bumped when the drawing changes, so existing maps are drawn again once. */
+	private static final String RENDERER = "2";
+
+	private boolean rendererChanged() {
+		Path marker = mapDir.resolve("renderer");
+		try {
+			if (Files.exists(marker) && Files.readString(marker).strip().equals(RENDERER)) return false;
+			Files.createDirectories(mapDir);
+			Files.writeString(marker, RENDERER);
+		} catch (IOException e) {
+			return false;
+		}
+		return true;
+	}
+
 	private void renderPass() {
 		if (!settings.enabled) {
 			renderStatus = "Off";
 			return;
 		}
 		try {
-			boolean all = rerenderAll;
+			boolean all = rerenderAll || rendererChanged();
 			rerenderAll = false;
 			MapRenderer renderer = new MapRenderer(colors);
 			int total = 0;
@@ -303,6 +318,18 @@ public final class MapService {
 					changed.add(rc[0] + "_" + rc[1]);
 					done++;
 					regionsRendered = done;
+				}
+				// A changed region also changes the top edge of the one south of it (relief shading).
+				for (String key : Set.copyOf(changed)) {
+					String[] p = key.split("_");
+					int x = Integer.parseInt(p[0]);
+					int z = Integer.parseInt(p[1]) + 1;
+					Path south = dim.regions().resolve("r." + x + "." + z + ".mca");
+					if (changed.contains(x + "_" + z) || !Files.isRegularFile(south)) continue;
+					BufferedImage image = renderer.render(south, dim.ceiling());
+					Path tile = tiles.resolve("0").resolve(x + "_" + z + ".png");
+					if (image != null) MapRenderer.write(image, tile);
+					changed.add(x + "_" + z);
 				}
 				if (!changed.isEmpty()) zoomOut(tiles, changed);
 			}
@@ -351,6 +378,12 @@ public final class MapService {
 	/** When the outer wilds are reset next (epoch millis, 0 = not scheduled); set by the panel. */
 	private volatile java.util.function.LongSupplier nextReset = () -> 0;
 
+	private volatile java.util.function.BooleanSupplier hasLogo = () -> false;
+
+	void useLogo(java.util.function.BooleanSupplier logo) {
+		hasLogo = logo;
+	}
+
 	void useResetClock(java.util.function.LongSupplier next) {
 		nextReset = next;
 	}
@@ -360,6 +393,7 @@ public final class MapService {
 		out.put("title", settings.title);
 		long reset = nextReset.getAsLong();
 		if (reset > 0) out.put("nextReset", reset);
+		if (hasLogo.getAsBoolean()) out.put("logo", "data/logo");
 		Map<String, eu.explorerseden.nicecontrolcenter.Borders.Border> borders = eu.explorerseden.nicecontrolcenter.Borders.read(
 				serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Borders.FILE));
 		List<Map<String, Object>> dims = new ArrayList<>();

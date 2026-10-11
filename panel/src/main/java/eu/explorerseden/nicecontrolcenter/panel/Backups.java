@@ -50,9 +50,8 @@ public final class Backups {
 	public static final class Settings {
 		public List<String> exclude = new ArrayList<>(List.of("logs/**", "crash-reports/**", "debug/**", ".fabric/**", "libraries/**",
 				"versions/**", "**/session.lock", "mods/.nice-control-center.download"));
+		/** How many backups to keep (pinned ones and those an update still needs come on top). */
 		public int keepLast = 10;
-		public int keepDaily = 7;
-		public int keepWeekly = 4;
 	}
 
 	public record Entry(String name, long size, long time, String label, String by, boolean pinned, int files) {
@@ -110,8 +109,7 @@ public final class Backups {
 				return "Not a valid pattern: " + glob;
 			}
 		}
-		if (next.keepLast < 1 || next.keepLast > 1000) return "Keep at least 1 and at most 1000 recent backups.";
-		if (next.keepDaily < 0 || next.keepDaily > 365 || next.keepWeekly < 0 || next.keepWeekly > 520) return "Daily and weekly counts must be 0–365 and 0–520.";
+		if (next.keepLast < 1 || next.keepLast > 1000) return "Keep at least 1 and at most 1000 backups.";
 		Files.createDirectories(settingsFile.getParent());
 		Path tmp = settingsFile.resolveSibling(settingsFile.getFileName() + ".tmp");
 		Files.writeString(tmp, Json.GSON.toJson(next), StandardCharsets.UTF_8);
@@ -331,20 +329,18 @@ public final class Backups {
 		return out;
 	}
 
-	/** Grandfather-father-son: the newest N, the newest per day for D days, per week for W weeks; pinned ones stay. */
+	/** Keeps the newest N backups; pinned ones and those an operation still needs stay on top of that. */
 	public List<String> prune() {
 		Settings s = settings;
 		List<Entry> all = list();
 		Set<String> keep = new HashSet<>();
-		for (int i = 0; i < Math.min(s.keepLast, all.size()); i++) keep.add(all.get(i).name());
-		Set<LocalDate> days = new LinkedHashSet<>();
-		Set<String> weeks = new LinkedHashSet<>();
+		int kept = 0;
 		for (Entry e : all) {
 			if (e.pinned() || protectedNames.contains(e.name())) keep.add(e.name());
-			LocalDate day = Instant.ofEpochMilli(e.time()).atZone(zone).toLocalDate();
-			if (days.size() < s.keepDaily && days.add(day)) keep.add(e.name());
-			String week = day.get(IsoFields.WEEK_BASED_YEAR) + "-" + day.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-			if (weeks.size() < s.keepWeekly && weeks.add(week)) keep.add(e.name());
+			else if (kept < s.keepLast) {
+				keep.add(e.name());
+				kept++;
+			}
 		}
 		List<String> deleted = new ArrayList<>();
 		for (Entry e : all) {

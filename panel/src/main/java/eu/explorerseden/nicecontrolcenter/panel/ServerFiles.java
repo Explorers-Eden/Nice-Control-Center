@@ -213,11 +213,20 @@ public final class ServerFiles {
 		return removed;
 	}
 
+	/** name may contain folders (a dropped folder's structure); each part is checked. */
 	public Path saveUpload(Path dir, String name, InputStream in, boolean overwrite) throws IOException {
-		String clean = name == null ? "" : name.replace('\\', '/');
-		clean = clean.substring(clean.lastIndexOf('/') + 1).strip();
-		if (clean.isEmpty() || clean.equals(".") || clean.equals("..")) throw new IOException("Bad file name.");
+		String raw = name == null ? "" : name.replace('\\', '/');
+		List<String> parts = new ArrayList<>();
+		for (String part : raw.split("/")) {
+			String p = part.strip();
+			if (p.isEmpty()) continue;
+			if (p.equals(".") || p.equals("..")) throw new IOException("Bad file name: " + raw);
+			parts.add(p);
+		}
+		if (parts.isEmpty()) throw new IOException("Bad file name.");
+		String clean = String.join("/", parts);
 		Path target = resolve(rel(dir) + "/" + clean);
+		if (!target.startsWith(dir)) throw new IOException("Bad file name: " + raw);
 		checkWritable(target);
 		if (!overwrite && Files.exists(target)) throw new IOException(clean + " already exists.");
 		Path tmpDir = root.resolve(TMP);

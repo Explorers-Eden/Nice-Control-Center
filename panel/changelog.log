@@ -1,3 +1,16 @@
+## 1.4.0
+- One navigation for everything: a sidebar with groups (Dashboard, Live, Players, World, Server, Admin) holds the panel's pages and the mod dashboard's pages; the second tab bar is gone, the mod's pages open inside the panel at full height, and its badges show in the sidebar. On phones the sidebar slides in from a menu button
+- The navbar holds the server state with its uptime, the in-game clock, Start/Restart/Stop/Kill and the stat tiles (TPS, MSPT, CPU, memory, disk, GC, entities, chunks, players) on every page; the big "Server running" box is gone, and notices (crash, restart countdown) show as a slim line only when there is one
+- Replies from players (/nccreply) show as a message in the corner on every page; clicking one opens the conversation
+- Console and Schedule exist only once: the mod's copies are hidden; tasks still in the mod's own schedule are listed in Schedule and can be moved over with one click
+- Files: New file; files open in their own editor window with syntax highlighting (JSON, YAML, TOML, properties and more), search, and the form view for simple configs; right-click a file or folder for open, download, copy path, rename, duplicate, zip, extract and delete; drag and drop works anywhere in the Files page, also whole folders; uploads continue in the background with progress on every page
+- Backups: one number for how many to keep (pinned ones come on top); what to leave out is picked in a folder tree, wildcard patterns still possible
+- Scheduled messages and countdowns: {time}, {player} (each reader's own name), {online}, {clock}, {date} and & color codes, with clickable chips to insert them
+- Borders & reset: the switches in the borders table work
+- Stats: the charts fill their rows without gaps and size to their space
+- Appearance (new): upload a logo for the panel (replaces the "Nice Control Center" lettering) and one for the public map
+- Map: no seams at region borders anymore (the relief along each region's edge uses the region next to it), smoother zoomed-out tiles, crisp blocks when zoomed in; existing maps are drawn again once by themselves
+
 ## 1.3.0
 - New Stats tab: TPS, milliseconds per tick, players, memory and free disk over 24 hours to 90 days, with starts, stops, crashes and alerts marked, a disk-full forecast and the busiest times per weekday and hour (kept in /data/panel/stats, no database needed)
 - New Players tab: whitelist, operators, banned players and IPs; changes go through the console while the server runs and into the files while it's stopped

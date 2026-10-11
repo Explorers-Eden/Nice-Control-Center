@@ -20,6 +20,9 @@
   let tiles = null;
   let live = null;
 
+  // Crisp block pixels once a block is bigger than a screen pixel.
+  map.on('zoomend', () => document.body.classList.toggle('mp-crisp', map.getZoom() > 0));
+
   function hash() {
     const c = map.getCenter();
     history.replaceState(null, '', `#${dim.key}/${Math.round(c.lng)}/${Math.round(-c.lat)}/${map.getZoom()}`);
@@ -148,6 +151,13 @@
     }
     document.title = info.title;
     $('mp-title').textContent = info.title;
+    if (info.logo) {
+      const logo = document.createElement('img');
+      logo.className = 'mp-logo';
+      logo.src = info.logo;
+      logo.alt = info.title;
+      $('mp-title').before(logo);
+    }
     if (info.nextReset && info.dimensions.some((d) => d.borders && d.borders.hard > 0)) {
       $('mp-reset').hidden = false;
       $('mp-reset').textContent = `The outer wilds reset ${resetText(info.nextReset)}`;

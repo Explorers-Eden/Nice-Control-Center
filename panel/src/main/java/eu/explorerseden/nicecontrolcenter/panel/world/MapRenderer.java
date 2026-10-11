@@ -1,7 +1,5 @@
 package eu.explorerseden.nicecontrolcenter.panel.world;
 
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -57,6 +55,9 @@ public final class MapRenderer {
 			}
 		}
 		if (!any) return null;
+		// Relief along the top edge compares with the region to the north; without it every region
+		// border would show as a flat line.
+		int[] northRow = northEdge(regionFile, ceiling);
 		BufferedImage image = new BufferedImage(TILE, TILE, BufferedImage.TYPE_INT_ARGB);
 		int[] out = new int[TILE * TILE];
 		for (int z = 0; z < TILE; z++) {
@@ -68,7 +69,8 @@ public final class MapRenderer {
 					double d = depth[i] * 0.1 + ((x + z) & 1) * 0.2;
 					shade = d < 0.5 ? HIGH : d > 0.9 ? LOW : NORMAL;
 				} else {
-					int north = z > 0 && kind[i - TILE] != 0 ? height[i - TILE] : height[i];
+					int north = z > 0 ? (kind[i - TILE] != 0 ? height[i - TILE] : height[i])
+							: northRow != null && northRow[x] != Integer.MIN_VALUE ? northRow[x] : height[i];
 					shade = height[i] > north ? HIGH : height[i] < north ? LOW : NORMAL;
 				}
 				int c = color[i];
@@ -80,6 +82,37 @@ public final class MapRenderer {
 		}
 		image.setRGB(0, 0, TILE, TILE, out, 0, TILE);
 		return image;
+	}
+
+	/** Heights of the bottom row of the region to the north (MIN_VALUE where there's nothing), or null. */
+	private int[] northEdge(Path regionFile, boolean ceiling) {
+		int[] rc = RegionFile.coords(regionFile.getFileName().toString());
+		if (rc == null) return null;
+		Path north = regionFile.resolveSibling("r." + rc[0] + "." + (rc[1] - 1) + ".mca");
+		if (!Files.isRegularFile(north)) return null;
+		int[] height = new int[TILE * TILE];
+		int[] color = new int[TILE * TILE];
+		int[] depth = new int[TILE * TILE];
+		byte[] kind = new byte[TILE * TILE];
+		try (RegionFile region = new RegionFile(north)) {
+			for (int cx = 0; cx < 32; cx++) {
+				if (!region.has(cx, 31)) continue;
+				try {
+					Map<String, Object> chunk = region.read(cx, 31);
+					if (chunk != null && finished(chunk)) column(chunk, cx, 31, ceiling, height, color, depth, kind);
+				} catch (IOException | RuntimeException e) {
+					// Being written: the edge stays flat this time.
+				}
+			}
+		} catch (IOException e) {
+			return null;
+		}
+		int[] row = new int[TILE];
+		for (int x = 0; x < TILE; x++) {
+			int i = (TILE - 1) * TILE + x;
+			row[x] = kind[i] == 1 ? height[i] : Integer.MIN_VALUE;
+		}
+		return row;
 	}
 
 	private static boolean finished(Map<String, Object> chunk) {
@@ -237,17 +270,41 @@ public final class MapRenderer {
 		Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 	}
 
-	/** A zoomed-out tile from the four tiles one level closer (missing ones stay transparent). */
+	/**
+	 * A zoomed-out tile from the four tiles one level closer (missing ones stay transparent). Each pixel
+	 * is the average of the 2×2 pixels it covers (empty ones left out), so the map stays smooth instead
+	 * of grainy.
+	 */
 	public static BufferedImage zoomOut(BufferedImage nw, BufferedImage ne, BufferedImage sw, BufferedImage se) {
 		BufferedImage out = new BufferedImage(TILE, TILE, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = out.createGraphics();
-		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		int half = TILE / 2;
-		if (nw != null) g.drawImage(nw, 0, 0, half, half, null);
-		if (ne != null) g.drawImage(ne, half, 0, half, half, null);
-		if (sw != null) g.drawImage(sw, 0, half, half, half, null);
-		if (se != null) g.drawImage(se, half, half, half, half, null);
-		g.dispose();
+		int[] dst = new int[TILE * TILE];
+		BufferedImage[] quads = { nw, ne, sw, se };
+		int[] src = new int[TILE * TILE];
+		for (int q = 0; q < 4; q++) {
+			BufferedImage img = quads[q];
+			if (img == null) continue;
+			img.getRGB(0, 0, TILE, TILE, src, 0, TILE);
+			int ox = (q & 1) * half;
+			int oy = (q >> 1) * half;
+			for (int y = 0; y < half; y++) {
+				for (int x = 0; x < half; x++) {
+					int r = 0, g = 0, b = 0, n = 0;
+					for (int dy = 0; dy < 2; dy++) {
+						for (int dx = 0; dx < 2; dx++) {
+							int p = src[(2 * y + dy) * TILE + 2 * x + dx];
+							if ((p >>> 24) < 128) continue;
+							r += (p >> 16) & 0xFF;
+							g += (p >> 8) & 0xFF;
+							b += p & 0xFF;
+							n++;
+						}
+					}
+					if (n > 0) dst[(oy + y) * TILE + ox + x] = 0xFF000000 | (r / n << 16) | (g / n << 8) | (b / n);
+				}
+			}
+		}
+		out.setRGB(0, 0, TILE, TILE, dst, 0, TILE);
 		return out;
 	}
 }

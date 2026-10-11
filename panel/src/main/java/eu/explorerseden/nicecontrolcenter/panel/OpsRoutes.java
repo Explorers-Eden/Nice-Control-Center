@@ -125,8 +125,7 @@ final class OpsRoutes {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);
 				return;
 			}
-			audit.log(me.name(), "backup.settings", "keep " + next.keepLast + " recent, " + next.keepDaily + " daily, " + next.keepWeekly
-					+ " weekly; excluded: " + String.join(", ", next.exclude), clientIp(ctx));
+			audit.log(me.name(), "backup.settings", "keep " + next.keepLast + "; excluded: " + String.join(", ", next.exclude), clientIp(ctx));
 			json(ctx, Map.of("ok", true, "deleted", backups.prune()));
 		}));
 

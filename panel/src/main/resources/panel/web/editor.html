@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Editor</title>
+	<script>
+		// Same theme as the panel, set before anything is drawn.
+		try { const t = localStorage.getItem('np-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* default */ }
+	</script>
+	<link rel="icon" href="img/favicon.ico" type="image/x-icon">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+	<link rel="stylesheet" href="app.css">
+	<link rel="stylesheet" href="panel.css">
+</head>
+<body class="ed-body">
+	<header class="ed-head">
+		<div class="ed-title">
+			<i class="bi bi-file-earmark-code"></i>
+			<b id="ed-name">Loading…</b>
+			<span class="ed-dirty" id="ed-dirty" hidden title="Unsaved changes">●</span>
+		</div>
+		<div class="ed-actions">
+			<div class="pn-editor-modes" id="ed-modes" hidden>
+				<button type="button" class="np-filter active" data-mode="text">Text</button>
+				<button type="button" class="np-filter" data-mode="form">Form</button>
+			</div>
+			<span class="np-form-msg" id="ed-msg"></span>
+			<button type="button" class="np-btn danger small" id="ed-force" hidden>Save anyway</button>
+			<button type="button" class="np-btn primary small" id="ed-save"><i class="bi bi-check2"></i> Save</button>
+			<button type="button" class="np-btn small" id="ed-close"><i class="bi bi-x-lg"></i> Close</button>
+		</div>
+	</header>
+	<main class="ed-main">
+		<div class="ed-code" id="ed-code"></div>
+		<div class="pn-form-view ed-form" id="ed-form" hidden></div>
+	</main>
+	<footer class="ed-foot"><span id="ed-info"></span><span>Ctrl/⌘ + S saves · Ctrl/⌘ + F searches · the previous version is kept as .bak</span></footer>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/toml/toml.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/properties/properties.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+	<script src="editor.js"></script>
+</body>
+</html>

@@ -22,16 +22,26 @@
 <body>
 	<header class="navbar">
 		<div class="navbar-inner">
+			<button type="button" class="np-btn pn-menu-btn" id="pn-menu-btn" aria-label="Menu" hidden><i class="bi bi-list"></i></button>
 			<h1 class="np-brand">
 				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-hdd-rack"></i></span>
-				<span class="np-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
+				<span class="np-brand-text" id="pn-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
+				<img class="pn-brand-logo" id="pn-brand-logo" alt="" hidden>
 			</h1>
 			<div class="np-nav-right">
-				<span class="np-live" id="pn-state-pill" hidden><span class="np-live-dot"></span><span id="pn-state-text"></span></span>
+				<span class="np-clock" id="pn-clock" hidden></span>
+				<span class="np-live" id="pn-state-pill" hidden><span class="np-live-dot"></span><span id="pn-state-text"></span><span class="pn-uptime" id="pn-uptime"></span></span>
+				<div class="pn-power" id="pn-power" hidden>
+					<button type="button" class="np-btn small primary" data-action="start" title="Start"><i class="bi bi-play-fill"></i><span>Start</span></button>
+					<button type="button" class="np-btn small" data-action="restart" title="Restart"><i class="bi bi-arrow-repeat"></i><span>Restart</span></button>
+					<button type="button" class="np-btn small" data-action="stop" title="Stop"><i class="bi bi-stop-fill"></i><span>Stop</span></button>
+					<button type="button" class="np-btn small danger" data-action="kill" title="Kill: ends the process without saving"><i class="bi bi-x-octagon"></i><span>Kill</span></button>
+				</div>
 				<button type="button" class="np-btn np-theme-btn" id="pn-theme" aria-label="Switch light/dark"><i class="bi bi-moon-stars"></i></button>
 				<button type="button" class="np-btn" id="pn-logout" hidden><i class="bi bi-box-arrow-right"></i><span>Log out</span></button>
 			</div>
 		</div>
+		<section class="np-stats-row" id="pn-stats" aria-label="Server right now" hidden></section>
 	</header>
 
 	<main class="np-shell">
@@ -48,40 +58,53 @@
 		</section>
 
 		<div id="pn-app" class="pn-app" hidden>
-			<section class="np-banner">
-				<div class="np-banner-main">
-					<span class="np-status-dot info" id="pn-dot"></span>
-					<div>
-						<h2 class="np-banner-title" id="pn-title">Loading…</h2>
-						<p class="np-banner-headline" id="pn-sub"></p>
-					</div>
+			<nav class="pn-side" id="pn-tabs" aria-label="Sections">
+				<div class="pn-side-group">
+					<span class="pn-side-head">Dashboard</span>
+					<button type="button" class="np-tab" data-tab="mod:overview" data-perm="dashboard.view"><i class="bi bi-speedometer2"></i><span>Overview</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="mod:performance" data-perm="dashboard.view"><i class="bi bi-stopwatch"></i><span>Performance</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="stats" data-perm="server.view"><i class="bi bi-graph-up"></i><span>Stats</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="mod:reports" data-perm="dashboard.view"><i class="bi bi-record-circle"></i><span>Reports</span><span class="pn-badge" hidden></span></button>
 				</div>
-				<div class="pn-actions">
-					<button type="button" class="np-btn primary" data-action="start"><i class="bi bi-play-fill"></i> Start</button>
-					<button type="button" class="np-btn" data-action="restart"><i class="bi bi-arrow-repeat"></i> Restart</button>
-					<button type="button" class="np-btn" data-action="stop"><i class="bi bi-stop-fill"></i> Stop</button>
-					<button type="button" class="np-btn danger" data-action="kill" title="Ends the process without saving"><i class="bi bi-x-octagon"></i> Kill</button>
+				<div class="pn-side-group">
+					<span class="pn-side-head">Live</span>
+					<button type="button" class="np-tab" data-tab="server" data-perm="console.read"><i class="bi bi-terminal"></i><span>Console</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="mod:chat" data-perm="dashboard.view"><i class="bi bi-chat-dots"></i><span>Chat</span><span class="pn-badge" hidden></span></button>
 				</div>
-			</section>
-
-			<nav class="np-tabs" id="pn-tabs" role="tablist" aria-label="Sections">
-				<button type="button" role="tab" class="np-tab" data-tab="dashboard" data-perm="dashboard.view"><i class="bi bi-speedometer2"></i><span>Dashboard</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="stats" data-perm="server.view"><i class="bi bi-graph-up"></i><span>Stats</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="server" data-perm="console.read"><i class="bi bi-terminal"></i><span>Console</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="backups" data-perm="backup.view"><i class="bi bi-archive"></i><span>Backups</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="schedule" data-perm="server.view"><i class="bi bi-calendar-check"></i><span>Schedule</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="versions" data-perm="server.view"><i class="bi bi-box-seam"></i><span>Versions</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="players" data-perm="players.manage"><i class="bi bi-person-check"></i><span>Players</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="world" data-perm="world.trim"><i class="bi bi-bounding-box"></i><span>World</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="map" data-perm="map.manage"><i class="bi bi-map"></i><span>Map</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="discord" data-perm="discord.manage"><i class="bi bi-discord"></i><span>Discord</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people"></i><span>Users</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span></button>
-				<button type="button" role="tab" class="np-tab" data-tab="account"><i class="bi bi-person-circle"></i><span>Account</span></button>
+				<div class="pn-side-group">
+					<span class="pn-side-head">Players</span>
+					<button type="button" class="np-tab" data-tab="mod:players" data-perm="dashboard.view"><i class="bi bi-people"></i><span>Players</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="players" data-perm="players.manage"><i class="bi bi-person-check"></i><span>Whitelist &amp; bans</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="discord" data-perm="discord.manage"><i class="bi bi-discord"></i><span>Discord</span><span class="pn-badge" hidden></span></button>
+				</div>
+				<div class="pn-side-group">
+					<span class="pn-side-head">World</span>
+					<button type="button" class="np-tab" data-tab="mod:world" data-perm="dashboard.view"><i class="bi bi-globe-americas"></i><span>World health</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="world" data-perm="world.trim"><i class="bi bi-bounding-box"></i><span>Borders &amp; reset</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="map" data-perm="map.manage"><i class="bi bi-map"></i><span>Map</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="mod:packs" data-perm="dashboard.view"><i class="bi bi-toggles"></i><span>Data packs</span><span class="pn-badge" hidden></span></button>
+				</div>
+				<div class="pn-side-group">
+					<span class="pn-side-head">Server</span>
+					<button type="button" class="np-tab" data-tab="mod:server" data-perm="dashboard.view"><i class="bi bi-sliders"></i><span>Game settings</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="schedule" data-perm="server.view"><i class="bi bi-calendar-check"></i><span>Schedule</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="backups" data-perm="backup.view"><i class="bi bi-archive"></i><span>Backups</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="versions" data-perm="server.view"><i class="bi bi-box-seam"></i><span>Minecraft version</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="mod:updates" data-perm="dashboard.view"><i class="bi bi-cloud-arrow-down"></i><span>Mod updates</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span><span class="pn-badge" hidden></span></button>
+				</div>
+				<div class="pn-side-group">
+					<span class="pn-side-head">Admin</span>
+					<button type="button" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people-fill"></i><span>Users</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="appearance" data-perm-any="users.admin map.manage"><i class="bi bi-palette"></i><span>Appearance</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span><span class="pn-badge" hidden></span></button>
+					<button type="button" class="np-tab" data-tab="account"><i class="bi bi-person-circle"></i><span>Account</span><span class="pn-badge" hidden></span></button>
+				</div>
 			</nav>
+			<div class="pn-content">
+			<p class="pn-state-note" id="pn-sub" hidden></p>
 
 			<section class="np-card pn-notice" id="pn-eula" hidden>
 				<p>The Minecraft server only starts once you accept the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener">Minecraft EULA</a>.</p>
@@ -160,12 +183,17 @@
 					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Backup settings</h3>
 					<form id="pn-backup-settings">
 						<div class="np-form-grid">
-							<label class="np-form-row">Keep the newest<input type="number" name="keepLast" min="1" max="1000"></label>
-							<label class="np-form-row">Plus one per day, for days<input type="number" name="keepDaily" min="0" max="365"></label>
-							<label class="np-form-row">Plus one per week, for weeks<input type="number" name="keepWeekly" min="0" max="520"></label>
+							<label class="np-form-row">Backups to keep (pinned ones come on top)<input type="number" name="keepLast" min="1" max="1000"></label>
 						</div>
-						<label class="pn-field">Leave out (one pattern per line)<textarea name="exclude" rows="7" spellcheck="false"></textarea></label>
-						<p class="np-card-intro pn-hint"><code>logs/**</code> leaves out a folder, <code>**/*.log</code> a file type anywhere, <code>world/DIM-1/**</code> the Nether, <code>bluemap/**</code> a map render. Paths are relative to the server folder.</p>
+						<div class="pn-field">Leave out of backups
+							<p class="np-card-intro pn-hint">Tick folders and files that shouldn't be backed up. Everything inside a ticked folder is left out too.</p>
+							<div class="pn-tree" id="pn-ex-tree"></div>
+							<div class="pn-ex-patterns">
+								<span class="pn-hint">Patterns:</span>
+								<div class="np-chips" id="pn-ex-patterns"></div>
+								<input type="text" id="pn-ex-add" placeholder="add a pattern, e.g. **/*.log" spellcheck="false">
+							</div>
+						</div>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 							<span class="np-form-msg" id="pn-backup-settings-msg"></span>
@@ -210,6 +238,11 @@
 						</div>
 					</form>
 				</section>
+				<section class="np-card" id="pn-modtasks" hidden>
+					<h3 class="np-card-title"><i class="bi bi-puzzle"></i> Tasks from the mod's dashboard</h3>
+					<p class="np-card-intro">These were set up in the Nice Control Center mod's own schedule and still run there. Move them here to keep everything in one place: daily, weekly and every-few-minutes tasks become panel tasks (with their wait lines); one-off tasks and tasks that follow another one stay in the mod.</p>
+					<div id="pn-modtask-list" class="pn-tasks"></div>
+				</section>
 			</div>
 
 			<div class="np-tab-panel" data-tab="files" hidden>
@@ -219,6 +252,7 @@
 						<div class="pn-crumbs" id="pn-crumbs"></div>
 						<div class="pn-row-actions" data-perm="files.write">
 							<label class="np-btn small"><i class="bi bi-upload"></i> Upload<input type="file" id="pn-upload" multiple hidden></label>
+							<button type="button" class="np-btn small" id="pn-newfile"><i class="bi bi-file-earmark-plus"></i> New file</button>
 							<button type="button" class="np-btn small" id="pn-mkdir"><i class="bi bi-folder-plus"></i> New folder</button>
 							<button type="button" class="np-btn small" id="pn-zip-selected" disabled><i class="bi bi-file-zip"></i> Zip</button>
 							<button type="button" class="np-btn small danger" id="pn-delete-selected" disabled><i class="bi bi-trash"></i> Delete</button>
@@ -233,24 +267,6 @@
 						<div class="pn-drop-hint">Drop files here to upload them into this folder</div>
 					</div>
 					<p class="np-card-intro pn-hint">Deleted files go to <code>.panel-trash</code> for 7 days. While the server runs, the world folder can't be changed. SFTP: port 2022 with your panel login.</p>
-					<div class="pn-editor" id="pn-file-editor" hidden>
-						<div class="pn-editor-head">
-							<b class="pn-editor-name"></b>
-							<div class="pn-editor-modes" hidden>
-								<button type="button" class="np-filter active" data-mode="text">Text</button>
-								<button type="button" class="np-filter" data-mode="form">Form</button>
-							</div>
-							<span class="np-form-msg pn-editor-msg"></span>
-						</div>
-						<div class="pn-code"><pre class="pn-gutter" aria-hidden="true"></pre><textarea class="pn-text" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea></div>
-						<div class="pn-form-view" hidden></div>
-						<div class="np-form-actions">
-							<button type="button" class="np-btn primary pn-editor-save"><i class="bi bi-check2"></i> Save</button>
-							<button type="button" class="np-btn danger pn-editor-force" hidden>Save anyway</button>
-							<button type="button" class="np-btn pn-editor-close">Close</button>
-							<span class="np-form-msg pn-editor-hint">Ctrl/⌘ + S saves. The previous version is kept as .bak.</span>
-						</div>
-					</div>
 				</section>
 				<section class="np-card" data-perm="files.write">
 					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Log cleanup</h3>
@@ -272,32 +288,11 @@
 			<div class="np-tab-panel" data-tab="configs" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-gear"></i> Mod configs</h3>
-					<p class="np-card-intro">Everything in <code>config/</code>. The format is checked before saving (JSON, JSON5, TOML, YAML, properties); simple files can also be edited as a form. Most mods read their config at start, so restart the server afterwards.</p>
+					<p class="np-card-intro">Everything in <code>config/</code>. The format is checked before saving (JSON, JSON5, TOML, YAML, properties); simple files can also be edited as a form. Files open in their own editor window. Most mods read their config at start, so restart the server afterwards.</p>
 					<div class="pn-configs">
 						<div class="pn-config-list">
 							<input type="search" class="np-console-search" id="pn-config-search" placeholder="Search configs" aria-label="Search configs">
 							<div id="pn-config-files"></div>
-						</div>
-						<div class="pn-config-edit">
-							<p class="np-empty" id="pn-config-empty">Choose a file on the left.</p>
-							<div class="pn-editor" id="pn-config-editor" hidden>
-						<div class="pn-editor-head">
-							<b class="pn-editor-name"></b>
-							<div class="pn-editor-modes" hidden>
-								<button type="button" class="np-filter active" data-mode="text">Text</button>
-								<button type="button" class="np-filter" data-mode="form">Form</button>
-							</div>
-							<span class="np-form-msg pn-editor-msg"></span>
-						</div>
-						<div class="pn-code"><pre class="pn-gutter" aria-hidden="true"></pre><textarea class="pn-text" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea></div>
-						<div class="pn-form-view" hidden></div>
-						<div class="np-form-actions">
-							<button type="button" class="np-btn primary pn-editor-save"><i class="bi bi-check2"></i> Save</button>
-							<button type="button" class="np-btn danger pn-editor-force" hidden>Save anyway</button>
-							<button type="button" class="np-btn pn-editor-close">Close</button>
-							<span class="np-form-msg pn-editor-hint">Ctrl/⌘ + S saves. The previous version is kept as .bak.</span>
-						</div>
-					</div>
 						</div>
 					</div>
 				</section>
@@ -571,6 +566,32 @@
 				<div class="np-form-actions"><button type="button" class="np-btn" id="pn-audit-more" hidden>Load older entries</button></div>
 			</section>
 
+			<div class="np-tab-panel" data-tab="appearance" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-palette"></i> Logos</h3>
+					<p class="np-card-intro">PNG, JPEG, WebP or GIF up to 2 MB; a wide logo on a transparent background works best. The panel logo takes the place of the "Nice Control Center" lettering next to the icon; the map logo sits above the map's title.</p>
+					<div class="pn-logos">
+						<div class="pn-logo-slot" data-logo="panel" data-perm="users.admin">
+							<b>Panel</b>
+							<div class="pn-logo-preview"><img alt="Panel logo" hidden><span>No logo</span></div>
+							<div class="np-form-actions">
+								<label class="np-btn small primary"><i class="bi bi-upload"></i> Upload<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+								<button type="button" class="np-btn small" data-logo-remove>Remove</button>
+							</div>
+						</div>
+						<div class="pn-logo-slot" data-logo="map" data-perm="map.manage">
+							<b>Map</b>
+							<div class="pn-logo-preview"><img alt="Map logo" hidden><span>No logo</span></div>
+							<div class="np-form-actions">
+								<label class="np-btn small primary"><i class="bi bi-upload"></i> Upload<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+								<button type="button" class="np-btn small" data-logo-remove>Remove</button>
+							</div>
+						</div>
+					</div>
+					<p class="np-form-msg" id="pn-logo-msg"></p>
+				</section>
+			</div>
+
 			<div class="np-tab-panel" data-tab="account" hidden>
 			<section class="np-card">
 				<h3 class="np-card-title"><i class="bi bi-person-circle"></i> Your account</h3>
@@ -598,6 +619,7 @@
 					</div>
 				</form>
 			</section>
+			</div>
 			</div>
 		</div>
 	</main>

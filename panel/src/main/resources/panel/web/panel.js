@@ -30,6 +30,9 @@
     $('pn-app').hidden = true;
     $('pn-logout').hidden = true;
     $('pn-state-pill').hidden = true;
+    $('pn-power').hidden = true;
+    $('pn-stats').hidden = true;
+    $('pn-clock').hidden = true;
     $('pn-login').hidden = false;
     $('pn-user').focus();
     closeConsole();
@@ -66,18 +69,20 @@
   function applyPermissions() {
     document.querySelectorAll('#pn-app [data-perm]').forEach((el) => { el.hidden = !can(el.dataset.perm); });
     document.querySelectorAll('#pn-app [data-perm-any]').forEach((el) => { el.hidden = !el.dataset.permAny.split(' ').some(can); });
-    document.querySelector('.np-banner').hidden = !can('server.view');
-    $('pn-app').querySelector('.pn-actions').hidden = !can('server.power');
+    $('pn-power').hidden = !can('server.power');
+    document.querySelectorAll('.pn-side-group').forEach((g) => { g.hidden = ![...g.querySelectorAll('.np-tab')].some((b) => !b.hidden); });
+    $('pn-menu-btn').hidden = false;
     $('pn-command-form').hidden = !can('console.write');
     const editable = can('settings.java');
     $('pn-settings').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !editable; });
     // Links from the game (/ncc web) open ?tab=dashboard, optionally with #<dashboard tab>.
     const params = new URLSearchParams(location.search);
     let tab = params.get('tab');
-    if (tab === 'dashboard' && location.hash) dashboardHash = location.hash;
+    // Old links (?tab=dashboard#players) open that page of the mod's dashboard.
+    if (tab === 'dashboard') tab = 'mod:' + (location.hash.slice(1).split(/[/?]/)[0] || 'overview');
     if (tab) history.replaceState(null, '', location.pathname);
     if (!tab) {
-      tab = 'dashboard';
+      tab = 'mod:overview';
       try { tab = localStorage.getItem(TAB_KEY) || tab; } catch (e) { /* default */ }
     }
     selectTab(tab);
@@ -96,26 +101,86 @@
     if (activeTab === 'stats' && Date.now() - (statsData ? statsData.to : 0) > 60000) loadStats();
   }, 2000);
 
-  /** The dashboard loads once and keeps running in the background while other tabs are open. */
-  function showDashboard() {
+  // ── The mod's dashboard inside the panel ──
+  // It loads once and keeps running; the sidebar switches its pages (its own tab bar, tiles, console
+  // and schedule are hidden: the panel has those). It's as tall as its content, so the page scrolls as one.
+
+  const EMBED_CSS = `
+    body.embedded { min-height: 0 !important; }
+    body.embedded > .navbar, body.embedded .np-tabs, body.embedded .np-toasts { display: none !important; }
+    body.embedded .np-inspector-list { height: 640px !important; }
+    body.embedded .np-console-log { height: 520px !important; }`;
+  let frameResize = null;
+
+  function showDashboard(page) {
     const frame = $('pn-dashboard-frame');
-    if (frame.dataset.loaded && !dashboardHash) return;
-    frame.dataset.loaded = '1';
-    frame.src = 'dashboard/' + dashboardHash;
-    dashboardHash = '';
+    if (!frame.dataset.loaded) {
+      frame.dataset.loaded = '1';
+      frame.onload = () => {
+        try {
+          const doc = frame.contentDocument;
+          const style = doc.createElement('style');
+          style.textContent = EMBED_CSS;
+          doc.head.appendChild(style);
+          if (frameResize) frameResize.disconnect();
+          frameResize = new ResizeObserver(() => { frame.style.height = Math.max(400, Math.ceil(doc.body.getBoundingClientRect().height) + 4) + 'px'; });
+          frameResize.observe(doc.body);
+        } catch (e) { /* another origin: leave it as it is */ }
+      };
+      frame.src = 'dashboard/#' + page;
+      return;
+    }
+    try {
+      if (frame.contentWindow.location.hash.slice(1) !== page) frame.contentWindow.location.hash = page;
+    } catch (e) {
+      frame.src = 'dashboard/#' + page;
+    }
+  }
+
+  /** The mod's page shown in the frame, or null. */
+  function framePage() {
+    try {
+      const frame = $('pn-dashboard-frame');
+      return frame.dataset.loaded ? frame.contentWindow.location.hash.slice(1).split(/[/?]/)[0] || null : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Follow page changes made inside the dashboard (its own links), and copy its tab badges to the sidebar.
+  setInterval(() => {
+    if (!loggedIn) return;
+    const page = framePage();
+    if (page && activeTab.startsWith('mod:') && activeTab !== 'mod:' + page && document.querySelector(`#pn-tabs .np-tab[data-tab="mod:${page}"]`)) markTab('mod:' + page);
+    try {
+      const doc = $('pn-dashboard-frame').contentDocument;
+      doc.querySelectorAll('#np-tabs .np-tab').forEach((t) => {
+        const badge = document.querySelector(`#pn-tabs .np-tab[data-tab="mod:${t.dataset.tab}"] .pn-badge`);
+        const src = t.querySelector('.np-tab-badge');
+        if (!badge || !src) return;
+        badge.hidden = src.hidden || !src.textContent.trim();
+        badge.textContent = src.textContent.trim();
+      });
+    } catch (e) { /* not loaded */ }
+  }, 700);
+
+  function markTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('#pn-tabs .np-tab').forEach((b) => {
+      b.classList.toggle('active', b.dataset.tab === tab);
+      b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false');
+    });
+    try { localStorage.setItem(TAB_KEY, tab); } catch (e) { /* not remembered */ }
   }
 
   function selectTab(tab) {
     const visible = [...document.querySelectorAll('#pn-tabs .np-tab')].filter((b) => !b.hidden).map((b) => b.dataset.tab);
     if (!visible.includes(tab)) tab = visible[0];
-    document.querySelectorAll('#pn-tabs .np-tab').forEach((b) => {
-      b.classList.toggle('active', b.dataset.tab === tab);
-      b.setAttribute('aria-selected', String(b.dataset.tab === tab));
-    });
-    document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== tab; });
-    try { localStorage.setItem(TAB_KEY, tab); } catch (e) { /* not remembered */ }
-    if (tab === 'dashboard') showDashboard();
-    activeTab = tab;
+    const panel = tab.startsWith('mod:') ? 'dashboard' : tab;
+    markTab(tab);
+    document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
+    document.body.classList.remove('pn-nav-open');
+    if (panel === 'dashboard') showDashboard(tab.slice(4));
     if (tab === 'backups') loadBackups();
     if (tab === 'files') { loadFiles(); loadCleanup(); }
     if (tab === 'configs') loadConfigs();
@@ -129,7 +194,120 @@
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
     if (tab === 'account') renderAccount();
+    if (tab === 'appearance') loadLogos();
     if (tab === 'server') { const log = $('pn-log'); log.scrollTop = log.scrollHeight; }
+    window.scrollTo({ top: 0 });
+  }
+
+  // Phones: the sidebar slides in from the left.
+  const sideBackdrop = document.createElement('div');
+  sideBackdrop.className = 'pn-side-backdrop';
+  document.body.appendChild(sideBackdrop);
+  sideBackdrop.addEventListener('click', () => document.body.classList.remove('pn-nav-open'));
+  $('pn-menu-btn').addEventListener('click', () => document.body.classList.toggle('pn-nav-open'));
+
+  // The sidebar sticks below the navbar, whose height changes with the tiles.
+  new ResizeObserver(() => document.documentElement.style.setProperty('--pn-nav-h', document.querySelector('.navbar').offsetHeight + 'px'))
+    .observe(document.querySelector('.navbar'));
+
+  // ── Logos (Appearance) ──
+
+  function showBrandLogo() {
+    const img = $('pn-brand-logo');
+    img.onload = () => { img.hidden = false; $('pn-brand-text').hidden = true; };
+    img.onerror = () => { img.hidden = true; $('pn-brand-text').hidden = false; };
+    img.src = 'branding/panel?t=' + Date.now();
+  }
+  showBrandLogo();
+
+  function loadLogos() {
+    document.querySelectorAll('.pn-logo-slot').forEach((slot) => {
+      const img = slot.querySelector('img');
+      const empty = slot.querySelector('.pn-logo-preview span');
+      img.onload = () => { img.hidden = false; empty.hidden = true; };
+      img.onerror = () => { img.hidden = true; empty.hidden = false; };
+      img.src = (slot.dataset.logo === 'panel' ? 'branding/panel' : 'map/data/logo') + '?t=' + Date.now();
+    });
+  }
+
+  document.querySelectorAll('.pn-logo-slot').forEach((slot) => {
+    const which = slot.dataset.logo;
+    slot.querySelector('input[type="file"]').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      const form = new FormData();
+      form.append('logo', file);
+      try {
+        const res = await fetch('api/branding/' + which, { method: 'POST', headers: { 'X-NCC': '1' }, body: form });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        formMsg('pn-logo-msg', 'Saved.', true);
+        loadLogos();
+        if (which === 'panel') showBrandLogo();
+      } catch (err) {
+        formMsg('pn-logo-msg', err.message, false);
+      }
+    });
+    slot.querySelector('[data-logo-remove]').addEventListener('click', async () => {
+      try {
+        await api('api/branding/' + which + '/remove', {});
+        formMsg('pn-logo-msg', 'Removed.', true);
+        loadLogos();
+        if (which === 'panel') showBrandLogo();
+      } catch (err) {
+        formMsg('pn-logo-msg', err.message, false);
+      }
+    });
+  });
+
+  // ── Replies from players (/nccreply), shown on every page ──
+
+  let repliesSeen = 0;
+  try { repliesSeen = Number(localStorage.getItem('pn-replies-seen')) || 0; } catch (e) { /* none */ }
+
+  function renderReplies(replies) {
+    let box = $('pn-toasts');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'pn-toasts';
+      box.className = 'np-toasts pn-toasts';
+      box.setAttribute('aria-live', 'polite');
+      document.body.appendChild(box);
+      box.addEventListener('click', (e) => {
+        const toast = e.target.closest('.np-toast');
+        if (!toast) return;
+        repliesSeen = Math.max(repliesSeen, Number(toast.dataset.time));
+        try { localStorage.setItem('pn-replies-seen', String(repliesSeen)); } catch (err) { /* not remembered */ }
+        toast.remove();
+        if (e.target.closest('.np-toast-close')) return;
+        // Open the conversation in the dashboard: its own (hidden) toast does that when clicked.
+        selectTab('mod:players');
+        const uuid = toast.dataset.uuid;
+        setTimeout(() => {
+          try { $('pn-dashboard-frame').contentDocument.querySelector(`.np-toast[data-uuid="${uuid}"]`)?.click(); } catch (err) { /* not loaded */ }
+        }, 600);
+      });
+    }
+    const open = new Set();
+    for (const r of replies || []) {
+      if (r.time <= repliesSeen) continue;
+      open.add(r.uuid);
+      let toast = box.querySelector(`.np-toast[data-uuid="${r.uuid}"]`);
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'np-toast';
+        toast.dataset.uuid = r.uuid;
+        toast.setAttribute('role', 'button');
+        toast.title = 'Open the conversation';
+        box.appendChild(toast);
+      }
+      toast.dataset.time = r.time;
+      const html = `<img src="https://mc-heads.net/avatar/${encodeURIComponent(r.uuid)}/32" alt="" width="32" height="32"><div class="np-toast-body"><b>${esc(r.name)} answered${r.unread > 1 ? ` (${r.unread})` : ''}</b>
+        <span>${esc(r.text)}</span></div><button type="button" class="np-toast-close" aria-label="Dismiss"><i class="bi bi-x"></i></button>`;
+      if (toast.dataset.html !== html) { toast.innerHTML = html; toast.dataset.html = html; }
+    }
+    box.querySelectorAll('.np-toast').forEach((t) => { if (!open.has(t.dataset.uuid)) t.remove(); });
   }
 
   $('pn-tabs').addEventListener('click', (e) => {
@@ -176,19 +354,27 @@
 
   function renderServer(st) {
     const [label, dot, pill] = STATES[st.state] || [st.state, 'info', 'off'];
-    $('pn-title').textContent = 'Server ' + label.toLowerCase();
-    $('pn-dot').className = 'np-status-dot ' + dot;
     $('pn-state-pill').className = 'np-live ' + pill;
     $('pn-state-text').textContent = label;
+    // Uptime goes in the navbar badge; anything worth reading (crash, restart countdown, missing jar) in the note below it.
+    const up = st.state === 'RUNNING' && st.runningSince ? duration(Date.now() - st.runningSince)
+      : st.state === 'STARTING' && st.startedAt ? duration(Date.now() - st.startedAt) : '';
+    $('pn-uptime').textContent = up;
+    $('pn-state-pill').title = `Server ${label.toLowerCase()}${up ? ', ' + (st.state === 'RUNNING' ? 'up ' : 'starting for ') + up : ''}${st.pid ? ' · PID ' + st.pid : ''}`;
     const parts = [];
-    if (st.state === 'RUNNING' && st.runningSince) parts.push('up ' + duration(Date.now() - st.runningSince));
-    if (st.state === 'STARTING' && st.startedAt) parts.push('starting for ' + duration(Date.now() - st.startedAt));
-    if (st.pid) parts.push('PID ' + st.pid);
-    if (st.message) parts.push(st.message);
+    if (st.message && st.state !== 'RUNNING') parts.push(st.message);
     if (st.nextRestartAt) parts.push('restarting in ' + duration(st.nextRestartAt - Date.now()));
     if (st.recentCrashes && st.state !== 'CRASHED') parts.push(`${st.recentCrashes} crash${st.recentCrashes === 1 ? '' : 'es'} in the last 15 minutes`);
     if (st.ready && (st.state === 'STOPPED' || st.state === 'CRASHED') && st.ready !== st.message) parts.push(st.ready);
     $('pn-sub').textContent = parts.join(' · ');
+    $('pn-sub').hidden = !parts.length;
+    $('pn-sub').className = 'pn-state-note ' + dot;
+    serverRunning = st.state === 'RUNNING';
+    if (serverRunning && !liveTimer && can('dashboard.view')) pollLive();
+    if (!serverRunning) {
+      $('pn-stats').hidden = true;
+      $('pn-clock').hidden = true;
+    }
     const running = st.state === 'RUNNING' || st.state === 'STARTING';
     const enabled = {
       start: !running && st.state !== 'STOPPING' && !st.ready,
@@ -199,6 +385,94 @@
     document.querySelectorAll('[data-action]').forEach((b) => { b.disabled = !enabled[b.dataset.action]; });
     $('pn-eula').hidden = st.eula || !can('server.power');
     $('pn-command').disabled = !running;
+  }
+
+  // ── Navbar: stat tiles and game clock (from the mod's live data) ───────
+
+  let serverRunning = false;
+  let liveTimer = null;
+  let liveAfter = 0;
+
+  const fixed = (v, d) => (v == null || Number.isNaN(v) ? '–' : Number(v).toFixed(d));
+  const num = (v) => (v == null ? '–' : Math.round(v).toLocaleString());
+
+  async function pollLive() {
+    clearTimeout(liveTimer);
+    liveTimer = null;
+    if (!loggedIn || !serverRunning || !can('dashboard.view')) return;
+    try {
+      const data = await api('dashboard/api/live?after=' + (liveAfter || Date.now() - 2000));
+      if (data.points && data.points.length) liveAfter = data.points[data.points.length - 1].t;
+      renderTiles(data);
+      renderGameClock(data.clock);
+      renderReplies(data.replies);
+    } catch (e) {
+      $('pn-stats').hidden = true;
+    }
+    liveTimer = setTimeout(pollLive, document.hidden ? 5000 : 1000);
+  }
+
+  /** The mod's stat tiles (same look as its dashboard), pinned in the panel's navbar on every tab. */
+  function renderTiles(d) {
+    const p = d.latest;
+    const cur = d.current;
+    if (!p) return;
+    const budget = 50;
+    const tpsClass = p.tps >= 19.4 ? 'good' : p.tps >= 17 ? 'warn' : 'poor';
+    const msptClass = (v) => (v <= budget * 0.7 ? 'good' : v <= budget ? 'warn' : 'poor');
+    const livePct = p.heapMax ? (p.heapLive || p.heapUsed) / p.heapMax * 100 : 0;
+    const heapClass = livePct < 80 ? 'good' : livePct < 90 ? 'warn' : 'poor';
+    const usedPct = p.heapMax ? p.heapUsed / p.heapMax * 100 : 0;
+    const usedClass = usedPct < 85 ? 'good' : usedPct < 95 ? 'warn' : 'poor';
+    const cpuClass = p.cpuSystem >= 90 ? 'poor' : p.cpuSystem >= 70 ? 'warn' : 'good';
+    const gcPct = cur && cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0;
+    const bg = cur && cur.wallMs ? Math.min(100, (cur.gcBackgroundMs || 0) * 100 / cur.wallMs) : 0;
+    const gcClass = gcPct >= 10 || (bg >= 95 && livePct >= 85) ? 'poor' : gcPct >= 5 || bg >= 80 ? 'warn' : 'good';
+    const ms = (v) => (v >= 100 ? fixed(v, 0) : fixed(v, 1));
+    // Short sizes for the tiles: "54 MB", "2.0 GB", "540 GB".
+    const short = (b) => { const [v, u] = b >= 1073741824 ? [b / 1073741824, 'GB'] : [b / 1048576, 'MB']; return (v < 10 ? v.toFixed(1) : Math.round(v)) + ' ' + u; };
+    const sizes = (cols) => `<div class="np-mspt">${cols.map(([l, v, cls]) => { const [n, u = ''] = short(v || 0).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`;
+    const tiles = [
+      ['TPS', `<span class="${tpsClass}">${fixed(p.tps, 1)}</span>`, 'target 20'],
+      ['MSPT', null, null, cur ? `<div class="np-mspt">${[['min', cur.msptMin], ['med', cur.msptMedian], ['95%ile', cur.msptP95], ['max', cur.msptMax]]
+        .map(([l, v]) => `<span class="${msptClass(v)}">${ms(v)}<small>${l}</small></span>`).join('')}</div>` : ''],
+      ['CPU', `<span class="${cpuClass}">${fixed(p.cpuProcess, 0)}%</span>`, `machine ${fixed(p.cpuSystem, 0)}%`],
+      ['Memory', null, null, sizes([[p.heapLive ? 'after GC' : 'in use', p.heapLive || p.heapUsed, heapClass], ['w/ garbage', p.heapUsed, usedClass], ['max', p.heapMax, '']])],
+    ];
+    if (d.disk) {
+      const freePct = d.disk.total ? d.disk.free / d.disk.total * 100 : 100;
+      tiles.push(['Disk', null, null, sizes([['world', d.disk.world, ''], ['server', d.disk.server, ''], ['free', d.disk.free, freePct < 5 ? 'poor' : freePct < 10 ? 'warn' : 'good']])]);
+    }
+    tiles.push(
+      ['GC', `<span class="${gcClass}">${fixed(gcPct, 1)}%</span><small> paused</small>`, `${bg >= 1 ? `busy ${fixed(bg, 0)}% · ` : ''}${num(cur ? cur.gcCount : 0)} pauses`],
+      ['Entities', num(p.entities), 'loaded'],
+      ['Block entities', num(p.blockEntities), 'ticking'],
+      ['Chunks', num(p.chunks), 'loaded'],
+      ['Players', num(p.players), 'online'],
+    );
+    $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}">
+      <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join('');
+    $('pn-stats').hidden = false;
+  }
+
+  /** The in-game clock badge, like in the mod's navbar. */
+  function renderGameClock(c) {
+    const box = $('pn-clock');
+    if (!c) {
+      box.hidden = true;
+      return;
+    }
+    const icon = c.weather === 'thunder' ? 'bi-cloud-lightning-rain' : c.weather === 'rain' ? 'bi-cloud-rain' : c.day ? 'bi-sun' : 'bi-moon-stars';
+    let time = c.time;
+    if (c.minuteOfDay != null) {
+      const m = ((Math.floor(c.minuteOfDay) % 1440) + 1440) % 1440;
+      const h = Math.floor(m / 60);
+      const mm = String(m % 60).padStart(2, '0');
+      time = c.twelveHour ? `${h % 12 === 0 ? 12 : h % 12}:${mm} ${h < 12 ? 'AM' : 'PM'}` : `${String(h).padStart(2, '0')}:${mm}`;
+    }
+    box.innerHTML = `<i class="bi ${icon}"></i><b class="np-clock-time">${esc(time || '')}</b><span class="np-clock-date">${c.weekday ? esc(c.weekday.slice(0, 3)) + ', ' : ''}${esc(c.date || '')}</span>`;
+    box.title = [c.weekday, c.date, c.detail].filter(Boolean).join(' · ');
+    box.hidden = false;
   }
 
   async function pollServer() {
@@ -673,9 +947,9 @@
     if (!form.dataset.filled) {
       form.dataset.filled = '1';
       form.keepLast.value = backupData.settings.keepLast;
-      form.keepDaily.value = backupData.settings.keepDaily;
-      form.keepWeekly.value = backupData.settings.keepWeekly;
-      form.exclude.value = backupData.settings.exclude.join('\n');
+      exSet = new Set(backupData.settings.exclude);
+      renderExPatterns();
+      loadExTree();
     }
     $('pn-backup-form').querySelector('button').disabled = st.running;
   }
@@ -741,13 +1015,110 @@
     }
   });
 
+  // ── What backups leave out: a folder tree with ticks, plus free patterns ──
+
+  let exSet = new Set();
+  /** A plain path ("logs/latest.log") or a whole folder ("logs/**"); everything else is a free pattern. */
+  const exIsPath = (p) => /^[^*?[\]{}]+(\/\*\*)?$/.test(p);
+  const exKey = (path, dir) => (dir ? path + '/**' : path);
+  const exFolderOf = (p) => (p.endsWith('/**') ? p.slice(0, -3) : null);
+
+  function renderExPatterns() {
+    const free = [...exSet].filter((p) => !exIsPath(p));
+    $('pn-ex-patterns').innerHTML = free.map((p) => `<span class="np-chip">${esc(p)} <button type="button" data-ex-remove="${esc(p)}" aria-label="Remove ${esc(p)}">×</button></span>`).join('')
+      || '<span class="pn-hint">none</span>';
+  }
+
+  function exRow(path, entry) {
+    const dir = !!entry.dir;
+    return `<div class="pn-tree-node" data-path="${esc(path)}" data-dir="${dir ? 1 : ''}">
+      <div class="pn-tree-row">
+        ${dir ? '<button type="button" class="pn-tree-caret" aria-label="Open folder"><i class="bi bi-chevron-right"></i></button>' : '<span class="pn-tree-caret"></span>'}
+        <label><input type="checkbox" data-ex="${esc(path)}"> <i class="bi ${dir ? 'bi-folder-fill' : 'bi-file-earmark'}"></i> ${esc(entry.name)}</label>
+      </div>
+      ${dir ? '<div class="pn-tree-children" hidden></div>' : ''}
+    </div>`;
+  }
+
+  async function exLoad(container, path) {
+    try {
+      const data = await api('api/files/list?path=' + encodeURIComponent(path));
+      const entries = [...data.entries].sort((a, b) => (b.dir - a.dir) || a.name.localeCompare(b.name));
+      container.innerHTML = entries.map((e) => exRow((path ? path + '/' : '') + e.name, e)).join('') || '<div class="pn-hint pn-tree-empty">empty</div>';
+      container.dataset.loaded = '1';
+      exRefresh();
+    } catch (err) {
+      container.innerHTML = `<div class="pn-hint">${esc(err.message)}${!can('files.read') ? ' (browsing needs the Files permission; patterns still work)' : ''}</div>`;
+    }
+  }
+
+  function loadExTree() {
+    exLoad($('pn-ex-tree'), '');
+  }
+
+  /** Ticks: own pattern = ticked; inside a ticked folder = ticked and greyed; something inside left out = half. */
+  function exRefresh() {
+    const folders = [...exSet].map(exFolderOf).filter((f) => f !== null);
+    $('pn-ex-tree').querySelectorAll('[data-ex]').forEach((box) => {
+      const node = box.closest('.pn-tree-node');
+      const path = box.dataset.ex;
+      const dir = !!node.dataset.dir;
+      const inherited = folders.some((f) => path.startsWith(f + '/'));
+      box.checked = inherited || exSet.has(exKey(path, dir));
+      box.disabled = inherited;
+      box.indeterminate = !box.checked && dir && [...exSet].some((p) => exIsPath(p) && p.startsWith(path + '/'));
+      node.classList.toggle('excluded', box.checked);
+    });
+  }
+
+  $('pn-ex-tree').addEventListener('click', (e) => {
+    const caret = e.target.closest('button.pn-tree-caret');
+    if (!caret) return;
+    const node = caret.closest('.pn-tree-node');
+    const kids = node.querySelector(':scope > .pn-tree-children');
+    kids.hidden = !kids.hidden;
+    node.classList.toggle('open', !kids.hidden);
+    if (!kids.hidden && !kids.dataset.loaded) exLoad(kids, node.dataset.path);
+  });
+  $('pn-ex-tree').addEventListener('change', (e) => {
+    const box = e.target.closest('[data-ex]');
+    if (!box) return;
+    const path = box.dataset.ex;
+    const dir = !!box.closest('.pn-tree-node').dataset.dir;
+    if (box.checked) {
+      // A whole folder replaces what was ticked inside it.
+      if (dir) [...exSet].forEach((p) => { if (exIsPath(p) && p.startsWith(path + '/')) exSet.delete(p); });
+      exSet.add(exKey(path, dir));
+    } else {
+      exSet.delete(exKey(path, dir));
+    }
+    exRefresh();
+  });
+  $('pn-ex-patterns').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ex-remove]');
+    if (!b) return;
+    exSet.delete(b.dataset.exRemove);
+    renderExPatterns();
+    exRefresh();
+  });
+  $('pn-ex-add').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = e.target.value.trim().replace(/^\/+/, '');
+    if (!v) return;
+    exSet.add(v);
+    e.target.value = '';
+    renderExPatterns();
+    exRefresh();
+  });
+
   $('pn-backup-settings').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     try {
       const res = await api('api/backups/settings', {
-        keepLast: Number(form.keepLast.value), keepDaily: Number(form.keepDaily.value), keepWeekly: Number(form.keepWeekly.value),
-        exclude: form.exclude.value.split('\n').map((l) => l.trim()).filter(Boolean),
+        keepLast: Number(form.keepLast.value),
+        exclude: [...exSet],
       });
       formMsg('pn-backup-settings-msg', res.deleted.length ? `Saved. ${res.deleted.length} old backup(s) removed.` : 'Saved.', true);
       loadBackups();
@@ -769,6 +1140,7 @@
       return;
     }
     $('pn-zone').textContent = scheduleData.zone;
+    loadModTasks();
     const manage = can('schedule.manage');
     $('pn-task-list').innerHTML = scheduleData.tasks.map(({ task, next, last, running }) => `<div class="pn-task ${task.enabled ? '' : 'off'}" data-task="${esc(task.id)}">
       <div><b>${esc(task.name)}</b>
@@ -782,6 +1154,73 @@
         <button type="button" class="np-btn small danger" data-task-act="delete">Delete</button></div>` : ''}
     </div>`).join('') || '<p class="np-empty">No scheduled tasks yet.</p>';
   }
+
+  // ── Tasks still in the mod's own schedule ──
+
+  let modTasks = [];
+
+  async function loadModTasks() {
+    if (!can('dashboard.view')) return;
+    try {
+      modTasks = (await api('dashboard/api/schedule')).tasks || [];
+    } catch (e) {
+      modTasks = [];
+    }
+    $('pn-modtasks').hidden = !modTasks.length;
+    const manage = can('schedule.manage');
+    $('pn-modtask-list').innerHTML = modTasks.map((t) => {
+      const conv = convertModTask(t);
+      const when = t.repeat === 'interval' ? `every ${t.every} min` : t.repeat === 'once' ? `once on ${t.date} ${t.time}`
+        : t.repeat === 'after' ? 'after another task' : t.repeat === 'weekly' ? `${t.time} on ${(t.days || []).map((d) => (scheduleData ? scheduleData.days[d - 1] : d)).join(', ')}` : `${t.time} daily`;
+      return `<div class="pn-task ${t.enabled ? '' : 'off'}" data-modtask="${esc(t.id)}">
+        <div><b>${esc(t.name || (t.commands || [])[0] || 'Task')}</b>
+          <small>${esc(when)} · ${esc((t.commands || []).join(' → '))}</small>
+          ${conv.error ? `<small>${esc(conv.error)}</small>` : ''}</div>
+        ${manage && !conv.error ? '<div class="pn-row-actions"><button type="button" class="np-btn small primary" data-modtask-move>Move to the panel</button></div>' : ''}
+      </div>`;
+    }).join('');
+  }
+
+  /** A mod task as a panel task: commands become command steps, "wait" lines and pauses become waits. */
+  function convertModTask(t) {
+    if (t.repeat === 'once') return { error: 'Runs once, so it stays in the mod.' };
+    if (t.repeat === 'after') return { error: 'Follows another task, so it stays in the mod.' };
+    const steps = [];
+    (t.commands || []).forEach((c, i) => {
+      const line = c.trim().replace(/^\//, '');
+      const wait = line.match(/^wait\s+(\d+)\s*([smh]?)$/i);
+      if (wait) {
+        const n = Number(wait[1]) * ({ s: 1, m: 60, h: 3600 }[wait[2].toLowerCase()] || 1);
+        steps.push({ type: 'wait', seconds: Math.max(1, Math.min(3600, n)) });
+      } else if (line) {
+        if (i > 0 && t.pause > 0 && steps.length && steps[steps.length - 1].type !== 'wait') steps.push({ type: 'wait', seconds: Math.min(3600, t.pause) });
+        steps.push({ type: 'command', text: line });
+      }
+    });
+    if (!steps.length) return { error: 'Has no commands.' };
+    const task = { name: (t.name || steps[0].text || 'Task').slice(0, 60), enabled: !!t.enabled, steps };
+    if (t.repeat === 'interval') Object.assign(task, { when: 'interval', everyMinutes: Math.max(1, Math.min(10080, t.every || 60)) });
+    else Object.assign(task, { when: 'daily', times: [t.time || '04:00'], days: t.repeat === 'weekly' ? (t.days || []) : [] });
+    return { task };
+  }
+
+  $('pn-modtask-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-modtask-move]');
+    if (!b) return;
+    const id = b.closest('[data-modtask]').dataset.modtask;
+    const t = modTasks.find((x) => x.id === id);
+    const conv = t && convertModTask(t);
+    if (!conv || conv.error) return;
+    b.disabled = true;
+    try {
+      await api('api/schedule', conv.task);
+      await modPost('api/schedule/delete', { id });
+      loadSchedule();
+    } catch (err) {
+      alert(err.message);
+      b.disabled = false;
+    }
+  });
 
   function whenText(t) {
     if (t.when === 'interval') return t.everyMinutes % 60 === 0 ? `every ${t.everyMinutes / 60} h` : `every ${t.everyMinutes} min`;
@@ -860,7 +1299,11 @@
     if (s.type === 'pregen') fields = `<select data-f="text"><option value="wilds" ${s.text !== 'all' ? 'selected' : ''}>only the outer wilds</option><option value="all" ${s.text === 'all' ? 'selected' : ''}>everything up to the hard border</option></select>`
       + ((m) => `<select data-f="mode"><option value="slow" ${m === 'slow' ? 'selected' : ''}>slow down while players are online</option><option value="pause" ${m === 'pause' ? 'selected' : ''}>pause while players are online</option><option value="full" ${m === 'full' ? 'selected' : ''}>full speed even with players online</option></select>`)(s.mode || 'slow') + `<span>(dimensions with Pregen on, World tab)</span>`;
     if (s.type === 'wait') fields = `<input type="number" data-f="seconds" min="1" max="3600" value="${s.seconds ?? 30}"><span>seconds</span>`;
-    return `<div class="pn-step"><select data-f="type">${opts}</select>${fields}<button type="button" class="np-btn small" data-step-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
+    // Variables for chat texts: click one to put it into the message.
+    const vars = ['say', 'restart', 'trim'].includes(s.type) ? `<div class="pn-vars">${(s.type === 'say' ? [] : [['{time}', 'time left']])
+      .concat([['{player}', "reader's name"], ['{online}', 'everyone online'], ['{clock}', 'time now'], ['{date}', 'date'], ['&a', 'green'], ['&c', 'red'], ['&e', 'yellow'], ['&l', 'bold'], ['&r', 'reset']])
+      .map(([v, l]) => `<button type="button" class="pn-var" data-var="${v}" title="${l}">${v}<small>${l}</small></button>`).join('')}</div>` : '';
+    return `<div class="pn-step"><select data-f="type">${opts}</select>${fields}<button type="button" class="np-btn small" data-step-remove title="Remove"><i class="bi bi-x-lg"></i></button>${vars}</div>`;
   }
 
   function renderSteps(steps) {
@@ -881,6 +1324,17 @@
     renderSteps(steps);
   });
   $('pn-steps').addEventListener('click', (e) => {
+    const v = e.target.closest('[data-var]');
+    if (v) {
+      const input = v.closest('.pn-step').querySelector('input[data-f="text"]');
+      if (!input) return;
+      // A countdown starts from its default text, so a variable is added to it rather than replacing it.
+      if (!input.value && /\{time\}/.test(input.placeholder)) input.value = input.placeholder;
+      const at = input.selectionStart ?? input.value.length;
+      input.setRangeText(v.dataset.var, at, input.selectionEnd ?? at, 'end');
+      input.focus();
+      return;
+    }
     if (!e.target.closest('[data-step-remove]')) return;
     e.target.closest('.pn-step').remove();
   });
@@ -928,240 +1382,23 @@
     }
   });
 
-  // ── Text editor (files and configs) ────────────────────────────────────
+  // ── Editor window (files and configs) ──────────────────────────────────
 
-  const extOf = (path) => (path.match(/\.([^./]+)$/) || [])[1]?.toLowerCase() || '';
-
-  /** Fields a form view can show: key/value lines (properties, flat TOML) or a JSON object of plain values. */
-  function parseForm(path, text, flatJson) {
-    const ext = extOf(path);
-    const lines = text.split('\n');
-    const fields = [];
-    let section = '';
-    let comments = [];
-    if (ext === 'json' && flatJson) {
-      const obj = JSON.parse(text);
-      for (const [key, value] of Object.entries(obj)) fields.push({ key, value, type: typeof value === 'boolean' ? 'bool' : typeof value === 'number' ? 'number' : 'text', json: true });
-      return fields.length ? { kind: 'json', fields, indent: (text.match(/\n([ \t]+)"/) || [])[1] || '  ' } : null;
-    }
-    if (ext !== 'properties' && ext !== 'toml') return null;
-    lines.forEach((line, i) => {
-      const t = line.trim();
-      if (!t) { comments = []; return; }
-      if (t.startsWith('#') || t.startsWith('!')) { comments.push(t.replace(/^[#!]\s?/, '')); return; }
-      if (ext === 'toml') {
-        const sec = t.match(/^\[\[?([^\]]+)\]\]?$/);
-        if (sec) { section = sec[1]; comments = []; return; }
-        const m = line.match(/^(\s*)([A-Za-z0-9_.\-]+|"[^"]*")(\s*=\s*)(true|false|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|"(?:[^"\\]|\\.)*")(\s*(?:#.*)?)$/);
-        if (m) {
-          const raw = m[4];
-          const type = raw === 'true' || raw === 'false' ? 'bool' : raw.startsWith('"') ? 'text' : 'number';
-          fields.push({ line: i, prefix: m[1] + m[2] + m[3], suffix: m[5], key: m[2].replace(/^"|"$/g, ''), section, comment: comments.join(' '), type,
-            value: type === 'bool' ? raw === 'true' : type === 'number' ? Number(raw) : JSON.parse(raw) });
-        }
-      } else {
-        const m = line.match(/^(\s*)([^=:\s][^=:]*?)(\s*[=:]\s*)(.*)$/);
-        if (m) {
-          const raw = m[4];
-          const type = raw === 'true' || raw === 'false' ? 'bool' : /^-?\d+(\.\d+)?$/.test(raw) ? 'number' : 'text';
-          fields.push({ line: i, prefix: m[1] + m[2] + m[3], suffix: '', key: m[2], section: '', comment: comments.join(' '), type, value: type === 'bool' ? raw === 'true' : raw });
-        }
-      }
-      comments = [];
-    });
-    return fields.length ? { kind: ext, fields } : null;
+  /** Opens a file in the editor window (editor.html); one window per file. */
+  function openEditor(path) {
+    const url = 'editor.html#' + encodeURIComponent(path);
+    const w = window.open(url, 'ncc-edit-' + path.replace(/[^\w]/g, '_'), 'popup,width=1100,height=820');
+    if (!w) window.open(url, '_blank');
+    else w.focus();
   }
 
-  function makeEditor(root) {
-    const text = root.querySelector('.pn-text');
-    const gutter = root.querySelector('.pn-gutter');
-    const code = root.querySelector('.pn-code');
-    const formView = root.querySelector('.pn-form-view');
-    const modes = root.querySelector('.pn-editor-modes');
-    const msg = root.querySelector('.pn-editor-msg');
-    const force = root.querySelector('.pn-editor-force');
-    const editor = { path: null, onClose: null, onSaved: null };
-    let form = null;
-    let mode = 'text';
-    let original = '';
-
-    function numbers() {
-      const n = text.value.split('\n').length;
-      if (gutter.dataset.n !== String(n)) {
-        gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n');
-        gutter.dataset.n = String(n);
-      }
-      gutter.scrollTop = text.scrollTop;
-    }
-
-    function note(t, ok) {
-      msg.className = 'np-form-msg pn-editor-msg ' + (ok === true ? 'ok' : ok === false ? 'error' : '');
-      msg.textContent = t;
-    }
-
-    function goToLine(line, column) {
-      const lines = text.value.split('\n');
-      let pos = 0;
-      for (let i = 0; i < Math.min(line - 1, lines.length); i++) pos += lines[i].length + 1;
-      pos += Math.max(0, (column || 1) - 1);
-      text.focus();
-      text.setSelectionRange(pos, Math.min(text.value.length, pos + 1));
-      const lineHeight = parseFloat(getComputedStyle(text).lineHeight) || 19;
-      text.scrollTop = Math.max(0, (line - 5) * lineHeight);
-      numbers();
-    }
-
-    function renderForm() {
-      const groups = new Map();
-      form.fields.forEach((f, i) => {
-        const g = f.section || '';
-        if (!groups.has(g)) groups.set(g, []);
-        groups.get(g).push([f, i]);
-      });
-      formView.innerHTML = [...groups].map(([g, list]) => (g ? `<h5>${esc(g)}</h5>` : '') + list.map(([f, i]) => {
-        const label = `<span>${esc(f.key)}${f.comment ? `<span class="pn-comment">${esc(f.comment)}</span>` : ''}</span>`;
-        if (f.type === 'bool') return `<label class="np-form-row">${label}<span class="np-switch"><input type="checkbox" data-field="${i}" ${f.value ? 'checked' : ''}><span></span></span></label>`;
-        return `<label class="np-form-row">${label}<input type="${f.type === 'number' ? 'number' : 'text'}" step="any" data-field="${i}" value="${esc(f.value)}"></label>`;
-      }).join('')).join('');
-    }
-
-    /** The form's values written back into the text, keeping comments and layout. */
-    function fromForm() {
-      formView.querySelectorAll('[data-field]').forEach((input) => {
-        const f = form.fields[Number(input.dataset.field)];
-        f.value = f.type === 'bool' ? input.checked : f.type === 'number' ? (input.value === '' ? 0 : Number(input.value)) : input.value;
-      });
-      if (form.kind === 'json') {
-        const obj = {};
-        form.fields.forEach((f) => { obj[f.key] = f.value; });
-        return JSON.stringify(obj, null, form.indent) + (text.value.endsWith('\n') ? '\n' : '');
-      }
-      const lines = text.value.split('\n');
-      for (const f of form.fields) {
-        const token = form.kind === 'toml' && f.type === 'text' ? JSON.stringify(f.value) : String(f.value);
-        lines[f.line] = f.prefix + token + f.suffix;
-      }
-      return lines.join('\n');
-    }
-
-    function setMode(next) {
-      if (next === mode) return;
-      if (next === 'form') {
-        form = parseForm(editor.path, text.value, extOf(editor.path) === 'json' && (() => { try { const o = JSON.parse(text.value); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => v === null || typeof v !== 'object'); } catch (e) { return false; } })());
-        if (!form) return note('This file can only be edited as text right now (check it for errors).', false);
-        renderForm();
-      } else if (form) {
-        text.value = fromForm();
-        numbers();
-      }
-      mode = next;
-      code.hidden = mode !== 'text';
-      formView.hidden = mode !== 'form';
-      modes.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
-    }
-
-    async function save(forced) {
-      if (mode === 'form') {
-        text.value = fromForm();
-        numbers();
-      }
-      try {
-        await api('api/files/write', { path: editor.path, text: text.value, force: !!forced });
-        original = text.value;
-        force.hidden = true;
-        note('Saved.', true);
-        if (editor.onSaved) editor.onSaved();
-      } catch (err) {
-        const d = err.data || {};
-        note(d.line ? `Line ${d.line}${d.column ? ', column ' + d.column : ''}: ${err.message}` : err.message, false);
-        force.hidden = !d.line && !/JSON|TOML|YAML|expected|Expected/.test(err.message);
-        if (d.line) {
-          if (mode === 'form') setMode('text');
-          goToLine(d.line, d.column);
-        }
-      }
-    }
-
-    editor.open = async (path) => {
-      if (editor.path && text.value !== original && !confirm('Discard the unsaved changes?')) return false;
-      let data;
-      try {
-        data = await api('api/files/read?path=' + encodeURIComponent(path));
-      } catch (err) {
-        alert(err.message);
-        return false;
-      }
-      if (data.text === null) {
-        alert(`${path} isn't a text file (or is over 5 MB), so it can't be edited here. Download it instead.`);
-        return false;
-      }
-      editor.path = data.path;
-      root.hidden = false;
-      root.querySelector('.pn-editor-name').textContent = data.path;
-      text.value = original = data.text;
-      text.scrollTop = 0;
-      gutter.dataset.n = '';
-      numbers();
-      mode = 'text';
-      form = null;
-      code.hidden = false;
-      formView.hidden = true;
-      modes.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('active', b.dataset.mode === 'text'));
-      modes.hidden = !parseFormSafe(data);
-      force.hidden = true;
-      note('');
-      const editable = can('files.write') || (can('files.config') && data.path.startsWith('config/'));
-      text.readOnly = !editable;
-      root.querySelector('.pn-editor-save').hidden = !editable;
-      return true;
-    };
-
-    function parseFormSafe(data) {
-      try {
-        return !!parseForm(data.path, data.text, data.flatJson);
-      } catch (e) {
-        return false;
-      }
-    }
-
-    editor.close = () => {
-      if (editor.path && text.value !== original && !confirm('Discard the unsaved changes?')) return;
-      editor.path = null;
-      root.hidden = true;
-      if (editor.onClose) editor.onClose();
-    };
-
-    text.addEventListener('input', numbers);
-    text.addEventListener('scroll', () => { gutter.scrollTop = text.scrollTop; });
-    text.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        save(false);
-      } else if (e.key === 'Tab' && !text.readOnly) {
-        e.preventDefault();
-        const indent = /\n\t/.test(text.value) ? '\t' : '  ';
-        const start = text.selectionStart;
-        text.setRangeText(indent, start, text.selectionEnd, 'end');
-        numbers();
-      }
-    });
-    root.addEventListener('keydown', (e) => {
-      if (mode === 'form' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        save(false);
-      }
-    });
-    modes.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
-    root.querySelector('.pn-editor-save').addEventListener('click', () => save(false));
-    force.addEventListener('click', () => { if (confirm('Save even though the file has errors? The mod may fail to load it.')) save(true); });
-    root.querySelector('.pn-editor-close').addEventListener('click', () => editor.close());
-    return editor;
+  // The editor window tells the panel when it saved, so the file list shows the new size and time.
+  if ('BroadcastChannel' in window) {
+    new BroadcastChannel('ncc-files').onmessage = () => { if (activeTab === 'files') loadFiles(); };
   }
 
   // ── Files ──────────────────────────────────────────────────────────────
 
-  const fileEditor = makeEditor($('pn-file-editor'));
-  fileEditor.onSaved = () => loadFiles();
   let cwd = '';
   let fileData = null;
 
@@ -1223,19 +1460,17 @@
     updateSelection();
   });
 
-  $('pn-file-rows').addEventListener('click', async (e) => {
-    const open = e.target.closest('[data-open]');
-    if (open) {
-      if (open.dataset.dir) return loadFiles(open.dataset.open);
-      if (await fileEditor.open(open.dataset.open)) $('pn-file-editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    const b = e.target.closest('[data-file-act]');
-    if (!b) return;
-    const path = b.closest('tr').dataset.path;
+  /** One action on one file or folder; used by the row buttons and the right-click menu. */
+  async function fileAction(act, path, isDir) {
     const name = path.split('/').pop();
     try {
-      switch (b.dataset.fileAct) {
+      switch (act) {
+        case 'open':
+          if (isDir) return loadFiles(path);
+          return openEditor(path);
+        case 'download':
+          location.href = 'api/files/download?path=' + encodeURIComponent(path);
+          return;
         case 'rename': {
           const to = prompt('New name or path (relative to the server folder):', path);
           if (!to || to === path) return;
@@ -1250,18 +1485,109 @@
           filesNote('Copied.', true);
           break;
         }
+        case 'zip': {
+          const to = prompt('Name of the zip file:', path + '.zip');
+          if (!to) return;
+          const { job } = await api('api/files/zip', { paths: [path], to });
+          loadFiles();
+          await awaitJob(job, (t) => filesNote(t || 'Packing…', true));
+          filesNote('Zip ready.', true);
+          break;
+        }
         case 'unzip': {
           const { job } = await api('api/files/unzip', { path });
           const res = await awaitJob(job, (t) => filesNote(t || 'Unpacking…', true));
           filesNote(`Extracted ${res.files} files.`, true);
           break;
         }
+        case 'copypath':
+          await navigator.clipboard.writeText(path);
+          filesNote(`Copied “${path}”.`, true);
+          return;
         case 'delete':
           if (!confirm(`Delete ${name}? It stays in .panel-trash for 7 days.`)) return;
           await api('api/files/delete', { paths: [path] });
           break;
+        default:
+          return;
       }
       loadFiles();
+    } catch (err) {
+      filesNote(err.message, false);
+    }
+  }
+
+  $('pn-file-rows').addEventListener('click', (e) => {
+    const open = e.target.closest('[data-open]');
+    if (open) return fileAction('open', open.dataset.open, !!open.dataset.dir);
+    const b = e.target.closest('[data-file-act]');
+    if (!b) return;
+    const row = b.closest('tr');
+    fileAction(b.dataset.fileAct, row.dataset.path, !!row.dataset.dir);
+  });
+
+  // ── Right-click menu on files and folders ──
+  let fileMenu = null;
+
+  function closeFileMenu() {
+    if (fileMenu) fileMenu.remove();
+    fileMenu = null;
+  }
+
+  $('pn-file-rows').addEventListener('contextmenu', (e) => {
+    const row = e.target.closest('tr[data-path]');
+    if (!row) return;
+    e.preventDefault();
+    closeFileMenu();
+    const path = row.dataset.path;
+    const isDir = !!row.dataset.dir;
+    const write = can('files.write') && !row.classList.contains('locked');
+    const items = [
+      ['open', isDir ? 'bi-folder2-open' : 'bi-pencil-square', isDir ? 'Open' : 'Open in editor'],
+      ['download', 'bi-download', isDir ? 'Download as zip' : 'Download'],
+      ['copypath', 'bi-clipboard', 'Copy path'],
+      null,
+      ...(write ? [
+        ['rename', 'bi-input-cursor-text', 'Rename or move'],
+        ['copy', 'bi-files', 'Duplicate'],
+        ['zip', 'bi-file-zip', 'Zip'],
+        ...(/\.zip$/i.test(path) ? [['unzip', 'bi-box-arrow-up', 'Extract here']] : []),
+        null,
+        ['delete', 'bi-trash', 'Delete', 'danger'],
+      ] : []),
+    ];
+    fileMenu = document.createElement('div');
+    fileMenu.className = 'pn-menu';
+    fileMenu.setAttribute('role', 'menu');
+    fileMenu.innerHTML = `<div class="pn-menu-title">${esc(path.split('/').pop())}</div>` + items.filter((it, i, arr) => it || (i > 0 && arr[i - 1] && i < arr.length - 1))
+      .map((it) => (it ? `<button type="button" role="menuitem" class="${it[3] || ''}" data-menu="${it[0]}"><i class="bi ${it[1]}"></i>${it[2]}</button>` : '<hr>')).join('');
+    document.body.appendChild(fileMenu);
+    const r = fileMenu.getBoundingClientRect();
+    fileMenu.style.left = Math.min(e.clientX, window.innerWidth - r.width - 8) + 'px';
+    fileMenu.style.top = Math.min(e.clientY, window.innerHeight - r.height - 8) + 'px';
+    fileMenu.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-menu]');
+      if (!b) return;
+      closeFileMenu();
+      fileAction(b.dataset.menu, path, isDir);
+    });
+    fileMenu.querySelector('button').focus();
+  });
+  document.addEventListener('click', (e) => { if (fileMenu && !fileMenu.contains(e.target)) closeFileMenu(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFileMenu(); });
+  window.addEventListener('scroll', closeFileMenu, true);
+  window.addEventListener('blur', closeFileMenu);
+
+  $('pn-newfile').addEventListener('click', async () => {
+    const name = prompt('File name (e.g. notes.txt or config/mymod.json):');
+    if (!name) return;
+    const path = name.includes('/') && !name.startsWith('./') ? name.replace(/^\/+/, '') : (cwd ? cwd + '/' : '') + name.replace(/^\.\//, '');
+    if (fileData && fileData.entries.some((f) => (cwd ? cwd + '/' : '') + f.name === path)) return filesNote(`${path} already exists.`, false);
+    try {
+      // Empty files don't pass the JSON/TOML check yet; they're filled in the editor.
+      await api('api/files/write', { path, text: '', force: true });
+      loadFiles();
+      openEditor(path);
     } catch (err) {
       filesNote(err.message, false);
     }
@@ -1304,45 +1630,134 @@
     }
   });
 
-  /** Uploads with progress (fetch has none); overwrite asks first. */
-  function upload(fileList, overwrite) {
-    const files = [...fileList];
-    if (!files.length) return;
+  /**
+   * Uploads run in the background with a progress box on every tab, one batch after another, so the
+   * Files tab (or any other) can be left meanwhile. Dropped folders keep their structure.
+   */
+  const uploadQueue = [];
+  let uploading = null;
+
+  function uploadBox() {
+    let box = $('pn-uploads');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'pn-uploads';
+      box.className = 'pn-uploads';
+      box.setAttribute('role', 'status');
+      document.body.appendChild(box);
+    }
+    return box;
+  }
+
+  function showUploads(pct) {
+    const box = uploadBox();
+    if (!uploading) {
+      box.remove();
+      return;
+    }
+    const n = uploading.files.length;
+    const waiting = uploadQueue.reduce((sum, b) => sum + b.files.length, 0);
+    box.innerHTML = `<b>Uploading ${n} file${n === 1 ? '' : 's'} to /${esc(uploading.dir)}</b> · ${pct}%
+      <div class="pn-bar"><span style="width:${pct}%"></span></div>
+      <small>${esc(uploading.files.slice(0, 3).map((f) => f.path).join(', '))}${n > 3 ? ` and ${n - 3} more` : ''}${waiting ? ` · ${waiting} more waiting` : ''}</small>`;
+  }
+
+  /** entries: [{ file, path }] with path relative to dir (folders included). */
+  function upload(entries, overwrite, dir = cwd) {
+    if (!entries.length) return;
+    uploadQueue.push({ files: entries, overwrite, dir });
+    if (!uploading) nextUpload();
+    else showUploads(0);
+  }
+
+  function nextUpload() {
+    uploading = uploadQueue.shift() || null;
+    if (!uploading) {
+      showUploads(0);
+      return;
+    }
+    const batch = uploading;
     const form = new FormData();
-    files.forEach((f) => form.append('files', f, f.name));
+    batch.files.forEach((f) => {
+      form.append('files', f.file, f.file.name);
+      form.append('paths', f.path);
+    });
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `api/files/upload?path=${encodeURIComponent(cwd)}${overwrite ? '&overwrite=1' : ''}`);
+    xhr.open('POST', `api/files/upload?path=${encodeURIComponent(batch.dir)}${batch.overwrite ? '&overwrite=1' : ''}`);
     xhr.setRequestHeader('X-NCC', '1');
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) filesNote(`Uploading ${files.length} file${files.length === 1 ? '' : 's'}… ${Math.round(e.loaded / e.total * 100)}%`, true);
-    };
+    showUploads(0);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) showUploads(Math.round(e.loaded / e.total * 100)); };
     xhr.onload = () => {
       let data = {};
       try { data = JSON.parse(xhr.responseText); } catch (e) { /* not JSON */ }
-      if (xhr.status === 400 && /already exists/.test(data.error || '') && !overwrite) {
-        if (confirm(data.error + ' Replace it?')) return upload(files, true);
+      if (xhr.status === 400 && /already exists/.test(data.error || '') && !batch.overwrite && confirm(data.error + ' Replace it?')) {
+        uploadQueue.unshift({ files: batch.files, overwrite: true, dir: batch.dir });
+      } else if (xhr.status >= 400) {
+        filesNote(data.error || 'Upload failed', false);
+      } else {
+        filesNote(`Uploaded ${data.saved.length} file${data.saved.length === 1 ? '' : 's'} to /${batch.dir}.`, true);
       }
-      if (xhr.status >= 400) filesNote(data.error || 'Upload failed', false);
-      else filesNote(`Uploaded ${data.saved.length} file${data.saved.length === 1 ? '' : 's'}.`, true);
-      loadFiles();
+      if (activeTab === 'files') loadFiles();
+      nextUpload();
     };
-    xhr.onerror = () => filesNote('Upload failed (connection).', false);
+    xhr.onerror = () => {
+      filesNote('Upload failed (connection).', false);
+      nextUpload();
+    };
     xhr.send(form);
   }
 
-  $('pn-upload').addEventListener('change', (e) => { upload(e.target.files, false); e.target.value = ''; });
+  window.addEventListener('beforeunload', (e) => {
+    if (uploading) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  /** Files (and the contents of dropped folders) from a drop, with their paths. */
+  async function droppedEntries(dt) {
+    const out = [];
+    const items = [...(dt.items || [])].map((i) => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null));
+    if (!items.length || items.some((i) => !i)) return [...dt.files].map((file) => ({ file, path: file.name }));
+    const walk = async (entry, prefix) => {
+      if (entry.isFile) {
+        out.push({ file: await new Promise((res, rej) => entry.file(res, rej)), path: prefix + entry.name });
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        // readEntries returns at most 100 at a time.
+        for (;;) {
+          const batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+          if (!batch.length) break;
+          for (const e of batch) await walk(e, prefix + entry.name + '/');
+        }
+      }
+    };
+    for (const entry of items) await walk(entry, '');
+    return out;
+  }
+
+  $('pn-upload').addEventListener('change', (e) => { upload([...e.target.files].map((file) => ({ file, path: file.name })), false); e.target.value = ''; });
+  // The whole Files tab takes drops, not just the table.
+  const dropArea = document.querySelector('.np-tab-panel[data-tab="files"]');
   const drop = $('pn-drop');
-  drop.addEventListener('dragover', (e) => {
-    if (!can('files.write') || !e.dataTransfer.types.includes('Files')) return;
+  dropArea.addEventListener('dragover', (e) => {
+    if (!can('files.write') || ![...e.dataTransfer.types].includes('Files')) return;
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
     drop.classList.add('dragging');
   });
-  drop.addEventListener('dragleave', (e) => { if (!drop.contains(e.relatedTarget)) drop.classList.remove('dragging'); });
-  drop.addEventListener('drop', (e) => {
+  dropArea.addEventListener('dragleave', (e) => { if (!dropArea.contains(e.relatedTarget)) drop.classList.remove('dragging'); });
+  dropArea.addEventListener('drop', async (e) => {
+    if (![...e.dataTransfer.types].includes('Files')) return;
     e.preventDefault();
     drop.classList.remove('dragging');
-    if (can('files.write')) upload(e.dataTransfer.files, false);
+    if (!can('files.write')) return;
+    const dir = cwd;
+    upload(await droppedEntries(e.dataTransfer), false, dir);
   });
+  // A file dropped next to the drop area mustn't make the browser leave the panel to show it.
+  window.addEventListener('dragover', (e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  window.addEventListener('drop', (e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
 
   // ── Log cleanup ────────────────────────────────────────────────────────
 
@@ -1407,11 +1822,6 @@
 
   // ── Config editor ──────────────────────────────────────────────────────
 
-  const configEditor = makeEditor($('pn-config-editor'));
-  configEditor.onClose = () => {
-    $('pn-config-empty').hidden = false;
-    $('pn-config-files').querySelectorAll('.active').forEach((b) => b.classList.remove('active'));
-  };
   let configFiles = [];
 
   async function loadConfigs() {
@@ -1437,7 +1847,7 @@
     }
     $('pn-config-files').innerHTML = [...groups].sort((a, b) => a[0].localeCompare(b[0])).map(([g, list]) =>
       (g ? `<div class="pn-config-group">${esc(g)}</div>` : '')
-      + list.map(([f, name]) => `<button type="button" class="pn-config-file ${f.path === configEditor.path ? 'active' : ''}" data-config="${esc(f.path)}" title="${esc(f.path)}">${esc(name)}</button>`).join('')
+      + list.map(([f, name]) => `<button type="button" class="pn-config-file" data-config="${esc(f.path)}" title="${esc(f.path)}">${esc(name)}</button>`).join('')
     ).join('') || '<p class="np-empty">No config files found.</p>';
   }
 
@@ -1445,10 +1855,7 @@
   $('pn-config-files').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-config]');
     if (!b) return;
-    if (await configEditor.open(b.dataset.config)) {
-      $('pn-config-empty').hidden = true;
-      renderConfigs();
-    }
+    openEditor(b.dataset.config);
   });
 
   // ── Versions ─────────────────────────────────────────────────────────
@@ -1888,7 +2295,7 @@
     // Drawn at its real width, so text and lines keep their size (redrawn on resize).
     const cs = getComputedStyle(card);
     const W = Math.max(260, Math.round(card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
-    const H = 180, L = 46, R = 8, T = 8, B = 22;
+    const H = 150, L = 46, R = 8, T = 8, B = 22;
     const svg = document.createElementNS(svgNs, 'svg');
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.setAttribute('width', W);
@@ -1908,9 +2315,11 @@
     }
     html += '</g><g class="axis">';
     for (let i = 0; i <= ticks; i += 2) html += `<text x="${L - 6}" y="${y(max * i / ticks) + 4}" text-anchor="end">${esc(c.fmt(max * i / ticks))}</text>`;
-    for (let i = 0; i <= 4; i++) {
-      const t = d.from + (d.to - d.from) * i / 4;
-      html += `<text x="${x(t)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}">${esc(fmtTime(t, span))}</text>`;
+    // As many time labels as fit (about one per 90 px).
+    const xt = Math.max(1, Math.min(4, Math.floor((W - L) / 90)));
+    for (let i = 0; i <= xt; i++) {
+      const t = d.from + (d.to - d.from) * i / xt;
+      html += `<text x="${x(t)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === xt ? 'end' : 'middle'}">${esc(fmtTime(t, span))}</text>`;
     }
     html += '</g>';
     if (c.ref && c.ref.v <= max) html += `<line class="ref" x1="${L}" x2="${W - R}" y1="${y(c.ref.v)}" y2="${y(c.ref.v)}"/>`;
@@ -1965,11 +2374,16 @@
     svg.addEventListener('pointerleave', () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); });
   }
 
+  // Redrawn when the chart area changes width (window resize, the page's scrollbar appearing, the sidebar).
   let statsResize = null;
-  window.addEventListener('resize', () => {
+  let statsWidth = 0;
+  new ResizeObserver((entries) => {
+    const w = Math.round(entries[0].contentRect.width);
+    if (!w || w === statsWidth) return;
+    statsWidth = w;
     clearTimeout(statsResize);
-    statsResize = setTimeout(() => { if (activeTab === 'stats' && statsData) renderStats(statsData); }, 200);
-  });
+    statsResize = setTimeout(() => { if (activeTab === 'stats' && statsData) renderStats(statsData); }, 120);
+  }).observe($('pn-stats-charts'));
 
   function niceMax(v, integer) {
     const p = 10 ** Math.floor(Math.log10(v));
@@ -2040,7 +2454,8 @@
       const vanilla = d.border && d.border.size < 59999968 ? d.border : null;
       const v = b || { shape: 'square', x: Math.round(vanilla ? vanilla.x : 0), z: Math.round(vanilla ? vanilla.z : 0),
         soft: vanilla ? Math.round(vanilla.size / 4) : 2000, hard: vanilla ? Math.round(vanilla.size / 2) : 0, pregen: true, worldBorder: true };
-      const sw = (f, on) => `<span class="np-switch"><input type="checkbox" data-f="${f}" ${on ? 'checked' : ''}><span></span></span>`;
+      // A <label>, so clicking the switch's track toggles the hidden checkbox.
+      const sw = (f, on) => `<label class="np-switch"><input type="checkbox" data-f="${f}" ${on ? 'checked' : ''}><span></span></label>`;
       return `<tr data-dim="${esc(d.id)}" class="${b ? '' : 'off'}">
         <td class="name">${esc(d.name)}<small>${esc(d.id)}</small></td>
         <td>${sw('on', !!b)}</td>

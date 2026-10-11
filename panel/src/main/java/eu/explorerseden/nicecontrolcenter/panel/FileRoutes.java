@@ -139,9 +139,14 @@ final class FileRoutes {
 			if (!Files.isDirectory(dir)) throw new IOException("Upload into a folder.");
 			boolean overwrite = "1".equals(ctx.queryParam("overwrite"));
 			List<String> saved = new ArrayList<>();
-			for (UploadedFile upload : ctx.uploadedFiles("files")) {
+			List<UploadedFile> uploads = ctx.uploadedFiles("files");
+			// Dropped folders: each file's path inside the folder, in the same order as the files.
+			List<String> paths = ctx.formParams("paths");
+			for (int i = 0; i < uploads.size(); i++) {
+				UploadedFile upload = uploads.get(i);
+				String name = i < paths.size() && !paths.get(i).isBlank() ? paths.get(i) : upload.filename();
 				try (InputStream in = upload.content()) {
-					Path target = files.saveUpload(dir, upload.filename(), in, overwrite);
+					Path target = files.saveUpload(dir, name, in, overwrite);
 					saved.add(files.rel(target));
 				}
 			}

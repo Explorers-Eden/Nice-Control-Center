@@ -110,6 +110,8 @@ public final class Panel {
 		Trimmer trimmer = new Trimmer(map, backups, server, audit, serverDir);
 		scheduler.useWorld(trimmer, dashboard);
 		map.useResetClock(() -> scheduler.nextWith("trim"));
+		Branding branding = new Branding(dataDir, audit);
+		map.useLogo(() -> branding.has("map"));
 		Stats stats = new Stats(dataDir.resolve("stats"), server, dashboard, zone);
 		// Alerts go to Discord and show as markers on the stats charts.
 		Notifier alerts = (type, values) -> {
@@ -261,6 +263,7 @@ public final class Panel {
 			mapRoutes.register(routes);
 			new WorldRoutes(trimmer, jobs).register(routes);
 			new PlayerLists(serverDir, server, audit).register(routes);
+			branding.register(routes);
 			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
 			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				int days;

@@ -306,7 +306,7 @@ public final class Scheduler {
 		switch (step.type) {
 			case "say" -> {
 				if (!server.running()) return null;
-				server.quietCommand("tellraw @a " + chat(step.text, "gold"));
+				server.quietCommand(say(step.text));
 			}
 			case "command" -> {
 				if (!server.running()) return "The server isn't running, so \"" + step.text + "\" couldn't run.";
@@ -434,11 +434,11 @@ public final class Scheduler {
 			long wait = end - at * 1000L - System.currentTimeMillis();
 			if (wait > 0) Thread.sleep(wait);
 			if (!server.running()) return;
-			server.quietCommand("tellraw @a " + chat(template.replace("{time}", duration(at)), "gold"));
+			server.quietCommand(say(template.replace("{time}", duration(at))));
 		}
 		long rest = end - System.currentTimeMillis();
 		if (rest > 0) Thread.sleep(rest);
-		server.quietCommand("tellraw @a " + chat(now, "gold"));
+		server.quietCommand(say(now));
 	}
 
 	static String duration(int seconds) {
@@ -449,11 +449,40 @@ public final class Scheduler {
 		return seconds + (seconds == 1 ? " second" : " seconds");
 	}
 
-	private static String chat(String text, String color) {
-		JsonObject json = new JsonObject();
-		json.addProperty("text", text);
-		json.addProperty("color", color);
-		return json.toString();
+	private static final java.util.regex.Pattern VARIABLE = java.util.regex.Pattern.compile("\\{(player|online|clock|date)\\}");
+
+	/**
+	 * The tellraw command for a chat message. {player} becomes each reader's own name (the message is
+	 * sent per player then), {online} everyone online, {clock} and {date} the panel's time; & codes
+	 * (&a, &l …) color and format like in game. Gold unless a code says otherwise.
+	 */
+	String say(String template) {
+		ZonedDateTime now = ZonedDateTime.now(zone);
+		String text = template.replace("{clock}", String.format("%02d:%02d", now.getHour(), now.getMinute()))
+				.replace("{date}", now.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.ENGLISH)));
+		text = text.replaceAll("&([0-9a-fk-or])", "\u00a7$1");
+		com.google.gson.JsonArray parts = new com.google.gson.JsonArray();
+		JsonObject base = new JsonObject();
+		base.addProperty("text", "");
+		base.addProperty("color", "gold");
+		parts.add(base);
+		java.util.regex.Matcher m = VARIABLE.matcher(text);
+		int at = 0;
+		boolean perPlayer = false;
+		while (m.find()) {
+			if (m.start() > at) parts.add(text.substring(at, m.start()));
+			JsonObject sel = new JsonObject();
+			if (m.group(1).equals("player")) {
+				sel.addProperty("selector", "@s");
+				perPlayer = true;
+			} else {
+				sel.addProperty("selector", "@a");
+			}
+			parts.add(sel);
+			at = m.end();
+		}
+		if (at < text.length()) parts.add(text.substring(at));
+		return perPlayer ? "execute as @a run tellraw @s " + parts : "tellraw @a " + parts;
 	}
 
 	private static String describe(Step s) {
