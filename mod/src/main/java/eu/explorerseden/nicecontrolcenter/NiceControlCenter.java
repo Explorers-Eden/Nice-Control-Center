@@ -48,6 +48,7 @@ public class NiceControlCenter implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		LogCapture.install();
+		eu.explorerseden.nicecontrolcenter.core.Pregen.register();
 		Migration.configFiles();
 		config = ControlCenterConfig.load();
 		ErrorWatcher.ignore(config.error_ignore);
@@ -57,7 +58,8 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(NiceControlCenter::start);
 		// Under the panel: Discord linking at login, chat and game events for the Discord bridge.
 		eu.explorerseden.nicecontrolcenter.web.PanelBridge.register();
-		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.Pregen::tick);
+		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.HardBorder::tick);
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> eu.explorerseden.nicecontrolcenter.core.Pregen.stop(server, "stopped with the server"));
 		startConfigWatcher();
 		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> ErrorWatcher.reloadStarted());
@@ -70,7 +72,10 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STOPPING.register(NiceControlCenter::stop);
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> UpdateManager.stop());
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sendLaterMessages(handler.player));
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> eu.explorerseden.nicecontrolcenter.players.ClientInfo.forget(handler.player.getUUID()));
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			eu.explorerseden.nicecontrolcenter.players.ClientInfo.forget(handler.player.getUUID());
+			eu.explorerseden.nicecontrolcenter.core.HardBorder.forget(handler.player.getUUID());
+		});
 	}
 
 	public static ControlCenterConfig config() {
@@ -137,6 +142,7 @@ public class NiceControlCenter implements ModInitializer {
 		MinecraftServer server = minecraftServer;
 		NiceControlCenter.server = server;
 		Migration.dataFolder(server.getServerDirectory());
+		eu.explorerseden.nicecontrolcenter.core.DiskUsage.start(server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT), server.getServerDirectory());
 		config = ControlCenterConfig.load();
 		if (config.token_hours <= 0 || config.tokenExpired()) {
 			// Without token_hours a dashboard link only works until the next restart.
@@ -243,6 +249,7 @@ public class NiceControlCenter implements ModInitializer {
 	}
 
 	private static void stop(MinecraftServer server) {
+		eu.explorerseden.nicecontrolcenter.core.DiskUsage.stop();
 		var report = Recorder.stop(server);
 		if (report != null) {
 			try {

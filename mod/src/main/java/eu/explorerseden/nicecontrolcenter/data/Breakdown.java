@@ -42,6 +42,8 @@ public final class Breakdown {
 	public long heapLiveMax;
 	public long gcTimeMs;
 	public long gcCount;
+	/** Time concurrent collections ran next to the server (not pauses). */
+	public long gcBackgroundMs;
 
 	public Counts latest = new Counts();
 	public Counts max = new Counts();
@@ -304,6 +306,7 @@ public final class Breakdown {
 		}
 		gcTimeMs += other.gcTimeMs;
 		gcCount += other.gcCount;
+		gcBackgroundMs += other.gcBackgroundMs;
 
 		if (other.end >= end) {
 			latest = other.latest;

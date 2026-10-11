@@ -1,4 +1,12 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.5.0
+- Pregeneration runs on its own thread instead of in the server tick: it only queues chunks for Minecraft's world-generation threads, sleeps until one is done and still backs off when ticks get long; counting a huge area no longer holds up the server
+- Pregeneration can skip an inner area (only the outer wilds) and several dimensions can be queued one after another
+- Borders per dimension (config/nicecontrolcenter-borders.json, set in the panel's World tab): a soft border around the permanent area and a hard border nobody gets past; players past the hard border (walking, flying, pearls, portals) are put back where they last stood inside, circles included; a square hard border also sets that dimension's world border
+- New Disk tile with the stat tiles: size of the world, of the whole server folder and free space on the drive (measured every 2 minutes)
+- Pregeneration holds each chunk with its own ticket until it's fully generated; before, a few percent of chunks could be unloaded half-way and counted as failed
+- The GC tile also shows how busy the collector is in the background ("busy N%"); concurrent collectors like ZGC barely pause, so with a nearly full heap the tile showed 0% paused while the server was waiting for memory. It turns gold or red then, and the memory pressure finding says so
+
 ## 1.4.5
 - New keep_reports_days setting (default 14): recordings and reports older than that are deleted at server start, after each new report and once an hour; 0 keeps them forever
 

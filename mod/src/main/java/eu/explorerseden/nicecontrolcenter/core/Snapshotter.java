@@ -113,6 +113,7 @@ public final class Snapshotter {
 		b.heapLiveMax = system.heapLive();
 		b.gcTimeMs = system.gcTimeMs();
 		b.gcCount = system.gcCount();
+		b.gcBackgroundMs = system.gcBackgroundMs();
 
 		StackSampler s = sampler;
 		if (s != null) {

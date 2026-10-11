@@ -488,9 +488,14 @@ public final class Diagnoser {
 		if (livePercent < 85 && gcPercent < 5) {
 			return;
 		}
+		// Concurrent collectors (ZGC) barely pause; when the heap is nearly full they run all the time instead.
+		String background = kpi.gcBackgroundPercent() >= 50
+				? String.format(Locale.ROOT, " The collector ran in the background %.0f%% of the time; with a nearly full heap the server waits for it to free memory, which no pause counter shows.",
+						Math.min(100, kpi.gcBackgroundPercent()))
+				: "";
 		String reason = String.format(Locale.ROOT,
-				"After garbage collection, %s of %s is still in use (%.0f%%); GC pauses took %.1f%% of the time.",
-				bytes(kpi.heapLiveMax()), bytes(kpi.heapMax()), livePercent, gcPercent);
+				"After garbage collection, %s of %s is still in use (%.0f%%); GC pauses took %.1f%% of the time.%s",
+				bytes(kpi.heapLiveMax()), bytes(kpi.heapMax()), livePercent, gcPercent, background);
 		Severity severity = gcPercent >= 10 || livePercent >= 95 ? Severity.POOR : Severity.WARN;
 		out.add(new Finding(severity, "Memory", "Memory pressure", 0, 0, reason,
 				"The server really needs most of its memory. Give it more (-Xmx), or reduce loaded chunks and entities. "

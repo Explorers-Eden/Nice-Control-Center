@@ -1,3 +1,9 @@
+## 1.2.0
+- World tab: borders per dimension in one table (shape, center, soft border, hard border, pregenerate on/off, world border on/off), replacing the single area form; the permanent area inside the soft border is never trimmed, the outer wilds between soft and hard border can be reset
+- Pregenerate goes up to the hard border in every dimension with Pregen on, one after another, optionally only the outer wilds (needs mod 1.5.0)
+- "Reset the outer wilds" trims outside the soft border in every dimension with borders, with one backup; the preview map shows the hard border as a dashed line
+- New schedule steps "Reset the outer wilds" (countdown in chat, stops the server, trims, starts it again) and "Pregenerate", and a "Weekly outer wilds reset" preset
+
 ## 1.1.0
 - Discord messages relayed into the game also show in the console log and the dashboard's new Chat tab (needs mod 1.4.0; older mods still get them as before, only in game)
 - The dashboard's Chat tab needs "console.read" to see and "console.write" to send, like the console

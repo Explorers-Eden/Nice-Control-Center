@@ -30,7 +30,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Scheduled tasks: at set times on chosen weekdays, or every N minutes, run a list of steps (restart
- * with a countdown in chat, stop, start, backup, console command, chat message, wait). Kept in
+ * with a countdown in chat, stop, start, backup, console command, chat message, wait, resetting the
+ * outer wilds, pregenerating). Kept in
  * /data/panel/schedule.json, so it works without the database.
  */
 public final class Scheduler {
@@ -48,11 +49,11 @@ public final class Scheduler {
 	}
 
 	public static final class Step {
-		/** restart, stop, start, backup, command, say, wait */
+		/** restart, stop, start, backup, command, say, wait, trim, pregen */
 		public String type;
-		/** command / chat message / backup label */
+		/** command / chat message / backup label / countdown message; pregen: "wilds" or "all" */
 		public String text = "";
-		/** restart: countdown in minutes before it happens; wait: seconds. */
+		/** restart and trim: countdown in minutes before it happens; wait: seconds. */
 		public int minutes = 5;
 		public int seconds = 30;
 	}
@@ -60,7 +61,7 @@ public final class Scheduler {
 	public record Run(long time, boolean ok, String message) {
 	}
 
-	static final Set<String> STEP_TYPES = Set.of("restart", "stop", "start", "backup", "command", "say", "wait");
+	static final Set<String> STEP_TYPES = Set.of("restart", "stop", "start", "backup", "command", "say", "wait", "trim", "pregen");
 	/** Countdown messages at these many seconds before a restart (only those within the countdown). */
 	private static final int[] WARN_AT = { 3600, 1800, 900, 600, 300, 120, 60, 30, 10, 5, 4, 3, 2, 1 };
 
@@ -80,6 +81,8 @@ public final class Scheduler {
 		return t;
 	});
 	private volatile List<Task> tasks;
+	private volatile Trimmer trimmer;
+	private volatile DashboardProxy mod;
 	private final Map<String, Run> lastRuns = new ConcurrentHashMap<>();
 	private final Map<String, String> runningNow = new ConcurrentHashMap<>();
 	/** Minute (epoch minutes) each task last fired in, so a slow tick can't run it twice. */
@@ -98,6 +101,12 @@ public final class Scheduler {
 			System.err.println("Could not read " + file + ": " + e.getMessage());
 		}
 		tasks = loaded != null ? loaded : new ArrayList<>();
+	}
+
+	/** For the trim and pregen steps. */
+	void useWorld(Trimmer trimmer, DashboardProxy mod) {
+		this.trimmer = trimmer;
+		this.mod = mod;
 	}
 
 	public void start() {
@@ -190,7 +199,8 @@ public final class Scheduler {
 			if (s.text == null) s.text = "";
 			if (s.text.contains("\n") || s.text.length() > 500) return "Commands and messages are one line, up to 500 characters.";
 			if ((s.type.equals("command") || s.type.equals("say")) && s.text.isBlank()) return "A " + s.type + " step needs text.";
-			if (s.type.equals("restart") && (s.minutes < 0 || s.minutes > 60)) return "The restart countdown is 0–60 minutes.";
+			if ((s.type.equals("restart") || s.type.equals("trim")) && (s.minutes < 0 || s.minutes > 60)) return "The countdown is 0–60 minutes.";
+			if (s.type.equals("pregen") && !s.text.equals("all")) s.text = "wilds";
 			if (s.type.equals("wait") && (s.seconds < 1 || s.seconds > 3600)) return "Waits are 1–3600 seconds.";
 		}
 		return null;
@@ -302,9 +312,15 @@ public final class Scheduler {
 				if (!server.awaitState(10 * 60_000L, Supervisor.State.RUNNING, Supervisor.State.CRASHED, Supervisor.State.STOPPED)) return "The server didn't finish starting within 10 minutes.";
 				if (server.state() != Supervisor.State.RUNNING) return "The server didn't start (" + server.state().name().toLowerCase() + ").";
 			}
+			case "trim" -> {
+				return resetWilds(step, by);
+			}
+			case "pregen" -> {
+				return pregen("all".equals(step.text));
+			}
 			case "restart" -> {
 				if (server.running()) {
-					countdown(step);
+					countdown(step, "The server restarts in {time}.", "Restarting now…");
 					String error = server.stop();
 					if (error != null) return error;
 					if (!server.awaitState(10 * 60_000L, Supervisor.State.STOPPED, Supervisor.State.CRASHED)) return "The server didn't stop within 10 minutes.";
@@ -321,11 +337,76 @@ public final class Scheduler {
 		return null;
 	}
 
+	/**
+	 * Stops the server (after a countdown), trims everything outside each dimension's soft border, and
+	 * starts it again if it was running.
+	 */
+	private String resetWilds(Step step, String by) throws InterruptedException {
+		Trimmer t = trimmer;
+		if (t == null) return "The trimmer isn't available.";
+		List<Trimmer.Area> areas = t.wildsAreas();
+		if (areas.isEmpty()) return "No borders are set (World tab), so there are no outer wilds to reset.";
+		boolean wasRunning = server.running();
+		if (wasRunning) {
+			countdown(step, "The outer wilds reset in {time}.", "Resetting the outer wilds now…");
+			String error = server.stop();
+			if (error != null) return error;
+			if (!server.awaitState(10 * 60_000L, Supervisor.State.STOPPED, Supervisor.State.CRASHED)) return "The server didn't stop within 10 minutes.";
+		}
+		String problem = t.start(areas, by);
+		if (problem == null) {
+			String result = t.awaitResult(6 * 3600_000L);
+			if (result == null || !result.startsWith("Done")) problem = result == null ? "The trim ended without a result." : result;
+		} else if (problem.equals(Trimmer.NOTHING)) {
+			problem = null;
+		}
+		if (wasRunning) {
+			String error = server.start();
+			if (error == null && !server.awaitState(10 * 60_000L, Supervisor.State.RUNNING, Supervisor.State.CRASHED, Supervisor.State.STOPPED)) error = "The server didn't finish starting within 10 minutes.";
+			if (error == null && server.state() != Supervisor.State.RUNNING) error = "The server didn't start again (" + server.state().name().toLowerCase() + ").";
+			if (problem == null) problem = error;
+		}
+		return problem;
+	}
+
+	/** Pregenerates every dimension with borders that has pregen on, one after another (in the mod). */
+	private String pregen(boolean all) throws InterruptedException {
+		Trimmer t = trimmer;
+		DashboardProxy m = mod;
+		if (t == null || m == null) return "Pregenerating isn't available.";
+		if (!server.running()) return "The server isn't running, so it can't pregenerate.";
+		int started = 0;
+		for (Map.Entry<String, eu.explorerseden.nicecontrolcenter.Borders.Border> e : t.borders().entrySet()) {
+			eu.explorerseden.nicecontrolcenter.Borders.Border b = e.getValue();
+			if (!b.pregen || (!all && b.hard <= b.soft)) continue;
+			JsonObject body = new JsonObject();
+			body.addProperty("dimension", e.getKey());
+			body.addProperty("x", b.x);
+			body.addProperty("z", b.z);
+			body.addProperty("radius", b.reach());
+			body.addProperty("skipRadius", all ? 0 : b.soft);
+			body.addProperty("shape", b.shape);
+			body.addProperty("queue", true);
+			// Right after a start the mod may need a moment before it answers.
+			String error = null;
+			for (int attempt = 0; attempt < 12; attempt++) {
+				error = m.post("/api/pregen/start", body);
+				if (error == null || !error.startsWith("The mod doesn't answer")) break;
+				Thread.sleep(5000);
+			}
+			if (error != null) return e.getKey() + ": " + error;
+			started++;
+		}
+		if (started == 0) return all ? "No dimension is set to pregenerate (World tab)." : "No dimension has outer wilds to pregenerate (a hard border outside the soft one, with pregenerating on).";
+		server.note("Task: pregenerating " + started + " dimension" + (started == 1 ? "" : "s"));
+		return null;
+	}
+
 	/** Chat warnings before a restart: "Server restarts in 5 minutes." … "in 1 second". */
-	private void countdown(Step step) throws InterruptedException {
+	private void countdown(Step step, String fallback, String now) throws InterruptedException {
 		int total = step.minutes * 60;
 		if (total <= 0) return;
-		String template = step.text.isBlank() ? "The server restarts in {time}." : step.text;
+		String template = step.text.isBlank() ? fallback : step.text;
 		long end = System.currentTimeMillis() + total * 1000L;
 		for (int at : WARN_AT) {
 			if (at > total) continue;
@@ -336,7 +417,7 @@ public final class Scheduler {
 		}
 		long rest = end - System.currentTimeMillis();
 		if (rest > 0) Thread.sleep(rest);
-		server.quietCommand("tellraw @a " + chat("Restarting now…", "gold"));
+		server.quietCommand("tellraw @a " + chat(now, "gold"));
 	}
 
 	static String duration(int seconds) {
@@ -358,6 +439,8 @@ public final class Scheduler {
 		return switch (s.type) {
 			case "restart" -> s.minutes > 0 ? "restart countdown (" + s.minutes + " min)" : "restarting";
 			case "backup" -> "making a backup";
+			case "trim" -> s.minutes > 0 ? "outer wilds reset countdown (" + s.minutes + " min)" : "resetting the outer wilds";
+			case "pregen" -> "starting pregeneration";
 			case "wait" -> "waiting " + s.seconds + " s";
 			case "stop" -> "stopping the server";
 			case "start" -> "starting the server";

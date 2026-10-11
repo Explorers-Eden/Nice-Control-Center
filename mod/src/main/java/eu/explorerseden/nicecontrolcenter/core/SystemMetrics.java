@@ -15,7 +15,8 @@ public final class SystemMetrics {
 	 * of live data. {@code heapUsed} also counts garbage not collected yet, so it is normally close to
 	 * the maximum (especially with -Xms = -Xmx) and says little on its own.
 	 */
-	public record Sample(double cpuProcess, double cpuSystem, long heapUsed, long heapMax, long heapLive, long gcTimeMs, long gcCount) {
+	/** gcTimeMs: pauses that stop the server; gcBackgroundMs: time concurrent collections ran next to it. */
+	public record Sample(double cpuProcess, double cpuSystem, long heapUsed, long heapMax, long heapLive, long gcTimeMs, long gcCount, long gcBackgroundMs) {
 	}
 
 	private static final OperatingSystemMXBean OS = ManagementFactory.getOperatingSystemMXBean();
@@ -23,6 +24,7 @@ public final class SystemMetrics {
 	private static final List<MemoryPoolMXBean> POOLS = ManagementFactory.getMemoryPoolMXBeans();
 	private static long lastGcTime = -1;
 	private static long lastGcCount;
+	private static long lastGcBackground = -1;
 
 	private SystemMetrics() {
 	}
@@ -54,8 +56,10 @@ public final class SystemMetrics {
 
 		long gcTime = 0;
 		long gcCount = 0;
+		long gcBackground = 0;
 		for (GarbageCollectorMXBean gc : GCS) {
 			if (!pausesTheServer(gc)) {
+				gcBackground += Math.max(0, gc.getCollectionTime());
 				continue;
 			}
 			gcTime += Math.max(0, gc.getCollectionTime());
@@ -65,13 +69,16 @@ public final class SystemMetrics {
 		long gcCountDelta = lastGcTime < 0 ? 0 : gcCount - lastGcCount;
 		lastGcTime = gcTime;
 		lastGcCount = gcCount;
-		return new Sample(cpuProcess, cpuSystem, heapUsed, heapMax, heapLive, gcTimeDelta, gcCountDelta);
+		long gcBackgroundDelta = lastGcBackground < 0 ? 0 : gcBackground - lastGcBackground;
+		lastGcBackground = gcBackground;
+		return new Sample(cpuProcess, cpuSystem, heapUsed, heapMax, heapLive, gcTimeDelta, gcCountDelta, gcBackgroundDelta);
 	}
 
 	/**
-	 * Only collections that stop the game count. "G1 Concurrent GC", "ZGC … Cycles" and "Shenandoah
-	 * Cycles" report background work running next to the server, which would otherwise look like
-	 * lots of GC time.
+	 * Only collections that stop the game count as pauses. "G1 Concurrent GC", "ZGC … Cycles" and
+	 * "Shenandoah Cycles" report background work running next to the server; it's counted apart, since
+	 * a collector that never stops (ZGC with a nearly full heap) makes the server wait for memory
+	 * without any pause showing up.
 	 */
 	private static boolean pausesTheServer(GarbageCollectorMXBean gc) {
 		String name = gc.getName();

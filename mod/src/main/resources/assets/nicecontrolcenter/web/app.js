@@ -163,10 +163,16 @@
     const usedPct = heapMax ? heapUsed / heapMax * 100 : 0;
     const usedClass = usedPct < 85 ? 'good' : usedPct < 95 ? 'warn' : 'poor';
     const cpuClass = cpuMachine >= 90 ? 'poor' : cpuMachine >= 70 ? 'warn' : 'good';
-    const gc = cur ? { percent: cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0, count: cur.gcCount, timeMs: cur.gcTimeMs }
-      : { percent: k.gcPercent, count: k.gcCount, timeMs: k.gcTimeMs || 0 };
-    // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts.
-    const gcClass = gc.percent >= 10 ? 'poor' : gc.percent >= 5 ? 'warn' : 'good';
+    const gc = cur ? { percent: cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0, count: cur.gcCount, timeMs: cur.gcTimeMs,
+      background: cur.wallMs ? (cur.gcBackgroundMs || 0) * 100 / cur.wallMs : 0 }
+      : { percent: k.gcPercent, count: k.gcCount, timeMs: k.gcTimeMs || 0, background: k.gcBackgroundPercent || 0 };
+    // Concurrent cycles can overlap (ZGC young and old), so the share is capped at all of the time.
+    gc.background = Math.min(100, gc.background);
+    // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts. A collector
+    // that runs nearly all the time (ZGC with a full heap) makes the server wait without pausing it.
+    const pauseClass = gc.percent >= 10 ? 'poor' : gc.percent >= 5 ? 'warn' : 'good';
+    const bgClass = gc.background >= 95 && livePct >= 85 ? 'poor' : gc.background >= 80 ? 'warn' : 'good';
+    const gcClass = [pauseClass, bgClass].includes('poor') ? 'poor' : [pauseClass, bgClass].includes('warn') ? 'warn' : 'good';
     const gcAvg = gc.count ? gc.timeMs / gc.count : 0;
     const c = k.counts || {};
     const ms = (v) => v >= 100 ? fixed(v, 0) : fixed(v, 1);
@@ -183,9 +189,11 @@
       // Laid out like MSPT; the unit is small so three sizes fit next to each other.
       ['Memory', null, null, `<div class="np-mspt">${memCols.map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
         `Still in use after garbage collection: ${bytes(heapLive || heapUsed)} · including garbage not collected yet: ${bytes(heapUsed)} · maximum: ${bytes(heapMax)}`],
+      ...(state.disk && !REPORT ? [diskTile(state.disk)] : []),
       ['GC', `<span class="${gcClass}">${fixed(gc.percent, 1)}%</span><small> paused</small>`,
-        `${num(gc.count)} pauses${gc.count ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${recent}`, null,
-        `Share of time the server was paused for garbage collection over the ${recent}: ${num(gc.timeMs)} ms over ${num(gc.count)} pauses${gc.count ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. Background (concurrent) GC work isn't counted.`],
+        `${gc.background >= 1 ? `busy ${fixed(gc.background, 0)}% · ` : ''}${num(gc.count)} pauses${gc.count ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${recent}`, null,
+        `Share of time the server was paused for garbage collection over the ${recent}: ${num(gc.timeMs)} ms over ${num(gc.count)} pauses${gc.count ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. `
+        + `The collector also ran in the background ${fixed(gc.background, 0)}% of the time. Concurrent collectors like ZGC barely pause; when the heap is nearly full they run all the time instead and the server waits for memory, which no pause counter shows — then "busy" turns gold or red.`],
       ['Entities', num(now ? now.entities : c.entities), 'loaded'],
       ['Block entities', num(now ? now.blockEntities : c.blockEntities), 'ticking'],
       ['Chunks', num(now ? now.chunks : c.chunks), `${num(c.chunkTasks)} tasks waiting`],
@@ -193,6 +201,15 @@
     ];
     patchHtml($('np-stats'), tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}"${tip ? ` title="${esc(tip)}"` : ''}>
       <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join(''));
+  }
+
+  /** Size on disk, laid out like Memory: the world, the whole server folder and what's left on the drive. */
+  function diskTile(d) {
+    const freePct = d.total ? d.free / d.total * 100 : 100;
+    const freeClass = freePct < 5 ? 'poor' : freePct < 10 ? 'warn' : 'good';
+    const cols = [['world', d.world, ''], ['server', d.server, ''], ['free', d.free, freeClass]];
+    return ['Disk', null, null, `<div class="np-mspt">${cols.map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
+      `World folder ${bytes(d.world)} · whole server folder ${bytes(d.server)} · ${bytes(d.free)} free of ${bytes(d.total)} (${fixed(freePct, 0)}%) · measured every 2 minutes`];
   }
 
   function renderFindings(findings, k) {
@@ -2782,6 +2799,7 @@
       const data = await api('api/live?after=' + state.lastT);
       state.clockSkew = data.now - Date.now();
       state.current = data.current || null;
+      state.disk = data.disk || null;
       if (data.points.length) {
         state.points.push(...data.points);
         if (state.points.length > MAX_POINTS) state.points.splice(0, state.points.length - MAX_POINTS);

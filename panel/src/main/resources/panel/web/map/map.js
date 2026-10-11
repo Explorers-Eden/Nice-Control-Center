@@ -73,6 +73,11 @@
       // What stays: the green outline. What goes: red.
       if (t.shape === 'circle') L.circle(ll(t.x, t.z), { radius: t.radius, color: '#6fe89b', weight: 2, fill: false, interactive: false }).addTo(layers.trim);
       else L.rectangle([ll(t.minX, t.minZ), ll(t.maxX + 1, t.maxZ + 1)], { color: '#6fe89b', weight: 2, fill: false, interactive: false }).addTo(layers.trim);
+      if (t.hard) {
+        const hard = { color: '#ff9090', weight: 2, dashArray: '8 6', fill: false, interactive: false };
+        if (t.shape === 'circle') L.circle(ll(t.x, t.z), Object.assign({ radius: t.hard }, hard)).addTo(layers.trim);
+        else L.rectangle([ll(t.x - t.hard, t.z - t.hard), ll(t.x + t.hard + 1, t.z + t.hard + 1)], hard).addTo(layers.trim);
+      }
       for (const r of t.regions || []) {
         L.rectangle([ll(r[0] * 512, r[1] * 512), ll(r[0] * 512 + 512, r[1] * 512 + 512)], { color: '#ff9090', weight: 0, fillOpacity: 0.35, interactive: false }).addTo(layers.trim);
       }

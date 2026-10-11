@@ -28,7 +28,7 @@ public final class Views {
 	public record Kpi(double tps, double targetTps, double msptAvg, double msptMin, double msptMedian, double msptP95, double msptMax, double budget,
 			double cpuProcess, double cpuSystem, double cpuProcessMax, long heapUsed, long heapUsedMax, long heapMax, long heapLive, long heapLiveMax,
 			double gcPercent, long gcCount, long gcTimeMs, Breakdown.Counts counts, Breakdown.Counts countsMax, int seconds, long samples,
-			int cores) {
+			int cores, double gcBackgroundPercent) {
 	}
 
 	public record PhaseView(String phase, String label, String description, double ms, double percent, List<DimensionShare> dimensions) {
@@ -80,11 +80,12 @@ public final class Views {
 	public static Kpi kpi(Breakdown b) {
 		double targetTps = 1000.0 / Math.max(1e-3, b.targetMspt);
 		double gcPercent = b.wallMs == 0 ? 0 : b.gcTimeMs * 100.0 / b.wallMs;
+		double gcBackgroundPercent = b.wallMs == 0 ? 0 : b.gcBackgroundMs * 100.0 / b.wallMs;
 		return new Kpi(b.tps(targetTps), targetTps, b.msptAvg(), b.tickNsMin / 1e6, TickHistogram.percentile(b.msptHistogram, 0.5),
 				TickHistogram.percentile(b.msptHistogram, 0.95), b.tickNsMax / 1e6, b.targetMspt,
 				b.cpuProcessAvg(), b.cpuSystemAvg(), b.cpuProcessMax, b.heapUsedAvg(), b.heapUsedMax, b.heapMax, b.heapLive, b.heapLiveMax,
 				gcPercent, b.gcCount, b.gcTimeMs, b.latest, b.max, b.seconds, b.samples,
-				eu.explorerseden.nicecontrolcenter.core.SystemMetrics.cores());
+				eu.explorerseden.nicecontrolcenter.core.SystemMetrics.cores(), gcBackgroundPercent);
 	}
 
 	public static List<PhaseView> phases(Breakdown b) {

@@ -756,7 +756,7 @@
   // ── Scheduled tasks ────────────────────────────────────────────────────
 
   let scheduleData = null;
-  const STEP_LABELS = { restart: 'Restart', stop: 'Stop the server', start: 'Start the server', backup: 'Backup', command: 'Console command', say: 'Chat message', wait: 'Wait' };
+  const STEP_LABELS = { restart: 'Restart', stop: 'Stop the server', start: 'Start the server', backup: 'Backup', command: 'Console command', say: 'Chat message', wait: 'Wait', trim: 'Reset the outer wilds', pregen: 'Pregenerate' };
 
   async function loadSchedule() {
     try {
@@ -793,6 +793,8 @@
       case 'say': return `say "${s.text}"`;
       case 'wait': return `wait ${s.seconds} s`;
       case 'backup': return 'backup' + (s.text ? ` (${s.text})` : '');
+      case 'trim': return s.minutes ? `reset the outer wilds after ${s.minutes} min countdown` : 'reset the outer wilds';
+      case 'pregen': return s.text === 'all' ? 'pregenerate everything' : 'pregenerate the outer wilds';
       default: return STEP_LABELS[s.type].toLowerCase();
     }
   }
@@ -850,6 +852,9 @@
     if (s.type === 'command') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="e.g. save-all">`;
     if (s.type === 'say') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Message to everyone online">`;
     if (s.type === 'backup') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Note (optional)">`;
+    if (s.type === 'trim') fields = `<span>stops the server after a countdown of</span><input type="number" data-f="minutes" min="0" max="60" value="${s.minutes ?? 5}"><span>min, trims outside the soft borders, starts it again; message</span>
+      <input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="The outer wilds reset in {time}.">`;
+    if (s.type === 'pregen') fields = `<select data-f="text"><option value="wilds" ${s.text !== 'all' ? 'selected' : ''}>only the outer wilds</option><option value="all" ${s.text === 'all' ? 'selected' : ''}>everything up to the hard border</option></select><span>(dimensions with Pregen on, World tab)</span>`;
     if (s.type === 'wait') fields = `<input type="number" data-f="seconds" min="1" max="3600" value="${s.seconds ?? 30}"><span>seconds</span>`;
     return `<div class="pn-step"><select data-f="type">${opts}</select>${fields}<button type="button" class="np-btn small" data-step-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
   }
@@ -861,7 +866,7 @@
   function readSteps() {
     return [...$('pn-steps').children].map((row) => {
       const s = { type: row.querySelector('[data-f="type"]').value, text: '', minutes: 5, seconds: 30 };
-      row.querySelectorAll('input[data-f]').forEach((i) => { s[i.dataset.f] = i.type === 'number' ? Number(i.value) : i.value.trim(); });
+      row.querySelectorAll('input[data-f], select[data-f]:not([data-f="type"])').forEach((i) => { s[i.dataset.f] = i.type === 'number' ? Number(i.value) : i.value.trim(); });
       return s;
     });
   }
@@ -886,6 +891,11 @@
       openTask({ name: 'Daily restart', when: 'daily', times: ['04:00'], days: [], steps: [
         { type: 'backup', text: 'before restart' },
         { type: 'restart', minutes: 5, text: '' },
+      ] });
+    } else if (b.dataset.preset === 'wilds') {
+      openTask({ name: 'Weekly outer wilds reset', when: 'daily', times: ['05:00'], days: [1], steps: [
+        { type: 'trim', minutes: 5, text: '' },
+        { type: 'pregen', text: 'wilds' },
       ] });
     } else {
       openTask({ name: 'Backup every 6 hours', when: 'interval', everyMinutes: 360, steps: [{ type: 'backup', text: 'scheduled' }] });
@@ -1705,22 +1715,22 @@
     }
   });
 
-  // ── World: pregenerate and trim ────────────────────────────────────────
+  // ── World: borders, pregenerate and trim ───────────────────────────────
 
   let worldDims = [];
+  let worldBorders = {};
   let worldTicks = 0;
+  let bordersDirty = false;
 
   async function loadWorld() {
     try {
       const data = await api('api/trim');
       worldDims = data.dimensions;
-      const sel = $('pn-area').dimension;
-      const chosen = sel.value;
-      sel.innerHTML = worldDims.map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
-      if (chosen) sel.value = chosen;
+      worldBorders = data.borders || {};
+      renderBorders();
       renderTrim(data);
     } catch (err) {
-      formMsg('pn-area-msg', err.message, false);
+      formMsg('pn-borders-msg', err.message, false);
     }
     loadPregen();
   }
@@ -1731,67 +1741,109 @@
     api('api/trim').then((d) => renderTrim(d)).catch(() => {});
   }
 
-  function area() {
-    const f = $('pn-area');
-    return { dimension: f.dimension.value, shape: f.shape.value, x: f.x.value, z: f.z.value, radius: f.radius.value };
+  /** One row per dimension; a dimension without saved borders shows a suggestion from its world border. */
+  function renderBorders() {
+    bordersDirty = false;
+    $('pn-borders').querySelector('tbody').innerHTML = worldDims.map((d) => {
+      const b = worldBorders[d.id];
+      const vanilla = d.border && d.border.size < 59999968 ? d.border : null;
+      const v = b || { shape: 'square', x: Math.round(vanilla ? vanilla.x : 0), z: Math.round(vanilla ? vanilla.z : 0),
+        soft: vanilla ? Math.round(vanilla.size / 4) : 2000, hard: vanilla ? Math.round(vanilla.size / 2) : 0, pregen: true, worldBorder: true };
+      const sw = (f, on) => `<span class="np-switch"><input type="checkbox" data-f="${f}" ${on ? 'checked' : ''}><span></span></span>`;
+      return `<tr data-dim="${esc(d.id)}" class="${b ? '' : 'off'}">
+        <td class="name">${esc(d.name)}<small>${esc(d.id)}</small></td>
+        <td>${sw('on', !!b)}</td>
+        <td><select data-f="shape"><option value="square" ${v.shape === 'square' ? 'selected' : ''}>Square</option><option value="circle" ${v.shape === 'circle' ? 'selected' : ''}>Circle</option></select></td>
+        <td><input type="number" data-f="x" value="${v.x}"></td>
+        <td><input type="number" data-f="z" value="${v.z}"></td>
+        <td><input type="number" data-f="soft" min="16" value="${v.soft}"></td>
+        <td><input type="number" data-f="hard" min="0" value="${v.hard}"></td>
+        <td>${sw('pregen', v.pregen !== false)}</td>
+        <td>${sw('worldBorder', v.worldBorder !== false)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="9">No dimensions found yet: start the server once.</td></tr>';
+    const sel = $('pn-trim-dim');
+    const chosen = sel.value;
+    const bordered = worldDims.filter((d) => worldBorders[d.id]);
+    sel.innerHTML = bordered.map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('') || '<option value="">No borders saved</option>';
+    if (chosen && bordered.some((d) => d.id === chosen)) sel.value = chosen;
   }
 
-  function currentDim() {
-    return worldDims.find((d) => d.id === $('pn-area').dimension.value);
-  }
+  $('pn-borders').addEventListener('input', (e) => {
+    bordersDirty = true;
+    const row = e.target.closest('tr');
+    if (row && e.target.dataset.f === 'on') row.classList.toggle('off', !e.target.checked);
+  });
 
-  $('pn-area-border').addEventListener('click', () => {
-    const d = currentDim();
-    if (!d || !d.border || d.border.size >= 59999968) return formMsg('pn-area-msg', 'No world border is set in this dimension (or the server hasn\'t run with the mod yet).', false);
-    const f = $('pn-area');
-    f.x.value = Math.round(d.border.x);
-    f.z.value = Math.round(d.border.z);
-    f.radius.value = Math.round(d.border.size / 2);
-    f.shape.value = 'square';
-    formMsg('pn-area-msg', 'Filled in from the world border.', true);
+  $('pn-borders-save').addEventListener('click', async () => {
+    const rows = [...$('pn-borders').querySelectorAll('tr[data-dim]')];
+    try {
+      for (const row of rows) {
+        const f = (name) => row.querySelector(`[data-f="${name}"]`);
+        const on = f('on').checked;
+        if (!on && !worldBorders[row.dataset.dim]) continue;
+        const border = on ? { shape: f('shape').value, x: Number(f('x').value), z: Number(f('z').value), soft: Number(f('soft').value),
+          hard: Number(f('hard').value) || 0, pregen: f('pregen').checked, worldBorder: f('worldBorder').checked } : null;
+        const res = await api('api/borders/save', { dimension: row.dataset.dim, border });
+        worldBorders = res.borders;
+      }
+      renderBorders();
+      formMsg('pn-borders-msg', 'Saved. A running server picks the hard border up within a few seconds.', true);
+    } catch (err) {
+      formMsg('pn-borders-msg', err.message, false);
+    }
   });
-  $('pn-area-spawn').addEventListener('click', () => {
-    const d = currentDim();
-    const f = $('pn-area');
-    f.x.value = d && d.spawn ? d.spawn.x : 0;
-    f.z.value = d && d.spawn ? d.spawn.z : 0;
-  });
-  $('pn-area').addEventListener('input', () => { $('pn-trim-run').disabled = true; });
 
   const duration2 = (sec) => sec < 0 ? '–' : sec >= 3600 ? `${Math.floor(sec / 3600)} h ${Math.round(sec % 3600 / 60)} min` : sec >= 60 ? `${Math.round(sec / 60)} min` : `${sec} s`;
+  const dimName = (id) => (worldDims.find((d) => d.id === id) || { name: id }).name;
 
   async function loadPregen() {
     let st;
     try {
       st = await api('dashboard/api/pregen');
     } catch (err) {
-      $('pn-pregen-status').textContent = /not available|doesn't answer|runs/.test(err.message) ? 'Pregenerating needs the server to run (with the Nice Control Center mod 1.2.1 or newer).' : err.message;
+      $('pn-pregen-status').textContent = /not available|doesn't answer|runs/.test(err.message) ? 'Pregenerating needs the server to run (with the Nice Control Center mod 1.5.0 or newer).' : err.message;
       return;
     }
     const show = st.running ? st : st.last;
+    const queued = (st.queued || []).map(dimName);
     if (!show) {
       $('pn-pregen-status').textContent = 'Nothing pregenerated yet.';
     } else {
       const pct = show.total ? Math.round(show.done / show.total * 100) : 0;
-      $('pn-pregen-status').innerHTML = `<b>${st.running ? 'Pregenerating' : 'Last run (' + esc(show.result || 'stopped') + ')'}</b> · ${esc(show.dimension)} · ${show.shape} radius ${show.radius} around ${show.x}, ${show.z}<br>
-        ${show.done.toLocaleString()} of ${show.total.toLocaleString()} chunks (${pct}%) · ${show.perSecond}/s${st.running ? ' · about ' + duration2(show.etaSeconds) + ' left' : ''}${show.failed ? ` · ${show.failed} failed` : ''}
+      const ring = show.skipRadius ? ` outside ${show.skipRadius}` : '';
+      $('pn-pregen-status').innerHTML = `<b>${st.running ? 'Pregenerating' : 'Last run (' + esc(show.result || 'stopped') + ')'}</b> · ${esc(dimName(show.dimension))} · ${show.shape} radius ${show.radius}${ring} around ${show.x}, ${show.z}<br>
+        ${show.counting ? 'Counting chunks…' : `${show.done.toLocaleString()} of ${show.total.toLocaleString()} chunks (${pct}%) · ${show.perSecond}/s${st.running ? ' · about ' + duration2(show.etaSeconds) + ' left' : ''}${show.failed ? ` · ${show.failed} failed` : ''}`}
+        ${queued.length ? `<br>Then: ${queued.map(esc).join(', ')}` : ''}
         <div class="pn-bar"><span style="width:${pct}%"></span></div>`;
     }
     $('pn-pregen-start').disabled = st.running;
     $('pn-pregen-stop').disabled = !st.running;
   }
 
+  async function modPost(path, body) {
+    const res = await fetch('dashboard/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || res.statusText);
+    return data;
+  }
+
   $('pn-pregen-start').addEventListener('click', async () => {
-    const a = area();
-    const r = Number(a.radius);
-    const chunks = a.shape === 'circle' ? Math.round(Math.PI * (r / 16) ** 2) : Math.round((2 * r / 16) ** 2);
-    if (!confirm(`Pregenerate about ${chunks.toLocaleString()} chunks in ${a.dimension}? Large areas take hours; it only uses the server's spare time.`)) return;
+    if (bordersDirty) return formMsg('pn-pregen-msg', 'Save the borders first.', false);
+    const wilds = $('pn-pregen-wilds').checked;
+    const jobs = Object.entries(worldBorders).filter(([, b]) => b.pregen !== false && (!wilds || b.hard > b.soft));
+    if (!jobs.length) return formMsg('pn-pregen-msg', wilds ? 'No dimension has outer wilds to pregenerate (a hard border outside the soft one, with Pregen on).' : 'No dimension with borders has Pregen on.', false);
+    const chunks = jobs.reduce((sum, [, b]) => {
+      const area = (r) => b.shape === 'circle' ? Math.PI * (r / 16) ** 2 : (2 * r / 16) ** 2;
+      const reach = b.hard > 0 ? b.hard : b.soft;
+      return sum + area(reach) - (wilds ? area(b.soft) : 0);
+    }, 0);
+    if (!confirm(`Pregenerate about ${Math.round(chunks).toLocaleString()} chunks in ${jobs.map(([d]) => dimName(d)).join(', ')}? Large areas take hours; it only uses the server's spare time.`)) return;
     try {
-      const res = await fetch('dashboard/api/pregen/start', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' },
-        body: JSON.stringify({ dimension: a.dimension, x: Number(a.x), z: Number(a.z), radius: r, shape: a.shape }) });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || res.statusText);
-      formMsg('pn-pregen-msg', 'Started.', true);
+      for (const [dim, b] of jobs) {
+        await modPost('api/pregen/start', { dimension: dim, x: b.x, z: b.z, radius: b.hard > 0 ? b.hard : b.soft, skipRadius: wilds ? b.soft : 0, shape: b.shape, queue: true });
+      }
+      formMsg('pn-pregen-msg', jobs.length > 1 ? `Started; ${jobs.length} dimensions, one after another.` : 'Started.', true);
       loadPregen();
     } catch (err) {
       formMsg('pn-pregen-msg', err.message, false);
@@ -1799,7 +1851,7 @@
   });
   $('pn-pregen-stop').addEventListener('click', async () => {
     try {
-      await fetch('dashboard/api/pregen/stop', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' }, body: '{}' });
+      await modPost('api/pregen/stop', {});
       loadPregen();
     } catch (err) {
       formMsg('pn-pregen-msg', err.message, false);
@@ -1809,26 +1861,26 @@
   function renderTrim(st) {
     $('pn-trim-log').hidden = !st.log.length;
     $('pn-trim-log').innerHTML = st.log.map((l) => `<li>${esc(l)}</li>`).join('');
-    if (st.running) {
-      $('pn-trim-run').disabled = true;
-      formMsg('pn-trim-msg', st.phase || 'Trimming…', true);
-    }
+    $('pn-trim-run').disabled = st.running;
+    if (st.running) formMsg('pn-trim-msg', st.phase || 'Trimming…', true);
   }
 
   $('pn-trim-preview').addEventListener('click', async () => {
-    const a = Object.assign(area(), { keepVisitedMinutes: $('pn-trim-keep').value });
+    const dim = $('pn-trim-dim').value;
+    const b = worldBorders[dim];
+    if (!b) return formMsg('pn-trim-msg', 'Save borders for a dimension first.', false);
     formMsg('pn-trim-msg', 'Looking at the region files…', true);
     try {
-      const p = await api('api/trim/preview', a);
+      const p = await api('api/trim/preview', { dimension: dim, keepVisitedMinutes: $('pn-trim-keep').value });
       const nothing = !p.regions && !p.partialRegions;
-      formMsg('pn-trim-msg', nothing ? 'Nothing lies outside that area.'
-        : `Would remove ${p.chunks.toLocaleString()} chunks: ${p.regions} whole region file${p.regions === 1 ? '' : 's'} and parts of ${p.partialRegions} more, about ${bytes(p.bytes)}. Red on the map below goes, the green line is the edge.`, !nothing);
-      $('pn-trim-run').disabled = nothing;
-      const d = currentDim();
-      const zoom = Math.max(-5, Math.min(0, Math.floor(Math.log2(900 / (Number(a.radius) * 2.6)))));
+      formMsg('pn-trim-msg', nothing ? 'Nothing lies outside the soft border there.'
+        : `Would remove ${p.chunks.toLocaleString()} chunks in ${esc(dimName(dim))}: ${p.regions} whole region file${p.regions === 1 ? '' : 's'} and parts of ${p.partialRegions} more, about ${bytes(p.bytes)}. Red on the map below goes, the green line is the soft border, the dashed one the hard border.`, !nothing);
+      const d = worldDims.find((x) => x.id === dim);
+      const reach = Math.max(b.soft, b.hard || 0);
+      const zoom = Math.max(-5, Math.min(0, Math.floor(Math.log2(900 / (reach * 2.6)))));
       const frame = $('pn-trim-map');
       frame.hidden = false;
-      frame.src = `map/#${d ? d.key : ''}/${a.x}/${a.z}/${zoom}`;
+      frame.src = `map/#${d ? d.key : ''}/${b.x}/${b.z}/${zoom}`;
       frame.contentWindow?.location.reload?.();
     } catch (err) {
       formMsg('pn-trim-msg', err.message, false);
@@ -1836,10 +1888,11 @@
   });
 
   $('pn-trim-run').addEventListener('click', async () => {
-    const a = Object.assign(area(), { keepVisitedMinutes: $('pn-trim-keep').value });
-    if (!confirm('Trim the world now? Everything shown in red is deleted (a backup is made first). The server must be stopped.')) return;
+    const dims = Object.keys(worldBorders).map(dimName);
+    if (!dims.length) return formMsg('pn-trim-msg', 'Save borders for a dimension first.', false);
+    if (!confirm(`Reset the outer wilds now? Everything outside the soft border in ${dims.join(', ')} is deleted (a backup is made first). The server must be stopped.`)) return;
     try {
-      await api('api/trim/run', a);
+      await api('api/trim/run', { keepVisitedMinutes: $('pn-trim-keep').value });
       $('pn-trim-run').disabled = true;
       formMsg('pn-trim-msg', 'Trimming…', true);
     } catch (err) {

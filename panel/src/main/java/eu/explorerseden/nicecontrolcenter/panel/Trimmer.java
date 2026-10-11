@@ -2,6 +2,7 @@ package eu.explorerseden.nicecontrolcenter.panel;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import eu.explorerseden.nicecontrolcenter.Borders;
 import eu.explorerseden.nicecontrolcenter.panel.world.RegionFile;
 
 import java.io.IOException;
@@ -21,6 +22,9 @@ import java.util.stream.Stream;
  * completely outside, single chunks in the regions the edge runs through (the files are packed again so
  * the space is really freed), the same for entities/ and poi/. Optionally keeps chunks players spent
  * time in. Only while the server is stopped, always after a backup.
+ *
+ * Also keeps the borders (config/nicecontrolcenter-borders.json in the server folder, see Borders): the
+ * "outer wilds" reset trims everything outside each dimension's soft border in one go.
  */
 public final class Trimmer {
 	public record Area(String dimension, int x, int z, int radius, boolean circle, int keepVisitedMinutes) {
@@ -37,6 +41,7 @@ public final class Trimmer {
 	}
 
 	private static final int MAX_PREVIEW_CHUNKS = 40_000;
+	static final String NOTHING = "Nothing lies outside that area.";
 
 	private final MapService map;
 	private final Backups backups;
@@ -46,12 +51,43 @@ public final class Trimmer {
 	private volatile String phase = "";
 	private final List<String> log = new CopyOnWriteArrayList<>();
 	private volatile String result;
+	private final Path bordersFile;
 
-	public Trimmer(MapService map, Backups backups, Supervisor server, Audit audit) {
+	public Trimmer(MapService map, Backups backups, Supervisor server, Audit audit, Path serverDir) {
 		this.map = map;
 		this.backups = backups;
 		this.server = server;
 		this.audit = audit;
+		this.bordersFile = serverDir.resolve("config").resolve(Borders.FILE);
+	}
+
+	// ── Borders ────────────────────────────────────────────────────────────
+
+	public Map<String, Borders.Border> borders() {
+		return Borders.read(bordersFile);
+	}
+
+	/** Sets (or with null removes) a dimension's borders. Returns an error, or null. */
+	public synchronized String saveBorder(String dimension, Borders.Border b, String by) throws IOException {
+		if (map.dimensions().stream().noneMatch(d -> d.id().equals(dimension))) return "Unknown dimension " + dimension + ".";
+		if (b != null) {
+			String problem = Borders.validate(b);
+			if (problem != null) return problem;
+		}
+		Map<String, Borders.Border> all = borders();
+		if (b == null) all.remove(dimension);
+		else all.put(dimension, b);
+		Borders.write(bordersFile, all);
+		audit.log(by, "world.borders", b == null ? dimension + ": removed"
+				: dimension + ": " + b.shape + " around " + b.x + ", " + b.z + ", soft " + b.soft + ", hard " + (b.hard == 0 ? "none" : b.hard), null);
+		return null;
+	}
+
+	/** One area per dimension with borders: everything outside the soft border goes. */
+	public List<Area> wildsAreas() {
+		List<Area> out = new ArrayList<>();
+		borders().forEach((dim, b) -> out.add(new Area(dim, b.x, b.z, b.soft, b.circle(), 0)));
+		return out;
 	}
 
 	public Plan plan(Area a) throws IOException {
@@ -128,6 +164,10 @@ public final class Trimmer {
 		o.addProperty("x", p.area().x());
 		o.addProperty("z", p.area().z());
 		o.addProperty("radius", p.area().radius());
+		Borders.Border border = borders().get(p.dimId());
+		if (border != null && border.hard > 0 && border.x == p.area().x() && border.z == p.area().z() && border.circle() == p.area().circle()) {
+			o.addProperty("hard", border.hard);
+		}
 		o.addProperty("minX", p.area().x() - p.area().radius());
 		o.addProperty("maxX", p.area().x() + p.area().radius());
 		o.addProperty("minZ", p.area().z() - p.area().radius());
@@ -187,18 +227,25 @@ public final class Trimmer {
 		return out;
 	}
 
-	/** Starts the trim in the background. Returns an error, or null. */
-	public synchronized String start(Area area, String by) {
+	public String start(Area area, String by) {
+		return start(List.of(area), by);
+	}
+
+	/** Starts the trim in the background (one backup, then every area). Returns an error, or null. */
+	public synchronized String start(List<Area> areas, String by) {
 		if (running) return "A trim is already running.";
 		if (server.state() != Supervisor.State.STOPPED && server.state() != Supervisor.State.CRASHED) return "Stop the server first: the world can only be trimmed while it's off.";
 		if (backups.busy()) return "A backup is running; try again in a moment.";
-		Plan plan;
+		List<Plan> plans = new ArrayList<>();
 		try {
-			plan = plan(area);
+			for (Area area : areas) {
+				Plan plan = plan(area);
+				if (!plan.regions().isEmpty() || !plan.chunks().isEmpty()) plans.add(plan);
+			}
 		} catch (IOException e) {
 			return e.getMessage();
 		}
-		if (plan.regions().isEmpty() && plan.chunks().isEmpty()) return "Nothing lies outside that area.";
+		if (plans.isEmpty()) return NOTHING;
 		running = true;
 		log.clear();
 		result = null;
@@ -207,7 +254,7 @@ public final class Trimmer {
 		server.lock("The world is being trimmed; the server can start again when that's done.");
 		Thread t = new Thread(() -> {
 			try {
-				result = run(plan, by);
+				result = run(plans, by);
 			} catch (IOException | RuntimeException e) {
 				result = "Failed: " + e.getMessage() + ". The backup from just before is in Backups.";
 				step(result);
@@ -222,10 +269,19 @@ public final class Trimmer {
 		return null;
 	}
 
-	private String run(Plan plan, String by) throws IOException {
-		Area a = plan.area();
-		String what = (a.circle() ? "circle" : "square") + " radius " + a.radius() + " around " + a.x() + ", " + a.z() + " in " + plan.dimId();
-		audit.log(by, "world.trim", what + ": " + plan.regions().size() + " regions, " + plan.chunkCount() + " chunks", null);
+	/** Waits until the running trim is done and returns its result (null if none ran). */
+	public String awaitResult(long timeoutMillis) throws InterruptedException {
+		long until = System.currentTimeMillis() + timeoutMillis;
+		while (running && System.currentTimeMillis() < until) Thread.sleep(500);
+		return running ? "The trim is still running." : result;
+	}
+
+	private String run(List<Plan> plans, String by) throws IOException {
+		for (Plan plan : plans) {
+			Area a = plan.area();
+			String what = (a.circle() ? "circle" : "square") + " radius " + a.radius() + " around " + a.x() + ", " + a.z() + " in " + plan.dimId();
+			audit.log(by, "world.trim", what + ": " + plan.regions().size() + " regions, " + plan.chunkCount() + " chunks", null);
+		}
 		phase = "Backing up";
 		step("Making a backup first");
 		String error = backups.create("before trim", by, true);
@@ -235,6 +291,26 @@ public final class Trimmer {
 		step("Backup " + backup);
 		try {
 			phase = "Trimming";
+			long chunks = 0;
+			long freed = 0;
+			for (Plan plan : plans) {
+				if (plans.size() > 1) step("Trimming " + plan.dimId());
+				freed += trim(plan);
+				chunks += plan.chunkCount();
+			}
+			clearPreview();
+			String outcome = "Done: " + chunks + " chunks removed, " + Backups.human(freed) + " freed. Areas outside generate fresh when visited.";
+			step(outcome);
+			audit.log(by, "world.trim.result", outcome, null);
+			return outcome;
+		} finally {
+			backups.unprotect(backup);
+		}
+	}
+
+	/** Deletes what the plan says; returns the bytes freed. */
+	private long trim(Plan plan) throws IOException {
+		{
 			Path dimDir = plan.regionDir().getParent();
 			List<Path> folders = List.of(plan.regionDir(), dimDir.resolve("entities"), dimDir.resolve("poi"));
 			long freed = 0;
@@ -260,13 +336,7 @@ public final class Trimmer {
 			step("Removed chunks from " + plan.chunks().size() + " region file" + (plan.chunks().size() == 1 ? "" : "s"));
 			map.clearTiles(MapService.key(plan.dimId()));
 			map.rerender();
-			clearPreview();
-			String outcome = "Done: " + plan.chunkCount() + " chunks removed, " + Backups.human(freed) + " freed. Areas outside generate fresh when visited.";
-			step(outcome);
-			audit.log(by, "world.trim.result", outcome, null);
-			return outcome;
-		} finally {
-			backups.unprotect(backup);
+			return freed;
 		}
 	}
 

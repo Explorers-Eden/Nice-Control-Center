@@ -107,7 +107,8 @@ public final class Panel {
 			}, 1, 60, TimeUnit.MINUTES);
 		}
 
-		Trimmer trimmer = new Trimmer(map, backups, server, audit);
+		Trimmer trimmer = new Trimmer(map, backups, server, audit, serverDir);
+		scheduler.useWorld(trimmer, dashboard);
 
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;

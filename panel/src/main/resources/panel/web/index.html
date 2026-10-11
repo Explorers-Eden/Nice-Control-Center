@@ -181,6 +181,7 @@
 						<button type="button" class="np-btn primary" id="pn-task-new"><i class="bi bi-plus-lg"></i> New task</button>
 						<button type="button" class="np-btn" data-preset="restart"><i class="bi bi-arrow-repeat"></i> Daily restart at 04:00</button>
 						<button type="button" class="np-btn" data-preset="backup"><i class="bi bi-archive"></i> Backup every 6 hours</button>
+						<button type="button" class="np-btn" data-preset="wilds"><i class="bi bi-tree"></i> Weekly outer wilds reset</button>
 					</div>
 					<form class="pn-inline-form" id="pn-task-form" autocomplete="off" hidden>
 						<h4 id="pn-task-title">New task</h4>
@@ -341,40 +342,40 @@
 
 			<div class="np-tab-panel" data-tab="world" hidden>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Area</h3>
-					<p class="np-card-intro">The area to pregenerate, or to keep when trimming. Distances are in blocks.</p>
-					<form id="pn-area" autocomplete="off">
-						<div class="np-form-grid">
-							<label class="np-form-row">Dimension<select name="dimension"></select></label>
-							<label class="np-form-row">Shape<select name="shape"><option value="square">Square</option><option value="circle">Circle</option></select></label>
-							<label class="np-form-row">Center x<input type="number" name="x" value="0"></label>
-							<label class="np-form-row">Center z<input type="number" name="z" value="0"></label>
-							<label class="np-form-row">Radius<input type="number" name="radius" value="2000" min="16"></label>
-						</div>
-						<div class="np-form-actions">
-							<button type="button" class="np-btn small" id="pn-area-border"><i class="bi bi-bounding-box-circles"></i> Use the world border</button>
-							<button type="button" class="np-btn small" id="pn-area-spawn"><i class="bi bi-house"></i> Center on spawn</button>
-							<span class="np-form-msg" id="pn-area-msg"></span>
-						</div>
-					</form>
+					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Borders</h3>
+					<p class="np-card-intro">Per dimension, distances in blocks from the center. Inside the <b>soft border</b> is the permanent area: it's never trimmed. Between the soft and the <b>hard border</b> lie the outer wilds, which a scheduled task can reset (trim) every week. Nobody gets past the hard border: players are put back inside, and a square one also sets the world border so they see the wall. Hard border 0 = none.</p>
+					<div class="np-table-wrap">
+						<table class="np-table pn-borders" id="pn-borders">
+							<thead><tr><th>Dimension</th><th>On</th><th>Shape</th><th>Center x</th><th>Center z</th><th>Soft border</th><th>Hard border</th><th title="Pregenerate this dimension">Pregen</th><th title="A square hard border also sets the vanilla world border">World border</th></tr></thead>
+							<tbody></tbody>
+						</table>
+					</div>
+					<div class="np-form-actions">
+						<button type="button" class="np-btn primary" id="pn-borders-save"><i class="bi bi-check2"></i> Save borders</button>
+						<span class="np-form-msg" id="pn-borders-msg"></span>
+					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-grid-3x3-gap"></i> Pregenerate</h3>
-					<p class="np-card-intro">Generates every chunk in the area now, so players don't wait for terrain later and the map is complete. Runs while the server is up, only as fast as the server has room for (it slows down when ticks get long), and keeps going with nobody online.</p>
+					<p class="np-card-intro">Generates every chunk up to the hard border (or the soft border without one) in each dimension with Pregen ticked, one dimension after another, so players don't wait for terrain and the map is complete. It runs on its own thread in the mod, only as fast as the server has room for, and keeps going with nobody online.</p>
 					<div class="pn-backup-status" id="pn-pregen-status"></div>
+					<label class="np-form-row">Only the outer wilds (skip the permanent area)<span class="np-switch"><input type="checkbox" id="pn-pregen-wilds"><span></span></span></label>
 					<div class="np-form-actions">
-						<button type="button" class="np-btn primary" id="pn-pregen-start"><i class="bi bi-play-fill"></i> Pregenerate the area</button>
+						<button type="button" class="np-btn primary" id="pn-pregen-start"><i class="bi bi-play-fill"></i> Pregenerate</button>
 						<button type="button" class="np-btn" id="pn-pregen-stop"><i class="bi bi-stop-fill"></i> Stop</button>
 						<span class="np-form-msg" id="pn-pregen-msg"></span>
 					</div>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-scissors"></i> Trim outside the area</h3>
-					<p class="np-card-intro">Deletes all generated chunks outside the area (whole region files, single chunks along the edge, also entities and points of interest). They generate fresh when someone goes there. Only while the server is stopped; a backup is made first.</p>
-					<label class="np-form-row">Keep chunks players spent at least this many minutes in (0 = off)<input type="number" id="pn-trim-keep" value="0" min="0"></label>
+					<h3 class="np-card-title"><i class="bi bi-scissors"></i> Reset the outer wilds</h3>
+					<p class="np-card-intro">Deletes all generated chunks outside the soft border in every dimension with borders (whole region files, single chunks along the edge, also entities and points of interest). They generate fresh when someone goes there. Only while the server is stopped; a backup is made first. To do this every week, add a task in Schedule with the <b>Reset the outer wilds</b> step (it stops and starts the server itself), or use the preset there.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">Preview dimension<select id="pn-trim-dim"></select></label>
+						<label class="np-form-row">Keep chunks players spent at least this many minutes in (0 = off)<input type="number" id="pn-trim-keep" value="0" min="0"></label>
+					</div>
 					<div class="np-form-actions">
 						<button type="button" class="np-btn" id="pn-trim-preview"><i class="bi bi-eye"></i> Preview</button>
-						<button type="button" class="np-btn danger" id="pn-trim-run" disabled><i class="bi bi-scissors"></i> Trim</button>
+						<button type="button" class="np-btn danger" id="pn-trim-run"><i class="bi bi-scissors"></i> Reset now</button>
 						<span class="np-form-msg" id="pn-trim-msg"></span>
 					</div>
 					<iframe class="pn-trim-map" id="pn-trim-map" title="Trim preview" hidden></iframe>

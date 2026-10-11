@@ -132,6 +132,24 @@ final class DashboardProxy {
 		}
 	}
 
+	/**
+	 * A POST to the mod from the panel itself (schedules). Returns the mod's error, or null when it
+	 * answered with ok.
+	 */
+	String post(String path, JsonObject body) throws InterruptedException {
+		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+				.timeout(Duration.ofSeconds(15)).header("X-NCC-Secret", secret).header("Content-Type", "application/json")
+				.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+		try {
+			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			JsonObject answer = com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject();
+			if (answer.has("error") && !answer.get("error").isJsonNull()) return answer.get("error").getAsString();
+			return response.statusCode() == 200 ? null : "The mod answered " + response.statusCode() + ".";
+		} catch (IOException | RuntimeException e) {
+			return "The mod doesn't answer (is the server running with the Nice Control Center mod?).";
+		}
+	}
+
 	/** Returns true when the mod answered with a success status. */
 	private boolean forward(Context ctx, Auth.Session me, String path) throws IOException, InterruptedException {
 		String needed = ctx.method().name().equals("GET") ? GET_PERMISSIONS.get(path) : null;

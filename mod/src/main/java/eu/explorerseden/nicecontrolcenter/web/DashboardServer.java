@@ -493,18 +493,17 @@ public final class DashboardServer {
 					return;
 				}
 				JsonObject body = jsonBody(exchange);
-				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Pregen.start(minecraft, body.get("dimension").getAsString(),
-						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), "circle".equals(body.get("shape").getAsString())));
+				int skip = body.has("skipRadius") ? body.get("skipRadius").getAsInt() : 0;
+				boolean enqueue = body.has("queue") && body.get("queue").getAsBoolean();
+				String error = eu.explorerseden.nicecontrolcenter.core.Pregen.start(minecraft, body.get("dimension").getAsString(),
+						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), skip, "circle".equals(body.get("shape").getAsString()), enqueue);
 				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
 			}
 			case "/api/pregen/stop" -> {
 				if (!requirePost(exchange)) {
 					return;
 				}
-				onServerThread(() -> {
-					eu.explorerseden.nicecontrolcenter.core.Pregen.stop(minecraft, "stopped");
-					return null;
-				});
+				eu.explorerseden.nicecontrolcenter.core.Pregen.stop(minecraft, "stopped");
 				sendJson(exchange, Map.of("ok", true));
 			}
 			// For the panel's web map (it renders the tiles itself).
@@ -564,6 +563,7 @@ public final class DashboardServer {
 		result.put("points", History.pointsAfter(after));
 		// The stat tiles show the server right now; one second has too few ticks for a median and 95%ile.
 		result.put("current", History.recent(10));
+		result.put("disk", eu.explorerseden.nicecontrolcenter.core.DiskUsage.latest());
 		Map<String, Object> server = new LinkedHashMap<>();
 		server.put("name", minecraft.getMotd());
 		server.put("version", minecraft.getServerVersion());

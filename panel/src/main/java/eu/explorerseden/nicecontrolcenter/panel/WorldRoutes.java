@@ -1,17 +1,24 @@
 package eu.explorerseden.nicecontrolcenter.panel;
 
 import com.google.gson.JsonObject;
+import eu.explorerseden.nicecontrolcenter.Borders;
+import eu.explorerseden.nicecontrolcenter.Json;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.router.JavalinDefaultRoutingApi;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
 
-/** World trimmer (pregeneration runs in the mod and goes through the dashboard proxy). */
+/**
+ * Borders and the world trimmer (pregeneration runs in the mod and goes through the dashboard proxy).
+ * Trims always follow the saved borders: everything outside a dimension's soft border goes.
+ */
 final class WorldRoutes {
 	private final Trimmer trimmer;
 
@@ -19,28 +26,53 @@ final class WorldRoutes {
 		this.trimmer = trimmer;
 	}
 
-	private static Trimmer.Area area(Context ctx) {
-		JsonObject b = body(ctx);
-		int keep = 0;
+	private static int keepMinutes(JsonObject b) {
 		try {
-			keep = Integer.parseInt(str(b, "keepVisitedMinutes").isBlank() ? "0" : str(b, "keepVisitedMinutes"));
+			return Math.max(0, Integer.parseInt(str(b, "keepVisitedMinutes").isBlank() ? "0" : str(b, "keepVisitedMinutes")));
 		} catch (NumberFormatException e) {
-			// 0
+			return 0;
 		}
-		return new Trimmer.Area(str(b, "dimension"), (int) Double.parseDouble(str(b, "x")), (int) Double.parseDouble(str(b, "z")),
-				(int) Double.parseDouble(str(b, "radius")), "circle".equals(str(b, "shape")), Math.max(0, keep));
+	}
+
+	/** The outer wilds of every dimension with borders, or of the one asked for. */
+	private List<Trimmer.Area> areas(JsonObject b) {
+		int keep = keepMinutes(b);
+		String only = str(b, "dimension");
+		List<Trimmer.Area> out = new ArrayList<>();
+		for (Trimmer.Area a : trimmer.wildsAreas()) {
+			if (!only.isBlank() && !only.equals(a.dimension())) continue;
+			out.add(new Trimmer.Area(a.dimension(), a.x(), a.z(), a.radius(), a.circle(), keep));
+		}
+		return out;
 	}
 
 	void register(JavalinDefaultRoutingApi routes) {
 		routes.get("/api/trim", guard(Permissions.WORLD_TRIM, (ctx, me) -> {
 			Map<String, Object> out = new LinkedHashMap<>(trimmer.status());
 			out.put("dimensions", trimmer.dimensions());
+			out.put("borders", trimmer.borders());
 			json(ctx, out);
 		}));
 
+		routes.post("/api/borders/save", guard(Permissions.WORLD_TRIM, (ctx, me) -> {
+			JsonObject b = body(ctx);
+			Borders.Border border = b.has("border") && b.get("border").isJsonObject() ? Json.GSON.fromJson(b.get("border"), Borders.Border.class) : null;
+			String error = trimmer.saveBorder(str(b, "dimension"), border, me.name());
+			if (error != null) {
+				error(ctx, HttpStatus.BAD_REQUEST, error);
+				return;
+			}
+			json(ctx, Map.of("ok", true, "borders", trimmer.borders()));
+		}));
+
 		routes.post("/api/trim/preview", guard(Permissions.WORLD_TRIM, (ctx, me) -> {
+			List<Trimmer.Area> areas = areas(body(ctx));
+			if (areas.isEmpty()) {
+				error(ctx, HttpStatus.BAD_REQUEST, "Save borders for this dimension first.");
+				return;
+			}
 			try {
-				Trimmer.Plan p = trimmer.plan(area(ctx));
+				Trimmer.Plan p = trimmer.plan(areas.get(0));
 				trimmer.preview(p);
 				Map<String, Object> out = new LinkedHashMap<>();
 				out.put("regions", p.regions().size());
@@ -49,8 +81,8 @@ final class WorldRoutes {
 				out.put("bytes", p.bytes());
 				out.put("regionsKept", p.regionsKept());
 				json(ctx, out);
-			} catch (IOException | NumberFormatException e) {
-				error(ctx, HttpStatus.BAD_REQUEST, e instanceof NumberFormatException ? "Center and radius must be numbers." : e.getMessage());
+			} catch (IOException e) {
+				error(ctx, HttpStatus.BAD_REQUEST, e.getMessage());
 			}
 		}));
 
@@ -60,11 +92,8 @@ final class WorldRoutes {
 		}));
 
 		routes.post("/api/trim/run", guard(Permissions.WORLD_TRIM, (ctx, me) -> {
-			try {
-				result(ctx, trimmer.start(area(ctx), me.name()));
-			} catch (NumberFormatException e) {
-				error(ctx, HttpStatus.BAD_REQUEST, "Center and radius must be numbers.");
-			}
+			List<Trimmer.Area> areas = areas(body(ctx));
+			result(ctx, areas.isEmpty() ? "No borders are set, so there are no outer wilds to trim." : trimmer.start(areas, me.name()));
 		}));
 	}
 }
