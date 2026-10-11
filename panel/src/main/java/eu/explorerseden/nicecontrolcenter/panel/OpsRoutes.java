@@ -1,5 +1,7 @@
 package eu.explorerseden.nicecontrolcenter.panel;
 
+import com.google.gson.JsonObject;
+
 import eu.explorerseden.nicecontrolcenter.Json;
 import io.javalin.http.HttpStatus;
 import io.javalin.router.JavalinDefaultRoutingApi;
@@ -82,9 +84,11 @@ final class OpsRoutes {
 				error(ctx, HttpStatus.CONFLICT, blocked);
 				return;
 			}
-			List<String> only = strings(body(ctx), "only");
-			audit.log(me.name(), "backup.restore", name + (only == null || only.isEmpty() ? "" : ": " + String.join(", ", only)), clientIp(ctx));
-			Thread t = new Thread(() -> backups.restore(name, only, me.name()), "restore");
+			JsonObject body = body(ctx);
+			List<String> only = strings(body, "only");
+			boolean safety = Boolean.TRUE.equals(bool(body, "backupFirst"));
+			audit.log(me.name(), "backup.restore", name + (only == null || only.isEmpty() ? "" : ": " + String.join(", ", only)) + (safety ? " (backup first)" : ""), clientIp(ctx));
+			Thread t = new Thread(() -> backups.restore(name, only, me.name(), safety), "restore");
 			t.setDaemon(true);
 			t.start();
 			json(ctx, Map.of("ok", true));

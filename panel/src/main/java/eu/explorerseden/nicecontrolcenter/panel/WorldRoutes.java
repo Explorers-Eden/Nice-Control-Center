@@ -77,7 +77,6 @@ final class WorldRoutes {
 			Trimmer.Area area = areas.get(0);
 			Jobs.Job job = jobs.submit("trim-preview", "Trim preview of " + area.dimension(), me.name(), () -> {
 				Trimmer.Plan p = trimmer.plan(area);
-				trimmer.preview(p);
 				Map<String, Object> out = new LinkedHashMap<>();
 				out.put("regions", p.regions().size());
 				out.put("partialRegions", p.chunks().size());
@@ -95,8 +94,10 @@ final class WorldRoutes {
 		}));
 
 		routes.post("/api/trim/run", guard(Permissions.WORLD_TRIM, (ctx, me) -> {
-			List<Trimmer.Area> areas = areas(body(ctx));
-			result(ctx, areas.isEmpty() ? "No borders are set, so there are no outer wilds to trim." : trimmer.start(areas, me.name()));
+			JsonObject b = body(ctx);
+			boolean backupFirst = Boolean.TRUE.equals(bool(b, "backupFirst"));
+			List<Trimmer.Area> chosen = areas(b);
+			result(ctx, chosen.isEmpty() ? "No borders are set, so there are no outer wilds to trim." : trimmer.start(chosen, me.name(), backupFirst));
 		}));
 	}
 }

@@ -69,7 +69,9 @@
   }
 
   function resetText(at) {
-    const days = Math.round((at - Date.now()) / 86400000);
+    // Calendar days, not hours: 05:00 tomorrow is "tomorrow" even if it's only a few hours away.
+    const midnight = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const days = Math.round((midnight(at) - midnight(Date.now())) / 86400000);
     const when = new Date(at).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return days <= 0 ? `today (${when})` : days === 1 ? `tomorrow (${when})` : `in ${days} days (${when})`;
   }
@@ -152,11 +154,14 @@
     document.title = info.title;
     $('mp-title').textContent = info.title;
     if (info.logo) {
+      // The logo takes the title's place (the title stays as its alt text); back to text if it can't load.
       const logo = document.createElement('img');
       logo.className = 'mp-logo';
-      logo.src = info.logo;
       logo.alt = info.title;
-      $('mp-title').before(logo);
+      logo.onerror = () => { $('mp-title').textContent = info.title; $('mp-title').classList.remove('mp-has-logo'); };
+      logo.src = info.logo;
+      $('mp-title').replaceChildren(logo);
+      $('mp-title').classList.add('mp-has-logo');
     }
     if (info.nextReset && info.dimensions.some((d) => d.borders && d.borders.hard > 0)) {
       $('mp-reset').hidden = false;

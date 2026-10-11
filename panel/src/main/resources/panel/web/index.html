@@ -117,8 +117,14 @@
 
 			<section class="np-card np-tab-panel" data-tab="server" hidden>
 				<h3 class="np-card-title"><i class="bi bi-terminal"></i> Console</h3>
-				<div class="np-filters">
+				<div class="np-filters" id="pn-console-filters">
+					<button type="button" class="np-filter active" data-confilter="all">All</button>
+					<button type="button" class="np-filter" data-confilter="errors">Errors</button>
+					<button type="button" class="np-filter" data-confilter="warnings">Warnings</button>
+					<button type="button" class="np-filter" data-confilter="ncc">Nice Control Center</button>
+					<button type="button" class="np-filter" data-confilter="panel">Panel</button>
 					<input type="search" class="np-console-search" id="pn-console-search" placeholder="Search the log" aria-label="Search the log">
+					<label class="np-check" title="Detailed loader and mod messages, hidden by default"><input type="checkbox" id="pn-console-debug"> Show debug</label>
 					<label class="np-check"><input type="checkbox" id="pn-console-follow" checked> Follow</label>
 				</div>
 				<div class="np-console-log pn-log" id="pn-log" role="log" aria-live="polite"></div>
@@ -170,8 +176,9 @@
 					</table></div>
 					<div class="pn-inline-form" id="pn-restore" hidden>
 						<h4 id="pn-restore-title">Restore</h4>
-						<p class="np-card-intro">The server must be stopped. Each chosen folder is replaced as a whole, so files added since this backup disappear from it. A safety backup of the current state is made first.</p>
+						<p class="np-card-intro">The server must be stopped. Each chosen folder is replaced as a whole, so files added since this backup disappear from it.</p>
 						<div class="pn-perm-grid" id="pn-restore-items"></div>
+						<label class="np-check pn-backup-first"><input type="checkbox" id="pn-restore-safety"> Back up the current state first</label>
 						<div class="np-form-actions">
 							<button type="button" class="np-btn danger" id="pn-restore-go"><i class="bi bi-arrow-counterclockwise"></i> Restore the chosen items</button>
 							<button type="button" class="np-btn" id="pn-restore-cancel">Cancel</button>
@@ -306,7 +313,7 @@
 				</section>
 				<section class="np-card" data-perm="versions.manage">
 					<h3 class="np-card-title"><i class="bi bi-arrow-up-circle"></i> Change version</h3>
-					<p class="np-card-intro">Every update makes a backup first, swaps the server and mod files, and starts the server. If it doesn't come up, the backup is restored automatically. Going back to an older Minecraft version isn't supported by Minecraft itself; use Undo below instead.</p>
+					<p class="np-card-intro">An update swaps the server and mod files and starts the server. If it doesn't come up, the old files are put back (or, with a backup, the backup is restored). Going back to an older Minecraft version isn't supported by Minecraft itself; with a backup, Undo below brings everything back, the world included.</p>
 					<div class="pn-form-cols">
 						<label class="pn-field">Minecraft<select id="pn-mc"></select></label>
 						<label class="pn-field">Fabric Loader<select id="pn-loader"></select></label>
@@ -322,6 +329,7 @@
 							<tbody id="pn-mod-rows"></tbody>
 						</table></div>
 						<p class="np-card-intro pn-hint">Mods turned off get a <code>.disabled</code> ending (Fabric skips them); rename them back in Files to turn them on again. "Not on Modrinth" means the panel can't check that mod; it stays as it is.</p>
+						<label class="np-check pn-backup-first"><input type="checkbox" id="pn-update-backup"> Back up first (lets you undo the update later, also the world)</label>
 						<div class="np-form-actions">
 							<button type="button" class="np-btn primary" id="pn-update-go"><i class="bi bi-arrow-up-circle"></i> <span id="pn-update-label">Update</span></button>
 						</div>
@@ -355,7 +363,7 @@
 				</section>
 				<section class="np-card">
 					<details>
-						<summary>Show the numbers as a table</summary>
+						<summary>Day by day</summary>
 						<div class="np-table-wrap"><table class="np-table" id="pn-stats-table"></table></div>
 					</details>
 				</section>
@@ -421,17 +429,17 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-scissors"></i> Reset the outer wilds</h3>
-					<p class="np-card-intro">Deletes all generated chunks outside the soft border in every dimension with borders (whole region files, single chunks along the edge, also entities and points of interest). They generate fresh when someone goes there. Only while the server is stopped; a backup is made first. To do this every week, add a task in Schedule with the <b>Reset the outer wilds</b> step (it stops and starts the server itself), or use the preset there.</p>
+					<p class="np-card-intro">Deletes all generated chunks outside the soft border in every dimension with borders (whole region files, single chunks along the edge, also entities and points of interest). They generate fresh when someone goes there. Only while the server is stopped. To do this every week, add a task in Schedule with the <b>Reset the outer wilds</b> step (it stops and starts the server itself), or use the preset there.</p>
 					<div class="np-form-grid">
-						<label class="np-form-row">Preview dimension<select id="pn-trim-dim"></select></label>
+						<label class="np-form-row">Dimension to check<select id="pn-trim-dim"></select></label>
 						<label class="np-form-row">Keep chunks players spent at least this many minutes in (0 = off)<input type="number" id="pn-trim-keep" value="0" min="0"></label>
 					</div>
 					<div class="np-form-actions">
-						<button type="button" class="np-btn" id="pn-trim-preview"><i class="bi bi-eye"></i> Preview</button>
+						<button type="button" class="np-btn" id="pn-trim-preview"><i class="bi bi-calculator"></i> Check what would go</button>
 						<button type="button" class="np-btn danger" id="pn-trim-run"><i class="bi bi-scissors"></i> Reset now</button>
+						<label class="np-check"><input type="checkbox" id="pn-trim-backup"> Back up first</label>
 						<span class="np-form-msg" id="pn-trim-msg"></span>
 					</div>
-					<iframe class="pn-trim-map" id="pn-trim-map" title="Trim preview" hidden></iframe>
 					<ol class="pn-update-log" id="pn-trim-log" hidden></ol>
 				</section>
 			</div>

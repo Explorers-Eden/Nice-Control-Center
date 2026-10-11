@@ -163,8 +163,19 @@
 
 .pn-installed { margin-bottom: 10px; }
 .pn-installed .np-chip { font-size: 12px; }
-.pn-update-log { margin: 0; padding-left: 22px; font-size: 13px; color: var(--text); display: flex; flex-direction: column; gap: 4px; }
-.pn-update-log li:last-child { font-weight: 700; color: var(--strong); }
+/* Step logs (updates, trims): a checklist; the current step spins, the outcome stands out. */
+.pn-update-log { list-style: none; margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--inset); border: 1px solid rgba(var(--ink),.06);
+  display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); max-height: 340px; overflow: auto; }
+.pn-update-log[hidden] { display: none; }
+.pn-update-log li { display: flex; align-items: flex-start; gap: 9px; line-height: 1.45; }
+.pn-update-log li .bi { flex: none; width: 16px; margin-top: 1px; color: var(--good); }
+.pn-update-log li.now { color: var(--strong); font-weight: 600; }
+.pn-update-log li.now .bi { color: var(--accent); animation: pn-spin 1s linear infinite; }
+.pn-update-log li.ok { color: var(--strong); font-weight: 700; }
+.pn-update-log li.bad { color: var(--poor); font-weight: 700; }
+.pn-update-log li.bad .bi { color: var(--poor); }
+@keyframes pn-spin { to { transform: rotate(360deg); } }
+.pn-backup-first { margin: 10px 0 0; }
 .pn-status { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 .pn-status.ok { background: rgba(111,232,155,.14); color: var(--good); }
 .pn-status.update { background: rgba(182,200,255,.16); color: var(--accent); }
@@ -178,7 +189,6 @@
 .pn-howto code, .pn-field code { font-size: 12px; background: rgba(var(--ink),.07); padding: 1px 5px; border-radius: 5px; }
 .pn-subhead { margin: 18px 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .pn-event-name { min-width: 100px; font-size: 13px; font-weight: 600; color: var(--text); }
-.pn-trim-map { display: block; width: 100%; height: 480px; margin-top: 12px; border: 1px solid rgba(var(--ink),.08); border-radius: 10px; background: #0b1018; }
 .np-btn.small { padding: 4px 9px; font-size: 12px; }
 
 /* ── Editor window (editor.html) ─────────────────────────────────────────── */
@@ -328,3 +338,14 @@
 
 /* The mod's stylesheet hides tab labels on phones; the sidebar always shows them. */
 .pn-side .np-tab span:not(.pn-badge) { display: inline !important; }
+
+/* Power buttons that don't apply right now fade out instead of looking clickable. */
+.pn-power .np-btn:disabled { opacity: .35; cursor: default; filter: saturate(.4); }
+
+/* Stats: day-by-day table, days open to their hours. */
+#pn-stats-table tr.pn-day { cursor: pointer; }
+#pn-stats-table tr.pn-day td:first-child { white-space: nowrap; color: var(--strong); }
+#pn-stats-table tr.pn-day .bi { display: inline-block; width: 16px; font-size: 11px; color: var(--muted); transition: transform .15s; }
+#pn-stats-table tr.pn-day.open .bi { transform: rotate(90deg); }
+#pn-stats-table tr.pn-hour td { color: var(--muted); font-size: 12px; }
+#pn-stats-table tr.pn-hour td:first-child { padding-left: 28px; }

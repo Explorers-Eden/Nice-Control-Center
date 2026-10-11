@@ -425,7 +425,8 @@ public final class Backups {
 
 	/**
 	 * Restores the chosen top-level entries (all when empty) while the server is stopped. Each chosen
-	 * folder is replaced as a whole, so files added since the backup disappear; a safety backup is made first.
+	 * folder is replaced as a whole, so files added since the backup disappear. safety: back up the
+	 * current state first.
 	 */
 	/** Why a restore can't start right now, or null. */
 	public String restoreBlocked() {
@@ -435,6 +436,10 @@ public final class Backups {
 	}
 
 	public String restore(String name, List<String> only, String by) {
+		return restore(name, only, by, false);
+	}
+
+	public String restore(String name, List<String> only, String by, boolean safety) {
 		String blocked = restoreBlocked();
 		if (blocked != null) return lastError = blocked;
 		if (!exists(name)) return lastError = "No such backup.";
@@ -442,18 +447,18 @@ public final class Backups {
 		if (server.state() == Supervisor.State.CRASHED) server.stop();
 		server.lock("A backup is being restored; the server can start again when that's done.");
 		try {
-			return restoreLocked(name, only, by);
+			return restoreLocked(name, only, by, safety);
 		} finally {
 			server.unlock();
 		}
 	}
 
-	private String restoreLocked(String name, List<String> only, String by) {
+	private String restoreLocked(String name, List<String> only, String by, boolean safety) {
 		protect(name);
-		String safety = create("before restore", by, false);
-		if (safety != null) {
+		String safetyError = safety ? create("before restore", by, false) : null;
+		if (safetyError != null) {
 			unprotect(name);
-			return "The safety backup failed, so nothing was restored: " + safety;
+			return "The safety backup failed, so nothing was restored: " + safetyError;
 		}
 		synchronized (this) {
 			if (running) {
@@ -501,7 +506,7 @@ public final class Backups {
 			return null;
 		} catch (IOException | RuntimeException e) {
 			String why = e instanceof java.nio.file.NoSuchFileException ? "a file is missing (" + e.getMessage() + ")" : e.getMessage();
-			lastError = "Restore failed: " + why + ". The safety backup from just before is in the list.";
+			lastError = "Restore failed: " + why + "." + (safety ? " The safety backup from just before is in the list." : "");
 			server.note(lastError);
 			return lastError;
 		} finally {

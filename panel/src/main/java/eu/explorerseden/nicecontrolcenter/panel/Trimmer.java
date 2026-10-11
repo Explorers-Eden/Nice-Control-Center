@@ -21,7 +21,7 @@ import java.util.stream.Stream;
  * Deletes everything outside a square or circle, like Chunky's trim: whole region files when they lie
  * completely outside, single chunks in the regions the edge runs through (the files are packed again so
  * the space is really freed), the same for entities/ and poi/. Optionally keeps chunks players spent
- * time in. Only while the server is stopped, always after a backup.
+ * time in. Only while the server is stopped; a backup first when asked for.
  *
  * Also keeps the borders (config/nicecontrolcenter-borders.json in the server folder, see Borders): the
  * "outer wilds" reset trims everything outside each dimension's soft border in one go.
@@ -235,11 +235,11 @@ public final class Trimmer {
 	}
 
 	public String start(Area area, String by) {
-		return start(List.of(area), by);
+		return start(List.of(area), by, false);
 	}
 
-	/** Starts the trim in the background (one backup, then every area). Returns an error, or null. */
-	public synchronized String start(List<Area> areas, String by) {
+	/** Starts the trim in the background (optionally one backup first, then every area). Returns an error, or null. */
+	public synchronized String start(List<Area> areas, String by, boolean backupFirst) {
 		if (running) return "A trim is already running.";
 		if (server.state() != Supervisor.State.STOPPED && server.state() != Supervisor.State.CRASHED) return "Stop the server first: the world can only be trimmed while it's off.";
 		if (backups.busy()) return "A backup is running; try again in a moment.";
@@ -262,7 +262,7 @@ public final class Trimmer {
 					result = NOTHING;
 					step(result);
 				} else {
-					result = run(plans, by);
+					result = run(plans, by, backupFirst);
 				}
 			} catch (IOException | RuntimeException e) {
 				result = "Failed: " + e.getMessage() + ". The backup from just before is in Backups.";
@@ -286,19 +286,22 @@ public final class Trimmer {
 		return running ? "The trim is still running." : result;
 	}
 
-	private String run(List<Plan> plans, String by) throws IOException {
+	private String run(List<Plan> plans, String by, boolean backupFirst) throws IOException {
 		for (Plan plan : plans) {
 			Area a = plan.area();
 			String what = (a.circle() ? "circle" : "square") + " radius " + a.radius() + " around " + a.x() + ", " + a.z() + " in " + plan.dimId();
 			audit.log(by, "world.trim", what + ": " + plan.regions().size() + " regions, " + plan.chunkCount() + " chunks", null);
 		}
-		phase = "Backing up";
-		step("Making a backup first");
-		String error = backups.create("before trim", by, true);
-		if (error != null) return "Stopped: the backup failed (" + error + "), nothing was changed.";
-		String backup = backups.lastCreated();
-		backups.protect(backup);
-		step("Backup " + backup);
+		String backup = null;
+		if (backupFirst) {
+			phase = "Backing up";
+			step("Making a backup first");
+			String error = backups.create("before trim", by, true);
+			if (error != null) return "Stopped: the backup failed (" + error + "), nothing was changed.";
+			backup = backups.lastCreated();
+			backups.protect(backup);
+			step("Backup " + backup);
+		}
 		try {
 			phase = "Trimming";
 			long chunks = 0;

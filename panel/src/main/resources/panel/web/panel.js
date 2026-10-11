@@ -519,15 +519,56 @@
     return '';
   }
 
+  // ── Console filters: level chips, debug lines, search ──
+  let conFilter = 'all';
+  let lastLevel = 'INFO';
+
+  /** The line's level; stack trace lines ("at …", "Caused by") belong to the line above them. */
+  function lineLevel(line) {
+    if (line.startsWith('[panel] ')) return 'PANEL';
+    const m = line.match(/\/(ERROR|FATAL|WARN|INFO|DEBUG|TRACE)\]/);
+    if (m) return (lastLevel = m[1]);
+    if (/^\s+at |^\s*Caused by:|^\s*\.\.\. \d+ more/.test(line)) return lastLevel;
+    return (lastLevel = /\b(ERROR|FATAL)\b|Exception/.test(line) ? 'ERROR' : /\bWARN/.test(line) ? 'WARN' : 'INFO');
+  }
+
+  function lineVisible(div) {
+    const level = div.dataset.level;
+    const q = $('pn-console-search').value.trim().toLowerCase();
+    if (q && !div.textContent.toLowerCase().includes(q)) return false;
+    if (!$('pn-console-debug').checked && (level === 'DEBUG' || level === 'TRACE')) return false;
+    switch (conFilter) {
+      case 'errors': return level === 'ERROR' || level === 'FATAL';
+      case 'warnings': return level === 'WARN';
+      case 'ncc': return /Nice Control Center/.test(div.textContent);
+      case 'panel': return level === 'PANEL';
+      default: return true;
+    }
+  }
+
+  function refilterConsole() {
+    for (const div of $('pn-log').children) div.hidden = !lineVisible(div);
+    if ($('pn-console-follow').checked) $('pn-log').scrollTop = $('pn-log').scrollHeight;
+  }
+
+  $('pn-console-filters').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-confilter]');
+    if (!b) return;
+    conFilter = b.dataset.confilter;
+    $('pn-console-filters').querySelectorAll('[data-confilter]').forEach((x) => x.classList.toggle('active', x === b));
+    refilterConsole();
+  });
+  $('pn-console-debug').addEventListener('change', refilterConsole);
+
   function addLines(lines) {
     const log = $('pn-log');
-    const filter = $('pn-console-search').value.trim().toLowerCase();
     const frag = document.createDocumentFragment();
     for (const line of lines) {
       const div = document.createElement('div');
       div.className = lineClass(line);
+      div.dataset.level = lineLevel(line);
       div.textContent = line;
-      if (filter && !line.toLowerCase().includes(filter)) div.hidden = true;
+      div.hidden = !lineVisible(div);
       frag.appendChild(div);
     }
     log.appendChild(frag);
@@ -565,10 +606,7 @@
     }
   }
 
-  $('pn-console-search').addEventListener('input', () => {
-    const filter = $('pn-console-search').value.trim().toLowerCase();
-    for (const div of $('pn-log').children) div.hidden = !!filter && !div.textContent.toLowerCase().includes(filter);
-  });
+  $('pn-console-search').addEventListener('input', refilterConsole);
 
   $('pn-command-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1005,9 +1043,10 @@
   $('pn-restore-go').addEventListener('click', async () => {
     const only = [...$('pn-restore-items').querySelectorAll('input:checked')].map((i) => i.value);
     if (!only.length) return formMsg('pn-restore-msg', 'Choose at least one item.', false);
-    if (!confirm(`Restore ${only.length} item${only.length === 1 ? '' : 's'} from ${restoreName}? The current state is backed up first.`)) return;
+    const backupFirst = $('pn-restore-safety').checked;
+    if (!confirm(`Restore ${only.length} item${only.length === 1 ? '' : 's'} from ${restoreName}?${backupFirst ? ' The current state is backed up first.' : ' The current state is not backed up.'}`)) return;
     try {
-      await api(`api/backups/${encodeURIComponent(restoreName)}/restore`, { only });
+      await api(`api/backups/${encodeURIComponent(restoreName)}/restore`, { only, backupFirst });
       $('pn-restore').hidden = true;
       loadBackups();
     } catch (err) {
@@ -1235,7 +1274,7 @@
       case 'say': return `say "${s.text}"`;
       case 'wait': return `wait ${s.seconds} s`;
       case 'backup': return 'backup' + (s.text ? ` (${s.text})` : '');
-      case 'trim': return s.minutes ? `reset the outer wilds after ${s.minutes} min countdown` : 'reset the outer wilds';
+      case 'trim': return (s.minutes ? `reset the outer wilds after ${s.minutes} min countdown` : 'reset the outer wilds') + (s.backup ? ' (backup first)' : '');
       case 'pregen': return s.text === 'all' ? 'pregenerate everything' : 'pregenerate the outer wilds';
       default: return STEP_LABELS[s.type].toLowerCase();
     }
@@ -1295,7 +1334,8 @@
     if (s.type === 'say') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Message to everyone online">`;
     if (s.type === 'backup') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Note (optional)">`;
     if (s.type === 'trim') fields = `<span>stops the server after a countdown of</span><input type="number" data-f="minutes" min="0" max="60" value="${s.minutes ?? 5}"><span>min, trims outside the soft borders, starts it again; message</span>
-      <input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="The outer wilds reset in {time}.">`;
+      <input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="The outer wilds reset in {time}.">
+      <label class="np-check"><input type="checkbox" data-f="backup" ${s.backup ? 'checked' : ''}> back up first</label>`;
     if (s.type === 'pregen') fields = `<select data-f="text"><option value="wilds" ${s.text !== 'all' ? 'selected' : ''}>only the outer wilds</option><option value="all" ${s.text === 'all' ? 'selected' : ''}>everything up to the hard border</option></select>`
       + ((m) => `<select data-f="mode"><option value="slow" ${m === 'slow' ? 'selected' : ''}>slow down while players are online</option><option value="pause" ${m === 'pause' ? 'selected' : ''}>pause while players are online</option><option value="full" ${m === 'full' ? 'selected' : ''}>full speed even with players online</option></select>`)(s.mode || 'slow') + `<span>(dimensions with Pregen on, World tab)</span>`;
     if (s.type === 'wait') fields = `<input type="number" data-f="seconds" min="1" max="3600" value="${s.seconds ?? 30}"><span>seconds</span>`;
@@ -1313,7 +1353,7 @@
   function readSteps() {
     return [...$('pn-steps').children].map((row) => {
       const s = { type: row.querySelector('[data-f="type"]').value, text: '', minutes: 5, seconds: 30 };
-      row.querySelectorAll('input[data-f], select[data-f]:not([data-f="type"])').forEach((i) => { s[i.dataset.f] = i.type === 'number' ? Number(i.value) : i.value.trim(); });
+      row.querySelectorAll('input[data-f], select[data-f]:not([data-f="type"])').forEach((i) => { s[i.dataset.f] = i.type === 'checkbox' ? i.checked : i.type === 'number' ? Number(i.value) : i.value.trim(); });
       return s;
     });
   }
@@ -1891,7 +1931,7 @@
     const show = st.running || st.log.length;
     $('pn-update-progress').hidden = !show;
     $('pn-update-phase').textContent = st.running ? (st.phase || 'Working…') : (st.result || 'Last update');
-    $('pn-update-log').innerHTML = st.log.map((l) => `<li>${esc(l)}</li>`).join('');
+    $('pn-update-log').innerHTML = stepList(st.log, st.running);
     $('pn-update-go').disabled = st.running;
     // Only the newest update can be undone, and only if it went through (a rollback already undid itself).
     const latestBackup = st.history.length && st.history[0].backup && st.history[0].result === 'Done' ? st.history[0] : null;
@@ -1972,9 +2012,12 @@
     if (blocked.length && !confirm(`${blocked.map((m) => m.name).join(', ')} need${blocked.length === 1 ? 's' : ''} a newer Fabric Loader than ${loader}. The server will most likely not start and the update will be rolled back. Continue anyway?`)) return;
     const off = Object.values(actions).filter((a) => a === 'disable').length;
     const upd = Object.values(actions).filter((a) => a === 'update').length;
-    if (!confirm(`${$('pn-update-label').textContent}?\n\n1. Backup\n2. Stop the server\n3. New server jar${upd ? `, ${upd} mod update${upd === 1 ? '' : 's'}` : ''}${off ? `, ${off} mod${off === 1 ? '' : 's'} turned off` : ''}\n4. Start; if it doesn't come up, the backup is restored`)) return;
+    const backupFirst = $('pn-update-backup').checked;
+    const steps = [backupFirst ? 'Backup' : null, 'Stop the server', `New server jar${upd ? `, ${upd} mod update${upd === 1 ? '' : 's'}` : ''}${off ? `, ${off} mod${off === 1 ? '' : 's'} turned off` : ''}`,
+      `Start; if it doesn't come up, ${backupFirst ? 'the backup is restored' : 'the old mods and server jar are put back'}`].filter(Boolean);
+    if (!confirm(`${$('pn-update-label').textContent}?\n\n${steps.map((t, i) => `${i + 1}. ${t}`).join('\n')}`)) return;
     try {
-      await api('api/versions/update', { mc, loader, actions });
+      await api('api/versions/update', { mc, loader, actions, backupFirst });
       $('pn-mod-plan').hidden = true;
       loadVersions(false);
     } catch (err) {
@@ -2201,6 +2244,17 @@
     if (b.dataset.pl.startsWith('pardon') || confirm(`${b.textContent} ${b.dataset.target}?`)) playerAction({ action: b.dataset.pl, target: b.dataset.target });
   });
 
+  /** A step log as a checklist: done steps ticked, the current one spinning, the outcome green or red. */
+  function stepList(lines, running) {
+    return lines.map((l, i) => {
+      const last = i === lines.length - 1;
+      const failed = /^(Failed|Stopped|Rolled back|The update failed)|failed/i.test(l);
+      const cls = last ? (running ? 'now' : failed ? 'bad' : 'ok') : '';
+      const icon = last && running ? 'bi-arrow-repeat' : last && failed ? 'bi-x-circle' : last ? 'bi-check2-circle' : 'bi-check2';
+      return `<li class="${cls}"><i class="bi ${icon}"></i><span>${esc(l)}</span></li>`;
+    }).join('');
+  }
+
   // ── Background jobs (copy, zip, unzip, trim preview) ───────────────────
 
   /** Polls a panel job until it's done: resolves with its result, rejects with its error. */
@@ -2281,7 +2335,7 @@
       return card;
     });
     charts.forEach((c, i) => lineChart(cards[i], c, pts.map((p) => Object.assign({}, p, c.map ? c.map(p) : {})), d, span));
-    renderStatsTable(pts, span);
+    renderStatsTable(pts);
   }
 
   /** One card with an SVG line chart: thin lines, recessive grid, crosshair + tooltip, markers along the bottom. */
@@ -2412,13 +2466,55 @@
     scale.innerHTML = `<span>0</span><span class="bar"></span><span>${num1(max)} players</span>`;
   }
 
-  function renderStatsTable(pts, span) {
-    const rows = pts.slice(-200).reverse();
-    $('pn-stats-table').innerHTML = `<thead><tr><th>Time</th><th class="num">Online</th><th class="num">TPS</th><th class="num">MSPT</th><th class="num">Slowest tick</th><th class="num">Players</th><th class="num">Memory</th><th class="num">Free disk</th></tr></thead><tbody>`
-      + rows.map((p) => `<tr><td>${esc(fmtFull(p.t))}</td><td class="num">${Math.round((p.up || 0) * 100)}%</td><td class="num">${num1(p.tps)}</td><td class="num">${num1(p.mspt)}</td><td class="num">${num1(p.msptMax)}</td>
-        <td class="num">${p.players ?? '–'}</td><td class="num">${p.heapLive != null && p.heapMax ? Math.round(p.heapLive / p.heapMax * 100) + '%' : '–'}</td><td class="num">${p.free != null ? bytes(p.free) : '–'}</td></tr>`).join('')
-      + '</tbody>';
+  /** The table: one row per day (newest first); a day opens to its hours when the data is that fine. */
+  function renderStatsTable(pts) {
+    const dayKey = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const groups = new Map();
+    for (const p of pts) {
+      const k = dayKey(p.t);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(p);
+    }
+    const crashesOn = (from, to) => (statsData ? statsData.markers : []).filter((m) => m.type === 'crash' && m.t >= from && m.t < to).length;
+    const summary = (list) => {
+      const avg = (k) => { const v = list.filter((p) => p[k] != null); return v.length ? v.reduce((s, p) => s + p[k], 0) / v.length : null; };
+      const max = (k) => { const v = list.filter((p) => p[k] != null); return v.length ? Math.max(...v.map((p) => p[k])) : null; };
+      const mem = list.filter((p) => p.heapLive != null && p.heapMax);
+      const disk = [...list].reverse().find((p) => p.free != null);
+      return { up: avg('up'), tps: avg('tps'), mspt: avg('mspt'), msptMax: max('msptMax'), players: max('players'),
+        mem: mem.length ? Math.max(...mem.map((p) => p.heapLive / p.heapMax * 100)) : null, free: disk ? disk.free : null };
+    };
+    const cells = (s, label, crashes) => `<td>${label}</td><td class="num">${s.up == null ? '–' : Math.round(s.up * 100) + '%'}</td><td class="num">${num1(s.tps)}</td>
+      <td class="num">${num1(s.mspt)}</td><td class="num">${num1(s.msptMax)}</td><td class="num">${s.players ?? '–'}</td><td class="num">${crashes || ''}</td>
+      <td class="num">${s.mem == null ? '–' : Math.round(s.mem) + '%'}</td><td class="num">${s.free == null ? '–' : bytes(s.free)}</td>`;
+    const fine = statsData && statsData.step <= 3600000;
+    const rows = [...groups].reverse().map(([key, list]) => {
+      const start = new Date(list[0].t); start.setHours(0, 0, 0, 0);
+      const label = start.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+      const day = `<tr class="pn-day" data-day="${key}">${cells(summary(list), `${fine ? '<i class="bi bi-chevron-right"></i>' : ''}<b>${esc(label)}</b>`, crashesOn(start.getTime(), start.getTime() + 86400000))}</tr>`;
+      if (!fine) return day;
+      const hours = new Map();
+      for (const p of list) {
+        const h = new Date(p.t).getHours();
+        if (!hours.has(h)) hours.set(h, []);
+        hours.get(h).push(p);
+      }
+      return day + [...hours].reverse().map(([h, hl]) => {
+        const from = new Date(start); from.setHours(h);
+        return `<tr class="pn-hour" data-of="${key}" hidden>${cells(summary(hl), `${String(h).padStart(2, '0')}:00`, crashesOn(from.getTime(), from.getTime() + 3600000))}</tr>`;
+      }).join('');
+    }).join('');
+    $('pn-stats-table').innerHTML = `<thead><tr><th>Day</th><th class="num">Online</th><th class="num">TPS</th><th class="num">MSPT</th><th class="num">Slowest tick</th>
+      <th class="num">Peak players</th><th class="num">Crashes</th><th class="num">Peak memory</th><th class="num">Free disk</th></tr></thead><tbody>${rows}</tbody>`;
   }
+
+  $('pn-stats-table').addEventListener('click', (e) => {
+    const row = e.target.closest('tr.pn-day');
+    if (!row || !row.querySelector('.bi-chevron-right')) return;
+    const open = row.classList.toggle('open');
+    $('pn-stats-table').querySelectorAll(`tr[data-of="${row.dataset.day}"]`).forEach((r) => { r.hidden = !open; });
+  });
+
 
   // ── World: borders, pregenerate and trim ───────────────────────────────
 
@@ -2566,29 +2662,21 @@
 
   function renderTrim(st) {
     $('pn-trim-log').hidden = !st.log.length;
-    $('pn-trim-log').innerHTML = st.log.map((l) => `<li>${esc(l)}</li>`).join('');
+    $('pn-trim-log').innerHTML = stepList(st.log, st.running);
     $('pn-trim-run').disabled = st.running;
     if (st.running) formMsg('pn-trim-msg', st.phase || 'Trimming…', true);
   }
 
   $('pn-trim-preview').addEventListener('click', async () => {
     const dim = $('pn-trim-dim').value;
-    const b = worldBorders[dim];
-    if (!b) return formMsg('pn-trim-msg', 'Save borders for a dimension first.', false);
+    if (!worldBorders[dim]) return formMsg('pn-trim-msg', 'Save borders for a dimension first.', false);
     formMsg('pn-trim-msg', 'Looking at the region files…', true);
     try {
       const { job } = await api('api/trim/preview', { dimension: dim, keepVisitedMinutes: $('pn-trim-keep').value });
       const p = await awaitJob(job, (t) => formMsg('pn-trim-msg', t || 'Looking at the region files…', true));
       const nothing = !p.regions && !p.partialRegions;
-      formMsg('pn-trim-msg', nothing ? 'Nothing lies outside the soft border there.'
-        : `Would remove ${p.chunks.toLocaleString()} chunks in ${esc(dimName(dim))}: ${p.regions} whole region file${p.regions === 1 ? '' : 's'} and parts of ${p.partialRegions} more, about ${bytes(p.bytes)}. Red on the map below goes, the green line is the soft border, the dashed one the hard border.`, !nothing);
-      const d = worldDims.find((x) => x.id === dim);
-      const reach = Math.max(b.soft, b.hard || 0);
-      const zoom = Math.max(-5, Math.min(0, Math.floor(Math.log2(900 / (reach * 2.6)))));
-      const frame = $('pn-trim-map');
-      frame.hidden = false;
-      frame.src = `map/#${d ? d.key : ''}/${b.x}/${b.z}/${zoom}`;
-      frame.contentWindow?.location.reload?.();
+      formMsg('pn-trim-msg', nothing ? `Nothing lies outside the soft border in ${dimName(dim)}.`
+        : `${dimName(dim)}: ${p.chunks.toLocaleString()} chunks would go (${p.regions} whole region file${p.regions === 1 ? '' : 's'} and parts of ${p.partialRegions} more), about ${bytes(p.bytes)}.`, !nothing);
     } catch (err) {
       formMsg('pn-trim-msg', err.message, false);
     }
@@ -2597,9 +2685,10 @@
   $('pn-trim-run').addEventListener('click', async () => {
     const dims = Object.keys(worldBorders).map(dimName);
     if (!dims.length) return formMsg('pn-trim-msg', 'Save borders for a dimension first.', false);
-    if (!confirm(`Reset the outer wilds now? Everything outside the soft border in ${dims.join(', ')} is deleted (a backup is made first). The server must be stopped.`)) return;
+    const backupFirst = $('pn-trim-backup').checked;
+    if (!confirm(`Reset the outer wilds now? Everything outside the soft border in ${dims.join(', ')} is deleted${backupFirst ? ' (a backup is made first)' : ' (no backup)'}. The server must be stopped.`)) return;
     try {
-      await api('api/trim/run', { keepVisitedMinutes: $('pn-trim-keep').value });
+      await api('api/trim/run', { keepVisitedMinutes: $('pn-trim-keep').value, backupFirst });
       $('pn-trim-run').disabled = true;
       formMsg('pn-trim-msg', 'Trimming…', true);
     } catch (err) {

@@ -1,3 +1,11 @@
+## 1.4.1
+- No more automatic backups before every action: resetting the outer wilds, restoring a backup and updating Minecraft each have a "Back up first" box (also on the scheduled reset step). Without one, a failed update puts the old mods and server jar back; Undo is offered for updates that made a backup
+- Resetting the outer wilds: no preview map any more, "Check what would go" tells the numbers; step logs (updates, resets) are a clean checklist with the current step and the outcome highlighted
+- Console: filter by All, Errors, Warnings, Nice Control Center or Panel, and show or hide debug lines (stack traces stay with their error)
+- Stats: "Day by day" table, one row per day (online time, TPS, MSPT, slowest tick, peak players, crashes, peak memory, free disk); a day opens to its hours
+- Map: the logo replaces the title and is centered; "the outer wilds reset tomorrow" counts calendar days
+- Power buttons that don't apply right now are faded
+
 ## 1.4.0
 - One navigation for everything: a sidebar with groups (Dashboard, Live, Players, World, Server, Admin) holds the panel's pages and the mod dashboard's pages; the second tab bar is gone, the mod's pages open inside the panel at full height, and its badges show in the sidebar. On phones the sidebar slides in from a menu button
 - The navbar holds the server state with its uptime, the in-game clock, Start/Restart/Stop/Kill and the stat tiles (TPS, MSPT, CPU, memory, disk, GC, entities, chunks, players) on every page; the big "Server running" box is gone, and notices (crash, restart countdown) show as a slim line only when there is one

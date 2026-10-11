@@ -324,7 +324,7 @@ public final class Versions {
 	}
 
 	/** Starts the update in the background. actions: file name → keep/update/disable. Returns an error or null. */
-	public synchronized String start(String targetMc, String loader, Map<String, String> actions, String by) {
+	public synchronized String start(String targetMc, String loader, Map<String, String> actions, String by, boolean backupFirst) {
 		if (running) return "An update is already running.";
 		if (backups.busy()) return "A backup is running; try again in a moment.";
 		if (targetMc == null || loader == null || targetMc.isBlank() || loader.isBlank()) return "Choose a Minecraft and a Fabric Loader version.";
@@ -335,7 +335,7 @@ public final class Versions {
 		result = null;
 		Thread t = new Thread(() -> {
 			try {
-				result = run(targetMc, loader, actions == null ? Map.of() : actions, by);
+				result = run(targetMc, loader, actions == null ? Map.of() : actions, by, backupFirst);
 			} catch (InterruptedException e) {
 				result = "Interrupted";
 				Thread.currentThread().interrupt();
@@ -352,7 +352,12 @@ public final class Versions {
 		return null;
 	}
 
-	private String run(String targetMc, String loader, Map<String, String> actions, String by) throws IOException, InterruptedException {
+	/**
+	 * With backupFirst the whole server folder is backed up, and a failed start restores it (and Undo
+	 * works later). Without, the files the update replaces (mods, server jar) are kept aside in
+	 * .panel-tmp/update-old, and a failed start puts them back.
+	 */
+	private String run(String targetMc, String loader, Map<String, String> actions, String by, boolean backupFirst) throws IOException, InterruptedException {
 		Installed before = installed();
 		String from = "Minecraft " + before.mc() + ", Fabric Loader " + before.loader();
 		String to = "Minecraft " + targetMc + ", Fabric Loader " + loader;
@@ -367,13 +372,22 @@ public final class Versions {
 			if (m.action.equals("update") && m.url == null) m.action = "keep";
 		}
 
-		phase = "Backing up";
-		step("Making a backup first");
-		String error = backups.create("before update to " + targetMc + " " + loader, by);
-		if (error != null) return finish(from, to, by, null, "Stopped: the backup failed (" + error + "), nothing was changed.");
-		String backup = backups.lastCreated();
-		backups.protect(backup);
-		step("Backup " + backup);
+		String backup = null;
+		String error;
+		if (backupFirst) {
+			phase = "Backing up";
+			step("Making a backup first");
+			error = backups.create("before update to " + targetMc + " " + loader, by);
+			if (error != null) return finish(from, to, by, null, "Stopped: the backup failed (" + error + "), nothing was changed.");
+			backup = backups.lastCreated();
+			backups.protect(backup);
+			step("Backup " + backup);
+		}
+		Path aside = serverDir.resolve(ServerFiles.TMP).resolve("update-old");
+		if (!backupFirst) {
+			ServerFiles.deleteRecursively(aside);
+			Files.createDirectories(aside.resolve("mods"));
+		}
 
 		phase = "Downloading";
 		String installer = latestInstaller();
@@ -405,7 +419,9 @@ public final class Versions {
 		phase = "Swapping files";
 		Path modsDir = serverDir.resolve("mods");
 		for (Map.Entry<ModCheck, Path> d : downloaded.entrySet()) {
-			Files.deleteIfExists(modsDir.resolve(d.getKey().file));
+			Path old = modsDir.resolve(d.getKey().file);
+			if (!backupFirst && Files.exists(old)) Files.move(old, aside.resolve("mods").resolve(d.getKey().file), StandardCopyOption.REPLACE_EXISTING);
+			else Files.deleteIfExists(old);
 			Files.move(d.getValue(), modsDir.resolve(d.getKey().newFile), StandardCopyOption.REPLACE_EXISTING);
 			step("Updated " + d.getKey().name + " → " + d.getKey().newVersion);
 		}
@@ -418,7 +434,10 @@ public final class Versions {
 		Files.move(launcherTmp, serverDir.resolve(jarName), StandardCopyOption.REPLACE_EXISTING);
 		String oldJar = before.jar();
 		setServerJar.accept(jarName);
-		if (!oldJar.equals(jarName)) Files.deleteIfExists(serverDir.resolve(oldJar));
+		if (!oldJar.equals(jarName) && Files.exists(serverDir.resolve(oldJar))) {
+			if (!backupFirst) Files.move(serverDir.resolve(oldJar), aside.resolve(oldJar), StandardCopyOption.REPLACE_EXISTING);
+			else Files.deleteIfExists(serverDir.resolve(oldJar));
+		}
 		step("Server jar is now " + jarName);
 
 		phase = "Starting";
@@ -432,10 +451,27 @@ public final class Versions {
 		}
 
 		phase = "Rolling back";
-		step("The server didn't start" + (error == null ? "" : " (" + error + ")") + ". Restoring the backup " + backup);
 		server.stop();
 		server.awaitState(5 * 60_000L, Supervisor.State.STOPPED, Supervisor.State.CRASHED);
 		server.stop();
+		if (!backupFirst) {
+			step("The server didn't start" + (error == null ? "" : " (" + error + ")") + ". Putting the old files back");
+			for (Map.Entry<ModCheck, Path> d : downloaded.entrySet()) Files.deleteIfExists(modsDir.resolve(d.getKey().newFile));
+			try (var kept = Files.list(aside.resolve("mods"))) {
+				for (Path f : kept.toList()) Files.move(f, modsDir.resolve(f.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
+			}
+			for (ModCheck m : mods) {
+				Path off = modsDir.resolve(m.file + ".disabled");
+				if (m.action.equals("disable") && Files.exists(off)) Files.move(off, modsDir.resolve(m.file), StandardCopyOption.REPLACE_EXISTING);
+			}
+			if (Files.exists(aside.resolve(oldJar))) Files.move(aside.resolve(oldJar), serverDir.resolve(oldJar), StandardCopyOption.REPLACE_EXISTING);
+			setServerJar.accept(oldJar);
+			step("Old files back; starting the old version again");
+			server.start();
+			return finish(from, to, by, null, "Rolled back: the new version didn't start, so the old mods and server jar are back. The console shows why. "
+					+ "If the new version already converted the world, restore a backup.");
+		}
+		step("The server didn't start" + (error == null ? "" : " (" + error + ")") + ". Restoring the backup " + backup);
 		String restoreError = backups.restore(backup, List.of(), by);
 		if (restoreError != null) return finish(from, to, by, backup, "The update failed and the restore failed too: " + restoreError);
 		setServerJar.accept(oldJar);

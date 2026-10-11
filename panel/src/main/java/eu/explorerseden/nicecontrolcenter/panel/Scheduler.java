@@ -58,6 +58,8 @@ public final class Scheduler {
 		public int seconds = 30;
 		/** pregen: "full", "slow" or "pause" while players are online. */
 		public String mode = "slow";
+		/** trim: make a backup before trimming. */
+		public boolean backup = false;
 	}
 
 	public record Run(long time, boolean ok, String message) {
@@ -373,7 +375,7 @@ public final class Scheduler {
 			if (error != null) return error;
 			if (!server.awaitState(10 * 60_000L, Supervisor.State.STOPPED, Supervisor.State.CRASHED)) return "The server didn't stop within 10 minutes.";
 		}
-		String problem = t.start(areas, by);
+		String problem = t.start(areas, by, step.backup);
 		if (problem == null) {
 			String result = t.awaitResult(6 * 3600_000L);
 			if (result == null || !(result.startsWith("Done") || result.equals(Trimmer.NOTHING))) problem = result == null ? "The trim ended without a result." : result;
