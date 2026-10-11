@@ -1,3 +1,7 @@
+## 1.4.3
+- Startup: the Generational ZGC preset adds -XX:SoftMaxHeapSize (7/8 of the maximum memory, e.g. 14G of 16G) and is the default for new installs, listed first
+- Discord: choose per event whether it posts in the chat channel or the alerts channel; by default chat, joins, leaves, deaths, advancements and online/offline go to chat, and lag, crashes and failures go to alerts
+
 ## 1.4.2
 - Whitelist & bans: tick several actions for one player at once (whitelist, operator with level, ban with reason); IP bans have their own row
 - The lists follow changes made in game or in the console (/op, /deop, /ban, /whitelist) while the page is open

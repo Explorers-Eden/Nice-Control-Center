@@ -662,7 +662,8 @@
   function previewCommand() {
     const s = readSettings();
     const preset = presets.find((p) => p.id === s.preset);
-    $('pn-preview').textContent = [s.javaPath, `-Xms${s.memoryMinMb}M`, `-Xmx${s.memoryMaxMb}M`, preset && preset.flags, s.customArgs, '-jar', s.serverJar, 'nogui']
+    const flags = preset && preset.flags.replace('{softMax}', Math.floor(s.memoryMaxMb / 8) * 7);
+    $('pn-preview').textContent = [s.javaPath, `-Xms${s.memoryMinMb}M`, `-Xmx${s.memoryMaxMb}M`, flags, s.customArgs, '-jar', s.serverJar, 'nogui']
       .filter(Boolean).join(' ');
   }
 
@@ -2077,6 +2078,7 @@
     form.kickMessage.value = s.kickMessage || '';
     $('pn-discord-events').innerHTML = Object.keys(EVENT_LABELS).map((k) => `<div class="pn-step" data-event="${k}">
       <label class="np-check"><input type="checkbox" ${s.events[k] ? 'checked' : ''}> <span class="pn-event-name">${EVENT_LABELS[k]}</span></label>
+      <select title="Channel"><option value="chat">Chat channel</option><option value="alerts" ${(s.eventChannels || {})[k] === 'alerts' ? 'selected' : ''}>Alerts channel</option></select>
       <input type="text" value="${esc(s.templates[k] || '')}"></div>`).join('');
     $('pn-discord-status').textContent = 'Bot: ' + discordData.status;
     renderLinks();
@@ -2110,8 +2112,10 @@
     const form = e.target;
     const events = {};
     const templates = {};
+    const eventChannels = {};
     $('pn-discord-events').querySelectorAll('[data-event]').forEach((row) => {
       events[row.dataset.event] = row.querySelector('input[type="checkbox"]').checked;
+      eventChannels[row.dataset.event] = row.querySelector('select').value;
       templates[row.dataset.event] = row.querySelector('input[type="text"]').value;
     });
     const body = {
@@ -2119,7 +2123,7 @@
       requireLink: form.requireLink.checked, requireMember: form.requireMember.checked, opsBypass: form.opsBypass.checked,
       bypass: form.bypass.value.split('\n').map((l) => l.trim()).filter(Boolean), kickMessage: form.kickMessage.value,
       notMemberMessage: discordData.settings.notMemberMessage,
-      chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates,
+      chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
     };
     try {
       await api('api/discord/settings', body);

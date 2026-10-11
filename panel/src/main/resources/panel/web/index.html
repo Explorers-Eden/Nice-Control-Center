@@ -138,7 +138,7 @@
 
 			<section class="np-card np-tab-panel" data-tab="java" hidden>
 				<h3 class="np-card-title"><i class="bi bi-cpu"></i> Startup &amp; Java</h3>
-				<p class="np-card-intro">Applies the next time the server starts.</p>
+				<p class="np-card-intro">Applies the next time the server starts. With ZGC, set the minimum memory to the maximum: the memory is taken up front anyway (AlwaysPreTouch), and the soft limit is 7/8 of it.</p>
 				<form id="pn-settings">
 					<div class="np-form-grid">
 						<label class="np-form-row">Start the server when the panel starts<span class="np-switch"><input type="checkbox" name="autoStart"><span></span></span></label>
@@ -490,8 +490,8 @@
 							<label class="np-form-row">Bridge on<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 							<label class="np-form-row">Bot token<input type="password" name="token" placeholder="paste the bot token" autocomplete="off"></label>
 							<label class="np-form-row">Discord server ID<input type="text" name="guildId" inputmode="numeric"></label>
-							<label class="np-form-row">Chat channel ID<input type="text" name="channelId" inputmode="numeric"></label>
-							<label class="np-form-row">Alerts channel ID (admins; empty = chat channel)<input type="text" name="alertChannelId" inputmode="numeric"></label>
+							<label class="np-form-row">Chat channel ID (chat, joins, deaths, advancements)<input type="text" name="channelId" inputmode="numeric"></label>
+							<label class="np-form-row">Alerts channel ID (lag, crashes, failures; empty = chat channel)<input type="text" name="alertChannelId" inputmode="numeric"></label>
 						</div>
 						<h4 class="pn-subhead">Linking</h4>
 						<div class="np-form-grid">
@@ -508,7 +508,7 @@
 							<label class="np-form-row">Bot status shows the server<span class="np-switch"><input type="checkbox" name="presence"><span></span></span></label>
 						</div>
 						<div id="pn-discord-events" class="pn-steps"></div>
-						<p class="np-card-intro pn-hint"><code>{player}</code>, <code>{message}</code> (the death message) and <code>{advancement}</code> are filled in. Deaths and advancements follow the game rules showDeathMessages and announceAdvancements. Alerts go to the alerts channel and always show in the panel's console too; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
+						<p class="np-card-intro pn-hint"><code>{player}</code>, <code>{message}</code> (the death message) and <code>{advancement}</code> are filled in. Deaths and advancements follow the game rules showDeathMessages and announceAdvancements. Pick per event which channel it goes to. Alerts always show in the panel's console too; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 							<span class="np-form-msg" id="pn-discord-msg"></span>

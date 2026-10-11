@@ -15,8 +15,17 @@ public final class JvmFlags {
 			"-XX:G1MaxNewSizePercent=40", "-XX:G1HeapRegionSize=8M", "-XX:G1ReservePercent=20", "-XX:G1HeapWastePercent=5",
 			"-XX:G1MixedGCCountTarget=4", "-XX:InitiatingHeapOccupancyPercent=15", "-XX:G1MixedGCLiveThresholdPercent=90",
 			"-XX:G1RSetUpdatingPauseTimePercent=5", "-XX:SurvivorRatio=32", "-XX:+PerfDisableSharedMem", "-XX:MaxTenuringThreshold=1");
-	/** Generational ZGC (the only ZGC mode since Java 24): very short pauses, best with plenty of memory. */
-	static final List<String> ZGC = List.of("-XX:+UseZGC", "-XX:+AlwaysPreTouch", "-XX:+DisableExplicitGC", "-XX:+PerfDisableSharedMem");
+	/**
+	 * Generational ZGC (the only ZGC mode since Java 24): very short pauses, best with plenty of memory.
+	 * {softMax} becomes 7/8 of the maximum memory (14G of 16G): ZGC collects early enough to stay below it
+	 * and only grows into the rest under pressure.
+	 */
+	static final List<String> ZGC = List.of("-XX:+UseZGC", "-XX:SoftMaxHeapSize={softMax}M", "-XX:+AlwaysPreTouch", "-XX:+DisableExplicitGC",
+			"-XX:+PerfDisableSharedMem");
+
+	static int softMaxMb(int maxMb) {
+		return maxMb / 8 * 7;
+	}
 
 	private JvmFlags() {
 	}
@@ -33,7 +42,7 @@ public final class JvmFlags {
 		cmd.add("-Xmx" + s.memoryMaxMb + "M");
 		cmd.addAll(switch (s.preset) {
 			case "aikar" -> AIKAR;
-			case "zgc" -> ZGC;
+			case "zgc" -> ZGC.stream().map(f -> f.replace("{softMax}", String.valueOf(softMaxMb(s.memoryMaxMb)))).toList();
 			default -> List.of();
 		});
 		cmd.addAll(split(s.customArgs));

@@ -51,8 +51,10 @@ public final class Discord implements Notifier {
 		public String token = "";
 		public String guildId = "";
 		public String channelId = "";
-		/** Admin alerts (lag, failures, disk, memory) go here; empty = the chat channel. */
+		/** Warnings (lag, crashes, failures, disk, memory) go here; empty = the chat channel. */
 		public String alertChannelId = "";
+		/** Per event: "chat" or "alerts". Events not listed use their default (warnings to alerts, the rest to chat). */
+		public Map<String, String> eventChannels = new LinkedHashMap<>();
 		public boolean requireLink = true;
 		/** Linked players must also still be on the Discord server. */
 		public boolean requireMember = false;
@@ -72,6 +74,10 @@ public final class Discord implements Notifier {
 			d.events.forEach(events::putIfAbsent);
 			d.templates.forEach(templates::putIfAbsent);
 			if (alertChannelId == null) alertChannelId = "";
+			if (eventChannels == null) eventChannels = new LinkedHashMap<>();
+			eventChannels.keySet().retainAll(events.keySet());
+			eventChannels.replaceAll((k, v) -> "alerts".equals(v) ? "alerts" : "chat");
+			for (String k : events.keySet()) eventChannels.putIfAbsent(k, ALERTS.contains(k) ? "alerts" : "chat");
 		}
 		public Map<String, String> templates = new LinkedHashMap<>(Map.of(
 				"join", "➡️ **{player}** joined the server",
@@ -267,7 +273,7 @@ public final class Discord implements Notifier {
 	public void stop() {
 		JDA bot = jda;
 		if (bot == null) return;
-		TextChannel channel = channel();
+		TextChannel channel = "alerts".equals(settings.eventChannels.get("stop")) ? alertChannel() : channel();
 		if (channel != null && settings.enabled && Boolean.TRUE.equals(settings.events.get("stop")) && lastState != Supervisor.State.STOPPED) {
 			try {
 				channel.sendMessage(settings.templates.getOrDefault("stop", "")).setAllowedMentions(List.of()).complete();
@@ -532,11 +538,11 @@ public final class Discord implements Notifier {
 		return text;
 	}
 
-	private static final java.util.Set<String> ALERTS = java.util.Set.of("lag", "lagOver", "taskFailed", "backupFailed", "trimDone", "diskLow", "memory", "crash");
+	static final java.util.Set<String> ALERTS = java.util.Set.of("lag", "lagOver", "taskFailed", "backupFailed", "trimDone", "diskLow", "memory", "crash");
 
 	private void post(String type, Map<String, String> values) {
 		if (!settings.enabled || !Boolean.TRUE.equals(settings.events.get(type))) return;
-		TextChannel channel = ALERTS.contains(type) ? alertChannel() : channel();
+		TextChannel channel = "alerts".equals(settings.eventChannels.get(type)) ? alertChannel() : channel();
 		if (channel == null) return;
 		String text = render(type, values);
 		if (text.isBlank()) return;

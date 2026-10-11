@@ -349,8 +349,8 @@ public final class Panel {
 		out.put("runtimes", JvmFlags.runtimes());
 		out.put("command", String.join(" ", JvmFlags.command(settings)));
 		out.put("presets", List.of(
+				Map.of("id", "zgc", "name", "Generational ZGC (recommended)", "flags", String.join(" ", JvmFlags.ZGC)),
 				Map.of("id", "aikar", "name", "Aikar's flags (G1)", "flags", String.join(" ", JvmFlags.AIKAR)),
-				Map.of("id", "zgc", "name", "Generational ZGC", "flags", String.join(" ", JvmFlags.ZGC)),
 				Map.of("id", "none", "name", "None", "flags", "")));
 		return out;
 	}

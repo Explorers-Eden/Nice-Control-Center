@@ -21,9 +21,9 @@ public final class PanelSettings {
 	public int stopTimeoutSeconds = 60;
 	public String serverJar = "fabric-server-launch.jar";
 	public String javaPath = "java";
-	public int memoryMinMb = 2048;
+	public int memoryMinMb = 4096;
 	public int memoryMaxMb = 4096;
-	public String preset = "aikar";
+	public String preset = "zgc";
 	public String customArgs = "";
 
 	private static final List<String> PRESETS = List.of("aikar", "zgc", "none");
