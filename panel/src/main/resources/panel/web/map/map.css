@@ -6,6 +6,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .mp-panel { position: absolute; top: 12px; left: 12px; z-index: 1000; width: min(280px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
   background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); backdrop-filter: blur(6px); }
 .mp-panel h1 { margin: 0 0 10px; font-size: 15px; font-weight: 800; }
+.mp-reset { margin: -6px 0 10px; font-size: 12px; color: #ffcf7a; font-weight: 600; }
 .mp-dims { display: flex; flex-wrap: wrap; gap: 6px; }
 .mp-dims button { border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
 .mp-dims button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }

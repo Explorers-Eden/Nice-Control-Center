@@ -39,7 +39,7 @@ public final class Permissions {
 			new Permission(CONSOLE_READ, "Console", "Read the console"),
 			new Permission(CONSOLE_WRITE, "Console", "Run console commands"),
 			new Permission(DASHBOARD_VIEW, "Dashboard", "See the dashboard: performance, world, players, errors, reports"),
-			new Permission(PLAYERS_MANAGE, "Dashboard", "Message, kick and ban players"),
+			new Permission(PLAYERS_MANAGE, "Dashboard", "Message, kick and ban players; edit the whitelist, operators and bans"),
 			new Permission(SETTINGS_SERVER, "Settings", "Change server.properties, game rules and data pack settings"),
 			new Permission(SETTINGS_JAVA, "Settings", "Change startup and Java settings"),
 			new Permission(UPDATES_MANAGE, "Settings", "Install and roll back mod and data pack updates"),

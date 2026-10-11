@@ -45,12 +45,14 @@ import java.util.concurrent.TimeUnit;
  * the bot by direct message), chat is relayed both ways (chat only, never commands), game events are
  * posted, and the bot's status shows whether the server is up and how many play.
  */
-public final class Discord {
+public final class Discord implements Notifier {
 	public static final class Settings {
 		public boolean enabled = false;
 		public String token = "";
 		public String guildId = "";
 		public String channelId = "";
+		/** Admin alerts (lag, failures, disk, memory) go here; empty = the chat channel. */
+		public String alertChannelId = "";
 		public boolean requireLink = true;
 		/** Linked players must also still be on the Discord server. */
 		public boolean requireMember = false;
@@ -61,6 +63,16 @@ public final class Discord {
 		public boolean presence = true;
 		public Map<String, Boolean> events = new LinkedHashMap<>(Map.of("join", true, "leave", true, "death", true, "advancement", true,
 				"start", true, "stop", true, "crash", true));
+
+		/** Fills in events and templates newer than the saved settings (Gson replaces the whole maps). */
+		void addDefaults() {
+			Settings d = new Settings();
+			if (events == null) events = new LinkedHashMap<>();
+			if (templates == null) templates = new LinkedHashMap<>();
+			d.events.forEach(events::putIfAbsent);
+			d.templates.forEach(templates::putIfAbsent);
+			if (alertChannelId == null) alertChannelId = "";
+		}
 		public Map<String, String> templates = new LinkedHashMap<>(Map.of(
 				"join", "➡️ **{player}** joined the server",
 				"leave", "⬅️ **{player}** left the server",
@@ -68,7 +80,18 @@ public final class Discord {
 				"advancement", "🏆 **{player}** has made the advancement **{advancement}**",
 				"start", "🟢 The server is online",
 				"stop", "🔴 The server is offline",
-				"crash", "💥 The server crashed"));
+				"crash", "💥 The server crashed{mod}: {message}"));
+		{
+			events.putAll(Map.of("lag", true, "lagOver", true, "taskFailed", true, "backupFailed", true, "trimDone", true, "diskLow", true, "memory", true));
+			templates.putAll(Map.of(
+					"lag", "🐢 Lag: {message}",
+					"lagOver", "✅ The lag is over ({message})",
+					"taskFailed", "⚠️ Scheduled task **{name}** stopped: {message}",
+					"backupFailed", "⚠️ The backup failed: {message}",
+					"trimDone", "🌲 The outer wilds were reset: {message}",
+					"diskLow", "💾 The disk is almost full: {message}",
+					"memory", "🧠 The server is short of memory: {message}"));
+		}
 		public String kickMessage = "Link your Discord account to play on this server.\n\nSend this code to {bot} as a direct message on Discord:\n\n{code}\n\nThe code works for 15 minutes.";
 		public String notMemberMessage = "Your linked Discord account isn't on our Discord server anymore. Join it again to play.";
 	}
@@ -124,6 +147,7 @@ public final class Discord {
 			System.err.println("Could not read the Discord settings: " + e.getMessage());
 		}
 		settings = s != null ? s : new Settings();
+		settings.addDefaults();
 		links = l != null ? new ArrayList<>(l) : new ArrayList<>();
 	}
 
@@ -165,8 +189,9 @@ public final class Discord {
 		if (next.enabled && (next.channelId == null || !next.channelId.matches("\\d{5,25}"))) return "The channel ID is a long number (right-click the channel → Copy Channel ID).";
 		if (next.bypass == null) next.bypass = new ArrayList<>();
 		next.bypass = next.bypass.stream().map(String::strip).filter(b -> !b.isEmpty()).map(b -> b.toLowerCase(Locale.ROOT)).distinct().toList();
-		if (next.events == null) next.events = new Settings().events;
-		if (next.templates == null) next.templates = new Settings().templates;
+		if (next.alertChannelId != null) next.alertChannelId = next.alertChannelId.strip();
+		if (next.alertChannelId != null && !next.alertChannelId.isEmpty() && !next.alertChannelId.matches("\\d{5,25}")) return "The alerts channel ID is a long number, or empty for the chat channel.";
+		next.addDefaults();
 		write(settingsFile, Json.GSON.toJson(next));
 		boolean reconnect = !next.token.equals(settings.token) || next.enabled != settings.enabled;
 		settings = next;
@@ -258,6 +283,13 @@ public final class Discord {
 		JDA bot = jda;
 		if (bot == null || bot.getStatus() != JDA.Status.CONNECTED) return null;
 		return bot.getTextChannelById(settings.channelId);
+	}
+
+	private TextChannel alertChannel() {
+		JDA bot = jda;
+		if (bot == null || bot.getStatus() != JDA.Status.CONNECTED) return null;
+		TextChannel admin = settings.alertChannelId == null || settings.alertChannelId.isBlank() ? null : bot.getTextChannelById(settings.alertChannelId);
+		return admin != null ? admin : channel();
 	}
 
 	private String botName() {
@@ -421,6 +453,10 @@ public final class Discord {
 			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null, name, e.has("text") ? e.get("text").getAsString() : "");
 			return;
 		}
+		if (type.equals("lag") || type.equals("lagOver")) {
+			alerts.alert(type, Map.of("message", e.has("text") ? e.get("text").getAsString() : ""));
+			return;
+		}
 		Map<String, String> values = new LinkedHashMap<>();
 		values.put("player", name);
 		values.put("message", e.has("text") ? e.get("text").getAsString() : "");
@@ -435,7 +471,7 @@ public final class Discord {
 		lastState = state;
 		if (before != null && state != before) {
 			if (state == Supervisor.State.RUNNING) post("start", Map.of());
-			else if (state == Supervisor.State.CRASHED) post("crash", Map.of());
+			else if (state == Supervisor.State.CRASHED) crashed();
 			else if (state == Supervisor.State.STOPPED && before != Supervisor.State.CRASHED) post("stop", Map.of());
 			if (state != Supervisor.State.RUNNING) players = 0;
 		}
@@ -452,12 +488,57 @@ public final class Discord {
 		bot.getPresence().setPresence(state == Supervisor.State.RUNNING ? OnlineStatus.ONLINE : OnlineStatus.DO_NOT_DISTURB, Activity.customStatus(text));
 	}
 
-	private void post(String type, Map<String, String> values) {
-		if (!settings.enabled || !Boolean.TRUE.equals(settings.events.get(type))) return;
-		TextChannel channel = channel();
-		if (channel == null) return;
+	/** Crash message with what happened and the mod that probably caused it. */
+	private void crashed() {
+		Path report = server.lastCrashReport();
+		CrashReports.Summary s = report == null ? new CrashReports.Summary("", null) : CrashReports.read(report, server.serverDir().resolve("mods"));
+		Map<String, String> values = new LinkedHashMap<>();
+		values.put("mod", s.mod() == null ? "" : " (probably " + s.mod() + ")");
+		values.put("message", s.what().isEmpty() ? "no crash report" : s.what());
+		server.note("Crash" + values.get("mod") + ": " + values.get("message"));
+		System.out.println("[alert] Crash" + values.get("mod") + ": " + values.get("message"));
+		post("crash", values);
+	}
+
+	/** Where alerts from the mod go: this bridge, or the panel's combined one (Discord + stats markers). */
+	private volatile Notifier alerts = this;
+
+	void routeAlerts(Notifier n) {
+		alerts = n;
+	}
+
+	/** When each alert type was last sent, for the cooldowns. */
+	private final Map<String, Long> alertedAt = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final Map<String, Long> COOLDOWN = Map.of("lag", 15 * 60_000L, "diskLow", 6 * 3600_000L, "memory", 6 * 3600_000L);
+
+	/** Admin alerts: always noted in the panel's console, posted to the alerts channel when switched on. */
+	@Override
+	public void alert(String type, Map<String, String> values) {
+		long now = System.currentTimeMillis();
+		Long last = alertedAt.get(type);
+		long cooldown = COOLDOWN.getOrDefault(type, 0L);
+		if (last != null && now - last < cooldown) return;
+		alertedAt.put(type, now);
+		String text = render(type, values);
+		String line = "Alert: " + (text.isBlank() ? type + " " + values : text);
+		server.note(line);
+		System.out.println("[alert] " + line);
+		post(type, values);
+	}
+
+	private String render(String type, Map<String, String> values) {
 		String text = settings.templates.getOrDefault(type, "");
 		for (Map.Entry<String, String> v : values.entrySet()) text = text.replace("{" + v.getKey() + "}", escape(v.getValue()));
+		return text;
+	}
+
+	private static final java.util.Set<String> ALERTS = java.util.Set.of("lag", "lagOver", "taskFailed", "backupFailed", "trimDone", "diskLow", "memory", "crash");
+
+	private void post(String type, Map<String, String> values) {
+		if (!settings.enabled || !Boolean.TRUE.equals(settings.events.get(type))) return;
+		TextChannel channel = ALERTS.contains(type) ? alertChannel() : channel();
+		if (channel == null) return;
+		String text = render(type, values);
 		if (text.isBlank()) return;
 		channel.sendMessage(text).setAllowedMentions(List.of()).queue(ok -> { }, err -> status = "Can't post in the channel: " + err.getMessage());
 	}

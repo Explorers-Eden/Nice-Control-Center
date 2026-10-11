@@ -109,6 +109,19 @@ public final class Panel {
 
 		Trimmer trimmer = new Trimmer(map, backups, server, audit, serverDir);
 		scheduler.useWorld(trimmer, dashboard);
+		map.useResetClock(() -> scheduler.nextWith("trim"));
+		Stats stats = new Stats(dataDir.resolve("stats"), server, dashboard, zone);
+		// Alerts go to Discord and show as markers on the stats charts.
+		Notifier alerts = (type, values) -> {
+			discord.alert(type, values);
+			stats.mark(type, values.getOrDefault("message", ""));
+		};
+		discord.routeAlerts(alerts);
+		scheduler.useNotifier(alerts);
+		backups.useNotifier(alerts);
+		trimmer.useNotifier(alerts);
+		stats.useNotifier(alerts);
+		stats.start();
 
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;
@@ -240,11 +253,24 @@ public final class Panel {
 			new AccountRoutes(db, accounts, auth, audit).register(routes);
 			dashboard.register(routes);
 			new OpsRoutes(backups, scheduler, audit).register(routes);
-			new FileRoutes(files, cleanup, audit).register(routes);
+			Jobs jobs = new Jobs();
+			jobs.register(routes);
+			new FileRoutes(files, cleanup, audit, jobs).register(routes);
 			new VersionRoutes(versions).register(routes);
 			new DiscordRoutes(discord, dashboard.secret(), audit).register(routes);
 			mapRoutes.register(routes);
-			new WorldRoutes(trimmer).register(routes);
+			new WorldRoutes(trimmer, jobs).register(routes);
+			new PlayerLists(serverDir, server, audit).register(routes);
+			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
+			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
+				int days;
+				try {
+					days = Math.max(1, Math.min(90, Integer.parseInt(ctx.queryParamAsClass("days", String.class).getOrDefault("30"))));
+				} catch (NumberFormatException e) {
+					days = 30;
+				}
+				json(ctx, stats.heatmap(days));
+			}));
 
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {

@@ -116,6 +116,15 @@ public final class PanelBridge {
 		}
 	}
 
+	/** An alert for the panel's Discord alerts (lag, lagOver); nothing happens without the panel. */
+	public static void alert(String type, String text) {
+		if (!PanelMode.active()) return;
+		JsonObject event = new JsonObject();
+		event.addProperty("type", type);
+		event.addProperty("text", text);
+		send(event);
+	}
+
 	private static void send(JsonObject event) {
 		SENDER.submit(() -> {
 			try {

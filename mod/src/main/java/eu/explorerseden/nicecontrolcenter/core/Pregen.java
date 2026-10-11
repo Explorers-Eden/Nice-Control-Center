@@ -27,7 +27,9 @@ import java.util.concurrent.locks.LockSupport;
  * not in the server tick: it only asks for chunks and is woken when one is done, and it backs off when a
  * tick takes more than ~25 ms so players don't notice. Optionally skips an inner area (to regenerate only
  * the outer wilds after a trim). Further jobs can be queued. The empty-server pause is held off while it
- * runs (DedicatedServerPauseMixin), so it keeps going without players.
+ * runs (DedicatedServerPauseMixin), so it keeps going without players. While players are online it can
+ * slow down or pause. The running job and the queue are kept in config/nicecontrolcenter-pregen.json, so
+ * a restart carries on where it was (at the start of the ring it was working on).
  */
 public final class Pregen {
 	private static final int MAX_IN_FLIGHT = 24;
@@ -39,6 +41,23 @@ public final class Pregen {
 	private static volatile Job job;
 	private static final ConcurrentLinkedQueue<Job> queue = new ConcurrentLinkedQueue<>();
 	private static volatile Map<String, Object> last;
+	/** Slow-mode cap on chunks in flight while players are online. */
+	private static final int SLOW_IN_FLIGHT = 4;
+	private static volatile boolean shuttingDown;
+
+	/** What config/nicecontrolcenter-pregen.json holds per job. */
+	private static final class Saved {
+		String dimension;
+		int x;
+		int z;
+		int radius;
+		int skipRadius;
+		String shape;
+		String players;
+		int ring;
+		long done;
+		long failed;
+	}
 
 	private Pregen() {
 	}
@@ -53,7 +72,14 @@ public final class Pregen {
 		/** Chunks inside this radius are left alone; 0 = none. */
 		final int skipRadius;
 		final boolean circle;
+		/** While players are online: "full", "slow" or "pause". */
+		final String players;
 		volatile long total = -1;
+		volatile boolean pausedForPlayers;
+		// Where a restart picks up: the ring being worked on and what was done before it.
+		volatile int ringStart;
+		volatile long doneAtRing;
+		volatile long failedAtRing;
 		volatile long started;
 		// Square spiral over chunk coordinates around the center chunk; only touched by the job thread.
 		int ring;
@@ -66,7 +92,8 @@ public final class Pregen {
 		volatile String stopReason;
 		volatile Thread thread;
 
-		Job(MinecraftServer server, ServerLevel level, String dimension, int centerX, int centerZ, int radius, int skipRadius, boolean circle) {
+		Job(MinecraftServer server, ServerLevel level, String dimension, int centerX, int centerZ, int radius, int skipRadius, boolean circle, String players) {
+			this.players = players;
 			this.server = server;
 			this.level = level;
 			this.dimension = dimension;
@@ -103,6 +130,9 @@ public final class Pregen {
 				if (step >= perimeter) {
 					ring++;
 					step = 0;
+					ringStart = ring;
+					doneAtRing = done.get();
+					failedAtRing = skipped.get();
 					continue;
 				}
 				int s = step++;
@@ -138,15 +168,27 @@ public final class Pregen {
 			NiceControlCenter.LOGGER.info("Pregenerating {} chunks in {} around {}, {} (radius {}{}, {})", total, dimension, centerX, centerZ, radius,
 					skipRadius > 0 ? ", outside " + skipRadius : "", circle ? "circle" : "square");
 			boolean queueEmpty = false;
+			long saveAt = System.currentTimeMillis() + 30_000;
 			while (!cancelled) {
+				if (System.currentTimeMillis() >= saveAt) {
+					save();
+					saveAt = System.currentTimeMillis() + 30_000;
+				}
 				if (queueEmpty) {
 					if (inFlight.get() == 0) break;
 					LockSupport.parkNanos(50_000_000L);
 					continue;
 				}
+				boolean playersOnline = server.getPlayerCount() > 0;
+				pausedForPlayers = playersOnline && "pause".equals(players);
+				if (pausedForPlayers) {
+					LockSupport.parkNanos(1_000_000_000L);
+					continue;
+				}
 				// Room left in the tick: back off when the server is busy.
 				float mspt = server.getCurrentSmoothedTickTime();
 				int budget = mspt > 45 ? 0 : mspt > 35 ? 2 : mspt > 25 ? 6 : MAX_IN_FLIGHT;
+				if (playersOnline && "slow".equals(players)) budget = Math.min(budget, SLOW_IN_FLIGHT);
 				if (inFlight.get() >= budget) {
 					// Woken early when a chunk finishes; the timeout re-reads the tick time when budget is 0.
 					LockSupport.parkNanos(budget == 0 ? 100_000_000L : 20_000_000L);
@@ -198,23 +240,105 @@ public final class Pregen {
 
 	/**
 	 * Returns an error, or null when it started (or was queued). skipRadius 0 = generate everything in the
-	 * radius. Any thread.
+	 * radius; players: "full", "slow" (default) or "pause" while players are online. Any thread.
 	 */
-	public static synchronized String start(MinecraftServer server, String dimension, int x, int z, int radius, int skipRadius, boolean circle, boolean enqueue) {
+	public static synchronized String start(MinecraftServer server, String dimension, int x, int z, int radius, int skipRadius, boolean circle,
+			String players, boolean enqueue) {
 		if (job != null && !enqueue) return "A pregeneration is already running.";
+		Object made = create(server, dimension, x, z, radius, skipRadius, circle, players);
+		if (made instanceof String error) return error;
+		add((Job) made);
+		save();
+		return null;
+	}
+
+	private static Object create(MinecraftServer server, String dimension, int x, int z, int radius, int skipRadius, boolean circle, String players) {
 		if (radius < 16 || radius > 100_000) return "The radius must be between 16 and 100,000 blocks.";
 		if (skipRadius < 0 || skipRadius >= radius) skipRadius = 0;
 		Identifier id = Identifier.tryParse(dimension == null ? "" : dimension);
 		ServerLevel level = id == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
 		if (level == null) return "Unknown dimension " + dimension + ".";
-		Job j = new Job(server, level, id.toString(), x, z, radius, skipRadius, circle);
+		String mode = "full".equals(players) || "pause".equals(players) ? players : "slow";
+		return new Job(server, level, id.toString(), x, z, radius, skipRadius, circle, mode);
+	}
+
+	private static void add(Job j) {
 		if (job != null) {
 			queue.add(j);
-			NiceControlCenter.LOGGER.info("Pregeneration of {} queued ({} waiting)", id, queue.size());
-			return null;
+			NiceControlCenter.LOGGER.info("Pregeneration of {} queued ({} waiting)", j.dimension, queue.size());
+		} else {
+			launch(j);
 		}
-		launch(j);
-		return null;
+	}
+
+	private static java.nio.file.Path file() {
+		return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("nicecontrolcenter-pregen.json");
+	}
+
+	/** Writes the running job and the queue (or removes the file when there's nothing left). */
+	private static synchronized void save() {
+		if (shuttingDown) return;
+		java.util.List<Saved> jobs = new java.util.ArrayList<>();
+		Job running = job;
+		if (running != null && running.stopReason == null) jobs.add(saved(running));
+		for (Job q : queue) jobs.add(saved(q));
+		try {
+			if (jobs.isEmpty()) {
+				java.nio.file.Files.deleteIfExists(file());
+			} else {
+				java.nio.file.Path tmp = file().resolveSibling("nicecontrolcenter-pregen.json.tmp");
+				java.nio.file.Files.writeString(tmp, eu.explorerseden.nicecontrolcenter.Json.GSON.toJson(jobs));
+				java.nio.file.Files.move(tmp, file(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+			}
+		} catch (java.io.IOException e) {
+			NiceControlCenter.LOGGER.warn("Could not save the pregeneration state: {}", e.toString());
+		}
+	}
+
+	private static Saved saved(Job j) {
+		Saved s = new Saved();
+		s.dimension = j.dimension;
+		s.x = j.centerX;
+		s.z = j.centerZ;
+		s.radius = j.radius;
+		s.skipRadius = j.skipRadius;
+		s.shape = j.circle ? "circle" : "square";
+		s.players = j.players;
+		s.ring = j.ringStart;
+		s.done = j.doneAtRing;
+		s.failed = j.failedAtRing;
+		return s;
+	}
+
+	/** At server start: carries on with what was running (and queued) when the server stopped. */
+	public static synchronized void resume(MinecraftServer server) {
+		shuttingDown = false;
+		java.nio.file.Path f = file();
+		if (!java.nio.file.Files.exists(f)) return;
+		Saved[] jobs;
+		try {
+			jobs = eu.explorerseden.nicecontrolcenter.Json.GSON.fromJson(java.nio.file.Files.readString(f), Saved[].class);
+		} catch (java.io.IOException | RuntimeException e) {
+			NiceControlCenter.LOGGER.warn("Could not read {}: {}", f, e.toString());
+			return;
+		}
+		if (jobs == null) return;
+		for (Saved s : jobs) {
+			Object made = create(server, s.dimension, s.x, s.z, s.radius, s.skipRadius, "circle".equals(s.shape), s.players);
+			if (!(made instanceof Job j)) {
+				NiceControlCenter.LOGGER.warn("Not resuming the pregeneration of {}: {}", s.dimension, made);
+				continue;
+			}
+			j.ring = Math.max(0, s.ring);
+			j.ringStart = j.ring;
+			j.done.set(s.done);
+			j.skipped.set(s.failed);
+			j.doneAtRing = s.done;
+			j.failedAtRing = s.failed;
+			NiceControlCenter.LOGGER.info("Resuming the pregeneration of {} at ring {} ({} chunks done)", s.dimension, j.ring, s.done);
+			add(j);
+		}
+		save();
 	}
 
 	private static void launch(Job j) {
@@ -231,19 +355,37 @@ public final class Pregen {
 		last = status(j);
 		NiceControlCenter.LOGGER.info("Pregeneration of {} {}: {} of {} chunks", j.dimension, reason, j.done.get() + j.skipped.get(), j.total);
 		if (job != j) return;
+		boolean shutdown = SHUTDOWN.equals(reason);
+		if (shutdown) {
+			// Keep the file as it was saved at the stop, so the next start carries on.
+			job = null;
+			return;
+		}
 		job = null;
 		Job next = "finished".equals(reason) ? queue.poll() : null;
 		if (next != null) launch(next);
+		save();
 	}
 
-	/** Stops the running job and drops the queue. Any thread. */
+	/** The reason given when the server stops; the job is kept for the next start. */
+	public static final String SHUTDOWN = "stopped with the server";
+
+	/** Stops the running job and drops the queue (kept for the next start when the server stops). Any thread. */
 	public static synchronized void stop(MinecraftServer server, String reason) {
-		queue.clear();
 		Job j = job;
-		if (j == null) return;
-		j.stopReason = reason;
-		j.cancelled = true;
-		LockSupport.unpark(j.thread);
+		boolean shutdown = SHUTDOWN.equals(reason);
+		if (shutdown) {
+			save();
+			// From here on the file stays as it is until the next start.
+			shuttingDown = true;
+		}
+		queue.clear();
+		if (j != null) {
+			j.stopReason = reason;
+			j.cancelled = true;
+			LockSupport.unpark(j.thread);
+		}
+		if (!shutdown) save();
 	}
 
 	/** Read by DedicatedServerPauseMixin on every tick. */
@@ -274,7 +416,7 @@ public final class Pregen {
 		long seconds = Math.max(1, (System.currentTimeMillis() - (j.started == 0 ? System.currentTimeMillis() : j.started)) / 1000);
 		long done = j.done.get();
 		long skipped = j.skipped.get();
-		long total = Math.max(0, j.total);
+		long total = Math.max(Math.max(0, j.total), done + skipped);
 		double rate = (done + skipped) / (double) seconds;
 		out.put("running", job == j && j.stopReason == null);
 		out.put("counting", j.total < 0);
@@ -284,6 +426,8 @@ public final class Pregen {
 		out.put("radius", j.radius);
 		out.put("skipRadius", j.skipRadius);
 		out.put("shape", j.circle ? "circle" : "square");
+		out.put("players", j.players);
+		if (j.pausedForPlayers) out.put("paused", "players online");
 		out.put("done", done + skipped);
 		out.put("failed", skipped);
 		out.put("total", total);

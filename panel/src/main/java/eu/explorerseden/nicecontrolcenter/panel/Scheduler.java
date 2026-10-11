@@ -56,6 +56,8 @@ public final class Scheduler {
 		/** restart and trim: countdown in minutes before it happens; wait: seconds. */
 		public int minutes = 5;
 		public int seconds = 30;
+		/** pregen: "full", "slow" or "pause" while players are online. */
+		public String mode = "slow";
 	}
 
 	public record Run(long time, boolean ok, String message) {
@@ -83,6 +85,11 @@ public final class Scheduler {
 	private volatile List<Task> tasks;
 	private volatile Trimmer trimmer;
 	private volatile DashboardProxy mod;
+	private volatile Notifier notifier = Notifier.NONE;
+
+	void useNotifier(Notifier n) {
+		notifier = n;
+	}
 	private final Map<String, Run> lastRuns = new ConcurrentHashMap<>();
 	private final Map<String, String> runningNow = new ConcurrentHashMap<>();
 	/** Minute (epoch minutes) each task last fired in, so a slow tick can't run it twice. */
@@ -208,6 +215,18 @@ public final class Scheduler {
 
 	// ── Timing ─────────────────────────────────────────────────────────────
 
+	/** When an enabled task with the given step type runs next (epoch millis), or 0. */
+	public long nextWith(String stepType) {
+		ZonedDateTime now = ZonedDateTime.now(zone);
+		long best = 0;
+		for (Task t : tasks) {
+			if (t.steps.stream().noneMatch(s -> stepType.equals(s.type))) continue;
+			long at = next(t, now);
+			if (at > 0 && (best == 0 || at < best)) best = at;
+		}
+		return best;
+	}
+
 	/** Next time the task is due, in epoch millis (0 when disabled). */
 	long next(Task t, ZonedDateTime now) {
 		if (!t.enabled) return 0;
@@ -277,6 +296,7 @@ public final class Scheduler {
 				runningNow.remove(task.id);
 			}
 			lastRuns.put(task.id, new Run(System.currentTimeMillis(), error == null, error == null ? "Done" : error));
+			if (error != null) notifier.alert("taskFailed", Map.of("name", task.name, "message", error));
 			server.note("Task \"" + task.name + "\" " + (error == null ? "finished" : "stopped: " + error));
 		});
 		return null;
@@ -316,7 +336,7 @@ public final class Scheduler {
 				return resetWilds(step, by);
 			}
 			case "pregen" -> {
-				return pregen("all".equals(step.text));
+				return pregen("all".equals(step.text), step.mode);
 			}
 			case "restart" -> {
 				if (server.running()) {
@@ -356,7 +376,7 @@ public final class Scheduler {
 		String problem = t.start(areas, by);
 		if (problem == null) {
 			String result = t.awaitResult(6 * 3600_000L);
-			if (result == null || !result.startsWith("Done")) problem = result == null ? "The trim ended without a result." : result;
+			if (result == null || !(result.startsWith("Done") || result.equals(Trimmer.NOTHING))) problem = result == null ? "The trim ended without a result." : result;
 		} else if (problem.equals(Trimmer.NOTHING)) {
 			problem = null;
 		}
@@ -370,7 +390,7 @@ public final class Scheduler {
 	}
 
 	/** Pregenerates every dimension with borders that has pregen on, one after another (in the mod). */
-	private String pregen(boolean all) throws InterruptedException {
+	private String pregen(boolean all, String players) throws InterruptedException {
 		Trimmer t = trimmer;
 		DashboardProxy m = mod;
 		if (t == null || m == null) return "Pregenerating isn't available.";
@@ -387,6 +407,7 @@ public final class Scheduler {
 			body.addProperty("skipRadius", all ? 0 : b.soft);
 			body.addProperty("shape", b.shape);
 			body.addProperty("queue", true);
+			body.addProperty("players", players == null ? "slow" : players);
 			// Right after a start the mod may need a moment before it answers.
 			String error = null;
 			for (int attempt = 0; attempt < 12; attempt++) {

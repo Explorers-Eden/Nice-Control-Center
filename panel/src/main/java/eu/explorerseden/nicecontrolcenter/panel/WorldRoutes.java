@@ -21,9 +21,11 @@ import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
  */
 final class WorldRoutes {
 	private final Trimmer trimmer;
+	private final Jobs jobs;
 
-	WorldRoutes(Trimmer trimmer) {
+	WorldRoutes(Trimmer trimmer, Jobs jobs) {
 		this.trimmer = trimmer;
+		this.jobs = jobs;
 	}
 
 	private static int keepMinutes(JsonObject b) {
@@ -71,8 +73,10 @@ final class WorldRoutes {
 				error(ctx, HttpStatus.BAD_REQUEST, "Save borders for this dimension first.");
 				return;
 			}
-			try {
-				Trimmer.Plan p = trimmer.plan(areas.get(0));
+			// Reading every region file (and with "keep visited", every chunk outside) can take minutes.
+			Trimmer.Area area = areas.get(0);
+			Jobs.Job job = jobs.submit("trim-preview", "Trim preview of " + area.dimension(), me.name(), () -> {
+				Trimmer.Plan p = trimmer.plan(area);
 				trimmer.preview(p);
 				Map<String, Object> out = new LinkedHashMap<>();
 				out.put("regions", p.regions().size());
@@ -80,10 +84,9 @@ final class WorldRoutes {
 				out.put("chunks", p.chunkCount());
 				out.put("bytes", p.bytes());
 				out.put("regionsKept", p.regionsKept());
-				json(ctx, out);
-			} catch (IOException e) {
-				error(ctx, HttpStatus.BAD_REQUEST, e.getMessage());
-			}
+				return out;
+			});
+			json(ctx, Map.of("ok", true, "job", job.id));
 		}));
 
 		routes.post("/api/trim/clear", guard(Permissions.WORLD_TRIM, (ctx, me) -> {

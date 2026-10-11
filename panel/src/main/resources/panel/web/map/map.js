@@ -14,7 +14,7 @@
     border: L.layerGroup().addTo(map),
     trim: L.layerGroup().addTo(map),
   };
-  const labels = { players: 'Players', claims: 'Claims', hubs: 'Hubs', border: 'World border' };
+  const labels = { players: 'Players', claims: 'Claims', hubs: 'Hubs', border: 'Borders' };
   let info = null;
   let dim = null;
   let tiles = null;
@@ -40,13 +40,35 @@
     drawLive();
   }
 
+  /** A circle or square around x, z with the given radius. */
+  function ring(shape, x, z, r, style, label) {
+    const shapeLayer = shape === 'circle' ? L.circle(ll(x, z), Object.assign({ radius: r }, style))
+      : L.rectangle([ll(x - r, z - r), ll(x + r + 1, z + r + 1)], style);
+    return shapeLayer.bindTooltip(label, { sticky: true }).addTo(layers.border);
+  }
+
   function drawBorder() {
     layers.border.clearLayers();
+    const z = dim.borders;
+    if (z) {
+      ring(z.shape, z.x, z.z, z.soft, { color: '#6fe89b', weight: 2, fill: false }, 'Permanent area: never reset');
+      if (z.hard > 0) {
+        const wilds = info.nextReset ? `Outer wilds beyond the green line reset ${resetText(info.nextReset)}` : 'Edge of the world';
+        ring(z.shape, z.x, z.z, z.hard, { color: '#ff9090', weight: 2, dashArray: '8 6', fill: false }, wilds);
+        return;
+      }
+    }
     const b = dim.border;
     // The default border is ~60 million blocks wide; only draw borders someone actually set.
     if (!b || b.size >= 59999968) return;
     const h = b.size / 2;
     L.rectangle([ll(b.x - h, b.z - h), ll(b.x + h, b.z + h)], { color: '#ff9090', weight: 2, dashArray: '6 6', fill: false, interactive: false }).addTo(layers.border);
+  }
+
+  function resetText(at) {
+    const days = Math.round((at - Date.now()) / 86400000);
+    const when = new Date(at).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return days <= 0 ? `today (${when})` : days === 1 ? `tomorrow (${when})` : `in ${days} days (${when})`;
   }
 
   function drawLive() {
@@ -126,6 +148,10 @@
     }
     document.title = info.title;
     $('mp-title').textContent = info.title;
+    if (info.nextReset && info.dimensions.some((d) => d.borders && d.borders.hard > 0)) {
+      $('mp-reset').hidden = false;
+      $('mp-reset').textContent = `The outer wilds reset ${resetText(info.nextReset)}`;
+    }
     $('mp-dims').innerHTML = info.dimensions.map((d) => `<button type="button" data-dim="${esc(d.key)}">${esc(d.name)}</button>`).join('');
     $('mp-dims').addEventListener('click', (e) => { const b = e.target.closest('[data-dim]'); if (b) setDim(b.dataset.dim); });
     $('mp-layers').innerHTML = Object.entries(labels).map(([k, l]) => `<label><input type="checkbox" data-layer="${k}" checked> ${l}</label>`).join('');

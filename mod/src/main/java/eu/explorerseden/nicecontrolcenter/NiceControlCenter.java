@@ -60,7 +60,8 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.web.PanelBridge.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.HardBorder::tick);
-		ServerLifecycleEvents.SERVER_STOPPING.register(server -> eu.explorerseden.nicecontrolcenter.core.Pregen.stop(server, "stopped with the server"));
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> eu.explorerseden.nicecontrolcenter.core.Pregen.stop(server, eu.explorerseden.nicecontrolcenter.core.Pregen.SHUTDOWN));
+		ServerLifecycleEvents.SERVER_STARTED.register(eu.explorerseden.nicecontrolcenter.core.Pregen::resume);
 		startConfigWatcher();
 		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> ErrorWatcher.reloadStarted());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {

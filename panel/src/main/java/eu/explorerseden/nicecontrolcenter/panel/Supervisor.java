@@ -375,10 +375,11 @@ public final class Supervisor {
 			}
 			return;
 		}
+		String report = newestCrashReport();
+		lastCrashReport = report == null ? null : serverDir.resolve("crash-reports").resolve(report);
 		state = State.CRASHED;
 		crashes.add(System.currentTimeMillis());
 		pruneCrashes();
-		String report = newestCrashReport();
 		message = "The server exited unexpectedly (exit code " + code + ")" + (report != null ? ", crash report " + report : "") + ".";
 		panelLine(message);
 		if (!settings.get().autoRestart) return;
@@ -397,6 +398,17 @@ public final class Supervisor {
 				if (error != null) panelLine("Automatic restart failed: " + error);
 			}
 		}, delay, TimeUnit.SECONDS);
+	}
+
+	private volatile Path lastCrashReport;
+
+	/** The crash report of the last crash, if Minecraft wrote one. */
+	Path lastCrashReport() {
+		return lastCrashReport;
+	}
+
+	Path serverDir() {
+		return serverDir;
 	}
 
 	private String newestCrashReport() {

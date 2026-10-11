@@ -1,3 +1,11 @@
+## 1.3.0
+- New Stats tab: TPS, milliseconds per tick, players, memory and free disk over 24 hours to 90 days, with starts, stops, crashes and alerts marked, a disk-full forecast and the busiest times per weekday and hour (kept in /data/panel/stats, no database needed)
+- New Players tab: whitelist, operators, banned players and IPs; changes go through the console while the server runs and into the files while it's stopped
+- Discord alerts for admins, optionally in their own channel: lag (needs mod 1.6.0), failed scheduled tasks and backups, outer wilds reset, disk almost full, memory pressure; crash messages name the mod that probably caused it. Alerts also show in the panel's console
+- The web map shows the soft and hard borders and when the outer wilds reset next
+- Pregenerate: choose to slow down, pause or keep going while players are online (also for the schedule step)
+- Copy, zip and unzip in Files, and the trim preview, run in the background with progress instead of inside the request; trims plan in the background too; the version check hashes mod jars in parallel
+
 ## 1.2.0
 - World tab: borders per dimension in one table (shape, center, soft border, hard border, pregenerate on/off, world border on/off), replacing the single area form; the permanent area inside the soft border is never trimmed, the outer wilds between soft and hard border can be reset
 - Pregenerate goes up to the hard border in every dimension with Pregen on, one after another, optionally only the outer wilds (needs mod 1.5.0)

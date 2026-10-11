@@ -160,6 +160,7 @@ public final class ServerFiles {
 		checkWritable(to);
 		if (Files.exists(to, LinkOption.NOFOLLOW_LINKS)) throw new IOException(rel(to) + " already exists.");
 		if (to.startsWith(from)) throw new IOException("A folder can't be copied into itself.");
+		long[] done = { 0, 0 };
 		Files.walkFileTree(from, new SimpleFileVisitor<>() {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
@@ -170,6 +171,9 @@ public final class ServerFiles {
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 				if (!attrs.isSymbolicLink()) Files.copy(file, to.resolve(from.relativize(file).toString()), StandardCopyOption.COPY_ATTRIBUTES);
+				done[0]++;
+				done[1] += attrs.size();
+				if (done[0] % 50 == 0) Jobs.progress("Copied " + done[0] + " files (" + Backups.human(done[1]) + ")");
 				return FileVisitResult.CONTINUE;
 			}
 		});
@@ -236,6 +240,7 @@ public final class ServerFiles {
 	public int unzip(Path zipFile, Path into) throws IOException {
 		int count = 0;
 		try (ZipFile zip = new ZipFile(zipFile.toFile())) {
+			int total = zip.size();
 			var entries = zip.entries();
 			while (entries.hasMoreElements()) {
 				ZipEntry e = entries.nextElement();
@@ -257,6 +262,7 @@ public final class ServerFiles {
 				}
 				if (e.getTime() > 0) Files.setLastModifiedTime(target, FileTime.fromMillis(e.getTime()));
 				count++;
+				if (count % 50 == 0) Jobs.progress("Unpacked " + count + " of about " + total + " files");
 			}
 		}
 		return count;
@@ -269,6 +275,7 @@ public final class ServerFiles {
 
 	/** skip: the zip being written, when it lies inside one of the folders. */
 	public void zip(List<Path> paths, Path base, OutputStream out, Path skip) throws IOException {
+		long[] done = { 0, 0 };
 		try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(out, 1 << 16))) {
 			zip.setLevel(java.util.zip.Deflater.BEST_SPEED);
 			for (Path p : paths) {
@@ -285,6 +292,9 @@ public final class ServerFiles {
 							// A locked or vanished file: leave it out.
 						}
 						zip.closeEntry();
+						done[0]++;
+						done[1] += attrs.size();
+						if (done[0] % 50 == 0) Jobs.progress("Packed " + done[0] + " files (" + Backups.human(done[1]) + ")");
 						return FileVisitResult.CONTINUE;
 					}
 

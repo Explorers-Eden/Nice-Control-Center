@@ -95,6 +95,7 @@ public final class AlertWatcher {
 			lastAlert = now;
 			NiceControlCenter.notifyAdmins(ControlCenterCommand.lagAlert(summary, causeText, cause), "Lag: " + summary
 					+ (causeText == null ? "" : ". Mainly " + causeText));
+			eu.explorerseden.nicecontrolcenter.web.PanelBridge.alert("lag", summary + (causeText == null ? "" : ", mainly " + causeText));
 		}
 		if (config.auto_record_lag) {
 			String reason = "Lag at " + LocalTime.now().format(TIME) + ": " + summary + (causeText == null ? "" : ", mainly " + causeText);
@@ -106,6 +107,7 @@ public final class AlertWatcher {
 		long minutes = Math.max(1, (System.currentTimeMillis() - lagSince) / 60_000L);
 		if (alertSent) {
 			NiceControlCenter.notifyAdmins(ControlCenterCommand.lagRecovered(minutes), "Lag is over after about " + minutes + " min");
+			eu.explorerseden.nicecontrolcenter.web.PanelBridge.alert("lagOver", "after about " + minutes + " min");
 		}
 		alertSent = false;
 		Recorder.finishAutomaticIn(TAIL_MILLIS);

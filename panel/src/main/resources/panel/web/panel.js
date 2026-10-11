@@ -93,6 +93,7 @@
     if (activeTab === 'schedule') loadSchedule();
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
     if (activeTab === 'world') worldTick();
+    if (activeTab === 'stats' && Date.now() - (statsData ? statsData.to : 0) > 60000) loadStats();
   }, 2000);
 
   /** The dashboard loads once and keeps running in the background while other tabs are open. */
@@ -122,6 +123,8 @@
     if (tab === 'discord') loadDiscord();
     if (tab === 'map') loadMap();
     if (tab === 'world') loadWorld();
+    if (tab === 'stats') loadStats();
+    if (tab === 'players') loadPlayerLists();
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
@@ -854,7 +857,8 @@
     if (s.type === 'backup') fields = `<input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="Note (optional)">`;
     if (s.type === 'trim') fields = `<span>stops the server after a countdown of</span><input type="number" data-f="minutes" min="0" max="60" value="${s.minutes ?? 5}"><span>min, trims outside the soft borders, starts it again; message</span>
       <input type="text" data-f="text" value="${esc(s.text || '')}" placeholder="The outer wilds reset in {time}.">`;
-    if (s.type === 'pregen') fields = `<select data-f="text"><option value="wilds" ${s.text !== 'all' ? 'selected' : ''}>only the outer wilds</option><option value="all" ${s.text === 'all' ? 'selected' : ''}>everything up to the hard border</option></select><span>(dimensions with Pregen on, World tab)</span>`;
+    if (s.type === 'pregen') fields = `<select data-f="text"><option value="wilds" ${s.text !== 'all' ? 'selected' : ''}>only the outer wilds</option><option value="all" ${s.text === 'all' ? 'selected' : ''}>everything up to the hard border</option></select>`
+      + ((m) => `<select data-f="mode"><option value="slow" ${m === 'slow' ? 'selected' : ''}>slow down while players are online</option><option value="pause" ${m === 'pause' ? 'selected' : ''}>pause while players are online</option><option value="full" ${m === 'full' ? 'selected' : ''}>full speed even with players online</option></select>`)(s.mode || 'slow') + `<span>(dimensions with Pregen on, World tab)</span>`;
     if (s.type === 'wait') fields = `<input type="number" data-f="seconds" min="1" max="3600" value="${s.seconds ?? 30}"><span>seconds</span>`;
     return `<div class="pn-step"><select data-f="type">${opts}</select>${fields}<button type="button" class="np-btn small" data-step-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
   }
@@ -1241,11 +1245,14 @@
         case 'copy': {
           const to = prompt('Copy to (relative to the server folder):', path.replace(/(\.[^./]+)?$/, ' copy$1'));
           if (!to) return;
-          await api('api/files/copy', { from: path, to });
+          const { job } = await api('api/files/copy', { from: path, to });
+          await awaitJob(job, (t) => filesNote(t || 'Copying…', true));
+          filesNote('Copied.', true);
           break;
         }
         case 'unzip': {
-          const res = await api('api/files/unzip', { path });
+          const { job } = await api('api/files/unzip', { path });
+          const res = await awaitJob(job, (t) => filesNote(t || 'Unpacking…', true));
           filesNote(`Extracted ${res.files} files.`, true);
           break;
         }
@@ -1287,7 +1294,10 @@
     const to = prompt('Name of the zip file:', (cwd ? cwd + '/' : '') + (paths.length === 1 ? paths[0].split('/').pop() : 'files') + '.zip');
     if (!to) return;
     try {
-      await api('api/files/zip', { paths, to });
+      const { job } = await api('api/files/zip', { paths, to });
+      loadFiles();
+      await awaitJob(job, (t) => filesNote(t || 'Packing…', true));
+      filesNote('Zip ready.', true);
       loadFiles();
     } catch (err) {
       filesNote(err.message, false);
@@ -1590,7 +1600,9 @@
 
   // ── Discord ────────────────────────────────────────────────────────────
 
-  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline', crash: 'Crash' };
+  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline', crash: 'Crash ({mod}, {message})',
+    lag: 'Lag (alert)', lagOver: 'Lag over (alert)', taskFailed: 'Task failed (alert, {name})', backupFailed: 'Backup failed (alert)',
+    trimDone: 'Outer wilds reset (alert)', diskLow: 'Disk almost full (alert)', memory: 'Memory pressure (alert)' };
   let discordData = null;
 
   async function loadDiscord() {
@@ -1608,6 +1620,7 @@
     form.token.disabled = discordData.tokenFromEnv;
     form.guildId.value = s.guildId || '';
     form.channelId.value = s.channelId || '';
+    form.alertChannelId.value = s.alertChannelId || '';
     form.bypass.value = (s.bypass || []).join('\n');
     form.kickMessage.value = s.kickMessage || '';
     $('pn-discord-events').innerHTML = Object.keys(EVENT_LABELS).map((k) => `<div class="pn-step" data-event="${k}">
@@ -1650,7 +1663,7 @@
       templates[row.dataset.event] = row.querySelector('input[type="text"]').value;
     });
     const body = {
-      enabled: form.enabled.checked, token: form.token.value.trim(), guildId: form.guildId.value.trim(), channelId: form.channelId.value.trim(),
+      enabled: form.enabled.checked, token: form.token.value.trim(), guildId: form.guildId.value.trim(), channelId: form.channelId.value.trim(), alertChannelId: form.alertChannelId.value.trim(),
       requireLink: form.requireLink.checked, requireMember: form.requireMember.checked, opsBypass: form.opsBypass.checked,
       bypass: form.bypass.value.split('\n').map((l) => l.trim()).filter(Boolean), kickMessage: form.kickMessage.value,
       notMemberMessage: discordData.settings.notMemberMessage,
@@ -1714,6 +1727,284 @@
       formMsg('pn-map-msg', err.message, false);
     }
   });
+
+  // ── Players: whitelist, operators, bans ────────────────────────────────
+
+  let plData = null;
+
+  async function loadPlayerLists() {
+    try {
+      plData = await api('api/players/lists');
+    } catch (err) {
+      formMsg('pn-pl-msg', err.message, false);
+      return;
+    }
+    const d = plData;
+    $('pn-pl-intro').textContent = (d.running
+      ? 'The server is running: changes go through its console and apply right away.'
+      : 'The server is stopped: changes are written to whitelist.json, ops.json and the ban lists and apply at the next start.')
+      + (d.onlineMode ? ' Names are looked up at Mojang.' : ' The server runs in offline mode, so offline UUIDs are used.')
+      + (d.whitelistOn && !d.enforce ? ' Note: players already online stay until they leave (enforce-whitelist is off).' : '');
+    $('pn-pl-wl').checked = d.whitelistOn;
+    const head = (name) => `<img src="https://mc-heads.net/avatar/${encodeURIComponent(name)}/20" alt="" loading="lazy">`;
+    const btn = (action, target, label) => `<button type="button" class="np-btn small" data-pl="${action}" data-target="${esc(target)}">${label}</button>`;
+    const set = (tableId, countId, list, headRow, row, empty) => {
+      $(countId).textContent = list.length ? `(${list.length})` : '';
+      $(tableId).innerHTML = list.length ? `<thead><tr>${headRow}</tr></thead><tbody>${list.map(row).join('')}</tbody>` : `<tbody><tr><td>${empty}</td></tr></tbody>`;
+    };
+    set('pn-pl-whitelist', 'pn-pl-wl-count', d.whitelist, '<th>Player</th><th></th>',
+      (p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td><td class="num">${btn('whitelist-remove', p.name, 'Remove')}</td></tr>`, 'Nobody is on the whitelist.');
+    set('pn-pl-ops', 'pn-pl-op-count', d.ops, '<th>Player</th><th class="num">Level</th><th></th>',
+      (p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td><td class="num">${p.level ?? '–'}</td><td class="num">${btn('deop', p.name, 'Remove')}</td></tr>`, 'No operators.');
+    set('pn-pl-bans', 'pn-pl-ban-count', d.bans, '<th>Player</th><th>Reason</th><th>By</th><th></th>',
+      (p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td><td>${esc(p.reason || '')}</td><td>${esc(p.source || '')}<br><small>${esc(p.created || '')}</small></td><td class="num">${btn('pardon', p.name, 'Unban')}</td></tr>`, 'Nobody is banned.');
+    set('pn-pl-ipbans', 'pn-pl-ip-count', d.ipBans, '<th>IP</th><th>Reason</th><th></th>',
+      (p) => `<tr><td>${esc(p.ip)}</td><td>${esc(p.reason || '')}</td><td class="num">${btn('pardon-ip', p.ip, 'Unban')}</td></tr>`, 'No IP bans.');
+  }
+
+  async function playerAction(body) {
+    try {
+      const res = await api('api/players/lists', body);
+      formMsg('pn-pl-msg', res.console ? 'Sent to the server.' : 'Saved.', true);
+      // The server writes its files a moment after the command.
+      setTimeout(loadPlayerLists, res.console ? 1200 : 0);
+      return true;
+    } catch (err) {
+      formMsg('pn-pl-msg', err.message, false);
+      return false;
+    }
+  }
+
+  function plFormFields() {
+    const a = $('pn-pl-form').plAction.value;
+    $('pn-pl-form').querySelector('[data-for="op"]').hidden = a !== 'op';
+    $('pn-pl-form').querySelector('[data-for="ban"]').hidden = !a.startsWith('ban');
+  }
+  $('pn-pl-form').plAction.addEventListener('change', plFormFields);
+  plFormFields();
+  $('pn-pl-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (await playerAction({ action: f.plAction.value, target: f.plTarget.value.trim(), reason: f.reason.value, level: f.level.value })) f.plTarget.value = '';
+  });
+  $('pn-pl-wl').addEventListener('change', (e) => playerAction({ action: e.target.checked ? 'whitelist-on' : 'whitelist-off', target: '' }));
+  document.querySelector('[data-tab="players"].np-tab-panel').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pl]');
+    if (!b) return;
+    if (b.dataset.pl.startsWith('pardon') || confirm(`${b.textContent} ${b.dataset.target}?`)) playerAction({ action: b.dataset.pl, target: b.dataset.target });
+  });
+
+  // ── Background jobs (copy, zip, unzip, trim preview) ───────────────────
+
+  /** Polls a panel job until it's done: resolves with its result, rejects with its error. */
+  async function awaitJob(id, onProgress) {
+    for (;;) {
+      const j = await api('api/jobs/' + id);
+      if (j.done) {
+        if (j.error) throw new Error(j.error);
+        return j.result;
+      }
+      if (onProgress) onProgress(j.progress);
+      await new Promise((r) => setTimeout(r, 700));
+    }
+  }
+
+  // ── Stats: the server over days and weeks ──────────────────────────────
+
+  let statsRange = '24h';
+  let statsData = null;
+  const MARKER_TEXT = { start: 'Server started', stop: 'Server stopped', crash: 'Crash', trimDone: 'Outer wilds reset', backupFailed: 'Backup failed',
+    taskFailed: 'Task failed', lag: 'Lag', lagOver: 'Lag over', diskLow: 'Disk almost full', memory: 'Memory pressure' };
+  const svgNs = 'http://www.w3.org/2000/svg';
+
+  async function loadStats() {
+    try {
+      const [series, heat] = await Promise.all([api('api/stats?range=' + statsRange), api('api/stats/heatmap?days=30')]);
+      statsData = series;
+      renderStats(series);
+      renderHeat(heat);
+    } catch (err) {
+      $('pn-stats-summary').textContent = err.message;
+    }
+  }
+
+  $('pn-stats-range').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-range]');
+    if (!b) return;
+    statsRange = b.dataset.range;
+    $('pn-stats-range').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+    loadStats();
+  });
+
+  const fmtTime = (t, span) => new Date(t).toLocaleString([], span > 2 * 86400000
+    ? { day: 'numeric', month: 'short' } : { hour: '2-digit', minute: '2-digit' });
+  const fmtFull = (t) => new Date(t).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const num1 = (v) => v == null ? '–' : (Math.round(v * 10) / 10).toLocaleString();
+
+  function renderStats(d) {
+    const pts = d.points;
+    const span = d.to - d.from;
+    const up = pts.length ? pts.reduce((s, p) => s + (p.up || 0), 0) / pts.length * 100 : 0;
+    const withTps = pts.filter((p) => p.tps != null);
+    const avgTps = withTps.length ? withTps.reduce((s, p) => s + p.tps, 0) / withTps.length : null;
+    const peak = pts.reduce((m, p) => Math.max(m, p.players || 0), 0);
+    const crashes = d.markers.filter((m) => m.type === 'crash').length;
+    const f = d.forecast;
+    const forecast = f && f.days != null ? `the drive is full in about ${f.days.toLocaleString()} days at the current rate (${bytes(f.perDay)} a day)`
+      : f ? 'free disk space isn\'t shrinking' : 'not enough data for a disk forecast yet';
+    $('pn-stats-summary').textContent = pts.length
+      ? `Online ${num1(up)}% of the time · average ${num1(avgTps)} TPS · up to ${peak} players · ${crashes} crash${crashes === 1 ? '' : 'es'} · ${forecast}.`
+      : 'No data yet: the panel records a point every minute while it runs.';
+    const charts = [
+      { title: 'TPS', series: [{ key: 'tps', label: 'TPS', color: 'var(--series-1)' }], max: 20, fmt: (v) => num1(v), ref: { v: 20, label: 'target 20' } },
+      { title: 'Milliseconds per tick', series: [{ key: 'mspt', label: 'average', color: 'var(--series-1)' }, { key: 'msptMax', label: 'slowest tick', color: 'var(--series-2)' }],
+        fmt: (v) => num1(v) + ' ms', ref: { v: 50, label: '50 ms budget' } },
+      { title: 'Players online', series: [{ key: 'players', label: 'players', color: 'var(--series-1)' }], fmt: (v) => Math.round(v), area: true, integer: true },
+      { title: 'Memory after garbage collection', series: [{ key: 'heapPct', label: '% of max', color: 'var(--series-1)' }], max: 100, fmt: (v) => Math.round(v) + '%',
+        ref: { v: 90, label: '90%' }, map: (p) => p.heapLive != null && p.heapMax ? { heapPct: p.heapLive / p.heapMax * 100 } : {} },
+      { title: 'Free disk space', series: [{ key: 'freeGb', label: 'free', color: 'var(--series-1)' }], fmt: (v) => num1(v) + ' GB', area: true,
+        map: (p) => p.free != null ? { freeGb: p.free / 1073741824 } : {} },
+    ];
+    $('pn-stats-charts').innerHTML = '';
+    // All cards go in first so the grid has its final layout; then each chart is measured and drawn.
+    const cards = charts.map(() => {
+      const card = document.createElement('section');
+      card.className = 'np-card pn-chart';
+      $('pn-stats-charts').appendChild(card);
+      return card;
+    });
+    charts.forEach((c, i) => lineChart(cards[i], c, pts.map((p) => Object.assign({}, p, c.map ? c.map(p) : {})), d, span));
+    renderStatsTable(pts, span);
+  }
+
+  /** One card with an SVG line chart: thin lines, recessive grid, crosshair + tooltip, markers along the bottom. */
+  function lineChart(card, c, pts, d, span) {
+    const latest = [...pts].reverse().find((p) => p[c.series[0].key] != null);
+    // Reference lines are named in the legend row, never on the plot, so they can't cover the data.
+    const refKey = c.ref ? `<span class="ref">${esc(c.ref.label)}</span>` : '';
+    card.innerHTML = `<div class="pn-chart-head"><h4>${esc(c.title)}</h4>${c.series.length > 1
+      ? `<div class="pn-legend">${c.series.map((s) => `<span style="--c:${s.color}">${esc(s.label)}</span>`).join('')}${refKey}</div>`
+      : `<div class="pn-legend">${refKey}<span class="now">${latest ? 'now ' + esc(c.fmt(latest[c.series[0].key])) : ''}</span></div>`}</div>`;
+    // Drawn at its real width, so text and lines keep their size (redrawn on resize).
+    const cs = getComputedStyle(card);
+    const W = Math.max(260, Math.round(card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)));
+    const H = 180, L = 46, R = 8, T = 8, B = 22;
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width', W);
+    svg.setAttribute('height', H);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', c.title + ' over the selected time range');
+    let max = c.max || 0;
+    for (const p of pts) for (const s of c.series) if (p[s.key] != null) max = Math.max(max, p[s.key]);
+    if (!c.max) max = niceMax(max || 1, c.integer);
+    const x = (t) => L + (t - d.from) / (d.to - d.from) * (W - L - R);
+    const y = (v) => T + (1 - v / max) * (H - T - B);
+    let html = '<g class="grid">';
+    const ticks = 4;
+    for (let i = 0; i <= ticks; i++) {
+      const v = max * i / ticks;
+      html += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`;
+    }
+    html += '</g><g class="axis">';
+    for (let i = 0; i <= ticks; i += 2) html += `<text x="${L - 6}" y="${y(max * i / ticks) + 4}" text-anchor="end">${esc(c.fmt(max * i / ticks))}</text>`;
+    for (let i = 0; i <= 4; i++) {
+      const t = d.from + (d.to - d.from) * i / 4;
+      html += `<text x="${x(t)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === 4 ? 'end' : 'middle'}">${esc(fmtTime(t, span))}</text>`;
+    }
+    html += '</g>';
+    if (c.ref && c.ref.v <= max) html += `<line class="ref" x1="${L}" x2="${W - R}" y1="${y(c.ref.v)}" y2="${y(c.ref.v)}"/>`;
+    for (const m of d.markers) {
+      if (m.t < d.from) continue;
+      html += `<line class="marker ${m.type === 'crash' ? 'crash' : ''}" x1="${x(m.t)}" x2="${x(m.t)}" y1="${H - B - 6}" y2="${H - B}"/>`;
+    }
+    // Lines break where there's no data (server off) or a gap longer than two steps.
+    for (const s of c.series) {
+      let path = '', area = '', prevT = null, segStart = null;
+      for (const p of pts) {
+        const v = p[s.key];
+        if (v == null || (prevT != null && p.t - prevT > 2.5 * d.step)) {
+          if (segStart != null && c.area) area += `L${x(prevT)},${y(0)}L${segStart},${y(0)}Z`;
+          segStart = null;
+          if (v == null) { prevT = null; continue; }
+        }
+        if (segStart == null) { segStart = x(p.t); path += `M${x(p.t)},${y(v)}`; area += `M${x(p.t)},${y(v)}`; } else { path += `L${x(p.t)},${y(v)}`; area += `L${x(p.t)},${y(v)}`; }
+        prevT = p.t;
+      }
+      if (segStart != null && c.area) area += `L${x(prevT)},${y(0)}L${segStart},${y(0)}Z`;
+      if (c.area && area) html += `<path class="area" d="${area}" fill="${s.color}"/>`;
+      html += `<path class="series" d="${path}" stroke="${s.color}" />`;
+    }
+    html += `<line class="cross" y1="${T}" y2="${H - B}" visibility="hidden"/>`;
+    svg.innerHTML = html;
+    card.appendChild(svg);
+    const tip = document.createElement('div');
+    tip.className = 'pn-tip';
+    tip.hidden = true;
+    card.appendChild(tip);
+    const cross = svg.querySelector('.cross');
+    svg.addEventListener('pointermove', (e) => {
+      const r = svg.getBoundingClientRect();
+      const t = d.from + ((e.clientX - r.left) / r.width * W - L) / (W - L - R) * (d.to - d.from);
+      let best = null;
+      for (const p of pts) if (!best || Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+      if (!best || Math.abs(best.t - t) > 3 * d.step) { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); return; }
+      const near = d.markers.filter((m) => Math.abs(m.t - best.t) <= d.step);
+      cross.setAttribute('x1', x(best.t));
+      cross.setAttribute('x2', x(best.t));
+      cross.setAttribute('visibility', 'visible');
+      tip.innerHTML = `<b>${esc(fmtFull(best.t))}</b><br>` + (best[c.series[0].key] == null && (best.up === 0 || best.paused) ? (best.up === 0 ? 'Server offline' : 'Idle: nobody online, ticks paused')
+        : c.series.map((s) => `<i style="--c:${s.color}"></i>${esc(s.label)}: <b>${esc(best[s.key] == null ? '–' : c.fmt(best[s.key]))}</b>`).join('<br>'))
+        + near.map((m) => `<br>⚑ ${esc(MARKER_TEXT[m.type] || m.type)}${m.text ? ': ' + esc(m.text) : ''}`).join('');
+      tip.hidden = false;
+      const px = x(best.t);
+      const left = px + 14 + tip.offsetWidth > r.width ? px - tip.offsetWidth - 10 : px + 14;
+      tip.style.left = Math.max(0, left + svg.offsetLeft) + 'px';
+      tip.style.top = (svg.offsetTop + 10) + 'px';
+    });
+    svg.addEventListener('pointerleave', () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); });
+  }
+
+  let statsResize = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(statsResize);
+    statsResize = setTimeout(() => { if (activeTab === 'stats' && statsData) renderStats(statsData); }, 200);
+  });
+
+  function niceMax(v, integer) {
+    const p = 10 ** Math.floor(Math.log10(v));
+    const n = [1, 2, 2.5, 5, 10].map((k) => k * p).find((k) => k >= v) || v;
+    return integer ? Math.max(4, Math.ceil(n)) : n;
+  }
+
+  function renderHeat(h) {
+    $('pn-heat-zone').textContent = h.zone;
+    const max = Math.max(1, ...h.grid.flat().filter((v) => v != null));
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    let html = '<span></span>' + Array.from({ length: 24 }, (_, i) => `<span class="hr">${i}</span>`).join('');
+    h.grid.forEach((row, d) => {
+      html += `<span class="lbl">${days[d]}</span>` + row.map((v, hr) => v == null
+        ? `<span class="cell empty" title="${days[d]} ${hr}:00 – no data"></span>`
+        : `<span class="cell" style="--v:${Math.round(8 + v / max * 92)}%" title="${days[d]} ${hr}:00 – ${num1(v)} players on average"></span>`).join('');
+    });
+    $('pn-heat').innerHTML = html;
+    $('pn-heat').insertAdjacentHTML('afterend', '');
+    let scale = $('pn-heat').nextElementSibling;
+    if (!scale || !scale.classList.contains('pn-heat-scale')) {
+      scale = document.createElement('div');
+      scale.className = 'pn-heat-scale';
+      $('pn-heat').after(scale);
+    }
+    scale.innerHTML = `<span>0</span><span class="bar"></span><span>${num1(max)} players</span>`;
+  }
+
+  function renderStatsTable(pts, span) {
+    const rows = pts.slice(-200).reverse();
+    $('pn-stats-table').innerHTML = `<thead><tr><th>Time</th><th class="num">Online</th><th class="num">TPS</th><th class="num">MSPT</th><th class="num">Slowest tick</th><th class="num">Players</th><th class="num">Memory</th><th class="num">Free disk</th></tr></thead><tbody>`
+      + rows.map((p) => `<tr><td>${esc(fmtFull(p.t))}</td><td class="num">${Math.round((p.up || 0) * 100)}%</td><td class="num">${num1(p.tps)}</td><td class="num">${num1(p.mspt)}</td><td class="num">${num1(p.msptMax)}</td>
+        <td class="num">${p.players ?? '–'}</td><td class="num">${p.heapLive != null && p.heapMax ? Math.round(p.heapLive / p.heapMax * 100) + '%' : '–'}</td><td class="num">${p.free != null ? bytes(p.free) : '–'}</td></tr>`).join('')
+      + '</tbody>';
+  }
 
   // ── World: borders, pregenerate and trim ───────────────────────────────
 
@@ -1812,7 +2103,7 @@
     } else {
       const pct = show.total ? Math.round(show.done / show.total * 100) : 0;
       const ring = show.skipRadius ? ` outside ${show.skipRadius}` : '';
-      $('pn-pregen-status').innerHTML = `<b>${st.running ? 'Pregenerating' : 'Last run (' + esc(show.result || 'stopped') + ')'}</b> · ${esc(dimName(show.dimension))} · ${show.shape} radius ${show.radius}${ring} around ${show.x}, ${show.z}<br>
+      $('pn-pregen-status').innerHTML = `<b>${st.running ? (show.paused ? 'Paused: ' + esc(show.paused) : 'Pregenerating') : 'Last run (' + esc(show.result || 'stopped') + ')'}</b> · ${esc(dimName(show.dimension))} · ${show.shape} radius ${show.radius}${ring} around ${show.x}, ${show.z}<br>
         ${show.counting ? 'Counting chunks…' : `${show.done.toLocaleString()} of ${show.total.toLocaleString()} chunks (${pct}%) · ${show.perSecond}/s${st.running ? ' · about ' + duration2(show.etaSeconds) + ' left' : ''}${show.failed ? ` · ${show.failed} failed` : ''}`}
         ${queued.length ? `<br>Then: ${queued.map(esc).join(', ')}` : ''}
         <div class="pn-bar"><span style="width:${pct}%"></span></div>`;
@@ -1841,7 +2132,7 @@
     if (!confirm(`Pregenerate about ${Math.round(chunks).toLocaleString()} chunks in ${jobs.map(([d]) => dimName(d)).join(', ')}? Large areas take hours; it only uses the server's spare time.`)) return;
     try {
       for (const [dim, b] of jobs) {
-        await modPost('api/pregen/start', { dimension: dim, x: b.x, z: b.z, radius: b.hard > 0 ? b.hard : b.soft, skipRadius: wilds ? b.soft : 0, shape: b.shape, queue: true });
+        await modPost('api/pregen/start', { dimension: dim, x: b.x, z: b.z, radius: b.hard > 0 ? b.hard : b.soft, skipRadius: wilds ? b.soft : 0, shape: b.shape, queue: true, players: $('pn-pregen-players').value });
       }
       formMsg('pn-pregen-msg', jobs.length > 1 ? `Started; ${jobs.length} dimensions, one after another.` : 'Started.', true);
       loadPregen();
@@ -1871,7 +2162,8 @@
     if (!b) return formMsg('pn-trim-msg', 'Save borders for a dimension first.', false);
     formMsg('pn-trim-msg', 'Looking at the region files…', true);
     try {
-      const p = await api('api/trim/preview', { dimension: dim, keepVisitedMinutes: $('pn-trim-keep').value });
+      const { job } = await api('api/trim/preview', { dimension: dim, keepVisitedMinutes: $('pn-trim-keep').value });
+      const p = await awaitJob(job, (t) => formMsg('pn-trim-msg', t || 'Looking at the region files…', true));
       const nothing = !p.regions && !p.partialRegions;
       formMsg('pn-trim-msg', nothing ? 'Nothing lies outside the soft border there.'
         : `Would remove ${p.chunks.toLocaleString()} chunks in ${esc(dimName(dim))}: ${p.regions} whole region file${p.regions === 1 ? '' : 's'} and parts of ${p.partialRegions} more, about ${bytes(p.bytes)}. Red on the map below goes, the green line is the soft border, the dashed one the hard border.`, !nothing);

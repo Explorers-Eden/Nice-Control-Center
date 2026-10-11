@@ -34,8 +34,10 @@ final class FileRoutes {
 	private final ServerFiles files;
 	private final LogCleanup cleanup;
 	private final Audit audit;
+	private final Jobs jobs;
 
-	FileRoutes(ServerFiles files, LogCleanup cleanup, Audit audit) {
+	FileRoutes(ServerFiles files, LogCleanup cleanup, Audit audit, Jobs jobs) {
+		this.jobs = jobs;
 		this.files = files;
 		this.cleanup = cleanup;
 		this.audit = audit;
@@ -167,9 +169,15 @@ final class FileRoutes {
 			JsonObject body = body(ctx);
 			Path from = path(ctx, me, str(body, "from"), false);
 			Path to = path(ctx, me, str(body, "to"), true);
-			files.copy(from, to);
-			audit.log(me.name(), "files.copy", files.rel(from) + " → " + files.rel(to), clientIp(ctx));
-			json(ctx, Map.of("ok", true));
+			files.checkWritable(to);
+			if (Files.exists(to)) throw new IOException(files.rel(to) + " already exists.");
+			String ip = clientIp(ctx);
+			Jobs.Job job = jobs.submit("copy", "Copying " + files.rel(from), me.name(), () -> {
+				files.copy(from, to);
+				audit.log(me.name(), "files.copy", files.rel(from) + " → " + files.rel(to), ip);
+				return Map.of("to", files.rel(to));
+			});
+			json(ctx, Map.of("ok", true, "job", job.id));
 		}));
 
 		routes.post("/api/files/delete", action((ctx, me) -> {
@@ -184,9 +192,14 @@ final class FileRoutes {
 
 		routes.post("/api/files/unzip", action((ctx, me) -> {
 			Path zip = path(ctx, me, str(body(ctx), "path"), true);
-			int count = files.unzip(zip, zip.getParent());
-			audit.log(me.name(), "files.unzip", files.rel(zip) + " (" + count + " files)", clientIp(ctx));
-			json(ctx, Map.of("ok", true, "files", count));
+			if (!Files.isRegularFile(zip)) throw new java.nio.file.NoSuchFileException(files.rel(zip));
+			String ip = clientIp(ctx);
+			Jobs.Job job = jobs.submit("unzip", "Unpacking " + files.rel(zip), me.name(), () -> {
+				int count = files.unzip(zip, zip.getParent());
+				audit.log(me.name(), "files.unzip", files.rel(zip) + " (" + count + " files)", ip);
+				return Map.of("files", count);
+			});
+			json(ctx, Map.of("ok", true, "job", job.id));
 		}));
 
 		routes.post("/api/files/zip", action((ctx, me) -> {
@@ -199,11 +212,21 @@ final class FileRoutes {
 			if (!target.getFileName().toString().endsWith(".zip")) target = target.resolveSibling(target.getFileName() + ".zip");
 			files.checkWritable(target);
 			if (Files.exists(target)) throw new IOException(files.rel(target) + " already exists.");
-			try (OutputStream out = Files.newOutputStream(target)) {
-				files.zip(resolved, target.getParent(), out, target);
-			}
-			audit.log(me.name(), "files.zip", String.join(", ", paths) + " → " + files.rel(target), clientIp(ctx));
-			json(ctx, Map.of("ok", true));
+			Path into = target;
+			String ip = clientIp(ctx);
+			Jobs.Job job = jobs.submit("zip", "Packing " + files.rel(into), me.name(), () -> {
+				Path part = into.resolveSibling(into.getFileName() + ".part");
+				try (OutputStream out = Files.newOutputStream(part)) {
+					files.zip(resolved, into.getParent(), out, part);
+				} catch (IOException | RuntimeException e) {
+					Files.deleteIfExists(part);
+					throw e;
+				}
+				Files.move(part, into);
+				audit.log(me.name(), "files.zip", String.join(", ", paths) + " → " + files.rel(into), ip);
+				return Map.of("to", files.rel(into));
+			});
+			json(ctx, Map.of("ok", true, "job", job.id));
 		}));
 
 		// ── Config editor: every file in config/ with its format ──

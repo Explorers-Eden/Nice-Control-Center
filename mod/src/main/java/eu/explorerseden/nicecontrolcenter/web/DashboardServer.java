@@ -495,8 +495,9 @@ public final class DashboardServer {
 				JsonObject body = jsonBody(exchange);
 				int skip = body.has("skipRadius") ? body.get("skipRadius").getAsInt() : 0;
 				boolean enqueue = body.has("queue") && body.get("queue").getAsBoolean();
+				String players = body.has("players") ? body.get("players").getAsString() : "slow";
 				String error = eu.explorerseden.nicecontrolcenter.core.Pregen.start(minecraft, body.get("dimension").getAsString(),
-						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), skip, "circle".equals(body.get("shape").getAsString()), enqueue);
+						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), skip, "circle".equals(body.get("shape").getAsString()), players, enqueue);
 				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
 			}
 			case "/api/pregen/stop" -> {

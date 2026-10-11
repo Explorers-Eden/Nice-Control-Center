@@ -167,13 +167,25 @@ public final class Versions {
 		Path dir = serverDir.resolve("mods");
 		if (!Files.isDirectory(dir)) return mods;
 		try (Stream<Path> files = Files.list(dir)) {
-			for (Path jar : files.filter(f -> f.getFileName().toString().endsWith(".jar")).sorted().toList()) {
+			// Hashed in parallel: a big modpack has hundreds of jars.
+			List<Path> jars = files.filter(f -> f.getFileName().toString().endsWith(".jar")).sorted().toList();
+			List<ModCheck> checked;
+			try {
+				checked = jars.parallelStream().map(jar -> {
 				ModCheck m = new ModCheck();
 				m.file = jar.getFileName().toString();
-				m.sha1 = sha1(jar);
+				try {
+					m.sha1 = sha1(jar);
+				} catch (IOException e) {
+					throw new java.io.UncheckedIOException(e);
+				}
 				readModJson(jar, m);
-				mods.add(m);
+				return m;
+				}).toList();
+			} catch (java.io.UncheckedIOException e) {
+				throw e.getCause();
 			}
+			mods.addAll(checked);
 		}
 		Map<String, ModCheck> byHash = new LinkedHashMap<>();
 		for (ModCheck m : mods) byHash.put(m.sha1, m);

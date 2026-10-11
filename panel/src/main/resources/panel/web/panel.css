@@ -67,6 +67,53 @@
 .pn-step input[type="text"] { flex: 1; min-width: 200px; }
 .pn-step input[type="number"] { width: 80px; }
 .pn-step span { font-size: 12.5px; color: var(--muted); }
+/* Stats tab: two categorical slots (validated light + dark), chart chrome from the shared tokens. */
+.pn-stats { --series-1: #3987e5; --series-2: #d95926; }
+:root[data-theme="light"] .pn-stats { --series-1: #2a78d6; --series-2: #eb6834; }
+.pn-stats-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.pn-stats-head .np-card-title { margin: 0; }
+.pn-seg { display: inline-flex; border: 1px solid rgba(var(--ink),.12); border-radius: 10px; overflow: hidden; }
+.pn-seg button { background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; cursor: pointer; }
+.pn-seg button + button { border-left: 1px solid rgba(var(--ink),.12); }
+.pn-seg button.active { background: rgba(var(--ink),.08); color: var(--strong); }
+#pn-stats-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 14px; margin-bottom: 14px; }
+.pn-chart { position: relative; }
+.pn-chart-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
+.pn-chart-head h4 { margin: 0; font-size: 14px; font-weight: 800; color: var(--strong); }
+.pn-chart-head .now { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pn-legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+.pn-legend span::before { content: ''; display: inline-block; width: 12px; height: 2px; border-radius: 2px; background: var(--c); vertical-align: middle; margin-right: 5px; }
+.pn-legend span.ref::before { background: none; border-top: 1px dashed var(--chart-guide); height: 0; }
+.pn-legend span.now::before { display: none; }
+.pn-legend .now { color: var(--muted); font-size: 13px; }
+.pn-chart svg { display: block; overflow: visible; }
+.pn-chart .grid line { stroke: var(--chart-grid); }
+.pn-chart .axis text { fill: var(--chart-label); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pn-chart .ref { stroke: var(--chart-guide); stroke-dasharray: 4 4; }
+.pn-chart .series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pn-chart .area { opacity: .12; }
+.pn-chart .marker { stroke: var(--chart-guide); stroke-width: 1; }
+.pn-chart .marker.crash { stroke: var(--poor); }
+.pn-chart .cross { stroke: var(--chart-guide); stroke-width: 1; }
+.pn-chart .dot { stroke: var(--card); stroke-width: 2; }
+.pn-tip { position: absolute; pointer-events: none; background: var(--nav); border: 1px solid rgba(var(--ink),.14); border-radius: 8px; padding: 7px 9px;
+  font-size: 12px; color: var(--text); box-shadow: 0 6px 18px rgba(0,0,0,.25); white-space: nowrap; z-index: 2; font-variant-numeric: tabular-nums; }
+.pn-tip b { color: var(--strong); }
+.pn-tip i { display: inline-block; width: 10px; height: 2px; background: var(--c); vertical-align: middle; margin-right: 5px; }
+.pn-chart-note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+.pn-heat { display: grid; grid-template-columns: 34px repeat(24, minmax(0, 1fr)); gap: 2px; font-size: 10.5px; color: var(--chart-label); position: relative; }
+.pn-heat .cell { aspect-ratio: 1.6; border-radius: 3px; background: color-mix(in oklab, var(--series-1) var(--v), rgba(var(--ink),.04)); }
+.pn-heat .cell.empty { background: rgba(var(--ink),.03); }
+.pn-heat .lbl { display: flex; align-items: center; }
+.pn-heat .hr { text-align: center; }
+.pn-heat-scale { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+.pn-heat-scale .bar { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(var(--ink),.04), var(--series-1)); }
+@media (max-width: 640px) { .pn-heat { grid-template-columns: 28px repeat(24, minmax(0, 1fr)); gap: 1px; } .pn-heat .hr:nth-child(odd) { visibility: hidden; } }
+.pn-pl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+.pn-pl-grid .np-table td.name { display: flex; align-items: center; gap: 8px; }
+.pn-pl-grid .np-table td.name img { width: 20px; height: 20px; border-radius: 4px; image-rendering: pixelated; }
+.pn-count { color: var(--faint); font-weight: 600; font-size: 13px; }
+.pn-inline { flex-direction: row; align-items: center; gap: 8px; margin: 0 0 0 8px; }
 .pn-borders select, .pn-borders input[type="number"] { font: inherit; font-size: 13px; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 5px 7px; }
 .pn-borders select option { background: var(--card); }
 .pn-borders input[type="number"] { width: 88px; }

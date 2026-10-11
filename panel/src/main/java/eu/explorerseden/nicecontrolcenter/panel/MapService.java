@@ -348,9 +348,20 @@ public final class MapService {
 
 	// ── What the map page gets ─────────────────────────────────────────────
 
+	/** When the outer wilds are reset next (epoch millis, 0 = not scheduled); set by the panel. */
+	private volatile java.util.function.LongSupplier nextReset = () -> 0;
+
+	void useResetClock(java.util.function.LongSupplier next) {
+		nextReset = next;
+	}
+
 	public Map<String, Object> info() {
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("title", settings.title);
+		long reset = nextReset.getAsLong();
+		if (reset > 0) out.put("nextReset", reset);
+		Map<String, eu.explorerseden.nicecontrolcenter.Borders.Border> borders = eu.explorerseden.nicecontrolcenter.Borders.read(
+				serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Borders.FILE));
 		List<Map<String, Object>> dims = new ArrayList<>();
 		for (Dim d : dimensions()) {
 			if (settings.hidden.contains(d.id())) continue;
@@ -362,6 +373,8 @@ public final class MapService {
 				m.put("border", Json.GSON.fromJson(d.info().get("border"), Map.class));
 				m.put("spawn", Json.GSON.fromJson(d.info().get("spawn"), Map.class));
 			}
+			var b = borders.get(d.id());
+			if (b != null) m.put("borders", Map.of("shape", b.shape, "x", b.x, "z", b.z, "soft", b.soft, "hard", b.hard));
 			dims.add(m);
 		}
 		out.put("dimensions", dims);

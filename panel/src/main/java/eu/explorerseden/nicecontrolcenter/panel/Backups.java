@@ -166,12 +166,24 @@ public final class Backups {
 		if (name != null) protectedNames.remove(name);
 	}
 
+	private volatile Notifier notifier = Notifier.NONE;
+
+	void useNotifier(Notifier n) {
+		notifier = n;
+	}
+
 	/** prune = false for safety backups during a restore, so retention can't remove what's about to be restored. */
 	public String create(String label, String by, boolean prune) {
 		synchronized (this) {
 			if (running) return "A backup is already running.";
 			running = true;
 		}
+		String error = createNow(label, by, prune);
+		if (error != null) notifier.alert("backupFailed", Map.of("message", error));
+		return error;
+	}
+
+	private String createNow(String label, String by, boolean prune) {
 		lastError = null;
 		long started = System.currentTimeMillis();
 		boolean savingPaused = false;

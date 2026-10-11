@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.6.0
+- Pregeneration carries on after a restart: the running job and the queue are kept in config/nicecontrolcenter-pregen.json and pick up at the ring they were working on (Stop clears them)
+- Pregeneration can slow down (default) or pause while players are online, or keep full speed
+- Lag alerts also go to the panel (for its Discord alerts)
+
 ## 1.5.0
 - Pregeneration runs on its own thread instead of in the server tick: it only queues chunks for Minecraft's world-generation threads, sleeps until one is done and still backs off when ticks get long; counting a huge area no longer holds up the server
 - Pregeneration can skip an inner area (only the outer wilds) and several dimensions can be queued one after another

@@ -52,6 +52,11 @@ public final class Trimmer {
 	private final List<String> log = new CopyOnWriteArrayList<>();
 	private volatile String result;
 	private final Path bordersFile;
+	private volatile Notifier notifier = Notifier.NONE;
+
+	void useNotifier(Notifier n) {
+		notifier = n;
+	}
 
 	public Trimmer(MapService map, Backups backups, Supervisor server, Audit audit, Path serverDir) {
 		this.map = map;
@@ -106,7 +111,9 @@ public final class Trimmer {
 			files = s.filter(f -> RegionFile.coords(f.getFileName().toString()) != null).sorted().toList();
 		}
 		long visitedTicks = a.keepVisitedMinutes() * 1200L;
+		int seen = 0;
 		for (Path file : files) {
+			if (++seen % 20 == 0) Jobs.progress("Reading region files: " + seen + " of " + files.size());
 			int[] rc = RegionFile.coords(file.getFileName().toString());
 			int inside = 0;
 			int outside = 0;
@@ -236,16 +243,6 @@ public final class Trimmer {
 		if (running) return "A trim is already running.";
 		if (server.state() != Supervisor.State.STOPPED && server.state() != Supervisor.State.CRASHED) return "Stop the server first: the world can only be trimmed while it's off.";
 		if (backups.busy()) return "A backup is running; try again in a moment.";
-		List<Plan> plans = new ArrayList<>();
-		try {
-			for (Area area : areas) {
-				Plan plan = plan(area);
-				if (!plan.regions().isEmpty() || !plan.chunks().isEmpty()) plans.add(plan);
-			}
-		} catch (IOException e) {
-			return e.getMessage();
-		}
-		if (plans.isEmpty()) return NOTHING;
 		running = true;
 		log.clear();
 		result = null;
@@ -254,7 +251,19 @@ public final class Trimmer {
 		server.lock("The world is being trimmed; the server can start again when that's done.");
 		Thread t = new Thread(() -> {
 			try {
-				result = run(plans, by);
+				// Planned here, not in the request: reading every region file can take minutes on a big world.
+				phase = "Looking at the region files";
+				List<Plan> plans = new ArrayList<>();
+				for (Area area : areas) {
+					Plan plan = plan(area);
+					if (!plan.regions().isEmpty() || !plan.chunks().isEmpty()) plans.add(plan);
+				}
+				if (plans.isEmpty()) {
+					result = NOTHING;
+					step(result);
+				} else {
+					result = run(plans, by);
+				}
 			} catch (IOException | RuntimeException e) {
 				result = "Failed: " + e.getMessage() + ". The backup from just before is in Backups.";
 				step(result);
@@ -262,6 +271,7 @@ public final class Trimmer {
 				server.unlock();
 				phase = "";
 				running = false;
+				if (!NOTHING.equals(result)) notifier.alert("trimDone", Map.of("message", result == null ? "ended without a result" : result));
 			}
 		}, "trim");
 		t.setDaemon(true);
