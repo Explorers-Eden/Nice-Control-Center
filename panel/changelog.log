@@ -1,3 +1,9 @@
+## 1.4.2
+- Whitelist & bans: tick several actions for one player at once (whitelist, operator with level, ban with reason); IP bans have their own row
+- The lists follow changes made in game or in the console (/op, /deop, /ban, /whitelist) while the page is open
+- The panel logo also shows on the login screen
+- Phones: the navbar scrolls away instead of covering a third of the screen
+
 ## 1.4.1
 - No more automatic backups before every action: resetting the outer wilds, restoring a backup and updating Minecraft each have a "Back up first" box (also on the scheduled reset step). Without one, a failed update puts the old mods and server jar back; Undo is offered for updates that made a backup
 - Resetting the outer wilds: no preview map any more, "Check what would go" tells the numbers; step logs (updates, resets) are a clean checklist with the current step and the outcome highlighted

@@ -46,6 +46,7 @@
 
 	<main class="np-shell">
 		<section class="np-card pn-login" id="pn-login" hidden>
+			<img class="pn-login-logo" id="pn-login-logo" alt="" hidden>
 			<h3 class="np-card-title"><i class="bi bi-shield-lock"></i> Log in</h3>
 			<form id="pn-login-form" autocomplete="on">
 				<label class="pn-field">Name<input type="text" id="pn-user" name="username" autocomplete="username" required></label>
@@ -374,23 +375,27 @@
 					<h3 class="np-card-title"><i class="bi bi-person-check"></i> Whitelist, operators and bans</h3>
 					<p class="np-card-intro" id="pn-pl-intro"></p>
 					<form id="pn-pl-form" autocomplete="off">
-						<div class="np-form-grid">
-							<label class="np-form-row">Player name or IP<input type="text" name="plTarget" maxlength="45" required></label>
-							<label class="np-form-row">Action<select name="plAction">
-								<option value="whitelist-add">Add to the whitelist</option>
-								<option value="op">Make operator</option>
-								<option value="ban">Ban</option>
-								<option value="ban-ip">Ban IP address</option>
-							</select></label>
-							<label class="np-form-row" data-for="op">Operator level<select name="level"><option value="4">4 (everything)</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>
-							<label class="np-form-row" data-for="ban">Reason<input type="text" name="reason" maxlength="200" placeholder="Banned by an operator."></label>
-						</div>
-						<div class="np-form-actions">
+						<div class="pn-pl-add">
+							<label class="pn-field">Player<input type="text" name="plTarget" maxlength="16" placeholder="Minecraft name" required></label>
+							<div class="pn-pl-checks">
+								<label class="np-check"><input type="checkbox" name="wl" checked> Whitelist</label>
+								<label class="np-check"><input type="checkbox" name="op"> Operator,
+									<select name="level" aria-label="Operator level"><option value="4">level 4 (everything)</option><option value="3">level 3</option><option value="2">level 2</option><option value="1">level 1</option></select></label>
+								<label class="np-check"><input type="checkbox" name="ban"> Ban,
+									<input type="text" name="reason" maxlength="200" placeholder="reason (optional)"></label>
+							</div>
 							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Apply</button>
-							<label class="np-form-row pn-inline">Whitelist on<span class="np-switch"><input type="checkbox" id="pn-pl-wl"><span></span></span></label>
-							<span class="np-form-msg" id="pn-pl-msg"></span>
 						</div>
 					</form>
+					<form id="pn-pl-ipform" class="pn-pl-add" autocomplete="off">
+						<label class="pn-field">Ban an IP address<input type="text" name="ip" maxlength="45" placeholder="e.g. 203.0.113.7" required></label>
+						<label class="pn-field">Reason<input type="text" name="reason" maxlength="200" placeholder="optional"></label>
+						<button type="submit" class="np-btn danger"><i class="bi bi-slash-circle"></i> Ban IP</button>
+					</form>
+					<div class="np-form-actions">
+						<label class="np-form-row pn-inline">Whitelist on<span class="np-switch"><input type="checkbox" id="pn-pl-wl"><span></span></span></label>
+						<span class="np-form-msg" id="pn-pl-msg"></span>
+					</div>
 				</section>
 				<div class="pn-pl-grid">
 					<section class="np-card"><h3 class="np-card-title"><i class="bi bi-list-check"></i> Whitelist <span class="pn-count" id="pn-pl-wl-count"></span></h3><div class="np-table-wrap"><table class="np-table" id="pn-pl-whitelist"></table></div></section>

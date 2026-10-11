@@ -98,6 +98,7 @@
     if (activeTab === 'schedule') loadSchedule();
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
     if (activeTab === 'world') worldTick();
+    if (activeTab === 'players' && !document.querySelector('#pn-pl-form :focus')) loadPlayerLists();
     if (activeTab === 'stats' && Date.now() - (statsData ? statsData.to : 0) > 60000) loadStats();
   }, 2000);
 
@@ -214,8 +215,9 @@
 
   function showBrandLogo() {
     const img = $('pn-brand-logo');
-    img.onload = () => { img.hidden = false; $('pn-brand-text').hidden = true; };
-    img.onerror = () => { img.hidden = true; $('pn-brand-text').hidden = false; };
+    const login = $('pn-login-logo');
+    img.onload = () => { img.hidden = false; $('pn-brand-text').hidden = true; login.src = img.src; login.hidden = false; };
+    img.onerror = () => { img.hidden = true; $('pn-brand-text').hidden = false; login.hidden = true; };
     img.src = 'branding/panel?t=' + Date.now();
   }
   showBrandLogo();
@@ -2225,17 +2227,30 @@
     }
   }
 
-  function plFormFields() {
-    const a = $('pn-pl-form').plAction.value;
-    $('pn-pl-form').querySelector('[data-for="op"]').hidden = a !== 'op';
-    $('pn-pl-form').querySelector('[data-for="ban"]').hidden = !a.startsWith('ban');
-  }
-  $('pn-pl-form').plAction.addEventListener('change', plFormFields);
-  plFormFields();
+  // Several actions for one player in one go (whitelist and operator, or ban), applied one after another.
   $('pn-pl-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
-    if (await playerAction({ action: f.plAction.value, target: f.plTarget.value.trim(), reason: f.reason.value, level: f.level.value })) f.plTarget.value = '';
+    const target = f.plTarget.value.trim();
+    const actions = [];
+    if (f.wl.checked) actions.push({ action: 'whitelist-add' });
+    if (f.op.checked) actions.push({ action: 'op', level: f.level.value });
+    if (f.ban.checked) actions.push({ action: 'ban', reason: f.reason.value });
+    if (!actions.length) return formMsg('pn-pl-msg', 'Tick at least one: whitelist, operator or ban.', false);
+    if (f.ban.checked && (f.wl.checked || f.op.checked) && !confirm(`Ban ${target} and also whitelist or op them?`)) return;
+    let ok = true;
+    for (const a of actions) {
+      if (!(await playerAction({ target, ...a }))) { ok = false; break; }
+    }
+    if (ok) {
+      f.plTarget.value = '';
+      f.reason.value = '';
+    }
+  });
+  $('pn-pl-ipform').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (await playerAction({ action: 'ban-ip', target: f.ip.value.trim(), reason: f.reason.value })) f.reset();
   });
   $('pn-pl-wl').addEventListener('change', (e) => playerAction({ action: e.target.checked ? 'whitelist-on' : 'whitelist-off', target: '' }));
   document.querySelector('[data-tab="players"].np-tab-panel').addEventListener('click', (e) => {

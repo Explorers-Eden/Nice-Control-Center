@@ -349,3 +349,22 @@
 #pn-stats-table tr.pn-day.open .bi { transform: rotate(90deg); }
 #pn-stats-table tr.pn-hour td { color: var(--muted); font-size: 12px; }
 #pn-stats-table tr.pn-hour td:first-child { padding-left: 28px; }
+
+/* Whitelist & bans: one player, several actions. */
+.pn-pl-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; margin-top: 10px; }
+.pn-pl-add .pn-field { flex: 0 1 240px; margin: 0; }
+.pn-pl-checks { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-bottom: 8px; }
+.pn-pl-checks .np-check { display: inline-flex; align-items: center; gap: 6px; }
+.pn-pl-checks select, .pn-pl-checks input[type="text"] { font: inherit; font-size: 13px; color: var(--text); background: rgba(var(--ink),.06);
+  border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 4px 7px; }
+.pn-pl-checks input[type="text"] { width: 170px; }
+#pn-pl-ipform { padding-top: 12px; margin-top: 14px; border-top: 1px solid rgba(var(--ink),.08); }
+
+.pn-login-logo { display: block; max-width: 280px; max-height: 90px; object-fit: contain; margin: 4px auto 18px; }
+.pn-login-logo[hidden] { display: none; }
+
+/* Phones: the navbar (with the tiles) scrolls away instead of covering a third of the screen. */
+@media (max-width: 640px) {
+  .navbar { position: static; }
+  .pn-side { top: 0; }
+}
