@@ -63,3 +63,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .mp-hub-pop .mp-head { width: 40px; height: 40px; flex: none; }
 .mp-hub-pop b { margin-bottom: 0; }
 .mp-hub-sub { display: block; color: var(--muted); margin: 2px 0 4px; white-space: pre-line; }
+
+/* Status card: the dot and the clock icon sit in the same 14px slot, so "Online" and the time line up. */
+.mp-status summary { gap: 8px; }
+.mp-status summary .mp-dot { margin: 0 3px; }
+.mp-clock { align-items: center; gap: 8px; }
+.mp-clock .bi { width: 14px; flex: none; text-align: center; font-size: 13px; line-height: 1; }
