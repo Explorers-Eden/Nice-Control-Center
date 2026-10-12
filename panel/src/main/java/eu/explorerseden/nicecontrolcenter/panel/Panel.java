@@ -150,6 +150,7 @@ public final class Panel {
 			var routes = config.routes;
 			mapRoutes.registerHostFilter(routes);
 			info.registerHostFilter(routes);
+			Pages.register(routes);
 
 			// Everything under /api needs a session, except logging in and the health check. Changes also
 			// need the X-NCC header, which a cross-site form can't send.

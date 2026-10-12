@@ -3683,13 +3683,15 @@
     for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
-    const url = infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
+    // While it's off, the button opens an admin preview here (the public address shows "switched off").
+    const url = !s.enabled ? new URL('info/?preview=1', location.href).href : infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
     $('pn-info-open').href = url;
+    $('pn-info-open').innerHTML = s.enabled ? '<i class="bi bi-box-arrow-up-right"></i> Open the page' : '<i class="bi bi-eye"></i> Preview the page';
     // Same wording as the map's card.
     $('pn-info-link').innerHTML = infoData.host
       ? `Public address: <a href="https://${esc(infoData.host)}/" target="_blank" rel="noopener">${esc(infoData.host)}</a>`
       : 'Set <code>INFO_HOST</code> (e.g. info.example.com) to give the page its own address.';
-    $('pn-info-status').textContent = s.enabled ? 'It\'s public.' : 'It\'s off: only admins can open it.';
+    $('pn-info-status').textContent = s.enabled ? 'It\'s public.' : 'It\'s off: nobody can open it; you can preview it from here.';
     $('pn-info-props').innerHTML = infoData.propertyKeys.map((k) => `<label class="np-check"><input type="checkbox" value="${esc(k)}" ${s.hiddenProperties.includes(k) ? 'checked' : ''}> ${esc(k)}</label>`).join('')
       || '<p class="pn-hint">Shows after the server has run once with the mod.</p>';
     renderInfoFiles();

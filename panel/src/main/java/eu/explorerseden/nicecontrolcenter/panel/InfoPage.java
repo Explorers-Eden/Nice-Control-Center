@@ -451,13 +451,16 @@ final class InfoPage {
 	void register(JavalinDefaultRoutingApi routes) {
 		routes.get("/info/data.json", ctx -> {
 			Auth.Session session = auth == null ? null : auth.session(ctx.cookie(Auth.COOKIE));
-			boolean preview = session != null && session.can(Permissions.SETTINGS_SERVER);
+			// Off means off for everyone; admins can look at it through the panel's "Open the page" (?preview).
+			boolean preview = ctx.queryParam("preview") != null && session != null && session.can(Permissions.SETTINGS_SERVER);
 			if (!settings.enabled && !preview) {
-				ctx.status(HttpStatus.NOT_FOUND).json(Map.of("error", "The info page is switched off."));
+				ctx.status(HttpStatus.NOT_FOUND).header("Cache-Control", "no-store").json(Map.of("error", "This page is switched off."));
 				return;
 			}
-			ctx.header("Cache-Control", "no-cache");
-			json(ctx, page());
+			Map<String, Object> out = page();
+			if (!settings.enabled) out.put("preview", true);
+			ctx.header("Cache-Control", "no-store");
+			json(ctx, out);
 		});
 		routes.get("/api/info", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Map<String, Object> out = new LinkedHashMap<>();

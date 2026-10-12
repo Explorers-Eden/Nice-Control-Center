@@ -1,3 +1,7 @@
+## 1.7.4
+- Pages load their scripts and styles with the panel version attached (panel.js?v=1.7.4), and the pages themselves aren't cached, so browsers and proxies can't keep showing an old version after an update (the info page kept Commands in the old place)
+- Public info page switched off means off for everyone, admins included. While it's off, the panel's button says "Preview the page" and opens it with a banner that only you can see it
+
 ## 1.7.3
 - Public info page: Commands are the last part (after the mod settings), in the page, the contents tree and the banner
 

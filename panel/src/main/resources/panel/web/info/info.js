@@ -334,10 +334,12 @@
   logo.onload = () => { logo.hidden = false; };
   logo.src = '../branding/panel';
 
-  fetch('data.json', { cache: 'no-store' }).then(async (r) => {
+  const preview = new URLSearchParams(location.search).has('preview');
+  fetch('data.json' + (preview ? '?preview=1' : ''), { cache: 'no-store' }).then(async (r) => {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Not available');
     render(d);
+    if (d.preview) document.body.insertAdjacentHTML('afterbegin', '<div class="in-preview"><i class="bi bi-eye-slash"></i> Preview: this page is switched off, only you can see it.</div>');
     select(location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : null, false);
   }).catch((e) => { $('in-main').innerHTML = `<p class="in-empty">${esc(e.message)}</p>`; });
 })();
