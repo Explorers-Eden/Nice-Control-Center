@@ -3148,49 +3148,68 @@
 
   const dimLabel = (id) => ({ 'minecraft:overworld': 'Overworld', 'minecraft:the_nether': 'Nether', 'minecraft:the_end': 'End' }[id] || id);
 
+  /** The laggiest chunks and the frozen ones in one list; each row has its own Frozen switch. */
+  let hotspots = null;
   async function loadHotspots() {
-    const table = $('pn-hotspots');
-    let spots = [];
     try {
-      spots = (await api('dashboard/api/window?m=15')).hotspots || [];
+      hotspots = (await api('dashboard/api/window?m=15')).hotspots || [];
     } catch (e) {
-      table.innerHTML = '<tbody><tr><td>Shows while the server runs.</td></tr></tbody>';
-      return;
+      hotspots = null;
     }
-    const frozen = new Set(((perfSettings && perfSettings.frozen) || []).map((c) => `${c.dimension}|${c.x}|${c.z}`));
-    table.innerHTML = spots.length
-      ? `<thead><tr><th>Where</th><th class="num">ms per tick</th><th class="num">Mobs</th><th class="num">Block entities</th><th>Most</th><th></th></tr></thead><tbody>${spots.map((h) => {
-        const key = `${h.dimension}|${h.chunkX}|${h.chunkZ}`;
-        return `<tr><td>${esc(dimLabel(h.dimension))} <small>x ${h.blockX}, z ${h.blockZ}</small></td><td class="num">${h.ms.toFixed(2)}</td><td class="num">${h.entities}</td><td class="num">${h.blockEntities}</td>
-          <td>${h.topType ? `${esc(h.topType.replace('minecraft:', ''))} × ${h.topTypeCount}` : ''}</td>
-          <td class="num">${frozen.has(key) ? '<span class="pn-tag">frozen</span>' : `<button type="button" class="np-btn small" data-freeze="1" data-dim="${esc(h.dimension)}" data-x="${h.chunkX}" data-z="${h.chunkZ}"><i class="bi bi-snow"></i> Freeze</button>`}</td></tr>`;
-      }).join('')}</tbody>`
-      : '<tbody><tr><td>No data yet. The live monitor finds these (Performance → Live); it needs a few minutes.</td></tr></tbody>';
+    renderFrozen();
   }
+
+  const chunkKey = (dim, x, z) => `${dim}|${x}|${z}`;
 
   function renderFrozen() {
-    const list = (perfSettings && perfSettings.frozen) || [];
-    $('pn-frozen-count').textContent = list.length ? `(${list.length})` : '';
-    $('pn-frozen').innerHTML = list.length
-      ? `<tbody>${list.map((c) => `<tr><td>${esc(dimLabel(c.dimension))} <small>chunk ${c.x}, ${c.z} · blocks x ${c.x * 16}…${c.x * 16 + 15}, z ${c.z * 16}…${c.z * 16 + 15}</small></td>
-        <td class="num"><button type="button" class="np-btn small" data-freeze="0" data-dim="${esc(c.dimension)}" data-x="${c.x}" data-z="${c.z}">Unfreeze</button></td></tr>`).join('')}</tbody>`
-      : '<tbody><tr><td>None.</td></tr></tbody>';
-  }
-
-  document.querySelector('.np-tab-panel[data-tab="tuning"]').addEventListener('click', async (e) => {
-    const f = e.target.closest('[data-freeze]');
-    if (f) {
-      if (f.dataset.freeze === '1' && !confirm('Freeze this chunk? Everything in it stops (mobs, furnaces, hoppers, farms) until you unfreeze it.')) return;
-      try {
-        const res = await api('api/perf/freeze', { dimension: f.dataset.dim, x: f.dataset.x, z: f.dataset.z, on: f.dataset.freeze === '1' });
-        perfSettings.frozen = res.frozen;
-        renderFrozen();
-        loadHotspots();
-      } catch (err) {
-        alert(err.message);
-      }
+    const table = $('pn-hotspots');
+    const frozen = (perfSettings && perfSettings.frozen) || [];
+    const frozenKeys = new Set(frozen.map((c) => chunkKey(c.dimension, c.x, c.z)));
+    $('pn-frozen-count').textContent = frozen.length ? `${frozen.length} frozen` : '';
+    const rows = (hotspots || []).map((h) => ({ dim: h.dimension, x: h.chunkX, z: h.chunkZ, h }));
+    const listed = new Set(rows.map((r) => chunkKey(r.dim, r.x, r.z)));
+    // Frozen chunks don't tick, so they drop out of the laggiest list: keep them here anyway.
+    for (const c of frozen) if (!listed.has(chunkKey(c.dimension, c.x, c.z))) rows.push({ dim: c.dimension, x: c.x, z: c.z });
+    if (!rows.length) {
+      table.innerHTML = `<tbody><tr><td>${hotspots ? 'No data yet. The live monitor finds these (Performance → Live); it needs a few minutes.' : 'Shows while the server runs.'}</td></tr></tbody>`;
       return;
     }
+    table.innerHTML = `<thead><tr><th>Where</th><th class="num">ms per tick</th><th class="num">Mobs</th><th class="num">Block entities</th><th>Most</th><th class="num">Frozen</th></tr></thead><tbody>${rows.map((r) => {
+      const on = frozenKeys.has(chunkKey(r.dim, r.x, r.z));
+      const h = r.h;
+      const where = `${esc(dimLabel(r.dim))} <small>x ${h ? h.blockX : r.x * 16 + 8}, z ${h ? h.blockZ : r.z * 16 + 8} · chunk ${r.x}, ${r.z}</small>`;
+      const stats = h
+        ? `<td class="num">${h.ms.toFixed(2)}</td><td class="num">${h.entities}</td><td class="num">${h.blockEntities}</td><td>${h.topType ? `${esc(h.topType.replace('minecraft:', ''))} × ${h.topTypeCount}` : ''}</td>`
+        : '<td class="num pn-muted">–</td><td class="num pn-muted">–</td><td class="num pn-muted">–</td><td class="pn-muted">not ticking</td>';
+      return `<tr class="pn-chunk${on ? ' frozen' : ''}"><td>${where}</td>${stats}
+        <td class="num"><label class="np-switch" title="Freeze this chunk"><input type="checkbox" data-freeze data-dim="${esc(r.dim)}" data-x="${r.x}" data-z="${r.z}"${on ? ' checked' : ''}><span></span></label></td></tr>`;
+    }).join('')}</tbody>`;
+  }
+
+  $('pn-hotspots').addEventListener('change', async (e) => {
+    const f = e.target.closest('[data-freeze]');
+    if (!f) return;
+    const on = f.checked;
+    if (on && !confirm('Freeze this chunk? Everything in it stops (mobs, furnaces, hoppers, farms) until you switch it off again.')) {
+      f.checked = false;
+      return;
+    }
+    f.disabled = true;
+    try {
+      const res = await api('api/perf/freeze', { dimension: f.dataset.dim, x: f.dataset.x, z: f.dataset.z, on });
+      perfSettings.frozen = res.frozen;
+      // Only this row changes; the list keeps its order.
+      f.closest('tr').classList.toggle('frozen', on);
+      $('pn-frozen-count').textContent = res.frozen.length ? `${res.frozen.length} frozen` : '';
+    } catch (err) {
+      f.checked = !on;
+      alert(err.message);
+    } finally {
+      f.disabled = false;
+    }
+  });
+
+  document.querySelector('.np-tab-panel[data-tab="tuning"]').addEventListener('click', async (e) => {
     const c = e.target.closest('[data-cleanup]');
     if (!c) return;
     const kind = c.dataset.cleanup;

@@ -1,3 +1,6 @@
+## 1.6.2
+- Performance → Tuning: "Laggiest chunks" is one list with a Frozen switch in each row; switching it doesn't move the row, and frozen chunks stay listed (marked with a snowflake) even after they stop showing up as laggy
+
 ## 1.6.1
 - Public info page: a "Performance tweaks" part lists the tweaks that are switched on (lag protection, mobs far from players, breeding limits, item/XP merging, villagers in trading halls), explained in plain words with vanilla for comparison; can be left out under "What's on it"
 

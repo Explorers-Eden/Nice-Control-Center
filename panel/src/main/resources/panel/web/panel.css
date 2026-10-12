@@ -653,3 +653,12 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-dc-status.good .pn-dc-dot { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
 .pn-dc-status.bad .pn-dc-dot { background: var(--poor); }
 #pn-dc-token-row[hidden] { display: none; }
+
+/* Laggiest chunks: frozen rows get an icy tint, the switch sits in the row. */
+.pn-chunk td { transition: background .2s; }
+.pn-chunk.frozen td { background: rgba(120, 190, 255, .08); }
+.pn-chunk.frozen td:first-child { box-shadow: inset 3px 0 0 #7cc4ff; }
+.pn-chunk.frozen td:first-child::before { content: '\f56d'; font-family: bootstrap-icons; color: #7cc4ff; margin-right: 6px; }
+.pn-chunk .np-switch { vertical-align: middle; }
+.pn-chunk .np-switch input:checked + span { background: #4ea8ff; }
+.pn-muted { color: var(--faint); }
