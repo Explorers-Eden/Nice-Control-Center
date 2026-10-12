@@ -58,6 +58,8 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(NiceControlCenter::start);
 		// Under the panel: Discord linking at login, chat and game events for the Discord bridge.
 		eu.explorerseden.nicecontrolcenter.web.PanelBridge.register();
+		// Land claims (off until switched on in the panel or config/nicecontrolcenter-claims.json).
+		eu.explorerseden.nicecontrolcenter.claims.ClaimStore.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.HardBorder::tick);
 		// Performance and maintenance settings from the panel (config files, read again when they change).

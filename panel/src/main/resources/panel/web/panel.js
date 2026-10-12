@@ -90,6 +90,11 @@
         { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'Chunks, entities and the places that cost the most.' },
         { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'Decide which part of the world is permanent, pregenerate it, and reset the rest on a schedule.' },
         { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' }] },
+      { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
+        { tab: 'claims', label: 'Claims', perm: 'claims.view', desc: 'Land players have claimed: who owns it, who may do what, and where.' },
+        { tab: 'claimblocks', label: 'Claim blocks', perm: 'claims.view', desc: 'How many claim blocks each player has earned, bought and used.' },
+        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks, the shop and the claim tool.' },
+        { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
     ] },
     { group: 'Server', items: [
       { id: 'settings', hue: '#a77bff', label: 'Settings', icon: 'bi-sliders', subs: [
@@ -343,6 +348,9 @@
     if (tab === 'serverlist') loadServerList();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
+    if (tab === 'claims') loadClaims();
+    if (tab === 'claimblocks') loadClaimBlocks();
+    if (tab === 'claimsettings') loadClaimSettings();
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -3769,7 +3777,7 @@
     }
     const s = infoData.settings;
     const f = $('pn-info-form');
-    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart']) f.elements[k].checked = !!s[k];
+    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
     // While it's off, the button opens an admin preview here (the public address shows "switched off").
@@ -3808,6 +3816,7 @@
     const body = {
       enabled: f.enabled.checked, title: f.title.value.trim() || 'Server info', intro: f.intro.value,
       properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked, commands: f.commands.checked, restart: f.restart.checked,
+      claims: f.claims.checked, borders: f.borders.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
     };
@@ -4170,6 +4179,296 @@
   $('pn-theme').addEventListener('click', () => setTheme(LIGHT_THEMES.includes(document.documentElement.dataset.theme) ? 'dark' : 'light', true));
   renderTheme();
 
+  // ── Claims ─────────────────────────────────────────────────────────────
+
+  let clData = null;
+  /** The claim open in the editor; {} for a new server claim. */
+  let clOpen = null;
+  /** Members as edited (uuid → {name, role}); saved with the claim. */
+  let clMembers = [];
+
+  const dimShort = (d) => { const n = dimName(d); return n === d ? d.replace(/^minecraft:/, '').replace(/_/g, ' ') : n; };
+  const roleLabel = (id) => (clData && clData.roles.find((r) => r.id === id) || { label: id }).label;
+
+  function clNotice(d) {
+    const notes = [];
+    if (!d.enabled) notes.push('Claims are <b>off</b>: nothing is protected and players can\'t claim. Switch them on under Settings.');
+    if (!d.running) notes.push(d.hasWorld ? 'The server is off: you\'re editing the world file.' : 'There\'s no world yet.');
+    if (d.busy) notes.push(esc(d.busy));
+    const db = d.database;
+    if (!db.configured) notes.push('No database: claims work, but aren\'t copied for a website.');
+    else if (!db.ready || db.problem) notes.push('Database: ' + esc(db.problem || 'not ready'));
+    else if (db.syncedAt) notes.push('Copied to the database ' + esc(dateTime(db.syncedAt)) + '.');
+    return notes.join(' ');
+  }
+
+  async function loadClaims() {
+    try {
+      clData = await api('api/claims');
+    } catch (e) {
+      $('pn-cl-intro').textContent = e.message;
+      return;
+    }
+    $('pn-cl-intro').innerHTML = 'Land players protect with the claim tool. ' + clNotice(clData);
+    const dims = [...new Set(clData.claims.map((c) => c.dim))].sort();
+    const sel = $('pn-cl-dim');
+    const keep = sel.value;
+    sel.innerHTML = '<option value="">All dimensions</option>' + dims.map((d) => `<option value="${esc(d)}">${esc(dimShort(d))}</option>`).join('');
+    sel.value = dims.includes(keep) ? keep : '';
+    $('pn-cl-add-role').innerHTML = clData.roles.map((r) => `<option value="${r.id}" ${r.id === 'BUILD' ? 'selected' : ''}>${esc(r.label)}</option>`).join('');
+    renderClaims();
+  }
+
+  function renderClaims() {
+    if (!clData) return;
+    const q = $('pn-cl-search').value.trim().toLowerCase();
+    const dim = $('pn-cl-dim').value;
+    const byId = Object.fromEntries(clData.claims.map((c) => [c.id, c]));
+    const rows = clData.claims.filter((c) => (!dim || c.dim === dim) && (!q || [c.displayName, c.ownerName || 'server', ...c.members.map((m) => m.name)]
+      .some((t) => String(t).toLowerCase().includes(q))))
+      .sort((a, b) => (a.parent ? byId[a.parent]?.displayName || '' : a.displayName).localeCompare(b.parent ? byId[b.parent]?.displayName || '' : b.displayName)
+        || (a.parent ? 1 : 0) - (b.parent ? 1 : 0) || a.displayName.localeCompare(b.displayName));
+    $('pn-claims-table').innerHTML = rows.length ? `<thead><tr><th>Claim</th><th>Owner</th><th>Where</th><th>Size</th><th>Members</th><th>Changed</th></tr></thead><tbody>${rows.map((c) => `
+      <tr data-id="${esc(c.id)}" class="pn-cl-row">
+        <td>${c.parent ? '<span class="pn-hint">↳</span> ' : ''}<span class="pn-cl-dot" style="background:${esc(c.color)}"></span>${esc(c.displayName)}${c.subclaims ? ` <small class="pn-hint">${c.subclaims} sub</small>` : ''}</td>
+        <td>${esc(c.ownerName || 'Server')}</td>
+        <td>${esc(dimShort(c.dim))} ${Math.round((c.minX + c.maxX) / 2)}, ${Math.round((c.minZ + c.maxZ) / 2)}</td>
+        <td>${c.width} × ${c.length} <small class="pn-hint">${c.area.toLocaleString()}</small></td>
+        <td>${c.members.length ? esc(c.members.map((m) => m.name).join(', ')) : '<span class="pn-hint">–</span>'}</td>
+        <td>${esc(dateTime(c.updated))}</td></tr>`).join('')}</tbody>`
+      : `<tbody><tr><td class="pn-hint">${clData.claims.length ? 'Nothing matches.' : 'No claims yet.'}</td></tr></tbody>`;
+  }
+
+  function openClaim(c) {
+    clOpen = c || {};
+    const isNew = !c;
+    const f = $('pn-cl-form');
+    $('pn-cl-detail').hidden = false;
+    $('pn-cl-title').textContent = isNew ? 'New server claim' : c.displayName;
+    $('pn-cl-sub').textContent = isNew ? 'A claim the server owns: no claim blocks needed, members as you like. Leave the owner empty, or give it to a player.'
+      : `${c.parent ? 'Subclaim · ' : ''}${dimShort(c.dim)} · ${c.width} × ${c.length} (${c.area.toLocaleString()} blocks) · made ${dateTime(c.created)}`;
+    f.querySelectorAll('[data-new]').forEach((el) => { el.hidden = !isNew; });
+    f.querySelectorAll('[data-old]').forEach((el) => { el.hidden = isNew; });
+    f.name.value = c ? c.name : '';
+    f.color.value = c ? c.color.toLowerCase() : '#f2b233';
+    f.ownerName.value = c ? c.ownerName || '' : '';
+    f.ownerName.disabled = !!(c && c.parent);
+    for (const k of ['minX', 'minZ', 'maxX', 'maxZ']) f[k].value = c ? c[k] : '';
+    $('pn-cl-flags').innerHTML = clData.flags.map((fl) => `<label class="np-check"><input type="checkbox" name="flag-${fl.id}" ${c && c.flags[fl.id] ? 'checked' : ''}> ${esc(fl.label)}</label>`).join('');
+    clMembers = c ? c.members.map((m) => ({ ...m })) : [];
+    renderClMembers();
+    const editable = can('claims.manage');
+    f.querySelectorAll('input, select, button[type=submit], #pn-cl-delete, #pn-cl-add-btn').forEach((el) => { if (el.id !== 'pn-cl-close') el.disabled = !editable || (el === f.ownerName && c && c.parent); });
+    Dirty.reset('claim');
+    $('pn-cl-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderClMembers() {
+    $('pn-cl-members').innerHTML = clMembers.length ? clMembers.map((m, i) => `<div class="pn-cl-member">
+      <span>${esc(m.name)}</span>
+      <select data-i="${i}" aria-label="Role of ${esc(m.name)}">${clData.roles.map((r) => `<option value="${r.id}" ${r.id === m.role ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}</select>
+      <button type="button" class="np-btn small" data-remove="${i}" title="Remove"><i class="bi bi-x-lg"></i></button></div>`).join('')
+      : '<p class="pn-hint">No members: only the owner can do anything here.</p>';
+  }
+
+  $('pn-cl-members').addEventListener('change', (e) => {
+    const i = e.target.dataset.i;
+    if (i != null) clMembers[i].role = e.target.value;
+  });
+  $('pn-cl-members').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-remove]');
+    if (!b) return;
+    clMembers.splice(Number(b.dataset.remove), 1);
+    renderClMembers();
+  });
+  $('pn-cl-add-btn').addEventListener('click', () => {
+    const name = $('pn-cl-add-name').value.trim();
+    if (!name) return;
+    if (!clMembers.some((m) => m.name.toLowerCase() === name.toLowerCase())) clMembers.push({ name, role: $('pn-cl-add-role').value, added: true });
+    $('pn-cl-add-name').value = '';
+    renderClMembers();
+  });
+  $('pn-cl-search').addEventListener('input', renderClaims);
+  $('pn-cl-dim').addEventListener('change', renderClaims);
+  $('pn-claims-table').addEventListener('click', (e) => {
+    const row = e.target.closest('.pn-cl-row');
+    if (row) openClaim(clData.claims.find((c) => c.id === row.dataset.id));
+  });
+  $('pn-cl-new').addEventListener('click', () => openClaim(null));
+  $('pn-cl-close').addEventListener('click', () => { $('pn-cl-detail').hidden = true; clOpen = null; Dirty.reset('claim'); });
+  $('pn-cl-delete').addEventListener('click', async () => {
+    if (!clOpen || !clOpen.id) return;
+    if (!confirm(`Delete ${clOpen.displayName}${clOpen.subclaims ? ' and its subclaims' : ''}? The land is free to build on again.`)) return;
+    try {
+      await api('api/claims/action', { action: 'delete', claim: clOpen.id });
+      $('pn-cl-detail').hidden = true;
+      clOpen = null;
+      Dirty.reset('claim');
+      loadClaims();
+    } catch (err) {
+      formMsg('pn-cl-msg', err.message, false);
+    }
+  });
+
+  $('pn-cl-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const c = clOpen;
+    const box = Object.fromEntries(['minX', 'minZ', 'maxX', 'maxZ'].map((k) => [k, Number(f[k].value)]));
+    if (['minX', 'minZ', 'maxX', 'maxZ'].some((k) => f[k].value === '')) return formMsg('pn-cl-msg', 'Fill in both corners.', false);
+    const owner = f.ownerName.value.trim();
+    try {
+      if (!c.id) {
+        await api('api/claims/action', { action: 'create', dim: f.dim.value.trim(), name: f.name.value, ownerName: owner, ...box });
+      } else {
+        const steps = [];
+        const flags = Object.fromEntries(clData.flags.map((fl) => [fl.id, f['flag-' + fl.id].checked]));
+        steps.push({ action: 'update', name: f.name.value, color: f.color.value, flags });
+        if (['minX', 'minZ', 'maxX', 'maxZ'].some((k) => box[k] !== c[k])) steps.push({ action: 'resize', ...box });
+        if (!c.parent && owner.toLowerCase() !== (c.ownerName || '').toLowerCase()) steps.push(owner ? { action: 'transfer', ownerName: owner } : { action: 'transfer', owner: '' });
+        for (const m of c.members) if (!clMembers.some((x) => x.uuid === m.uuid)) steps.push({ action: 'member_remove', uuid: m.uuid });
+        for (const m of clMembers) {
+          const was = c.members.find((x) => x.uuid && x.uuid === m.uuid);
+          if (!was || was.role !== m.role) steps.push(m.uuid ? { action: 'member_set', uuid: m.uuid, name: m.name, role: m.role } : { action: 'member_set', playerName: m.name, role: m.role });
+        }
+        for (const s of steps) await api('api/claims/action', { claim: c.id, ...s });
+      }
+      formMsg('pn-cl-msg', 'Saved.', true);
+      await loadClaims();
+      const fresh = c.id ? clData.claims.find((x) => x.id === c.id) : null;
+      if (fresh) openClaim(fresh);
+      else { $('pn-cl-detail').hidden = true; Dirty.reset('claim'); }
+    } catch (err) {
+      formMsg('pn-cl-msg', err.message, false);
+      if (c.id) loadClaims();
+    }
+  });
+
+  // ── Claims → Claim blocks ──────────────────────────────────────────────
+
+  async function loadClaimBlocks() {
+    try {
+      clData = await api('api/claims');
+    } catch (e) {
+      return formMsg('pn-cb-msg', e.message, false);
+    }
+    renderClaimBlocks();
+  }
+
+  function renderClaimBlocks() {
+    const q = $('pn-cb-search').value.trim().toLowerCase();
+    const rows = clData.players.filter((p) => !q || String(p.name || p.uuid).toLowerCase().includes(q)).sort((a, b) => b.used - a.used || String(a.name).localeCompare(String(b.name)));
+    const edit = can('claims.manage');
+    $('pn-cb-table').innerHTML = rows.length ? `<thead><tr><th>Player</th><th>Available</th><th>From playing</th><th>Bought</th><th>Bonus</th><th>Used</th><th>Claims</th><th>Played</th><th>Last seen</th></tr></thead><tbody>${rows.map((p) => `
+      <tr><td>${esc(p.name || p.uuid)}</td><td><b>${p.available.toLocaleString()}</b></td><td>${p.accrued.toLocaleString()}</td><td>${p.bought.toLocaleString()}</td>
+      <td>${edit ? `<input type="number" class="pn-cb-bonus" data-uuid="${esc(p.uuid)}" data-name="${esc(p.name || '')}" value="${p.bonus}" aria-label="Bonus for ${esc(p.name)}">` : p.bonus.toLocaleString()}</td>
+      <td>${p.used.toLocaleString()}</td><td>${p.claims}</td><td>${duration2(p.playMinutes * 60)}</td><td>${p.lastSeen ? esc(dateTime(p.lastSeen)) : '–'}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">Nobody has earned claim blocks yet.</td></tr></tbody>';
+  }
+
+  $('pn-cb-search').addEventListener('input', () => clData && renderClaimBlocks());
+  $('pn-cb-table').addEventListener('change', async (e) => {
+    const input = e.target.closest('.pn-cb-bonus');
+    if (!input) return;
+    try {
+      await api('api/claims/action', { action: 'blocks', uuid: input.dataset.uuid, name: input.dataset.name, bonus: Number(input.value) || 0 });
+      formMsg('pn-cb-msg', `Bonus for ${input.dataset.name || 'the player'} saved.`, true);
+      loadClaimBlocks();
+    } catch (err) {
+      formMsg('pn-cb-msg', err.message, false);
+    }
+  });
+
+  // ── Claims → Settings ──────────────────────────────────────────────────
+
+  let csData = null;
+  const CS_NUM = ['startingBlocks', 'blocksPerHour', 'maxAccruedBlocks', 'afkMinutes', 'minWidth', 'minArea', 'maxClaims', 'inactiveDays', 'shopPrice', 'shopBlocks',
+    'shopMaxBlocks', 'visualSpacing', 'visualRange', 'visualSeconds'];
+  const CS_TEXT = ['toolItem', 'shopItem', 'visualCorner', 'visualEdge', 'visualSubCorner', 'visualSubEdge', 'visualSelection'];
+  const CS_BOOL = ['enabled', 'accrueWhileDisabled', 'onlyPermanentArea', 'shopEnabled'];
+  const CS_FLAGS = [['access', 'Use doors, buttons and levers'], ['containers', 'Open chests and use animals'], ['pvp', 'Fight (PvP)'],
+    ['explosions', 'Explosions break blocks'], ['fireSpread', 'Fire spreads'], ['mobGriefing', 'Mobs change blocks']];
+
+  async function loadClaimSettings() {
+    try {
+      csData = await api('api/claims/settings');
+    } catch (e) {
+      return formMsg('pn-cs-msg', e.message, false);
+    }
+    const s = csData.settings;
+    const f = $('pn-cs-form');
+    CS_BOOL.forEach((k) => { f[k].checked = !!s[k]; });
+    CS_NUM.forEach((k) => { f[k].value = s[k]; });
+    CS_TEXT.forEach((k) => { f[k].value = s[k]; });
+    f.dimensions.value = s.dimensions.join(', ');
+    f.colors.value = Object.entries(s.colors).map(([n, c]) => `${n} ${c}`).join('\n');
+    $('pn-cs-flags').innerHTML = CS_FLAGS.map(([k, l]) => `<label class="np-check"><input type="checkbox" name="df-${k}" ${s.defaultFlags[k] ? 'checked' : ''}> ${esc(l)}</label>`).join('');
+    const areas = Object.entries(csData.permanentAreas);
+    $('pn-cs-areas').innerHTML = areas.length ? 'Permanent areas: ' + areas.map(([d, a]) => `${esc(dimShort(d))} ${a.shape === 'circle' ? 'radius' : '±'} ${a.radius.toLocaleString()} around ${a.x}, ${a.z}`).join(' · ')
+      + ' (set under <a href="#world/borders-reset">World → Borders &amp; reset</a>). Dimensions without one have no limit.'
+      : 'No permanent area is set (World → Borders & reset), so players can claim anywhere in the allowed dimensions.';
+    const editable = can('claims.manage');
+    f.querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = !editable; });
+    Dirty.reset('claimsettings');
+  }
+
+  $('pn-cs-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const body = {};
+    CS_BOOL.forEach((k) => { body[k] = f[k].checked; });
+    CS_NUM.forEach((k) => { body[k] = Number(f[k].value) || 0; });
+    CS_TEXT.forEach((k) => { body[k] = f[k].value.trim(); });
+    body.dimensions = f.dimensions.value.split(/[,\s]+/).map((d) => d.trim()).filter(Boolean);
+    body.defaultFlags = Object.fromEntries(CS_FLAGS.map(([k]) => [k, f['df-' + k].checked]));
+    body.colors = {};
+    for (const line of f.colors.value.split('\n')) {
+      const m = line.trim().match(/^(.+?)\s+(#?[0-9a-fA-F]{6})$/);
+      if (line.trim() && !m) return formMsg('pn-cs-msg', `"${line.trim()}" isn't "Name #RRGGBB".`, false);
+      if (m) body.colors[m[1]] = m[2].startsWith('#') ? m[2] : '#' + m[2];
+    }
+    if (body.enabled && !csData.settings.enabled && !confirm('Switch claims on? Players can claim land and claimed land is protected right away.')) return;
+    try {
+      const res = await api('api/claims/settings', body);
+      formMsg('pn-cs-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
+      loadClaimSettings();
+    } catch (err) {
+      formMsg('pn-cs-msg', err.message, false);
+    }
+  });
+
+  // ── Claims → GOML import ───────────────────────────────────────────────
+
+  function renderGoml(d) {
+    const list = d.claims || [];
+    $('pn-gi-run').disabled = !list.some((c) => !c.problem && !c.imported);
+    $('pn-gi-table').innerHTML = list.length ? `<thead><tr><th>Owner</th><th>Where</th><th>Size</th><th>Members</th><th></th></tr></thead><tbody>${list.map((c) => `
+      <tr><td>${esc(c.owner)}</td><td>${esc(dimShort(c.dim))} ${c.x}, ${c.z}</td><td>${c.size} × ${c.size}</td><td>${esc(c.members.join(', ')) || '–'}</td>
+      <td>${c.imported ? '<b>imported</b>' : c.problem ? `<span class="pn-hint">${esc(c.problem)}</span>` : 'ready'}</td></tr>`).join('')}</tbody>`
+      : `<tbody><tr><td class="pn-hint">${d.installed === false ? 'GOML isn\'t installed on the server.' : 'GOML has no claims.'}</td></tr></tbody>`;
+  }
+
+  $('pn-gi-preview').addEventListener('click', async () => {
+    try {
+      const d = await api('api/claims/goml');
+      renderGoml(d);
+      const ready = (d.claims || []).filter((c) => !c.problem).length;
+      formMsg('pn-gi-msg', `${(d.claims || []).length} GOML claims, ${ready} can be imported.`, true);
+    } catch (err) {
+      formMsg('pn-gi-msg', err.message, false);
+    }
+  });
+  $('pn-gi-run').addEventListener('click', async () => {
+    if (!confirm('Import the GOML claims marked "ready"? Their owners get claim blocks for them.')) return;
+    try {
+      const d = await api('api/claims/goml/import', {});
+      renderGoml(d);
+      formMsg('pn-gi-msg', `${d.imported} claims imported.`, true);
+    } catch (err) {
+      formMsg('pn-gi-msg', err.message, false);
+    }
+  });
+
   // ── Start ──────────────────────────────────────────────────────────────
 
   Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
@@ -4182,6 +4481,9 @@
   Dirty.track('maintenance', $('pn-mt-form'), { reload: loadMaintenance, extra: () => [...mtStaff].sort() });
   Dirty.track('info', $('pn-info-form'), { reload: loadInfo, extra: () => (infoData ? [...infoData.settings.configs].sort() : []) });
   Dirty.track('perf', $('pn-perf-form'), { reload: loadTuning, extra: () => junk.slice() });
+  Dirty.track('claimsettings', $('pn-cs-form'), { reload: loadClaimSettings });
+  Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
+    extra: () => JSON.stringify(clMembers) });
 
   showApp();
   api('api/health').then((h) => { $('pn-version').textContent = h.version; }).catch(() => {});

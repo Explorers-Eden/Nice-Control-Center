@@ -128,7 +128,10 @@ public final class Panel {
 		tuning.useNotifier(alerts);
 		scheduler.useTuning(tuning);
 		Profiles profiles = new Profiles(dataDir, audit);
+		ClaimService claims = new ClaimService(serverDir, db, server, dashboard, audit);
+		claims.start();
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
+		info.useClaims(claims);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		home.useMod(dashboard);
@@ -317,6 +320,7 @@ public final class Panel {
 			tuning.register(routes);
 			home.register(routes);
 			info.register(routes);
+			claims.register(routes);
 			Commands commandList = new Commands(dataDir, server, dashboard, audit);
 			commandList.register(routes);
 			info.useCommands(commandList);

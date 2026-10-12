@@ -152,7 +152,7 @@ public final class MapService {
 		}
 		try {
 			JsonObject fresh = JsonParser.parseString(get("/api/map")).getAsJsonObject();
-			boolean changedStatic = overlays == null || !same(overlays, fresh, "dimensions") || !same(overlays, fresh, "claims") || !same(overlays, fresh, "hubs");
+			boolean changedStatic = overlays == null || !same(overlays, fresh, "dimensions") || !same(overlays, fresh, "claims") || !same(overlays, fresh, "landClaims") || !same(overlays, fresh, "hubs");
 			overlays = fresh;
 			if (changedStatic) {
 				Files.createDirectories(mapDir);
@@ -447,6 +447,7 @@ public final class MapService {
 		Settings s = settings;
 		out.add("players", s.showPlayers && o != null && server.running() ? visible(o, "players", s) : new JsonArray());
 		out.add("claims", s.showClaims && o != null ? visible(o, "claims", s) : new JsonArray());
+		out.add("landClaims", s.showClaims && o != null ? visible(o, "landClaims", s) : new JsonArray());
 		JsonArray hubs = new JsonArray();
 		if (o != null && !s.hubs.equals("none")) {
 			for (JsonElement e : visible(o, "hubs", s)) {

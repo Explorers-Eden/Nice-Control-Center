@@ -121,7 +121,7 @@ public final class MapExport {
 	 * component (so new claims show right away), or from the saved world.dat when that isn't possible
 	 * (which only changes when the world saves). Server thread.
 	 */
-	static ListTag claimList(ServerLevel level, Path root) {
+	public static ListTag claimList(ServerLevel level, Path root) {
 		if (!Boolean.FALSE.equals(liveClaims)) {
 			try {
 				Class<?> registry = Class.forName("org.ladysnake.cca.api.v3.component.ComponentRegistry");

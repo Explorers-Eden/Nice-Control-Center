@@ -26,6 +26,7 @@ sourceSets {
 			include "eu/explorerseden/nicecontrolcenter/Borders.java"
 			include "eu/explorerseden/nicecontrolcenter/Performance.java"
 			include "eu/explorerseden/nicecontrolcenter/Maintenance.java"
+			include "eu/explorerseden/nicecontrolcenter/Claims.java"
 			include "eu/explorerseden/nicecontrolcenter/core/SystemMetrics.java"
 		}
 	}

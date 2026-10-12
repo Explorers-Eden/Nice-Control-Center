@@ -175,6 +175,19 @@ final class DashboardProxy {
 		}
 	}
 
+	/** A POST whose answer the caller needs; null when the mod doesn't answer. */
+	JsonObject postForJson(String path, JsonObject body, String user) throws InterruptedException {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+				.timeout(Duration.ofSeconds(30)).header("X-NCC-Secret", secret).header("Content-Type", "application/json");
+		if (user != null) builder.header("X-NCC-User", user.replaceAll("[^A-Za-z0-9_ .\\-]", "").strip());
+		try {
+			HttpResponse<String> response = client.send(builder.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build(), HttpResponse.BodyHandlers.ofString());
+			return response.statusCode() == 200 ? com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject() : null;
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+	}
+
 	/** Returns true when the mod answered with a success status. */
 	private boolean forward(Context ctx, Auth.Session me, String path) throws IOException, InterruptedException {
 		String needed = ctx.method().name().equals("GET") ? GET_PERMISSIONS.get(path) : null;

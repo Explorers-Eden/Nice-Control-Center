@@ -40,6 +40,10 @@ final class InfoPage {
 		public boolean performance = true;
 		/** The commands every player may use, with descriptions. */
 		public boolean commands = true;
+		/** How land claims work here (only while claims are on). */
+		public boolean claims = true;
+		/** The permanent area and the world's edge per dimension. */
+		public boolean borders = true;
 		/** When the next scheduled restart is, in the banner. */
 		public boolean restart = true;
 		/** server.properties keys left out besides the secret ones. */
@@ -104,6 +108,12 @@ final class InfoPage {
 	}
 
 	/** Where the public command list comes from. */
+	private ClaimService claims;
+
+	void useClaims(ClaimService claims) {
+		this.claims = claims;
+	}
+
 	void useCommands(Commands commands) {
 		this.commands = commands;
 	}
@@ -227,6 +237,25 @@ final class InfoPage {
 		if (s.commands && commands != null) out.put("commands", commands.publicList());
 		long restart = s.restart ? nextRestart.getAsLong() : 0;
 		if (restart > System.currentTimeMillis()) out.put("nextRestart", restart);
+		if (s.claims && claims != null) {
+			Map<String, Object> c = claims.publicInfo();
+			if (c != null) out.put("claims", c);
+		}
+		if (s.borders) {
+			List<Map<String, Object>> borders = new ArrayList<>();
+			eu.explorerseden.nicecontrolcenter.Borders.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Borders.FILE)).forEach((dim, b) -> {
+				if (b.soft <= 0 && b.hard <= 0) return;
+				Map<String, Object> m = new LinkedHashMap<>();
+				m.put("dim", dim);
+				m.put("shape", b.circle() ? "circle" : "square");
+				m.put("x", b.x);
+				m.put("z", b.z);
+				m.put("permanent", b.soft);
+				m.put("edge", b.hard);
+				borders.add(m);
+			});
+			if (!borders.isEmpty()) out.put("borders", borders);
+		}
 		if (s.performance) out.put("performance", performance(Performance.read(serverDir.resolve("config").resolve(Performance.FILE))));
 		List<Map<String, Object>> configs = new ArrayList<>();
 		for (String rel : s.configs) {

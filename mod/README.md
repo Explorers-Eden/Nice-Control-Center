@@ -76,6 +76,7 @@ The main command is `/nicecontrolcenter`, short `/ncc`. `[minutes]` is optional 
 | `/ncc updates rollback [backup]` | Puts replaced versions back at the next restart (default: latest backup) |
 | `/ncc updates webhook [regen]` | Prints a token and `curl` command so a build script can trigger a resource pack check |
 | `/nccreply <message>` | **For all players:** answer a private dashboard message |
+| `/claim` | **For all players (while claims are on):** the claim menu. See [Land claims](#land-claims) |
 
 ## Permissions
 
@@ -91,9 +92,29 @@ With LuckPerms or another Fabric permissions mod you can give parts to other pla
 | `nicecontrolcenter.command.record` | `/ncc record …` |
 | `nicecontrolcenter.command.updates` | `/ncc updates …` |
 | `nicecontrolcenter.notify` | Receive lag alerts and "report ready" messages |
+| `nicecontrolcenter.claims.use` | `/claim` (everyone by default) |
+| `nicecontrolcenter.claims.admin` | `/claim admin …`: bypass claims, delete claims, change claim blocks |
 | `nicecontrolcenter.command.*` / `nicecontrolcenter.*` | Everything |
 
 Note: the dashboard itself has no per-player permissions. Anyone with a valid link can use all of it, within the limits you set in the config (`web_console_commands`, `web_player_actions`, …).
+
+## Land claims
+
+Players protect their land themselves, like GriefPrevention, but with menus instead of commands. **Off by default.** Switch it on in the panel (Claims → Settings) or in `config/nicecontrolcenter-claims.json`. GOML keeps working alongside, and the panel can import its claims.
+
+- **Claiming:** `/claim mode` (or the button in the `/claim` menu) gives the player the claim tool, a marked golden hoe. Right-click two opposite corners and everything between them is protected, from bedrock to the sky. Right-click a corner of your claim to pick it up, then right-click where it should go. Sneak + right-click opens the menu. Leaving claim mode takes the tool away again. The tool can't be dropped, stored or kept.
+- **Claim blocks:** each claimed block costs one. Players start with some and earn more by playing (not while AFK). Admins can give bonus blocks, and with the shop on, players buy blocks for an item you choose.
+- **Where:** only in the dimensions you allow, and only inside the permanent area (the soft border) if one is set.
+- **The menu** (`/claim`) shows your claim blocks and claims. For a claim it offers:
+  - members with a role: Visitor (doors, buttons), Containers (also chests, animals), Builder (also building), Co-owner (also settings, resizing, subclaims);
+  - what everyone else may do: doors, chests, PvP, explosions, fire spread, mob griefing;
+  - a name and a colour;
+  - subclaims (areas inside with their own members);
+  - abandoning it.
+- **Borders** show as fake blocks only the player sees: corners, markers along the edges and subclaims. The blocks are configurable, and `claim_color` means the concrete closest to the claim's colour.
+- **Protected:** placing and breaking blocks, using blocks and items, buckets, animals, villagers, armor stands, frames and vehicles. Also players hurting animals (arrows too) and each other (PvP switch), and arrows setting off buttons, targets, bells or TNT or breaking frames. Explosions (also hurting animals, frames and armor stands), fire and lava lighting fires, water and lava from outside, pistons pushing in, endermen, the wither, ravagers, zombies breaking doors and trampling are stopped too, each unless the claim allows it.
+- **Shortcuts:** `/claim list`, `/claim trust <player> [visitor|containers|builder|coowner]`, `/claim untrust <player>`, `/claim abandon`. Admins have `/claim admin bypass`, `/claim admin delete` and `/claim admin blocks <player> [add|set <n>]`.
+- **Storage:** the claims are kept in the world folder (`nicecontrolcenter-claims.json`), so backups include them. Under the panel they're also copied to its database.
 
 ## Configuration
 

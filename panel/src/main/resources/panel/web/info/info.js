@@ -161,6 +161,34 @@
       });
       sections.push({ id: 'packs', title: 'Data packs', statLabel: 'data pack settings', icon: 'bi-boxes', hue: '#ffb35c', count: settings, children: packs });
     }
+    if (d.borders && d.borders.length) {
+      const dim = (id) => titleCase(id.replace(/^minecraft:/, '').replace(/^the_/, '').replace(/_/g, ' '));
+      const size = (b, r) => b.shape === 'circle' ? `${(r * 2).toLocaleString()} blocks across (radius ${r.toLocaleString()})` : `${(r * 2).toLocaleString()} × ${(r * 2).toLocaleString()} blocks`;
+      sections.push({ id: 'borders', title: 'World borders', statLabel: 'dimensions with borders', icon: 'bi-bounding-box-circles', hue: '#5fd68a', count: d.borders.length,
+        children: d.borders.map((b) => ({ id: slug(b.dim), title: dim(b.dim), icon: 'bi-globe-americas', sub: `around ${b.x}, ${b.z}`,
+          body: (b.permanent > 0 ? row('Permanent area', value(size(b, b.permanent)), 'Builds here are kept. Land outside it may be reset to fresh terrain from time to time.') : '')
+            + (b.edge > 0 ? row('Edge of the world', value(size(b, b.edge)), 'You can\'t go further than this.') : row('Edge of the world', value('None'))) })) });
+    }
+    if (d.claims) {
+      const c = d.claims;
+      const how = `<p class="in-card-desc">Type <code>/claim</code> for the claim menu, or <code>/claim mode</code> to get the claim tool. Right-click two opposite corners of the area to claim it: everything inside, from bedrock to the sky, is protected. Right-click a corner of your claim to move it. In the menu you add members, choose what everyone else may do, and pick a name and colour.</p>`;
+      const blocks = row('Claim blocks for new players', value(c.startingBlocks.toLocaleString()), 'Each claimed block costs one claim block.')
+        + row('Claim blocks per hour of play', value(c.blocksPerHour.toLocaleString()), c.afkMinutes ? `Not while you're AFK for more than ${c.afkMinutes} minutes.` : '')
+        + row('Most claim blocks from playing', value(c.maxAccruedBlocks.toLocaleString()))
+        + (c.shop ? row('Buy claim blocks', value(`${c.shop.blocks.toLocaleString()} for ${c.shop.price} × ${titleCase(c.shop.item.replace(/^minecraft:/, '').replace(/_/g, ' '))}`),
+          'In the claim menu' + (c.shop.max ? `, up to ${c.shop.max.toLocaleString()} blocks in total.` : '.')) : '');
+      const rules = row('Where', value(c.dimensions.map((x) => titleCase(x.replace(/^minecraft:/, '').replace(/^the_/, '').replace(/_/g, ' '))).join(', ') || 'Nowhere'),
+        c.onlyPermanentArea ? 'Only inside the permanent area (see World borders).' : '')
+        + row('Smallest claim', value(`${c.minWidth} blocks wide, ${c.minArea.toLocaleString()} blocks in all`))
+        + (c.maxClaims ? row('Claims per player', value(c.maxClaims)) : '')
+        + (c.inactiveDays ? row('Inactive players', value(`Claims go after ${c.inactiveDays} days away`)) : '');
+      const roles = c.roles.map((r) => row(r.label, '', r.description)).join('');
+      sections.push({ id: 'claims', title: 'Land claims', statLabel: 'ways to protect your land', icon: 'bi-shield-check', hue: '#f2b233', count: c.roles.length,
+        children: [{ id: 'how', title: 'How to claim land', icon: 'bi-question-circle', body: how },
+          { id: 'blocks', title: 'Claim blocks', icon: 'bi-grid-3x3', body: blocks },
+          { id: 'rules', title: 'Rules', icon: 'bi-rulers', body: rules },
+          { id: 'roles', title: 'Member roles', icon: 'bi-people', sub: 'what members may do', body: roles }] });
+    }
     if (d.performance && d.performance.length) {
       sections.push({ id: 'perf', title: 'Performance tweaks', statLabel: 'performance tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
         children: d.performance.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,

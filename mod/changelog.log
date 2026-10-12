@@ -1,4 +1,14 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.9.0
+- Land claims, like GriefPrevention but with menus: players claim land with the claim tool (two corners), and everything inside is protected from bedrock to the sky. Off until switched on in the panel; GOML keeps working alongside
+- Claim mode (/claim mode or the menu) hands out the claim tool, a marked golden hoe, and takes it away again. It can't be dropped, stored or kept; whatever was in the hand comes back
+- The /claim menu (dialogs, no client mod): your claim blocks and claims. Per claim: members with a role (visitor, containers, builder, co-owner), what everyone else may do (doors, chests, PvP, explosions, fire, mob griefing), name and colour, subclaims with their own members, abandoning. Shortcuts: /claim list, trust, untrust, abandon; /claim admin bypass, delete, blocks
+- Claim blocks: a start amount and more per hour of play (not while AFK), bonus blocks from admins, and an optional shop in the menu that sells blocks for an item
+- Claims only inside the permanent area (soft border) and the allowed dimensions; minimum size, claims per player and removing claims of long-gone players are settings
+- Borders show as fake blocks only the player sees: corners, markers along the edges, subclaims and the first corner. The blocks are settings; claim_color uses the concrete closest to the claim's colour
+- Protected: building and breaking, doors, buttons, chests and other storage, buckets, animals, villagers, armor stands, frames and vehicles. Also players hurting animals (arrows too) and each other (PvP switch), arrows setting off blocks (targets, bells, buttons, TNT) or breaking frames, explosions (blocks, and animals, frames and armor stands inside), fire spread and lava lighting fires, water and lava flowing in, pistons pushing in, endermen, the wither, ravagers, zombies breaking doors and trampling farmland
+- Claims are kept in the world folder (nicecontrolcenter-claims.json); the panel reads, edits and copies them through the dashboard API, and they show on the web map in their colour
+
 ## 1.8.0
 - Fix: with the activation range on, mobs far from players stopped ticking entirely instead of every few ticks (a skipped mob's own tick count doesn't move; the turn now follows the world's clock)
 - Mob limits per chunk: pick mobs or groups (all animals, all monsters, villagers, water mobs) and how many may live in one chunk; used by the cleanup tool, the schedule's cleanup step and the new auto caps, which apply them every few seconds (optionally also a dropped item limit, oldest first). Named, tamed, leashed and persistent mobs are never removed

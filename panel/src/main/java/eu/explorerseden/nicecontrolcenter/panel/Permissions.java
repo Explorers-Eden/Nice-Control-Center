@@ -30,6 +30,8 @@ public final class Permissions {
 	public static final String DISCORD_MANAGE = "discord.manage";
 	public static final String MAP_MANAGE = "map.manage";
 	public static final String WORLD_TRIM = "world.trim";
+	public static final String CLAIMS_VIEW = "claims.view";
+	public static final String CLAIMS_MANAGE = "claims.manage";
 	public static final String USERS_ADMIN = "users.admin";
 	public static final String AUDIT_VIEW = "audit.view";
 
@@ -55,6 +57,8 @@ public final class Permissions {
 			new Permission(DISCORD_MANAGE, "Settings", "Set up the Discord bridge and manage linked accounts"),
 			new Permission(MAP_MANAGE, "Settings", "Set up the web map"),
 			new Permission(WORLD_TRIM, "Server", "Trim and pregenerate the world"),
+			new Permission(CLAIMS_VIEW, "Claims", "See land claims and players' claim blocks"),
+			new Permission(CLAIMS_MANAGE, "Claims", "Change claims, claim blocks and the claim settings; import GOML claims"),
 			new Permission(USERS_ADMIN, "Accounts", "Manage users and roles"),
 			new Permission(AUDIT_VIEW, "Accounts", "Read the audit log"));
 

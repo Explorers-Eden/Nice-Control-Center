@@ -628,6 +628,134 @@
 				</section>
 			</div>
 
+			<div class="np-tab-panel" data-tab="claims" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Claims</h3>
+					<p class="np-card-intro" id="pn-cl-intro">Land players protect with the claim tool. Changes apply right away (while the server is off, to the world file).</p>
+					<div class="pn-cl-tools">
+						<input type="search" id="pn-cl-search" placeholder="Find a claim, owner or member" autocomplete="off">
+						<select id="pn-cl-dim" aria-label="Dimension"></select>
+						<button type="button" class="np-btn small" id="pn-cl-new" data-perm="claims.manage"><i class="bi bi-plus-lg"></i> Server claim</button>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-claims-table"></table></div>
+				</section>
+				<section class="np-card" id="pn-cl-detail" hidden>
+					<h3 class="np-card-title"><i class="bi bi-pencil-square"></i> <span id="pn-cl-title">Claim</span></h3>
+					<p class="np-card-intro" id="pn-cl-sub"></p>
+					<form id="pn-cl-form" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row">Name<input type="text" name="name" maxlength="32" placeholder="(none)"></label>
+							<label class="np-form-row">Colour<input type="color" name="color"></label>
+							<label class="np-form-row" data-new>Dimension<input type="text" name="dim" value="minecraft:overworld"></label>
+							<label class="np-form-row">Owner (empty: the server)<input type="text" name="ownerName" maxlength="16"></label>
+						</div>
+						<div class="pn-field"><span>Corners (blocks, both included)</span>
+							<div class="pn-cl-coords">
+								<label>x<input type="number" name="minX"></label><label>z<input type="number" name="minZ"></label>
+								<span>to</span>
+								<label>x<input type="number" name="maxX"></label><label>z<input type="number" name="maxZ"></label>
+							</div>
+						</div>
+						<div class="pn-field" data-old><span>Everyone else may</span><div class="pn-cl-flags" id="pn-cl-flags"></div></div>
+						<div class="pn-field" data-old><span>Members</span>
+							<div id="pn-cl-members" class="pn-cl-members" data-dirty-ignore></div>
+							<div class="pn-cl-add" data-dirty-ignore>
+								<input type="text" id="pn-cl-add-name" maxlength="16" placeholder="Player name">
+								<select id="pn-cl-add-role" aria-label="Role"></select>
+								<button type="button" class="np-btn small" id="pn-cl-add-btn"><i class="bi bi-person-plus"></i> Add</button>
+							</div>
+						</div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<button type="button" class="np-btn danger" id="pn-cl-delete" data-old><i class="bi bi-trash"></i> Delete</button>
+							<button type="button" class="np-btn" id="pn-cl-close"><i class="bi bi-x-lg"></i> Close</button>
+							<span class="np-form-msg" id="pn-cl-msg"></span>
+						</div>
+					</form>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="claimblocks" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-grid-3x3"></i> Claim blocks</h3>
+					<p class="np-card-intro">Every claimed block costs one claim block. Players earn them by playing (and can buy them, if the shop is on); give or take some with the bonus.</p>
+					<div class="pn-cl-tools"><input type="search" id="pn-cb-search" placeholder="Find a player" autocomplete="off"></div>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-cb-table"></table></div>
+					<span class="np-form-msg" id="pn-cb-msg"></span>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="claimsettings" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Claim settings</h3>
+					<p class="np-card-intro">Players enter claim mode with <code>/claim mode</code> or from the <code>/claim</code> menu, get the claim tool and right-click two opposite corners. Everything inside, from bedrock to the sky, is protected. Applies within a few seconds, no restart.</p>
+					<form id="pn-cs-form" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row"><b>Claims</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+							<label class="np-form-row">Earn blocks while claims are off<span class="np-switch"><input type="checkbox" name="accrueWhileDisabled"><span></span></span></label>
+						</div>
+						<h4 class="pn-subhead">Claim blocks</h4>
+						<div class="np-form-grid">
+							<label class="np-form-row">Blocks for new players<input type="number" name="startingBlocks" min="0"></label>
+							<label class="np-form-row">Blocks per hour of play<input type="number" name="blocksPerHour" min="0"></label>
+							<label class="np-form-row">Most blocks from playing<input type="number" name="maxAccruedBlocks" min="0"></label>
+							<label class="np-form-row">No blocks after … minutes AFK (0 = always)<input type="number" name="afkMinutes" min="0" max="1440"></label>
+						</div>
+						<h4 class="pn-subhead">Where and how big</h4>
+						<div class="np-form-grid">
+							<label class="np-form-row">Only inside the permanent area<span class="np-switch"><input type="checkbox" name="onlyPermanentArea"><span></span></span></label>
+							<label class="np-form-row">Dimensions (comma separated)<input type="text" name="dimensions"></label>
+							<label class="np-form-row">Smallest width<input type="number" name="minWidth" min="1"></label>
+							<label class="np-form-row">Smallest area<input type="number" name="minArea" min="1"></label>
+							<label class="np-form-row">Claims per player (0 = no limit)<input type="number" name="maxClaims" min="0"></label>
+							<label class="np-form-row">Remove claims after … days away (0 = never)<input type="number" name="inactiveDays" min="0"></label>
+						</div>
+						<p class="pn-hint" id="pn-cs-areas"></p>
+						<h4 class="pn-subhead">New claims allow everyone</h4>
+						<div class="pn-cl-flags" id="pn-cs-flags"></div>
+						<h4 class="pn-subhead">Claim block shop</h4>
+						<div class="np-form-grid">
+							<label class="np-form-row">Players can buy claim blocks<span class="np-switch"><input type="checkbox" name="shopEnabled"><span></span></span></label>
+							<label class="np-form-row">Paid with (item id)<input type="text" name="shopItem"></label>
+							<label class="np-form-row">Items per purchase<input type="number" name="shopPrice" min="1"></label>
+							<label class="np-form-row">Blocks per purchase<input type="number" name="shopBlocks" min="1"></label>
+							<label class="np-form-row">Most blocks to buy (0 = no limit)<input type="number" name="shopMaxBlocks" min="0"></label>
+						</div>
+						<h4 class="pn-subhead">Claim tool and borders</h4>
+						<p class="pn-hint">Borders show as blocks only the player sees. Use block ids, or <code>claim_color</code> for the concrete closest to the claim's colour.</p>
+						<div class="np-form-grid">
+							<label class="np-form-row">Claim tool item<input type="text" name="toolItem"></label>
+							<label class="np-form-row">Corners<input type="text" name="visualCorner"></label>
+							<label class="np-form-row">Along the edges<input type="text" name="visualEdge"></label>
+							<label class="np-form-row">Subclaim corners<input type="text" name="visualSubCorner"></label>
+							<label class="np-form-row">Subclaim edges<input type="text" name="visualSubEdge"></label>
+							<label class="np-form-row">First corner of a new claim<input type="text" name="visualSelection"></label>
+							<label class="np-form-row">A marker every … blocks<input type="number" name="visualSpacing" min="2" max="100"></label>
+							<label class="np-form-row">Shown within … blocks<input type="number" name="visualRange" min="16" max="256"></label>
+							<label class="np-form-row">Shown for … seconds<input type="number" name="visualSeconds" min="1" max="600"></label>
+						</div>
+						<label class="pn-field"><span>Colours offered in the claim menu (one per line: <code>Name #RRGGBB</code>)</span><textarea name="colors" rows="6" spellcheck="false"></textarea></label>
+						<div class="pn-sticky-save np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-cs-msg"></span>
+						</div>
+					</form>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="claimimport" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-box-arrow-in-down"></i> Import from GOML</h3>
+					<p class="np-card-intro">Turns Get Off My Lawn claims into claims here: same area (as a square), the first owner becomes the owner, other owners co-owners and trusted players builders. Owners get claim blocks for the land, so nobody starts in debt. GOML's claims stay as they are. Needs the server running with GOML installed.</p>
+					<div class="np-form-actions">
+						<button type="button" class="np-btn" id="pn-gi-preview"><i class="bi bi-search"></i> Check</button>
+						<button type="button" class="np-btn primary" id="pn-gi-run" disabled><i class="bi bi-box-arrow-in-down"></i> Import</button>
+						<span class="np-form-msg" id="pn-gi-msg"></span>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-gi-table"></table></div>
+				</section>
+			</div>
+
 			<div class="np-tab-panel" data-tab="serverlist" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-ul"></i> Server list entry</h3>
@@ -694,6 +822,8 @@
 						<label class="np-form-row">Data pack settings<span class="np-switch"><input type="checkbox" name="packs"><span></span></span></label>
 						<label class="np-form-row">Performance tweaks that are on<span class="np-switch"><input type="checkbox" name="performance"><span></span></span></label>
 						<label class="np-form-row">Next scheduled restart<span class="np-switch"><input type="checkbox" name="restart"><span></span></span></label>
+						<label class="np-form-row">How claiming land works (while claims are on)<span class="np-switch"><input type="checkbox" name="claims"><span></span></span></label>
+						<label class="np-form-row">Permanent area and world edge<span class="np-switch"><input type="checkbox" name="borders"><span></span></span></label>
 						<label class="np-form-row"><span>Commands for everyone <small class="pn-hint">with the descriptions from the Commands page</small></span><span class="np-switch"><input type="checkbox" name="commands"><span></span></span></label>
 					</div>
 					<details class="pn-advanced"><summary>Server settings to leave out</summary>
@@ -767,7 +897,7 @@
 							<label class="np-form-row">Map on<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 							<label class="np-form-row">Title<input type="text" name="title" maxlength="60"></label>
 							<label class="np-form-row">Show online players<span class="np-switch"><input type="checkbox" name="showPlayers"><span></span></span></label>
-							<label class="np-form-row">Show claims (Get Off My Lawn)<span class="np-switch"><input type="checkbox" name="showClaims"><span></span></span></label>
+							<label class="np-form-row">Show land claims (ours and Get Off My Lawn)<span class="np-switch"><input type="checkbox" name="showClaims"><span></span></span></label>
 							<label class="np-form-row">Show the server status (online, players, uptime, next restart)<span class="np-switch"><input type="checkbox" name="showStatus"><span></span></span></label>
 							<label class="np-form-row">…with the names of who's online<span class="np-switch"><input type="checkbox" name="statusNames"><span></span></span></label>
 							<label class="np-form-row">…with the in-game date and time (Nice Actions calendar)<span class="np-switch"><input type="checkbox" name="showClock"><span></span></span></label>

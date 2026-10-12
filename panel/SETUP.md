@@ -126,7 +126,7 @@ Links are kept in the panel volume, so the login check needs neither the databas
 The panel draws a top-down map of the world from the region files, one pixel per block like a vanilla map, with relief and water depth.
 
 - **No load on the server:** the panel does the work, and the map stays online while the server is off. New areas appear after the server saves them (every 5 minutes, or at shutdown).
-- **Layers:** online players with their heads, GOML claims, waypoint hubs (public ones by default) and the world border, if one is set.
+- **Layers:** online players with their heads, land claims (ours in their colour, and GOML's), waypoint hubs (public ones by default) and the world border, if one is set.
 - **Colors:** modded blocks get their real map color once the server has run with the Nice Control Center mod.
 - **Own address:** set `MAP_HOST` (e.g. `map.example.com`) and point that subdomain at port 8080 in your reverse proxy. On that address only the map is reachable, nothing of the panel. Without `MAP_HOST` the map is at `/map/` on the panel's address.
 
@@ -137,6 +137,28 @@ Settings → Public info: a read-only page where players can look up the server'
 - It's at `/info/` on the panel's address, or on its own address: set `INFO_HOST` (e.g. `info.example.com`) and point that subdomain at port 8080. On that address only the info page is reachable.
 - It's built from the running server and kept, so it stays readable while the server is off.
 - **Map tab:** choose the layers, hide dimensions, change the title, or have everything drawn again.
+
+## Land claims
+
+**Claims** in the sidebar (needs mod 1.9.0). It's off until you switch it on under **Claims → Settings**.
+
+- **Claims:** every claim with its owner, place, size and members. Click one to change its name, colour, corners, owner, members and what everyone else may do, or to delete it. **Server claim** makes a claim that costs nobody claim blocks. While the server is off, changes go straight to the world file.
+- **Claim blocks:** what each player has earned, bought and used. Change the bonus to give or take blocks.
+- **Settings:**
+  - how players earn claim blocks and the claim shop;
+  - where they may claim (dimensions; only inside the permanent area from World → Borders, on by default);
+  - smallest size and the most claims per player;
+  - removing the claims of players who've been away a long time;
+  - the claim tool and the border blocks;
+  - the colours in the menu.
+- **GOML import:** with the server running and GOML installed, **Check** lists GOML's claims and **Import** turns them into claims here. Same square area; the first owner owns it, other owners become co-owners and trusted players builders, and owners get claim blocks for the land. GOML's claims stay as they are.
+- **Map and info page:** claims show on the web map in their colour (with the claims layer on). The public info page explains claiming and lists the permanent area and world edge per dimension; both can be switched off there.
+- **Database (for a website):** with `DB_URL` set, the panel copies the claims into Postgres every few seconds. Treat these tables as read-only; the world file is the original.
+  - `claims`: id, parent_id (subclaims), owner_uuid / owner_name (empty = server claim), dimension, min_x, min_z, max_x, max_z (inclusive), name, color (`#RRGGBB`), flags (JSON: access, containers, pvp, explosions, fireSpread, mobGriefing), created_at, updated_at.
+  - `claim_members`: claim_id, player_uuid, player_name, role (ACCESS, CONTAINERS, BUILD, MANAGE).
+  - `claim_players`: player_uuid, name, accrued, bonus, bought, play_minutes, last_seen.
+  - `claim_player_summary` (view): per player total, used and available claim blocks and number of claims.
+- **Permissions:** "See land claims" (Moderator and Viewer by default) and "Change claims…" (Moderator).
 
 ## World: pregenerate and trim
 

@@ -427,7 +427,7 @@ public final class PlayerInspector {
 		}
 	}
 
-	static Optional<String> name(MinecraftServer server, UUID uuid) {
+	public static Optional<String> name(MinecraftServer server, UUID uuid) {
 		return server.services().nameToIdCache().get(uuid).map(NameAndId::name);
 	}
 

@@ -86,6 +86,13 @@
         .bindPopup(`<b>${esc(c.owners.join(', ') || 'Claim')}</b>${esc(c.anchor || '')}<br><small>${c.x}, ${c.z} · radius ${c.radius}</small>`)
         .addTo(layers.claims);
     }
+    // Our own claims: rectangles in the claim's colour (subclaims dashed).
+    for (const c of (live.landClaims || []).filter((c) => c.dim === dim.id)) {
+      L.rectangle([ll(c.minX, c.minZ), ll(c.maxX, c.maxZ)], { color: c.color, weight: c.sub ? 1 : 2, dashArray: c.sub ? '4 4' : null, fillColor: c.color, fillOpacity: c.sub ? 0.08 : 0.18 })
+        .bindPopup(`<b>${esc(c.name)}</b><br>${esc(c.owner)}${c.members.length ? `<br><small>Members: ${esc(c.members.join(', '))}</small>` : ''}`
+          + `<br><small>${c.maxX - c.minX} × ${c.maxZ - c.minZ} · ${Math.floor((c.minX + c.maxX) / 2)}, ${Math.floor((c.minZ + c.maxZ) / 2)}</small>`)
+        .addTo(layers.claims);
+    }
     for (const h of live.hubs.filter((h) => h.dim === dim.id)) {
       L.marker(ll(h.x + 0.5, h.z + 0.5), { icon: L.divIcon({ className: 'mp-hub', html: '<i class="bi bi-geo-alt-fill"></i>', iconSize: [24, 24], iconAnchor: [12, 22] }) })
         .bindPopup(`<div class="mp-hub-pop">${h.owner || h.ownerUuid ? `<img class="mp-head" src="https://mc-heads.net/avatar/${encodeURIComponent(h.ownerUuid || h.owner)}/40" alt="" width="40" height="40">` : ''}

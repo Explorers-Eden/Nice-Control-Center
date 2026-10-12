@@ -614,9 +614,27 @@ public final class DashboardServer {
 				eu.explorerseden.nicecontrolcenter.core.Pregen.stop(minecraft, "stopped");
 				sendJson(exchange, Map.of("ok", true));
 			}
+			// Land claims: the panel copies changes into its database and edits through here.
+			case "/api/claims/changes" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.changes(parseLong(query.get("since"), 0))));
+			case "/api/claims/action" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
+				sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.action(body, by)));
+			}
+			case "/api/claims/goml" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, false)));
+			case "/api/claims/goml/import" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, true)));
+			}
 			// For the panel's web map (it renders the tiles itself).
 			case "/api/map" -> {
 				Map<String, Object> map = new LinkedHashMap<>(onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
+				map.put("landClaims", onServerThread(eu.explorerseden.nicecontrolcenter.claims.ClaimApi::mapClaims));
 				// The in-game date and time (Nice Actions calendar) for the map's status card.
 				map.put("clock", eu.explorerseden.nicecontrolcenter.core.WorldClock.current());
 				sendJson(exchange, map);
