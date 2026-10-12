@@ -25,7 +25,7 @@ import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
  * also works while the server is off.
  */
 final class Commands {
-	/** Plain descriptions of the vanilla commands. */
+	/** Plain descriptions of the vanilla commands and of common mods' commands, by name. */
 	static final Map<String, String> VANILLA = Map.ofEntries(
 			Map.entry("advancement", "Give or take advancements."),
 			Map.entry("attribute", "Read or change an entity's attributes, like max health or speed."),
@@ -118,9 +118,53 @@ final class Commands {
 			Map.entry("weather", "Change the weather."),
 			Map.entry("whitelist", "Manage the whitelist."),
 			Map.entry("worldborder", "Change the world border."),
-			// This mod's own.
-			Map.entry("nicecontrolcenter", "Nice Control Center: server status, the dashboard link, the lag monitor, recordings and mod updates."),
-			Map.entry("nccreply", "Answer a private message the admins sent you from the panel."));
+			// Mods: this one, Explorer's Eden's own and the common server mods.
+			Map.entry("nicecontrolcenter", "Nice Control Center: server status, what costs the most, the dashboard link, the lag monitor, recordings and mod updates."),
+			Map.entry("ncc", "Nice Control Center: server status, what costs the most, the dashboard link, the lag monitor, recordings and mod updates."),
+			Map.entry("nccreply", "Answer a private message the admins sent you from the panel."),
+			Map.entry("merl", "Ask Merl anything about the server or vanilla Minecraft: she finds the right wiki page, guides you to places, quizzes you and chats."),
+			Map.entry("nicemerl", "Merl's settings for yourself (her comments and celebrations on or off), guide trails and quiz answers; admins also rebuild her wiki index and place her mannequin."),
+			Map.entry("discord", "Discord JustSync: see which Discord account you're linked to or unlink it; admins look up other players, send a message to Discord and reload the bridge."),
+			Map.entry("goml", "Get Off My Lawn land claims: trust or untrust players, add owners, list your claims, or escape from someone else's claim."),
+			Map.entry("lp", "LuckPerms: manage permissions, groups and ranks. Without rights you only see the help."),
+			Map.entry("luckperms", "LuckPerms: manage permissions, groups and ranks. Without rights you only see the help."),
+			Map.entry("perm", "LuckPerms: manage permissions, groups and ranks. Without rights you only see the help."),
+			Map.entry("perms", "LuckPerms: manage permissions, groups and ranks. Without rights you only see the help."),
+			Map.entry("permission", "LuckPerms: manage permissions, groups and ranks. Without rights you only see the help."),
+			Map.entry("permissions", "LuckPerms: manage permissions, groups and ranks. Without rights you only see the help."),
+			Map.entry("chunky", "Chunky: generate the world ahead of time. Set the world, center, radius and shape, then start, pause, continue or cancel."),
+			Map.entry("bluemap", "BlueMap web map: rendering status, start or stop rendering, update or purge maps, reload."),
+			Map.entry("dh", "Distant Horizons on the server: its settings, generating far-away terrain ahead of time (pregen) and debug info."),
+			Map.entry("c2me", "C2ME (faster chunk loading and generation): a debug tool for chunks that aren't ticking."),
+			Map.entry("fallingtree", "FallingTree: switch chopping down whole trees at once on or off, for yourself."),
+			Map.entry("polymer", "Polymer (lets mods add content without a client mod): the resource pack, statistics and debug tools."),
+			Map.entry("servercore", "ServerCore: performance status, its dynamic settings (mob caps, chunk tick, simulation and view distance) and reloading its config."),
+			Map.entry("sc", "ServerCore: performance status, its dynamic settings (mob caps, chunk tick, simulation and view distance) and reloading its config."),
+			Map.entry("mobcaps", "ServerCore: how full the mob caps are around you."),
+			Map.entry("statistics", "ServerCore: count entities and block entities by type or by player, to find what causes lag."),
+			Map.entry("spark", "spark profiler: find what makes the server lag (profiler, health, heap and GC reports)."),
+			Map.entry("tps", "Show the server's ticks per second."));
+
+	/** Parts of a command that need other rights ("nicemerl reindex"), described on their own. */
+	static final Map<String, String> SUBS = Map.ofEntries(
+			Map.entry("nicecontrolcenter monitor", "Switch the lag monitor on or off: chat warnings when the server starts lagging, with the likely cause."),
+			Map.entry("nicecontrolcenter web", "Get a link to the web dashboard; regen makes a new link, port shows or changes its port."),
+			Map.entry("nicecontrolcenter updates", "Check the mods for updates, set the Discord webhook for update news, skip or roll back an update."),
+			Map.entry("nicecontrolcenter record", "Start, stop or check a performance recording, a report of what happened during lag."),
+			Map.entry("nicemerl reindex", "Rebuild Merl's wiki search index (after the wiki changed)."),
+			Map.entry("nicemerl guide", "A sparkle trail to a place, as the [Guide me] button after coordinates; stop ends it."),
+			Map.entry("nicemerl mannequin", "Place a mannequin of Merl where you stand, or remove it."),
+			Map.entry("nicemerl comments", "Turn Merl's chatter about what you're up to on or off, for yourself."),
+			Map.entry("nicemerl celebrate", "Turn Merl cheering when you get big advancements on or off, for yourself."),
+			Map.entry("goml admin", "Claim admin tools: admin mode, remove claims or owners, claim info, list everyone's claims, reload."),
+			Map.entry("servercore reload", "Reload ServerCore's config file."),
+			Map.entry("servercore settings", "Change ServerCore's dynamic limits (mob caps, chunk tick, simulation and view distance) right away."),
+			Map.entry("polymer generate-pack", "Build the resource pack that Polymer sends to players."),
+			Map.entry("polymer blocks_module_state_report", "Debug: a report of the block states Polymer uses."),
+			Map.entry("polymer client-item", "Debug: show the item the client sees for the one you hold."),
+			Map.entry("polymer export-registry", "Debug: export the registries to a file."),
+			Map.entry("polymer target-block", "Debug: show the block you look at as the client sees it."),
+			Map.entry("polymer target-item", "Debug: show the item you hold as the client sees it."));
 
 	private final Path cacheFile;
 	private final Path notesFile;
@@ -173,7 +217,20 @@ final class Commands {
 		return last;
 	}
 
+	private static void describe(JsonObject c, String name, String alias, Map<String, String> notes) {
+		String mine = notes.get(name);
+		if (mine != null && !mine.isBlank()) {
+			c.addProperty("description", mine);
+			c.addProperty("custom", true);
+			return;
+		}
+		String text = VANILLA.containsKey(name) ? VANILLA.get(name) : SUBS.get(name);
+		if (text == null && alias != null) text = notes.get(alias) != null && !notes.get(alias).isBlank() ? notes.get(alias) : VANILLA.get(alias);
+		if (text != null) c.addProperty("description", text);
+	}
+
 	void register(JavalinDefaultRoutingApi routes) {
+		// Descriptions: your own text first, then the built-in one, then (for an alias) the command it stands for.
 		routes.get("/api/commands", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			JsonObject src = list();
 			Map<String, Object> out = new LinkedHashMap<>();
@@ -189,20 +246,13 @@ final class Commands {
 			for (JsonElement e : copy.getAsJsonArray("commands")) {
 				JsonObject c = e.getAsJsonObject();
 				String name = c.get("name").getAsString();
-				String from = c.get("mod").getAsString();
-				boolean vanilla = "minecraft".equals(from) || "nicecontrolcenter".equals(from);
-				// An alias without its own text reads like the command it points to.
 				String alias = c.has("aliasOf") ? c.get("aliasOf").getAsString() : null;
-				String mine = notes.get(name);
-				if (mine != null && !mine.isBlank()) {
-					c.addProperty("description", mine);
-					c.addProperty("custom", true);
-				} else if (vanilla && VANILLA.containsKey(name)) {
-					c.addProperty("description", VANILLA.get(name));
-				} else if (alias != null && notes.get(alias) != null && !notes.get(alias).isBlank()) {
-					c.addProperty("description", notes.get(alias));
-				} else if (alias != null && vanilla && VANILLA.containsKey(alias)) {
-					c.addProperty("description", VANILLA.get(alias));
+				describe(c, name, alias, notes);
+				if (c.has("subs")) {
+					for (JsonElement se : c.getAsJsonArray("subs")) {
+						JsonObject sub = se.getAsJsonObject();
+						describe(sub, sub.get("name").getAsString(), null, notes);
+					}
 				}
 			}
 			out.put("commands", copy.get("commands"));

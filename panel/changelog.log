@@ -1,3 +1,7 @@
+## 1.7.1
+- Commands page: descriptions for the commands of NiceMerl (/merl, /nicemerl), Discord JustSync (/discord), GOML, LuckPerms, Chunky, BlueMap, Distant Horizons, C2ME, FallingTree, Polymer, ServerCore and spark, and for subcommands with their own rights (e.g. /nicemerl reindex, /goml admin); subcommand descriptions can be edited too
+- Public info page: no "Server info" heading any more; the logo and the server list message lead the page. The title setting is now only the browser tab's title
+
 ## 1.7.0
 - Performance → Tuning, new cards: Lighter mob AI, Mob pushing, Junk despawns sooner (with an item list), Save limits per chunk, Hoppers, Armor stands, and Mob limits per chunk (pick mobs or groups and how many, presets, applied on their own every few seconds if you like); "More steps first" for lag protection; the live line shows the new steps and what the auto caps removed in the last hour (needs mod 1.8.0)
 - Clean up now and the schedule's Clean up step use the mob limits ("remove mobs over their limit"); older steps with one number keep working

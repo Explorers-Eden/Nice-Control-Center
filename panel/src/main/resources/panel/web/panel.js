@@ -3845,14 +3845,14 @@
   function cmdRow(c, sub) {
     const desc = c.description ? esc(c.description) : (sub ? '' : '<span class="pn-muted">No description yet.</span>');
     const usage = (c.usage || []).filter((u) => u !== '/' + c.name || c.usage.length === 1);
-    const edit = !sub && cmdData.canEdit ? `<button type="button" class="pn-cmd-edit" data-cmd-edit="${esc(c.name)}" title="Write a description"><i class="bi bi-pencil"></i></button>` : '';
+    const edit = cmdData.canEdit ? `<button type="button" class="pn-cmd-edit" data-cmd-edit="${esc(c.name)}" title="Write a description"><i class="bi bi-pencil"></i></button>` : '';
     const search = [c.name, c.description, c.permission, c.aliasOf, ...(c.usage || [])].join(' ').toLowerCase();
     return `<div class="pn-cmd${sub ? ' sub' : ''}" data-search="${esc(search)}" data-level="${c.level}">
       <div class="pn-cmd-main">
         <code class="pn-cmd-name">/${esc(c.name)}</code>${c.aliasOf ? `<span class="pn-muted">same as /${esc(c.aliasOf)}</span>` : ''}
         <span class="pn-cmd-who">${whoPill(c)}${c.permission ? `<code class="pn-perm" title="Permission node (LuckPerms and other permissions mods)">${esc(c.permission)}</code>` : ''}</span>
       </div>
-      <div class="pn-cmd-desc" data-cmd-desc="${sub ? '' : esc(c.name)}">${desc}${c.custom ? ' <span class="pn-tag">yours</span>' : ''}${edit}</div>
+      <div class="pn-cmd-desc" data-cmd-desc="${esc(c.name)}">${desc}${c.custom ? ' <span class="pn-tag">yours</span>' : ''}${edit}</div>
       ${usage.length ? `<details class="pn-cmd-usage"><summary>How to use</summary>${usage.map((u) => `<code>${esc(u)}</code>`).join('')}</details>` : ''}
     </div>`;
   }
@@ -3908,7 +3908,7 @@
     const b = e.target.closest('[data-cmd-edit]');
     if (!b) return;
     const name = b.dataset.cmdEdit;
-    const c = cmdData.commands.find((x) => x.name === name);
+    const c = cmdData.commands.flatMap((x) => [x, ...(x.subs || [])]).find((x) => x.name === name);
     const box = b.closest('.pn-cmd-desc');
     box.innerHTML = `<form class="pn-cmd-form"><input class="np-input" maxlength="300" value="${esc(c.custom ? c.description : '')}" placeholder="${esc(c.description || 'What does it do?')}">
       <button class="np-btn small primary">Save</button><button type="button" class="np-btn small" data-cancel>Cancel</button></form>`;

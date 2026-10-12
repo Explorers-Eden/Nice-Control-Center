@@ -200,7 +200,6 @@
 
   function render(d) {
     document.title = d.title;
-    $('in-title').textContent = d.title;
     if (d.motd) { $('in-motd').hidden = false; $('in-motd').innerHTML = mc(d.motd); }
     $('in-intro').innerHTML = (d.intro || '').split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
     $('in-updated').textContent = d.updated ? `Last updated ${new Date(d.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '';
