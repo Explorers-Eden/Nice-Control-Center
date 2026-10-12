@@ -1,4 +1,5 @@
 ## 1.6.0
+- Map: restart and reset times name the viewer's time zone (they were already in the viewer's local time)
 - Public info page (Settings → Public info): the server's settings in plain words and groups, game rules, data pack settings and the mod configs you pick (as readable lists), with search; at /info/ or on its own domain with INFO_HOST. Passwords, tokens and remote-access settings never show; it stays readable while the server is off
 - Settings → Server list: a collection of messages of the day; tick the ones to use and a random one is picked at every start
 - Maintenance: who may join is a list of known players (operators, whitelist, everyone who has joined) with checkboxes, plus a field to add names

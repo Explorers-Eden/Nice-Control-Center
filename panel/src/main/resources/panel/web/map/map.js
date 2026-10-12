@@ -72,7 +72,8 @@
     // Calendar days, not hours: 05:00 tomorrow is "tomorrow" even if it's only a few hours away.
     const midnight = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
     const days = Math.round((midnight(at) - midnight(Date.now())) / 86400000);
-    const when = new Date(at).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    // In the viewer's own time zone, named so nobody has to guess.
+    const when = new Date(at).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
     return days <= 0 ? `today (${when})` : days === 1 ? `tomorrow (${when})` : `in ${days} days (${when})`;
   }
 

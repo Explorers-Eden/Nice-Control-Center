@@ -83,17 +83,13 @@ public final class MapExport {
 		}
 		for (ServerLevel level : server.getAllLevels()) {
 			Identifier dim = level.dimension().identifier();
-			Path file = root.resolve("dimensions").resolve(dim.getNamespace()).resolve(dim.getPath()).resolve("data")
-					.resolve("cardinal-components").resolve("world.dat");
-			CompoundTag data = Files.exists(file) ? PlayerInspector.read(file) : null;
-			if (data == null) {
-				continue;
-			}
-			ListTag claims = data.getCompoundOrEmpty("data").getCompoundOrEmpty("cardinal_components").getCompoundOrEmpty("goml:claims").getListOrEmpty("Claims");
+			ListTag claims = claimList(level, root);
 			for (int i = 0; i < claims.size(); i++) {
-				CompoundTag claim = claims.getCompoundOrEmpty(i);
-				CompoundTag box = claim.getCompoundOrEmpty("Box");
-				BlockPos origin = BlockPos.of(box.getLongOr("OriginPos", 0));
+				CompoundTag entry = claims.getCompoundOrEmpty(i);
+				// Save version 1: everything on the claim. Version 0: the box beside an "Info" compound.
+				CompoundTag claim = entry.contains("Info") ? entry.getCompoundOrEmpty("Info") : entry;
+				CompoundTag box = entry.getCompoundOrEmpty("Box");
+				BlockPos origin = BlockPos.of(box.getLongOr("OriginPos", claim.getLongOr("Pos", 0)));
 				int radius = box.getIntOr("Radius", box.getIntOr("radius", 0));
 				List<String> owners = new ArrayList<>();
 				ListTag ownerList = claim.getListOrEmpty("Owners");
@@ -115,6 +111,42 @@ public final class MapExport {
 			}
 		}
 		return out;
+	}
+
+	/** Whether reading GOML's claims from memory works on this server (checked once, then remembered). */
+	private static volatile Boolean liveClaims = null;
+
+	/**
+	 * The claims of one dimension as GOML would save them: straight from its Cardinal Components world
+	 * component (so new claims show right away), or from the saved world.dat when that isn't possible
+	 * (which only changes when the world saves). Server thread.
+	 */
+	static ListTag claimList(ServerLevel level, Path root) {
+		if (!Boolean.FALSE.equals(liveClaims)) {
+			try {
+				Class<?> registry = Class.forName("org.ladysnake.cca.api.v3.component.ComponentRegistry");
+				Object key = registry.getMethod("get", Identifier.class).invoke(null, Identifier.fromNamespaceAndPath("goml", "claims"));
+				Object component = key == null ? null : key.getClass().getMethod("getNullable", Object.class).invoke(key, level);
+				if (component != null) {
+					java.lang.reflect.Method write = component.getClass().getMethod("writeData", net.minecraft.world.level.storage.ValueOutput.class);
+					net.minecraft.world.level.storage.TagValueOutput tag = net.minecraft.world.level.storage.TagValueOutput.createWithContext(
+							net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess());
+					write.invoke(component, tag);
+					liveClaims = true;
+					return tag.buildResult().getListOrEmpty("Claims");
+				}
+			} catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+				if (liveClaims == null) eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info(
+						"Reading GOML claims from the saved world instead (new claims show after the next save): {}", e.toString());
+				liveClaims = false;
+			}
+		}
+		Identifier dim = level.dimension().identifier();
+		Path file = root.resolve("dimensions").resolve(dim.getNamespace()).resolve(dim.getPath()).resolve("data")
+				.resolve("cardinal-components").resolve("world.dat");
+		CompoundTag data = Files.exists(file) ? PlayerInspector.read(file) : null;
+		return data == null ? new ListTag()
+				: data.getCompoundOrEmpty("data").getCompoundOrEmpty("cardinal_components").getCompoundOrEmpty("goml:claims").getListOrEmpty("Claims");
 	}
 
 	private static List<Map<String, Object>> hubs(MinecraftServer server, String storageId) {

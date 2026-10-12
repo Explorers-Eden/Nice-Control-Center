@@ -594,20 +594,14 @@ public final class PlayerInspector {
 			Path root = server.getWorldPath(LevelResource.ROOT);
 			for (ServerLevel level : server.getAllLevels()) {
 				Identifier dim = level.dimension().identifier();
-				Path file = root.resolve("dimensions").resolve(dim.getNamespace()).resolve(dim.getPath()).resolve("data")
-						.resolve("cardinal-components").resolve("world.dat");
-				CompoundTag data = Files.exists(file) ? read(file) : null;
-				if (data == null) {
-					continue;
-				}
-				ListTag claims = data.getCompoundOrEmpty("data").getCompoundOrEmpty("cardinal_components").getCompoundOrEmpty("goml:claims")
-						.getListOrEmpty("Claims");
+				ListTag claims = MapExport.claimList(level, root);
 				for (int i = 0; i < claims.size(); i++) {
-					CompoundTag claim = claims.getCompoundOrEmpty(i);
+					CompoundTag entry = claims.getCompoundOrEmpty(i);
+					CompoundTag claim = entry.contains("Info") ? entry.getCompoundOrEmpty("Info") : entry;
 					if (!uuids(claim.getListOrEmpty("Owners")).contains(owner)) {
 						continue;
 					}
-					BlockPos origin = BlockPos.of(claim.getCompoundOrEmpty("Box").getLongOr("OriginPos", 0));
+					BlockPos origin = BlockPos.of(entry.getCompoundOrEmpty("Box").getLongOr("OriginPos", claim.getLongOr("Pos", 0)));
 					Map<String, Object> c = loc(origin.getX(), origin.getY(), origin.getZ(), dim.toString());
 					String type = claim.getStringOr("Type", "");
 					c.put("anchor", dimension(type.isEmpty() ? "unknown_anchor" : type));
