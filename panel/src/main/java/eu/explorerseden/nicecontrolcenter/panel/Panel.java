@@ -127,7 +127,9 @@ public final class Panel {
 		ServerTuning tuning = new ServerTuning(serverDir, dataDir, server, audit);
 		tuning.useNotifier(alerts);
 		scheduler.useTuning(tuning);
+		Profiles profiles = new Profiles(dataDir, audit);
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
+		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		map.useStatus(stats::uptime7d, tuning::maintenance, () -> scheduler.nextWith("restart"));
 
@@ -203,6 +205,8 @@ public final class Panel {
 				Map<String, Object> out = new LinkedHashMap<>();
 				out.put("user", me.name());
 				out.put("envAdmin", me.envAdmin());
+				out.put("avatar", profiles.hasAvatar(me.name()));
+				out.put("theme", profiles.theme(me.name()));
 				out.put("permissions", me.permissions().contains(Permissions.ALL)
 						? Permissions.CATALOG.stream().map(Permissions.Permission::id).toList() : new ArrayList<>(me.permissions()));
 				out.put("version", VERSION);
@@ -274,6 +278,7 @@ public final class Panel {
 			tuning.register(routes);
 			home.register(routes);
 			info.register(routes);
+			profiles.register(routes);
 			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
 			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				int days;

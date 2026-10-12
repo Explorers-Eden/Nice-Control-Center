@@ -87,6 +87,13 @@ final class InfoPage {
 	private volatile JsonObject live;
 	private volatile long liveAt;
 
+	private Auth auth;
+
+	/** Admins may look at the page before it's public. */
+	void useAuth(Auth auth) {
+		this.auth = auth;
+	}
+
 	InfoPage(Path dataDir, Path serverDir, Supervisor server, DashboardProxy mod, Audit audit) {
 		this.settingsFile = dataDir.resolve("info.json");
 		this.cacheFile = dataDir.resolve("info-cache.json");
@@ -178,6 +185,8 @@ final class InfoPage {
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("title", s.title);
 		out.put("intro", s.intro);
+		String motd = ServerTuning.readProperties(serverDir.resolve("server.properties")).getProperty("motd", "");
+		if (!motd.isBlank()) out.put("motd", motd);
 		if (src.has("at")) out.put("updated", src.get("at").getAsLong());
 		if (s.properties) out.put("properties", properties(src, s));
 		if (s.gamerules && src.has("gamerules")) {
@@ -261,13 +270,25 @@ final class InfoPage {
 				settings.add(m);
 			}
 			Map<String, Object> dialog = new LinkedHashMap<>();
+			dialog.put("id", str(d, "id"));
 			dialog.put("title", str(d, "title"));
 			dialog.put("section", str(d, "section"));
 			dialog.put("settings", settings);
 			byPack.computeIfAbsent(str(d, "pack"), k -> new ArrayList<>()).add(dialog);
 		}
+		// The packs' own menus (as in game), so the page can be navigated the same way.
+		Map<String, JsonElement> trees = new LinkedHashMap<>();
+		if (packs.has("tree") && packs.get("tree").isJsonArray()) {
+			for (JsonElement t : packs.getAsJsonArray("tree")) trees.put(str(t.getAsJsonObject(), "pack"), t.getAsJsonObject().get("children"));
+		}
 		List<Map<String, Object>> out = new ArrayList<>();
-		byPack.forEach((pack, dialogs) -> out.add(Map.of("pack", pack, "dialogs", dialogs)));
+		byPack.forEach((pack, dialogs) -> {
+			Map<String, Object> m = new LinkedHashMap<>();
+			m.put("pack", pack);
+			m.put("dialogs", dialogs);
+			if (trees.containsKey(pack)) m.put("menu", trees.get(pack));
+			out.add(m);
+		});
 		return out;
 	}
 
@@ -291,7 +312,9 @@ final class InfoPage {
 
 	void register(JavalinDefaultRoutingApi routes) {
 		routes.get("/info/data.json", ctx -> {
-			if (!settings.enabled) {
+			Auth.Session session = auth == null ? null : auth.session(ctx.cookie(Auth.COOKIE));
+			boolean preview = session != null && session.can(Permissions.SETTINGS_SERVER);
+			if (!settings.enabled && !preview) {
 				ctx.status(HttpStatus.NOT_FOUND).json(Map.of("error", "The info page is switched off."));
 				return;
 			}

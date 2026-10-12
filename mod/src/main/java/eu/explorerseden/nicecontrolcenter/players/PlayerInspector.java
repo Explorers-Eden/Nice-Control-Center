@@ -626,7 +626,7 @@ public final class PlayerInspector {
 	}
 
 	/** kick | message (online players), ban | unban (anyone). Returns an error or null. Server thread. */
-	public static String action(MinecraftServer server, String uuid, String action, String text) {
+	public static String action(MinecraftServer server, String uuid, String action, String text, String by) {
 		UUID id;
 		try {
 			id = UUID.fromString(uuid);
@@ -654,21 +654,14 @@ public final class PlayerInspector {
 					if (clean.isEmpty()) {
 						return "Type a message first.";
 					}
+					// The first part's style would carry over to the rest, so it's an empty one.
 					com.google.gson.JsonArray json = new com.google.gson.JsonArray();
-					com.google.gson.JsonObject prefix = new com.google.gson.JsonObject();
+					json.add("");
 					var config = NiceControlCenter.config();
-					String label = config == null || config.message_prefix == null ? "Admin:" : config.message_prefix.strip();
-					String color = config == null ? "gold" : ControlCenterConfig.color(config.message_color);
-					if (color == null) {
-						NiceControlCenter.LOGGER.warn("message_color \"{}\" isn't a color; using gold. Use a Minecraft color name or #RRGGBB.",
-								config.message_color);
-						color = "gold";
-					}
-					prefix.addProperty("text", label.isEmpty() ? "" : label + " ");
-					prefix.addProperty("color", color);
-					json.add(prefix);
+					if (config != null) json.addAll(config.adminPrefix(by));
 					com.google.gson.JsonObject body = new com.google.gson.JsonObject();
 					body.addProperty("text", clean + " ");
+					body.addProperty("color", "white");
 					json.add(body);
 					// A button that fills in /nccreply, so the player can answer without public chat.
 					com.google.gson.JsonObject answer = new com.google.gson.JsonObject();

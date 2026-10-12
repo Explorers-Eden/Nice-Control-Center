@@ -53,7 +53,8 @@
     $('pn-app').hidden = false;
     $('pn-user-menu').hidden = false;
     $('pn-user-name').textContent = me.user;
-    $('pn-avatar').textContent = (me.user || '?').slice(0, 1).toUpperCase();
+    showAvatar(false);
+    if (me.theme && me.theme !== document.documentElement.dataset.theme) setTheme(me.theme, false);
     applyPermissions();
     if (can('console.read')) openConsole();
     if (can('server.view')) {
@@ -118,7 +119,7 @@
     ] },
   ];
   /** Pages outside the sidebar (the user menu). */
-  const EXTRA = { account: { tab: 'account', label: 'Account', desc: 'Your password and SSH keys for SFTP.' } };
+  const EXTRA = { account: { tab: 'account', label: 'Account', desc: 'Your picture, theme, password and SSH keys for SFTP.' } };
   const ENTRY_OF = {};
   const SUB_OF = {};
   NAV.forEach((g) => g.items.forEach((e) => e.subs.forEach((sub) => { ENTRY_OF[sub.tab] = e; SUB_OF[sub.tab] = sub; })));
@@ -224,6 +225,7 @@
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
     if (activeTab === 'world') worldTick();
     if (activeTab === 'tuning') loadPerfLive();
+    if (activeTab === 'maintenance' && ++mtTicks % 2 === 0) refreshStaffList();
     if (activeTab === 'mod:overview' && ++homeTicks % 5 === 0) loadHome();
     if (activeTab === 'players' && !document.querySelector('#pn-pl-form :focus')) loadPlayerLists();
     if (activeTab === 'stats' && Date.now() - (statsData ? statsData.to : 0) > 60000) loadStats();
@@ -335,7 +337,7 @@
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
-    if (tab === 'account') renderAccount();
+    if (tab === 'account') { renderAccount(); renderThemes(); }
     if (tab === 'appearance') loadLogos();
     if (tab === 'server') { const log = $('pn-log'); log.scrollTop = log.scrollHeight; }
     window.scrollTo({ top: 0 });
@@ -489,7 +491,7 @@
     if (!b) return;
     $('pn-user-pop').hidden = true;
     if (b.dataset.menu === 'account') selectTab('account');
-    if (b.dataset.menu === 'theme') $('pn-theme').click();
+    if (b.dataset.menu === 'theme') selectTab('account');
   });
 
   $('pn-login-form').addEventListener('submit', async (e) => {
@@ -892,10 +894,19 @@
     return r ? r.name : '?';
   }
 
+  /** Profile pictures for [data-avatar] elements; the first letter stays where there's none. */
+  function loadAvatars(root) {
+    root.querySelectorAll('[data-avatar]').forEach((el) => {
+      const img = new Image();
+      img.onload = () => { el.style.backgroundImage = `url("${img.src}")`; el.classList.add('pic'); };
+      img.src = `api/avatar/${encodeURIComponent(el.dataset.avatar)}`;
+    });
+  }
+
   function renderUsers() {
     $('pn-env-note').textContent = `${accounts.envAdmin} (from the container settings) can always log in and isn't listed here.`;
     $('pn-user-rows').innerHTML = accounts.users.map((u) => `<tr class="${u.disabled ? 'disabled' : ''}" data-user="${u.id}">
-      <td class="name">${esc(u.name)}${u.disabled ? '<small>disabled</small>' : ''}</td>
+      <td class="name"><span class="pn-user-cell"><span class="pn-avatar small" data-avatar="${esc(u.name)}">${esc(u.name.slice(0, 1).toUpperCase())}</span><span>${esc(u.name)}${u.disabled ? '<small>disabled</small>' : ''}</span></span></td>
       <td><div class="np-chips">${u.roles.map((r) => `<span class="np-chip">${esc(roleName(r))}</span>`).join('') || '<span class="np-chip">no role</span>'}</div></td>
       <td>${esc(dateTime(u.lastLogin))}</td>
       <td><div class="pn-row-actions">
@@ -903,6 +914,7 @@
         <button type="button" class="np-btn small" data-user-act="toggle">${u.disabled ? 'Enable' : 'Disable'}</button>
         <button type="button" class="np-btn small danger" data-user-act="delete">Delete</button>
       </div></td></tr>`).join('') || '<tr><td colspan="4" class="np-empty">No users yet. Create the first one below.</td></tr>';
+    loadAvatars($('pn-user-rows'));
     resetUserForm();
   }
 
@@ -2240,10 +2252,15 @@
 
   // ── Discord ────────────────────────────────────────────────────────────
 
-  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline', crash: 'Crash ({mod}, {message})',
-    lag: 'Lag (alert)', lagOver: 'Lag over (alert)', taskFailed: 'Task failed (alert, {name})', backupFailed: 'Backup failed (alert)',
-    trimDone: 'Outer wilds reset (alert)', diskLow: 'Disk almost full (alert)', memory: 'Memory pressure (alert)',
-    perf: 'Distances stepped down or up (alert)', maintenance: 'Maintenance on/off' };
+  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline',
+    maintenance: 'Maintenance on/off', crash: 'Crash', lag: 'Lag', lagOver: 'Lag over', taskFailed: 'Task failed', backupFailed: 'Backup failed',
+    trimDone: 'Outer wilds reset', diskLow: 'Disk almost full', memory: 'Memory pressure', perf: 'Distances stepped down or up' };
+  /** Extra placeholders some events have, shown under their name. */
+  const EVENT_VARS = { crash: '{mod} {message}', taskFailed: '{name} {message}', advancement: '{player} {advancement}', death: '{message}' };
+  const EVENT_GROUPS = [
+    ['Chat & server', ['join', 'leave', 'death', 'advancement', 'start', 'stop', 'maintenance']],
+    ['Alerts', ['crash', 'lag', 'lagOver', 'taskFailed', 'backupFailed', 'trimDone', 'diskLow', 'memory', 'perf']],
+  ];
   let discordData = null;
 
   async function loadDiscord() {
@@ -2257,20 +2274,60 @@
     const form = $('pn-discord-form');
     for (const key of ['enabled', 'requireLink', 'requireMember', 'opsBypass', 'chatToDiscord', 'chatToGame', 'presence']) form[key].checked = !!s[key];
     form.token.value = '';
-    form.token.placeholder = discordData.tokenFromEnv ? 'set with DISCORD_TOKEN' : s.token ? 'saved (paste a new one to replace it)' : 'paste the bot token';
-    form.token.disabled = discordData.tokenFromEnv;
+    form.token.placeholder = s.token ? 'saved (paste a new one to replace it)' : 'paste the bot token';
+    // A token from the container settings (DISCORD_TOKEN) can't be changed here, so there's no field for it.
+    $('pn-dc-token-row').hidden = discordData.tokenFromEnv;
     form.guildId.value = s.guildId || '';
     form.channelId.value = s.channelId || '';
     form.alertChannelId.value = s.alertChannelId || '';
-    form.bypass.value = (s.bypass || []).join('\n');
     form.kickMessage.value = s.kickMessage || '';
-    $('pn-discord-events').innerHTML = Object.keys(EVENT_LABELS).map((k) => `<div class="pn-step" data-event="${k}">
-      <label class="np-check"><input type="checkbox" ${s.events[k] ? 'checked' : ''}> <span class="pn-event-name">${EVENT_LABELS[k]}</span></label>
-      <select title="Channel"><option value="chat">Chat channel</option><option value="alerts" ${(s.eventChannels || {})[k] === 'alerts' ? 'selected' : ''}>Alerts channel</option></select>
-      <input type="text" value="${esc(s.templates[k] || '')}"></div>`).join('');
-    $('pn-discord-status').textContent = 'Bot: ' + discordData.status;
+    form.gameFormat.value = s.gameFormat || '';
+    previewGameFormat();
+    // One grid: event · channel · message, so every column lines up.
+    $('pn-discord-events').innerHTML = EVENT_GROUPS.map(([title, keys]) => `<h5 class="pn-dc-group">${title}</h5>
+      <div class="pn-dc-head"><span>Event</span><span>Posted in</span><span>Message</span></div>
+      ${keys.map((k) => `<div class="pn-dc-event" data-event="${k}">
+        <label class="np-check"><input type="checkbox" ${s.events[k] ? 'checked' : ''}><span class="pn-event-name">${EVENT_LABELS[k]}${EVENT_VARS[k] ? `<small>${esc(EVENT_VARS[k])}</small>` : ''}</span></label>
+        <select title="Channel"><option value="chat">Chat channel</option><option value="alerts" ${(s.eventChannels || {})[k] === 'alerts' ? 'selected' : ''}>Alerts channel</option></select>
+        <input type="text" value="${esc(s.templates[k] || '')}"></div>`).join('')}`).join('');
+    const st = discordData.status || '';
+    const ok = st.startsWith('Connected as');
+    $('pn-discord-status').className = 'pn-dc-status ' + (ok ? 'good' : /^Couldn|^Can't/.test(st) ? 'bad' : 'off');
+    $('pn-discord-status').innerHTML = `<span class="pn-dc-dot"></span>Bot: ${esc(st)}${discordData.tokenFromEnv ? ' · token from the container settings' : ''}`;
     renderLinks();
   }
+
+  /** The in-game look of a Discord message, drawn like the game would (same tags as the panel turns into chat). */
+  const GAME_COLORS = { black: '#000000', dark_blue: '#0000AA', dark_green: '#00AA00', dark_aqua: '#00AAAA', dark_red: '#AA0000', dark_purple: '#AA00AA',
+    gold: '#FFAA00', gray: '#AAAAAA', grey: '#AAAAAA', dark_gray: '#555555', dark_grey: '#555555', blue: '#5555FF', green: '#55FF55', aqua: '#55FFFF',
+    red: '#FF5555', light_purple: '#FF55FF', purple: '#FF55FF', pink: '#FF55FF', orange: '#FFAA00', yellow: '#FFFF55', white: '#FFFFFF' };
+  function previewGameFormat() {
+    const format = $('pn-discord-form').gameFormat.value || '<aqua>Discord</aqua> <dark_gray>┃</dark_gray> %user%: %msg%';
+    const stack = [{ color: '#FFFFFF', deco: '' }];
+    let html = '';
+    const put = (t) => { const st = stack[stack.length - 1]; if (t) html += `<span style="color:${st.color};${st.deco}">${esc(t)}</span>`; };
+    const re = /<(\/?)([#a-zA-Z_:0-9]+)>|%user%|%msg%|%attachments%|\{user\}|\{message\}/g;
+    let at = 0;
+    for (let m; (m = re.exec(format));) {
+      put(format.slice(at, m.index));
+      at = m.index + m[0].length;
+      if (m[0] === '%user%' || m[0] === '{user}') { put('Steve'); continue; }
+      if (m[0] === '%msg%' || m[0] === '{message}') { put('Hello from Discord!'); continue; }
+      if (m[0] === '%attachments%') continue;
+      const tag = m[2].toLowerCase().replace(/^color:/, '');
+      const top = stack[stack.length - 1];
+      if (tag === 'reset') { stack.length = 1; continue; }
+      if (m[1]) { if (stack.length > 1) stack.pop(); continue; }
+      const deco = { bold: 'font-weight:700;', b: 'font-weight:700;', italic: 'font-style:italic;', i: 'font-style:italic;', em: 'font-style:italic;',
+        underlined: 'text-decoration:underline;', u: 'text-decoration:underline;', strikethrough: 'text-decoration:line-through;', st: 'text-decoration:line-through;' }[tag];
+      if (/^#[0-9a-f]{6}$/.test(tag) || GAME_COLORS[tag]) stack.push({ color: GAME_COLORS[tag] || tag, deco: top.deco });
+      else if (deco) stack.push({ color: top.color, deco: top.deco + deco });
+      else put(m[0]);
+    }
+    put(format.slice(at));
+    $('pn-dc-format-preview').innerHTML = html;
+  }
+  $('pn-discord-form').gameFormat.addEventListener('input', previewGameFormat);
 
   function renderLinks() {
     const q = $('pn-link-search').value.trim().toLowerCase();
@@ -2309,9 +2366,10 @@
     const body = {
       enabled: form.enabled.checked, token: form.token.value.trim(), guildId: form.guildId.value.trim(), channelId: form.channelId.value.trim(), alertChannelId: form.alertChannelId.value.trim(),
       requireLink: form.requireLink.checked, requireMember: form.requireMember.checked, opsBypass: form.opsBypass.checked,
-      bypass: form.bypass.value.split('\n').map((l) => l.trim()).filter(Boolean), kickMessage: form.kickMessage.value,
+      bypass: [], kickMessage: form.kickMessage.value,
       notMemberMessage: discordData.settings.notMemberMessage,
       chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
+      gameFormat: form.gameFormat.value,
     };
     try {
       await api('api/discord/settings', body);
@@ -3171,6 +3229,19 @@
 
   let mtData = null;
   let mtStaff = new Set();
+  let mtTicks = 0;
+
+  /** Operators change in game and in the console: the list follows, keeping ticks not saved yet. */
+  async function refreshStaffList() {
+    if (!mtData || document.activeElement === $('pn-mt-add')) return;
+    try {
+      const fresh = await api('api/maintenance');
+      if (JSON.stringify(fresh.players) !== JSON.stringify(mtData.players)) {
+        mtData.players = fresh.players;
+        renderStaff();
+      }
+    } catch (e) { /* next time */ }
+  }
 
   /** Known players as checkboxes; ticked ones may join during maintenance. Operators are always ticked. */
   function renderStaff() {
@@ -3404,7 +3475,8 @@
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
     const url = infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
-    $('pn-info-link').innerHTML = `Address: <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${infoData.host ? '' : ' (set INFO_HOST for a domain of its own)'}`;
+    $('pn-info-open').href = url;
+    $('pn-info-link').innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${infoData.host ? '' : ' · set INFO_HOST for a domain of its own'}${s.enabled ? '' : ' · switched off: only you see it until it\'s public'}`;
     $('pn-info-props').innerHTML = infoData.propertyKeys.map((k) => `<label class="np-check"><input type="checkbox" value="${esc(k)}" ${s.hiddenProperties.includes(k) ? 'checked' : ''}> ${esc(k)}</label>`).join('')
       || '<p class="pn-hint">Shows after the server has run once with the mod.</p>';
     renderInfoFiles();
@@ -3601,19 +3673,90 @@
   }
   addHelp(document);
 
+  // ── Themes and profile pictures ───────────────────────────────────────────
+
+  const THEMES = [
+    { id: 'dark', name: 'Dark', colors: ['#0b1018', '#121825', '#b6c8ff'] },
+    { id: 'light', name: 'Light', colors: ['#f3f5f9', '#ffffff', '#3550c8'] },
+    { id: 'midnight', name: 'Midnight', colors: ['#05070c', '#0c1019', '#8fb1ff'] },
+    { id: 'forest', name: 'Forest', colors: ['#0b130e', '#122019', '#8fe3a8'] },
+    { id: 'nether', name: 'Nether', colors: ['#150a09', '#22110e', '#ff9d6b'] },
+    { id: 'end', name: 'The End', colors: ['#0d0a16', '#171225', '#d0a6ff'] },
+    { id: 'ocean', name: 'Ocean', colors: ['#071217', '#0d1f27', '#7fdcf0'] },
+    { id: 'sakura', name: 'Sakura', colors: ['#fbf3f6', '#ffffff', '#c2417a'] },
+  ];
+  const LIGHT_THEMES = ['light', 'sakura'];
+
+  /** Applies a theme here and in the dashboard frame; saved in this browser and (save) with the account. */
+  function setTheme(id, save) {
+    document.documentElement.dataset.theme = id;
+    try { localStorage.setItem('np-theme', id); } catch (e) { /* not remembered */ }
+    try { $('pn-dashboard-frame').contentDocument.documentElement.dataset.theme = id; } catch (e) { /* not loaded */ }
+    renderTheme();
+    renderThemes();
+    if (save && loggedIn) api('api/me/theme', { theme: id }).catch(() => {});
+  }
+
+  function renderThemes() {
+    const box = $('pn-themes');
+    if (!box) return;
+    const now = document.documentElement.dataset.theme;
+    box.innerHTML = THEMES.map((t) => `<button type="button" class="pn-theme-card${t.id === now ? ' active' : ''}" data-theme-pick="${t.id}" aria-pressed="${t.id === now}">
+      <span class="pn-theme-swatch" style="background:${t.colors[0]}"><span style="background:${t.colors[1]}"></span><i style="background:${t.colors[2]}"></i></span>${esc(t.name)}</button>`).join('');
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-theme-pick]');
+    if (b) setTheme(b.dataset.themePick, true);
+  });
+
+  /** The account's picture in the navbar and on the Account page, or its first letter. */
+  function showAvatar(fresh) {
+    const url = me && me.avatar ? `api/avatar/${encodeURIComponent(me.user)}${fresh ? '?t=' + Date.now() : ''}` : null;
+    for (const el of [$('pn-avatar'), $('pn-profile-avatar')]) {
+      if (!el) continue;
+      el.textContent = url ? '' : (me ? me.user : '?').slice(0, 1).toUpperCase();
+      el.style.backgroundImage = url ? `url("${url}")` : '';
+      el.classList.toggle('pic', !!url);
+    }
+    $('pn-avatar-remove').hidden = !(me && me.avatar);
+  }
+
+  $('pn-avatar-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const form = new FormData();
+    form.append('avatar', file);
+    try {
+      const res = await fetch('api/me/avatar', { method: 'POST', headers: { 'X-NCC': '1' }, body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      me.avatar = true;
+      showAvatar(true);
+      formMsg('pn-avatar-msg', 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-avatar-msg', err.message, false);
+    }
+  });
+  $('pn-avatar-remove').addEventListener('click', async () => {
+    try {
+      await api('api/me/avatar/remove', {});
+      me.avatar = false;
+      showAvatar(true);
+    } catch (err) {
+      formMsg('pn-avatar-msg', err.message, false);
+    }
+  });
+
   // ── Theme ──────────────────────────────────────────────────────────────
 
   function renderTheme() {
-    const light = document.documentElement.dataset.theme === 'light';
+    const light = LIGHT_THEMES.includes(document.documentElement.dataset.theme);
     $('pn-theme').innerHTML = light ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
     $('pn-theme').title = light ? 'Switch to dark mode' : 'Switch to light mode';
   }
-  $('pn-theme').addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem('np-theme', next); } catch (e) { /* not remembered */ }
-    renderTheme();
-  });
+  // Quick switch between light and dark; the other themes are under your account.
+  $('pn-theme').addEventListener('click', () => setTheme(LIGHT_THEMES.includes(document.documentElement.dataset.theme) ? 'dark' : 'light', true));
   renderTheme();
 
   // ── Start ──────────────────────────────────────────────────────────────

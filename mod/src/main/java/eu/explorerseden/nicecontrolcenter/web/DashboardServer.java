@@ -292,8 +292,24 @@ public final class DashboardServer {
 					sendJson(exchange, Map.of("error", "Messages are 1 to 256 characters."));
 					return;
 				}
-				ConsoleRunner.Result result = onServerThread(() -> ConsoleRunner.runChecked(minecraft, "say " + text, "Dashboard chat"));
-				sendJson(exchange, result.ok() ? Map.of("ok", true) : Map.of("error", String.join(" ", result.lines())));
+				// To everyone, with the same prefix as private messages ("Admin ┃ NiceRon: …").
+				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
+				com.google.gson.JsonArray json = new com.google.gson.JsonArray();
+				json.add("");
+				json.addAll(config.adminPrefix(by));
+				com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+				body.addProperty("text", text);
+				body.addProperty("color", "white");
+				json.add(body);
+				// Broadcast (not tellraw @a, which fails while nobody is online): logged, and in the Chat tab.
+				String error = onServerThread(() -> {
+					var parsed = net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
+							minecraft.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), json);
+					if (parsed.result().isEmpty()) return "The message couldn't be built.";
+					minecraft.getPlayerList().broadcastSystemMessage(parsed.result().get(), false);
+					return null;
+				});
+				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
 			}
 			case "/api/chat/relay" -> {
 				// The panel's Discord bridge: Discord → game chat. Only the panel can call this.
@@ -307,8 +323,13 @@ public final class DashboardServer {
 				JsonObject body = jsonBody(exchange);
 				String name = body.get("name").getAsString();
 				String text = body.get("text").getAsString();
+				// The panel's format (its Discord settings) when it sends one, else the built-in look.
+				com.google.gson.JsonElement parts = body.get("parts");
 				onServerThread(() -> {
-					ChatLog.relay(minecraft, name, text);
+					var formatted = parts == null ? null : net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
+							minecraft.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), parts).result().orElse(null);
+					if (formatted != null) minecraft.getPlayerList().broadcastSystemMessage(formatted, false);
+					else ChatLog.relay(minecraft, name, text);
 					return null;
 				});
 				sendJson(exchange, Map.of("ok", true));
@@ -445,7 +466,8 @@ public final class DashboardServer {
 				String uuid = body.get("uuid").getAsString();
 				String action = body.get("action").getAsString();
 				String text = body.has("text") ? body.get("text").getAsString() : "";
-				String error = onServerThread(() -> PlayerInspector.action(minecraft, uuid, action, text));
+				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
+				String error = onServerThread(() -> PlayerInspector.action(minecraft, uuid, action, text, by));
 				Map<String, Object> result = new LinkedHashMap<>();
 				result.put("error", error);
 				sendJson(exchange, result);

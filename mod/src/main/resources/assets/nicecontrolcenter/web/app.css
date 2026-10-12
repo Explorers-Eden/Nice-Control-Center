@@ -1296,3 +1296,30 @@ button, input, select, textarea { font-family: inherit; }
 /* Player card: first joined, last online. */
 .np-seen { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .np-seen .bi { margin-right: 4px; color: var(--faint); }
+
+/* ── Themes ── each sets the same tokens as dark/light above; chosen per account in the panel. */
+:root[data-theme="midnight"] {
+  --ink: 255,255,255; --bg: #05070c; --nav: #080b12; --card: #0c1019; --text: #eef2fb; --strong: #ffffff; --muted: #b9c2d6; --faint: rgba(255,255,255,.36);
+  --accent: #8fb1ff; --accent-hover: #b5ccff; --on-accent: #05070c; --brand-a: #5d7bff; --brand-b: #8a5cff; --accent-2: #ffcf7a; --good: #5ee28f; --poor: #ff8585;
+  --card-border: rgba(255,255,255,.07); --inset: rgba(255,255,255,.035); color-scheme: dark; }
+:root[data-theme="forest"] {
+  --ink: 236,255,240; --bg: #0b130e; --nav: #0e1812; --card: #122019; --text: #eef8f0; --strong: #ffffff; --muted: #c2d8c8; --faint: rgba(236,255,240,.38);
+  --accent: #8fe3a8; --accent-hover: #b4f0c6; --on-accent: #0b130e; --brand-a: #3fae6a; --brand-b: #8bc34a; --accent-2: #ffd27a; --good: #7ee89f; --poor: #ff9a8a;
+  --card-border: rgba(236,255,240,.08); --inset: rgba(236,255,240,.04); color-scheme: dark; }
+:root[data-theme="nether"] {
+  --ink: 255,236,230; --bg: #150a09; --nav: #1a0d0b; --card: #22110e; --text: #fbefea; --strong: #ffffff; --muted: #e3c8c0; --faint: rgba(255,236,230,.38);
+  --accent: #ff9d6b; --accent-hover: #ffbe98; --on-accent: #150a09; --brand-a: #e2532f; --brand-b: #ff9d3b; --accent-2: #ffd27a; --good: #8fe39b; --poor: #ff8080;
+  --card-border: rgba(255,236,230,.08); --inset: rgba(255,236,230,.04); color-scheme: dark; }
+:root[data-theme="end"] {
+  --ink: 245,236,255; --bg: #0d0a16; --nav: #110d1c; --card: #171225; --text: #f4eefc; --strong: #ffffff; --muted: #d3c6e6; --faint: rgba(245,236,255,.38);
+  --accent: #d0a6ff; --accent-hover: #e2c6ff; --on-accent: #0d0a16; --brand-a: #9b5cff; --brand-b: #e6d58a; --accent-2: #f2e38f; --good: #8fe3b0; --poor: #ff8fa8;
+  --card-border: rgba(245,236,255,.08); --inset: rgba(245,236,255,.04); color-scheme: dark; }
+:root[data-theme="ocean"] {
+  --ink: 230,250,255; --bg: #071217; --nav: #09171d; --card: #0d1f27; --text: #ecf9fc; --strong: #ffffff; --muted: #bfd9e0; --faint: rgba(230,250,255,.38);
+  --accent: #7fdcf0; --accent-hover: #a9eaf7; --on-accent: #071217; --brand-a: #2fa8c9; --brand-b: #4f7cff; --accent-2: #ffd88a; --good: #7fe8b0; --poor: #ff9090;
+  --card-border: rgba(230,250,255,.08); --inset: rgba(230,250,255,.04); color-scheme: dark; }
+:root[data-theme="sakura"] {
+  --ink: 74,24,48; --bg: #fbf3f6; --nav: #ffffff; --card: #ffffff; --text: #3a1d2b; --strong: #22101a; --muted: #6e4a5c; --faint: rgba(74,24,48,.5);
+  --accent: #c2417a; --accent-hover: #9c2c5f; --on-accent: #ffffff; --brand-a: #d9578f; --brand-b: #9b59d0; --accent-2: #b26a00; --good: #23894a; --poor: #c9374a;
+  --card-border: rgba(74,24,48,.10); --inset: rgba(74,24,48,.04); color-scheme: light;
+  --chart-grid: rgba(74,24,48,.07); --chart-label: rgba(74,24,48,.55); --chart-guide: rgba(74,24,48,.35); --chart-muted: rgba(110,74,92,.55); --chart-max: rgba(201,55,74,.5); }

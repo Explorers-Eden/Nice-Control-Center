@@ -7,7 +7,7 @@
 	<title>Nice Control Center Panel</title>
 	<script>
 		// Same theme choice as the mod's dashboard (dark by default).
-		try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') === 'light' ? 'light' : 'dark'; }
+		try { var t = localStorage.getItem('np-theme'); document.documentElement.dataset.theme = /^(light|dark|midnight|forest|nether|end|ocean|sakura)$/.test(t) ? t : 'dark'; }
 		catch (e) { document.documentElement.dataset.theme = 'dark'; }
 		// A logo seen last time shows right away instead of the text wordmark swapping to it.
 		try { if (localStorage.getItem('pn-logo') === '1') document.documentElement.classList.add('pn-has-logo'); } catch (e) { /* text first */ }
@@ -46,7 +46,7 @@
 					<button type="button" class="np-btn pn-user-btn" id="pn-user-btn" aria-haspopup="menu" aria-expanded="false"><span class="pn-avatar" id="pn-avatar"></span><span id="pn-user-name"></span><i class="bi bi-chevron-down"></i></button>
 					<div class="pn-user-pop" id="pn-user-pop" role="menu" hidden>
 						<button type="button" role="menuitem" data-menu="account"><i class="bi bi-person-circle"></i> Account &amp; password</button>
-						<button type="button" role="menuitem" data-menu="theme" class="pn-menu-theme"><i class="bi bi-circle-half"></i> Light / dark</button>
+						<button type="button" role="menuitem" data-menu="theme"><i class="bi bi-palette2"></i> Picture &amp; theme</button>
 						<button type="button" role="menuitem" data-menu="logout" id="pn-logout"><i class="bi bi-box-arrow-right"></i> Log out</button>
 					</div>
 				</div>
@@ -580,7 +580,8 @@
 				<form id="pn-info-form" autocomplete="off" class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-book"></i> Public info page</h3>
-					<p class="np-card-intro">A page anyone can open to read up on how the server is set up: its settings, game rules, data pack settings and the mod configs you pick. Passwords, tokens and remote-access settings are never shown. <span id="pn-info-link"></span></p>
+					<p class="np-card-intro">A page anyone can open to read up on how the server is set up: its settings, game rules, data pack settings and the mod configs you pick. Passwords, tokens and remote-access settings are never shown.</p>
+					<p class="np-card-intro"><a class="np-btn small" id="pn-info-open" href="info/" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Open the page</a> <span id="pn-info-link"></span></p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Page is public</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 						<label class="np-form-row">Title<input type="text" name="title" maxlength="80"></label>
@@ -682,48 +683,59 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="discord" hidden>
+				<form id="pn-discord-form" autocomplete="off" class="pn-stack">
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-discord"></i> Discord bridge</h3>
-					<p class="np-card-intro">Players link their Discord account to play, chat goes both ways (chat only, never commands), game events are posted, and the bot's status shows the server. <b id="pn-discord-status"></b></p>
-					<details class="pn-howto">
+					<h3 class="np-card-title"><i class="bi bi-plug"></i> Connection</h3>
+					<p class="np-card-intro">Players link their Discord account to play, chat goes both ways (chat only, never commands), game events and alerts are posted, and the bot's status shows the server.</p>
+					<p class="pn-dc-status" id="pn-discord-status"></p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Bridge on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+						<label class="np-form-row" id="pn-dc-token-row">Bot token<input type="password" name="token" placeholder="paste the bot token" autocomplete="off"></label>
+						<label class="np-form-row">Discord server ID<input type="text" name="guildId" inputmode="numeric"></label>
+						<label class="np-form-row"><span>Chat channel ID<span class="pn-comment">Chat, joins, deaths, advancements</span></span><input type="text" name="channelId" inputmode="numeric"></label>
+						<label class="np-form-row"><span>Alerts channel ID<span class="pn-comment">Lag, crashes, failures; empty = the chat channel</span></span><input type="text" name="alertChannelId" inputmode="numeric"></label>
+					</div>
+					<details class="pn-advanced pn-howto">
 						<summary>Setting up the bot (once)</summary>
 						<ol>
-							<li>On <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">discord.com/developers</a>: <b>New Application</b> → <b>Bot</b> → <b>Reset Token</b> and copy the token.</li>
+							<li>On <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">discord.com/developers</a>: <b>New Application</b> → <b>Bot</b> → <b>Reset Token</b> and copy the token (or set it as <code>DISCORD_TOKEN</code> in the container).</li>
 							<li>On the same page, switch on <b>Message Content Intent</b>.</li>
 							<li><b>OAuth2</b> → <b>URL Generator</b>: scope <code>bot</code>; permissions <i>View Channels</i>, <i>Send Messages</i>, <i>Read Message History</i>, <i>Manage Webhooks</i>. Open the link and add the bot to your server.</li>
-							<li>In Discord: <b>Settings</b> → <b>Advanced</b> → <b>Developer Mode</b>. Right-click your server → <b>Copy Server ID</b>, right-click the chat channel → <b>Copy Channel ID</b>.</li>
+							<li>In Discord: <b>Settings</b> → <b>Advanced</b> → <b>Developer Mode</b>. Right-click your server → <b>Copy Server ID</b>, right-click a channel → <b>Copy Channel ID</b>.</li>
 						</ol>
 					</details>
-					<form id="pn-discord-form" autocomplete="off">
-						<div class="np-form-grid">
-							<label class="np-form-row">Bridge on<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
-							<label class="np-form-row">Bot token<input type="password" name="token" placeholder="paste the bot token" autocomplete="off"></label>
-							<label class="np-form-row">Discord server ID<input type="text" name="guildId" inputmode="numeric"></label>
-							<label class="np-form-row">Chat channel ID (chat, joins, deaths, advancements)<input type="text" name="channelId" inputmode="numeric"></label>
-							<label class="np-form-row">Alerts channel ID (lag, crashes, failures; empty = chat channel)<input type="text" name="alertChannelId" inputmode="numeric"></label>
-						</div>
-						<h4 class="pn-subhead">Linking</h4>
-						<div class="np-form-grid">
-							<label class="np-form-row">Players must link a Discord account to play<span class="np-switch"><input type="checkbox" name="requireLink"><span></span></span></label>
-							<label class="np-form-row">…and still be on the Discord server<span class="np-switch"><input type="checkbox" name="requireMember"><span></span></span></label>
-							<label class="np-form-row">Operators don't need a link<span class="np-switch"><input type="checkbox" name="opsBypass"><span></span></span></label>
-						</div>
-						<label class="pn-field">Players who don't need a link (one name per line)<textarea name="bypass" rows="3" spellcheck="false"></textarea></label>
-						<label class="pn-field"><span>Message when someone isn't linked yet (<code>{code}</code> and <code>{bot}</code> are filled in)</span><textarea name="kickMessage" rows="4"></textarea></label>
-						<h4 class="pn-subhead">Chat and events</h4>
-						<div class="np-form-grid">
-							<label class="np-form-row">Game chat → Discord<span class="np-switch"><input type="checkbox" name="chatToDiscord"><span></span></span></label>
-							<label class="np-form-row">Discord → game chat<span class="np-switch"><input type="checkbox" name="chatToGame"><span></span></span></label>
-							<label class="np-form-row">Bot status shows the server<span class="np-switch"><input type="checkbox" name="presence"><span></span></span></label>
-						</div>
-						<div id="pn-discord-events" class="pn-steps"></div>
-						<p class="np-card-intro pn-hint"><code>{player}</code>, <code>{message}</code> (the death message) and <code>{advancement}</code> are filled in. Deaths and advancements follow the game rules showDeathMessages and announceAdvancements. Pick per event which channel it goes to. Alerts always show in the panel's console too; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
-						<div class="np-form-actions">
-							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
-							<span class="np-form-msg" id="pn-discord-msg"></span>
-						</div>
-					</form>
 				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-chat-dots"></i> Chat</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row">Game chat → Discord<span class="np-switch"><input type="checkbox" name="chatToDiscord"><span></span></span></label>
+						<label class="np-form-row">Discord → game chat<span class="np-switch"><input type="checkbox" name="chatToGame"><span></span></span></label>
+						<label class="np-form-row">Bot status shows the server<span class="np-switch"><input type="checkbox" name="presence"><span></span></span></label>
+					</div>
+					<label class="pn-field"><span>How Discord messages look in game <small class="pn-hint">tags like <code>&lt;aqua&gt;…&lt;/aqua&gt;</code>, <code>&lt;#ff8800&gt;</code>, <code>&lt;bold&gt;</code>; <code>%user%</code> and <code>%msg%</code></small></span>
+						<input type="text" name="gameFormat" maxlength="300" spellcheck="false"></label>
+					<div class="pn-motd-preview" id="pn-dc-format-preview"></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-person-lock"></i> Account linking</h3>
+					<p class="np-card-intro">Players send a code to the bot once; after that they can join. They can send <code>unlink</code> to the bot to remove the link.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">Players must link a Discord account to play<span class="np-switch"><input type="checkbox" name="requireLink"><span></span></span></label>
+						<label class="np-form-row">…and still be on the Discord server<span class="np-switch"><input type="checkbox" name="requireMember"><span></span></span></label>
+						<label class="np-form-row">Operators don't need a link<span class="np-switch"><input type="checkbox" name="opsBypass"><span></span></span></label>
+					</div>
+					<label class="pn-field"><span>Message when someone isn't linked yet (<code>{code}</code> and <code>{bot}</code> are filled in)</span><textarea name="kickMessage" rows="4"></textarea></label>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-bell"></i> Events &amp; alerts</h3>
+					<p class="np-card-intro">Tick what gets posted, pick the channel, and change the wording. <code>{player}</code>, <code>{message}</code> and <code>{advancement}</code> are filled in; deaths and advancements follow the game rules showDeathMessages and announceAdvancements. Alerts also show in the panel's console; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
+					<div id="pn-discord-events" class="pn-dc-events"></div>
+				</section>
+				<div class="pn-sticky-save">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-discord-msg"></span>
+				</div>
+				</form>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> Linked accounts</h3>
 					<p class="np-card-intro">Players link by sending the code from the join screen to the bot. They can send <code>unlink</code> to the bot to remove it.</p>
@@ -815,6 +827,24 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="account" hidden>
+			<section class="np-card">
+				<h3 class="np-card-title"><i class="bi bi-palette2"></i> Profile &amp; look</h3>
+				<div class="pn-profile">
+					<div class="pn-profile-pic">
+						<span class="pn-avatar big" id="pn-profile-avatar"></span>
+						<div class="np-form-actions">
+							<label class="np-btn small"><i class="bi bi-upload"></i> New picture<input type="file" id="pn-avatar-file" accept="image/png,image/jpeg,image/gif" hidden></label>
+							<button type="button" class="np-btn small" id="pn-avatar-remove">Remove</button>
+						</div>
+						<span class="np-form-msg" id="pn-avatar-msg"></span>
+					</div>
+					<div class="pn-profile-themes">
+						<b>Theme</b>
+						<p class="pn-hint">Saved with your account, so it's the same on every device.</p>
+						<div class="pn-themes" id="pn-themes"></div>
+					</div>
+				</div>
+			</section>
 			<section class="np-card">
 				<h3 class="np-card-title"><i class="bi bi-person-circle"></i> Your account</h3>
 				<p class="np-card-intro" id="pn-account-intro"></p>

@@ -2,35 +2,43 @@
   'use strict';
 
   // The public info page: server settings, game rules, data pack settings and published config files,
-  // in plain words and groups. Read-only; everything comes from data.json.
+  // in plain words. A tree on the left mirrors the page (data packs follow their own in-game menus);
+  // it follows the scroll position and the search. Read-only; everything comes from data.json.
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
     8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };
 
-  /** Minecraft § codes (the server list message) as coloured text. */
+  /** Minecraft § codes (the server list message, names in data packs) as coloured text. */
   function mc(text) {
     let color = null;
     let bold = false;
+    let italic = false;
     return String(text ?? '').replace(/\\n/g, '\n').split(/(§[0-9a-fk-or])/i).map((part) => {
       const m = part.match(/^§([0-9a-fk-or])$/i);
       if (m) {
         const c = m[1].toLowerCase();
-        if (COLORS[c]) { color = COLORS[c]; bold = false; } else if (c === 'l') bold = true; else if (c === 'r') { color = null; bold = false; }
+        if (COLORS[c]) { color = COLORS[c]; bold = false; italic = false; } else if (c === 'l') bold = true; else if (c === 'o') italic = true;
+        else if (c === 'r') { color = null; bold = false; italic = false; }
         return '';
       }
       if (!part) return '';
-      const css = `${color ? `color:${color};` : ''}${bold ? 'font-weight:700;' : ''}`;
-      return css ? `<span style="${css}">${esc(part).replace(/\n/g, '<br>')}</span>` : esc(part).replace(/\n/g, '<br>');
+      const css = `${color ? `color:${color};` : ''}${bold ? 'font-weight:700;' : ''}${italic ? 'font-style:italic;' : ''}`;
+      const html = esc(part).replace(/\n/g, '<br>');
+      return css ? `<span style="${css}">${html}</span>` : html;
     }).join('');
   }
+  const plain = (s) => String(s ?? '').replace(/§./g, '');
 
   /** "spawn_protection" or "maxPlayers" → "Spawn protection", "Max players". */
   const humanize = (k) => {
     const t = String(k).replace(/[-_.]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim().toLowerCase();
     return t ? t[0].toUpperCase() + t.slice(1) : k;
   };
+
+  let uid = 0;
+  const slug = (s) => (String(s).toLowerCase().replace(/§./g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'part') + '-' + (++uid);
 
   /** Values in plain words: Yes/No, words capitalised, empty shown as a dash. */
   function value(v, key) {
@@ -41,13 +49,11 @@
     if (key === 'motd') return `<span class="in-v motd">${mc(s)}</span>`;
     if (/^https?:\/\//.test(s)) return `<a class="in-v" href="${esc(s)}" target="_blank" rel="noopener nofollow">${esc(s.length > 48 ? s.slice(0, 45) + '…' : s)}</a>`;
     if (/^[a-z][a-z_]*$/.test(s) && s.length < 24) return `<span class="in-v">${esc(humanize(s))}</span>`;
-    return `<span class="in-v">${esc(s)}</span>`;
+    return `<span class="in-v">${mc(s)}</span>`;
   }
 
-  const row = (label, val, desc, extra = '') => `<div class="in-row" data-search="${esc((label + ' ' + (desc || '') + ' ' + String(val ?? '')).toLowerCase())}">
-      <div class="in-row-text"><b>${esc(label)}</b>${extra}${desc ? `<small>${esc(desc)}</small>` : ''}</div><div class="in-row-value">${val}</div></div>`;
-
-  const card = (title, icon, body, sub) => `<section class="np-card in-card"><h3 class="np-card-title"><i class="bi ${icon}"></i> ${esc(title)}${sub ? ` <small>${esc(sub)}</small>` : ''}</h3>${body}</section>`;
+  const row = (label, val, desc, extra = '') => `<div class="in-row" data-search="${esc((plain(label) + ' ' + plain(desc) + ' ' + plain(val)).toLowerCase())}">
+      <div class="in-row-text"><b>${mc(label)}</b>${extra}${desc ? `<small>${mc(desc)}</small>` : ''}</div><div class="in-row-value">${val}</div></div>`;
 
   // ── Config files as readable settings ──
 
@@ -91,8 +97,7 @@
       } else {
         const m = t.match(/^([^=:]+?)\s*[=:]\s*(.*)$/);
         if (!m) continue;
-        const key = m[1].replace(/^"|"$/g, '');
-        rows.push({ label: (section ? section + ' › ' : '') + humanize(key), value: m[2].replace(/\s+#.*$/, ''), desc: comment.join(' ') });
+        rows.push({ label: (section ? section + ' › ' : '') + humanize(m[1].replace(/^"|"$/g, '')), value: m[2].replace(/\s+#.*$/, ''), desc: comment.join(' ') });
       }
       comment = [];
     }
@@ -102,15 +107,11 @@
   /** "config/xaerominimap/client.json" → "Xaerominimap › Client". */
   const fileTitle = (p) => p.replace(/^config\//, '').replace(/\.[^./]+$/, '').split('/').map(humanize).join(' › ');
 
-  // ── The page ──
+  // ── The model: sections → nodes (cards, or groups of nodes) ──
 
-  function render(d) {
-    document.title = d.title;
-    $('in-title').textContent = d.title;
-    $('in-intro').innerHTML = (d.intro || '').split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
-    $('in-updated').textContent = d.updated ? `Last updated ${new Date(d.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '';
+  /** A card: { id, title, icon, body, sub } · a group: { id, title, desc, children } */
+  function buildSections(d) {
     const sections = [];
-
     if (d.properties && d.properties.length) {
       const groups = new Map();
       for (const p of d.properties) {
@@ -118,8 +119,9 @@
         groups.get(p.group).push(p);
       }
       const ICONS = { Gameplay: 'bi-controller', World: 'bi-globe-americas', 'Players & access': 'bi-people', Network: 'bi-wifi', 'Resource pack': 'bi-palette', Performance: 'bi-speedometer2' };
-      sections.push({ id: 'server', title: 'Server settings', html: [...groups].map(([g, list]) => card(g || 'Other', ICONS[g] || 'bi-sliders',
-        list.map((p) => row(p.label || humanize(p.key), value(p.value, p.key), p.description)).join(''))).join('') });
+      sections.push({ id: 'server', title: 'Server settings', icon: 'bi-hdd-rack', hue: '#7b93ff', count: d.properties.length,
+        children: [...groups].map(([g, list]) => ({ id: slug(g), title: g || 'Other', icon: ICONS[g] || 'bi-sliders',
+          body: list.map((p) => row(p.label || humanize(p.key), value(p.value, p.key), p.description)).join('') })) });
     }
     if (d.gamerules && d.gamerules.length) {
       const groups = new Map();
@@ -127,34 +129,162 @@
         if (!groups.has(r.category)) groups.set(r.category, []);
         groups.get(r.category).push(r);
       }
-      sections.push({ id: 'rules', title: 'Game rules', html: [...groups].map(([g, list]) => card(g || 'Other', 'bi-journal-check',
-        list.map((r) => row(r.name || humanize(r.id), value(r.value), r.description, r.changed ? ' <span class="in-tag">changed</span>' : '')).join(''))).join('') });
+      const changed = d.gamerules.filter((r) => r.changed).length;
+      sections.push({ id: 'rules', title: 'Game rules', icon: 'bi-journal-check', hue: '#4fd1c5', count: d.gamerules.length, note: changed ? `${changed} changed` : '',
+        children: [...groups].map(([g, list]) => ({ id: slug(g), title: g || 'Other', icon: 'bi-journal-check',
+          body: list.map((r) => row(r.name || humanize(r.id), value(r.value), r.description, r.changed ? ' <span class="in-tag">changed</span>' : '')).join('') })) });
     }
     if (d.packs && d.packs.length) {
-      sections.push({ id: 'packs', title: 'Data packs', html: d.packs.map((p) => card(humanize(p.pack), 'bi-box-seam',
-        p.dialogs.map((dl) => `<h4 class="in-sub">${esc(dl.title)}${dl.section ? ` <small>${esc(dl.section)}</small>` : ''}</h4>`
-          + dl.settings.map((s) => row(s.label, value(s.value))).join('')).join(''))).join('') });
+      let settings = 0;
+      const packs = d.packs.map((p) => {
+        const dialogs = new Map(p.dialogs.map((dl) => [dl.id, dl]));
+        const used = new Set();
+        settings += p.dialogs.reduce((n, dl) => n + dl.settings.length, 0);
+        const card = (dl, title) => {
+          used.add(dl.id);
+          return { id: slug(title || dl.title), title: title || dl.title, icon: 'bi-sliders2', sub: dl.section || '',
+            body: dl.settings.map((s) => row(s.label, value(s.value))).join('') || '<p class="in-empty">No settings.</p>' };
+        };
+        // The pack's own menu: menus become groups, forms become cards.
+        const walk = (nodes) => (nodes || []).map((n) => {
+          if (n.dialog && dialogs.has(n.dialog)) return { ...card(dialogs.get(n.dialog), n.label), desc: n.description };
+          const kids = walk(n.children);
+          return kids.length ? { id: slug(n.label), title: n.label, desc: n.description, children: kids } : null;
+        }).filter(Boolean);
+        let children = walk(p.menu);
+        const rest = p.dialogs.filter((dl) => !used.has(dl.id)).map((dl) => card(dl));
+        if (rest.length) children = children.length ? children.concat([{ id: slug('more'), title: 'More settings', children: rest }]) : rest;
+        return { id: slug(p.pack), title: humanize(p.pack), icon: 'bi-box-seam', children };
+      });
+      sections.push({ id: 'packs', title: 'Data packs', statLabel: 'data pack settings', icon: 'bi-boxes', hue: '#ffb35c', count: settings, children: packs });
     }
     if (d.configs && d.configs.length) {
-      sections.push({ id: 'configs', title: 'Mod settings', html: d.configs.map((c) => {
-        const rows = configRows(c.path, c.text);
-        const body = rows ? rows.map((r) => row(r.label, value(r.value), r.desc)).join('') : `<pre class="in-pre" data-search="${esc(c.text.toLowerCase())}">${esc(c.text)}</pre>`;
-        return card(fileTitle(c.path), 'bi-gear', body, c.path);
-      }).join('') });
+      sections.push({ id: 'configs', title: 'Mod settings', statLabel: 'mod config files', icon: 'bi-puzzle', hue: '#a77bff', count: d.configs.length,
+        children: d.configs.map((c) => {
+          const rows = configRows(c.path, c.text);
+          return { id: slug(c.path), title: fileTitle(c.path), icon: 'bi-gear', sub: c.path,
+            body: rows ? rows.map((r) => row(r.label, value(r.value), r.desc)).join('') : `<pre class="in-pre" data-search="${esc(c.text.toLowerCase())}">${esc(c.text)}</pre>` };
+        }) });
     }
-
-    $('in-jump').innerHTML = sections.map((s) => `<a href="#${s.id}">${esc(s.title)}</a>`).join('');
-    $('in-main').innerHTML = sections.map((s) => `<div class="in-section" id="${s.id}"><h2>${esc(s.title)}</h2><div class="in-cards">${s.html}</div></div>`).join('')
-      || '<p class="in-empty">Nothing is published here yet.</p>';
+    return sections;
   }
 
-  /** Search: hides rows that don't match, and cards and sections left empty. */
+  // ── Rendering ──
+
+  function renderNode(n, depth) {
+    if (n.children) {
+      return `<div class="in-group" id="${n.id}" data-node data-depth="${depth}">
+        <h3 class="in-group-title">${n.icon ? `<i class="bi ${n.icon}"></i>` : ''}${mc(n.title)}</h3>${n.desc ? `<p class="in-group-desc">${mc(n.desc)}</p>` : ''}
+        <div class="in-cards">${n.children.map((c) => renderNode(c, depth + 1)).join('')}</div></div>`;
+    }
+    return `<section class="np-card in-card" id="${n.id}" data-node>
+      <h3 class="in-card-title"><span class="in-icon"><i class="bi ${n.icon || 'bi-sliders'}"></i></span><span>${mc(n.title)}${n.sub ? `<small>${esc(n.sub)}</small>` : ''}</span></h3>
+      ${n.desc ? `<p class="in-card-desc">${mc(n.desc)}</p>` : ''}${n.body}</section>`;
+  }
+
+  function treeItem(n, depth) {
+    const kids = n.children || [];
+    return `<li data-for="${n.id}"${kids.length ? ' class="has-kids"' : ''}>
+      <div class="in-tree-row" style="--depth:${depth}">${kids.length ? '<button type="button" class="in-tree-toggle" aria-label="Open"><i class="bi bi-chevron-right"></i></button>' : '<span class="in-tree-pad"></span>'}
+        <a href="#${n.id}">${mc(plain(n.title))}</a></div>
+      ${kids.length ? `<ul>${kids.map((k) => treeItem(k, depth + 1)).join('')}</ul>` : ''}</li>`;
+  }
+
+  function render(d) {
+    document.title = d.title;
+    $('in-title').textContent = d.title;
+    if (d.motd) { $('in-motd').hidden = false; $('in-motd').innerHTML = mc(d.motd); }
+    $('in-intro').innerHTML = (d.intro || '').split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+    $('in-updated').textContent = d.updated ? `Last updated ${new Date(d.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '';
+    const sections = buildSections(d);
+    $('in-stats').innerHTML = sections.map((s) => `<a class="in-stat" href="#${s.id}" style="--hue:${s.hue}"><i class="bi ${s.icon}"></i><b>${s.count}</b><span>${esc(s.statLabel || s.title)}${s.note ? ` · ${esc(s.note)}` : ''}</span></a>`).join('');
+    $('in-main').innerHTML = sections.map((s) => `<div class="in-section" id="${s.id}" data-node style="--hue:${s.hue}">
+        <h2 class="in-section-title"><span class="in-icon big"><i class="bi ${s.icon}"></i></span>${esc(s.title)}<small>${s.count}</small></h2>
+        <div class="in-cards">${s.children.map((c) => renderNode(c, 1)).join('')}</div></div>`).join('')
+      || '<p class="in-empty">Nothing is published here yet.</p>';
+    $('in-tree').innerHTML = sections.length ? `<ul class="in-tree-root">${sections.map((s) => `<li data-for="${s.id}" class="has-kids open" style="--hue:${s.hue}">
+        <div class="in-tree-row in-tree-top"><button type="button" class="in-tree-toggle" aria-label="Open"><i class="bi bi-chevron-right"></i></button>
+          <a href="#${s.id}"><i class="bi ${s.icon}"></i>${esc(s.title)}</a></div>
+        <ul>${s.children.map((c) => treeItem(c, 1)).join('')}</ul></li>`).join('')}</ul>` : '';
+    spy();
+  }
+
+  // ── Tree behaviour ──
+
+  $('in-tree').addEventListener('click', (e) => {
+    const toggle = e.target.closest('.in-tree-toggle');
+    if (toggle) {
+      toggle.closest('li').classList.toggle('open');
+      return;
+    }
+    const link = e.target.closest('a');
+    if (link) {
+      link.closest('li').classList.add('open');
+      document.body.classList.remove('in-nav-open');
+    }
+  });
+
+  /** Marks the part being read in the tree and opens its branch. */
+  let observer = null;
+  function spy() {
+    if (observer) observer.disconnect();
+    const visible = new Map();
+    observer = new IntersectionObserver((entries) => {
+      for (const en of entries) visible.set(en.target.id, en.isIntersecting ? en.boundingClientRect.top : null);
+      // The deepest element whose top has passed the bar: the last visible card, else group, else section.
+      const ids = [...visible].filter(([, top]) => top !== null).sort((a, b) => a[1] - b[1]).map(([id]) => id);
+      const cards = ids.filter((id) => document.getElementById(id)?.classList.contains('in-card'));
+      const current = cards[0] || ids[0];
+      if (!current) return;
+      document.querySelectorAll('#in-tree li.active').forEach((li) => li.classList.remove('active'));
+      const li = document.querySelector(`#in-tree li[data-for="${current}"]`);
+      if (!li) return;
+      li.classList.add('active');
+      for (let p = li.parentElement.closest('li'); p; p = p.parentElement.closest('li')) p.classList.add('open', 'trail');
+      document.querySelectorAll('#in-tree li.trail').forEach((t) => { if (!t.contains(li)) t.classList.remove('trail'); });
+      const tree = $('in-tree');
+      const r = li.getBoundingClientRect();
+      const tr = tree.getBoundingClientRect();
+      if (r.top < tr.top || r.bottom > tr.bottom) li.scrollIntoView({ block: 'nearest' });
+    }, { rootMargin: '-80px 0px -55% 0px' });
+    document.querySelectorAll('[data-node]').forEach((el) => observer.observe(el));
+  }
+
+  // ── Search: rows, cards, groups, sections and the tree follow ──
+
   $('in-q').addEventListener('input', () => {
     const words = $('in-q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const on = words.length > 0;
     document.querySelectorAll('[data-search]').forEach((el) => { el.hidden = !words.every((w) => el.dataset.search.includes(w)); });
-    document.querySelectorAll('.in-card').forEach((c) => { c.hidden = !!words.length && !c.querySelector('[data-search]:not([hidden])'); });
-    document.querySelectorAll('.in-section').forEach((s) => { s.hidden = !!words.length && !s.querySelector('.in-card:not([hidden])'); });
+    // Bottom-up: a card shows if a row matches (or its title does), a group/section if anything inside shows.
+    document.querySelectorAll('.in-card').forEach((c) => {
+      const titleHit = on && words.every((w) => c.querySelector('.in-card-title').textContent.toLowerCase().includes(w));
+      if (titleHit) c.querySelectorAll('[data-search]').forEach((el) => { el.hidden = false; });
+      c.hidden = on && !titleHit && !c.querySelector('[data-search]:not([hidden])');
+    });
+    [...document.querySelectorAll('.in-group')].reverse().forEach((g) => { g.hidden = on && !g.querySelector('.in-card:not([hidden])'); });
+    document.querySelectorAll('.in-section').forEach((s) => { s.hidden = on && !s.querySelector('.in-card:not([hidden])'); });
+    document.querySelectorAll('#in-tree li[data-for]').forEach((li) => {
+      const target = document.getElementById(li.dataset.for);
+      li.hidden = !!target && target.hidden;
+      if (on && !li.hidden && li.classList.contains('has-kids')) li.classList.add('open');
+    });
+    const none = on && !document.querySelector('.in-section:not([hidden])');
+    let empty = $('in-none');
+    if (none && !empty) $('in-main').insertAdjacentHTML('beforeend', '<p class="in-empty" id="in-none">Nothing matches.</p>');
+    if (!none && empty) empty.remove();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== $('in-q')) {
+      e.preventDefault();
+      $('in-q').focus();
+    }
+  });
+
+  // ── Phones: the tree slides in ──
+
+  $('in-menu').addEventListener('click', () => document.body.classList.toggle('in-nav-open'));
+  $('in-backdrop').addEventListener('click', () => document.body.classList.remove('in-nav-open'));
 
   $('in-theme').addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';

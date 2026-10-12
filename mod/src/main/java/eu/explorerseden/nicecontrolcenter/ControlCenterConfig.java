@@ -88,7 +88,8 @@ public final class ControlCenterConfig {
 	/** Let the dashboard create and change scheduled commands (they run with full rights, like the console). */
 	public boolean web_schedule = true;
 	/** Shown before private messages from the dashboard. */
-	public String message_prefix = "Admin:";
+	/** Before messages from the dashboard; {user} is the panel account that sent it ("Admin ┃ NiceRon:"). */
+	public String message_prefix = "Admin ┃ {user}:";
 	/** Color of that prefix: a Minecraft color name (gold, red, aqua, …) or "#RRGGBB". */
 	public String message_color = "gold";
 	/** Let the dashboard kick and message players. */
@@ -158,9 +159,9 @@ public final class ControlCenterConfig {
 		if (config.update_mode == null) {
 			config.update_mode = "auto";
 		}
-		// "[Admin]" was the default before 1.7.1; only the untouched default moves to the new one.
-		if (config.message_prefix == null || config.message_prefix.equals("[Admin]")) {
-			config.message_prefix = "Admin:";
+		// Earlier defaults ("[Admin]", "Admin:") move to the new one; a prefix someone set stays.
+		if (config.message_prefix == null || config.message_prefix.equals("[Admin]") || config.message_prefix.equals("Admin:")) {
+			config.message_prefix = "Admin ┃ {user}:";
 		}
 		if (config.message_color == null || config.message_color.isBlank()) {
 			config.message_color = "gold";
@@ -216,6 +217,45 @@ public final class ControlCenterConfig {
 	 * A text color Minecraft accepts: one of its 16 names, a common alias ("purple" → dark_purple) or a
 	 * hex color with or without "#". Null if it isn't a color.
 	 */
+	/**
+	 * The prefix for a message from the dashboard: "Admin ┃ NiceRon:" with the sender's panel account, or
+	 * just "Admin:" when there's no name (the dashboard opened without the panel).
+	 */
+	public String adminLabel(String user) {
+		String template = message_prefix == null ? "Admin ┃ {user}:" : message_prefix.strip();
+		if (user != null && !user.isBlank()) return template.replace("{user}", user.strip());
+		String without = template.replaceAll("\\s*[┃|•·\\-]?\\s*\\{user\\}", "").strip();
+		return without.isEmpty() || without.endsWith(":") ? without : without + ":";
+	}
+
+	/**
+	 * The prefix as styled text parts for tellraw, like a chat relay: the label ("Admin") in
+	 * message_color, the separator ("┃") dark gray, the sender and the colon white. Ends with a space.
+	 */
+	public com.google.gson.JsonArray adminPrefix(String user) {
+		String template = message_prefix == null ? "Admin ┃ {user}:" : message_prefix.strip();
+		String colour = color(message_color);
+		if (colour == null) colour = "gold";
+		com.google.gson.JsonArray parts = new com.google.gson.JsonArray();
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(.*?)\\s*([┃|•·\\-])\\s*\\{user\\}(.*)$").matcher(template);
+		if (user != null && !user.isBlank() && m.matches()) {
+			parts.add(part(m.group(1), colour));
+			parts.add(part(" " + m.group(2) + " ", "dark_gray"));
+			parts.add(part(user.strip() + m.group(3) + " ", "white"));
+		} else {
+			String label = adminLabel(user);
+			if (!label.isEmpty()) parts.add(part(label + " ", colour));
+		}
+		return parts;
+	}
+
+	private static com.google.gson.JsonObject part(String text, String colour) {
+		com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+		o.addProperty("text", text);
+		o.addProperty("color", colour);
+		return o;
+	}
+
 	public static String color(String text) {
 		if (text == null) {
 			return null;

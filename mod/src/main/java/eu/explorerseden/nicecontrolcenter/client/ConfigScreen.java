@@ -61,7 +61,7 @@ public class ConfigScreen extends Screen {
 					bool("web_settings_edit", "Data pack settings", "Allow changing data pack settings in the dashboard."),
 					bool("web_gamerules_edit", "Gamerules", "Allow changing gamerules in the dashboard."),
 					bool("web_player_actions", "Player actions", "Allow kicking, banning and messaging players from the dashboard."),
-					text("message_prefix", "Message prefix", "Shown before private messages from the dashboard, e.g. Admin:."),
+					text("message_prefix", "Message prefix", "Shown before messages from the dashboard; {user} is the sender, e.g. Admin ┃ {user}:."),
 					new Option("message_color", "Prefix color", "A color name (gold, red, aqua, purple, pink, …) or #RRGGBB.", Kind.COLOR, 0, 0, List.of()),
 					text("players_storage", "Player database", "Command storage with homes, graves and waypoints for the Players tab."))));
 

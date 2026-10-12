@@ -2955,7 +2955,7 @@
   // ── Light / dark ───────────────────────────────────────────────────────
 
   function currentTheme() {
-    return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    return ['light', 'sakura'].includes(document.documentElement.dataset.theme) ? 'light' : 'dark';
   }
 
   function renderThemeButton() {

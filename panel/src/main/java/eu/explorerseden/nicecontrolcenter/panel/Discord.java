@@ -62,6 +62,8 @@ public final class Discord implements Notifier {
 		public List<String> bypass = new ArrayList<>();
 		public boolean chatToDiscord = true;
 		public boolean chatToGame = true;
+		/** How Discord messages look in game (DiscordJustSync style tags, %user% and %msg%). */
+		public String gameFormat = GameFormat.DEFAULT;
 		public boolean presence = true;
 		public Map<String, Boolean> events = new LinkedHashMap<>(Map.of("join", true, "leave", true, "death", true, "advancement", true,
 				"start", true, "stop", true, "crash", true));
@@ -74,6 +76,7 @@ public final class Discord implements Notifier {
 			d.events.forEach(events::putIfAbsent);
 			d.templates.forEach(templates::putIfAbsent);
 			if (alertChannelId == null) alertChannelId = "";
+			if (gameFormat == null || gameFormat.isBlank()) gameFormat = GameFormat.DEFAULT;
 			if (eventChannels == null) eventChannels = new LinkedHashMap<>();
 			eventChannels.keySet().retainAll(events.keySet());
 			eventChannels.replaceAll((k, v) -> "alerts".equals(v) ? "alerts" : "chat");
@@ -201,6 +204,8 @@ public final class Discord implements Notifier {
 		if (next.alertChannelId != null) next.alertChannelId = next.alertChannelId.strip();
 		if (next.alertChannelId != null && !next.alertChannelId.isEmpty() && !next.alertChannelId.matches("\\d{5,25}")) return "The alerts channel ID is a long number, or empty for the chat channel.";
 		next.addDefaults();
+		String formatProblem = GameFormat.check(next.gameFormat);
+		if (formatProblem != null) return formatProblem;
 		write(settingsFile, Json.GSON.toJson(next));
 		boolean reconnect = !next.token.equals(settings.token) || next.enabled != settings.enabled;
 		settings = next;
@@ -366,23 +371,13 @@ public final class Discord implements Notifier {
 		if (text.isEmpty()) return;
 		if (text.length() > 256) text = text.substring(0, 256) + "…";
 		String name = message.getMember() != null ? message.getMember().getEffectiveName() : message.getAuthor().getEffectiveName();
+		JsonArray parts = GameFormat.render(settings.gameFormat, name, text);
 		DashboardProxy mod = dashboard;
-		if (mod != null && mod.relayChat(name, text)) return;
+		if (mod != null && mod.relayChat(name, text, parts)) return;
 		// Mods before 1.4.0 can't take it: tellraw, which players see but the log and Chat tab don't.
-		JsonArray parts = new JsonArray();
-		parts.add("");
-		parts.add(part("[Discord] ", "#7289da"));
-		parts.add(part(name, "white"));
-		parts.add(part(": " + text, "gray"));
 		server.quietCommand("tellraw @a " + parts);
 	}
 
-	private static JsonObject part(String text, String color) {
-		JsonObject o = new JsonObject();
-		o.addProperty("text", text);
-		o.addProperty("color", color);
-		return o;
-	}
 
 	private boolean isMember(String discordId, boolean fresh) {
 		long[] cached = memberCache.get(discordId);

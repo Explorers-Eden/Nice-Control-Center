@@ -115,10 +115,12 @@ final class DashboardProxy {
 	 * Discord → game chat through the mod, so the message is also in the log and the Chat tab.
 	 * False when the mod can't take it (not running, or older than 1.4.0).
 	 */
-	boolean relayChat(String name, String text) {
+	/** parts: the message as tellraw parts, in the Discord settings' format (mods before 1.7.1 use their own). */
+	boolean relayChat(String name, String text, com.google.gson.JsonArray parts) {
 		JsonObject body = new JsonObject();
 		body.addProperty("name", name);
 		body.addProperty("text", text);
+		body.add("parts", parts);
 		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/chat/relay"))
 				.timeout(Duration.ofSeconds(5)).header("X-NCC-Secret", secret).header("Content-Type", "application/json")
 				.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
@@ -176,7 +178,9 @@ final class DashboardProxy {
 		String query = ctx.queryString();
 		HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path + (query == null ? "" : "?" + query)))
 				.timeout(Duration.ofSeconds(60))
-				.header("X-NCC-Secret", secret);
+				.header("X-NCC-Secret", secret)
+				// Who is sending, for "Admin ┃ <name>:" in messages to players.
+				.header("X-NCC-User", me.name().replaceAll("[^A-Za-z0-9_ .\\-]", "").strip());
 		String type = ctx.header("Content-Type");
 		if (type != null) request.header("Content-Type", type);
 		if (ctx.method().name().equals("POST")) request.POST(HttpRequest.BodyPublishers.ofByteArray(ctx.bodyAsBytes()));

@@ -358,14 +358,14 @@ final class ServerTuning {
 		}
 	}
 
-	/** Names from a player list file (ops.json, whitelist.json, usercache.json). */
-	private List<String> names(String file) {
+	/** Entries of a player list file (ops.json, whitelist.json, usercache.json) as JSON objects. */
+	private List<com.google.gson.JsonObject> entries(String file) {
 		try {
 			Path f = serverDir.resolve(file);
 			if (!Files.exists(f)) return List.of();
-			List<String> out = new ArrayList<>();
+			List<com.google.gson.JsonObject> out = new ArrayList<>();
 			for (var e : com.google.gson.JsonParser.parseString(Files.readString(f)).getAsJsonArray()) {
-				if (e.isJsonObject() && e.getAsJsonObject().has("name")) out.add(e.getAsJsonObject().get("name").getAsString());
+				if (e.isJsonObject() && e.getAsJsonObject().has("name")) out.add(e.getAsJsonObject());
 			}
 			return out;
 		} catch (IOException | RuntimeException e) {
@@ -373,18 +373,41 @@ final class ServerTuning {
 		}
 	}
 
-	/** Everyone the server knows (operators, the whitelist, who has joined), for the staff checkboxes. */
+	private static String uuidOf(com.google.gson.JsonObject o) {
+		return o.has("uuid") ? o.get("uuid").getAsString().toLowerCase(java.util.Locale.ROOT) : null;
+	}
+
+	/**
+	 * Everyone the server knows (operators, the whitelist, who has joined), for the staff checkboxes. One
+	 * entry per account, by UUID, under its newest name: usercache.json keeps old names after a rename.
+	 */
 	private List<Map<String, Object>> knownPlayers() {
-		java.util.Set<String> ops = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-		ops.addAll(names("ops.json"));
-		java.util.Map<String, String> all = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		for (String file : new String[] { "ops.json", "whitelist.json", "usercache.json" }) {
-			for (String n : names(file)) all.putIfAbsent(n, n);
+		Map<String, String> nameByUuid = new LinkedHashMap<>();
+		// usercache: the newest entry per account wins (expiresOn is a month after the last login).
+		Map<String, String> newest = new java.util.HashMap<>();
+		for (var o : entries("usercache.json")) {
+			String id = uuidOf(o);
+			if (id == null) continue;
+			String expires = o.has("expiresOn") ? o.get("expiresOn").getAsString() : "";
+			if (expires.compareTo(newest.getOrDefault(id, "")) >= 0) {
+				newest.put(id, expires);
+				nameByUuid.put(id, o.get("name").getAsString());
+			}
 		}
-		for (String n : maintenance().staff) all.putIfAbsent(n, n);
-		List<Map<String, Object>> out = new ArrayList<>();
-		for (String n : all.values()) out.add(Map.of("name", n, "op", ops.contains(n)));
-		return out;
+		java.util.Set<String> ops = new java.util.HashSet<>();
+		for (String file : new String[] { "ops.json", "whitelist.json" }) {
+			for (var o : entries(file)) {
+				String id = uuidOf(o);
+				String key = id != null ? id : "name:" + o.get("name").getAsString().toLowerCase(java.util.Locale.ROOT);
+				nameByUuid.putIfAbsent(key, o.get("name").getAsString());
+				if (file.equals("ops.json")) ops.add(key);
+			}
+		}
+		java.util.Map<String, Map<String, Object>> byName = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		nameByUuid.forEach((id, name) -> byName.merge(name, new java.util.HashMap<>(Map.of("name", name, "op", ops.contains(id))),
+				(a1, b1) -> { if (Boolean.TRUE.equals(b1.get("op"))) a1.put("op", true); return a1; }));
+		for (String n : maintenance().staff) byName.putIfAbsent(n, new java.util.HashMap<>(Map.of("name", n, "op", false)));
+		return new ArrayList<>(byName.values());
 	}
 
 	private static String summary(Performance.Settings s) {

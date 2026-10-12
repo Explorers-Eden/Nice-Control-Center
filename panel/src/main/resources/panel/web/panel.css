@@ -69,7 +69,7 @@
 .pn-step span { font-size: var(--fs-sm); color: var(--muted); }
 /* Stats tab: two categorical slots (validated light + dark), chart chrome from the shared tokens. */
 .pn-stats { --series-1: #3987e5; --series-2: #d95926; }
-:root[data-theme="light"] .pn-stats { --series-1: #2a78d6; --series-2: #eb6834; }
+:root[data-theme="light"] .pn-stats, :root[data-theme="sakura"] .pn-stats { --series-1: #2a78d6; --series-2: #eb6834; }
 .pn-stats-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .pn-stats-head .np-card-title { margin: 0; }
 .pn-seg { display: inline-flex; border: 1px solid rgba(var(--ink),.12); border-radius: 10px; overflow: hidden; }
@@ -194,7 +194,7 @@
 /* ── Editor window (editor.html) ─────────────────────────────────────────── */
 .ed-body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: var(--font);
   --syn-key: #9ecbff; --syn-string: #a5e3a1; --syn-number: #ffcf7a; --syn-atom: #f5a3c7; --syn-comment: rgba(255,255,255,.4); --syn-punct: #cfd7e6; --syn-section: #c9a7ff; }
-:root[data-theme="light"] .ed-body { --syn-key: #1f5fbf; --syn-string: #227a3a; --syn-number: #9a5b00; --syn-atom: #b0306a; --syn-comment: rgba(15,23,42,.45); --syn-punct: #4a556b; --syn-section: #6b3fc4; }
+:root[data-theme="light"] .ed-body, :root[data-theme="sakura"] .ed-body { --syn-key: #1f5fbf; --syn-string: #227a3a; --syn-number: #9a5b00; --syn-atom: #b0306a; --syn-comment: rgba(15,23,42,.45); --syn-punct: #4a556b; --syn-section: #6b3fc4; }
 .ed-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 16px; background: var(--nav); border-bottom: 1px solid rgba(var(--ink),.08); }
 .ed-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ed-title b { color: var(--strong); font-family: var(--mono); font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -534,7 +534,7 @@ body {
     var(--bg);
   background-attachment: fixed;
 }
-:root[data-theme="light"] body {
+:root[data-theme="light"] body, :root[data-theme="sakura"] body {
   background:
     radial-gradient(1200px 520px at 12% -10%, rgba(53,80,200,.10), transparent 60%),
     radial-gradient(900px 480px at 100% 0%, rgba(122,63,209,.08), transparent 60%),
@@ -600,3 +600,54 @@ body .pn-borders select, body .pn-borders input[type="number"] { box-sizing: bor
 body .pn-borders select { -webkit-appearance: none; appearance: none; padding-right: 28px; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a93a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 9px center; background-size: 12px; }
+
+/* Discord events: one grid (event · channel · message) so every column lines up. */
+.pn-dc-events { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; }
+.pn-dc-group { margin: 14px 0 2px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.pn-dc-group:first-child { margin-top: 0; }
+.pn-dc-head, .pn-dc-event { display: grid; grid-template-columns: minmax(170px, 230px) 160px minmax(0, 1fr); gap: 10px; align-items: center; }
+.pn-dc-head { padding: 0 2px; font-size: var(--fs-xs); color: var(--faint); }
+.pn-dc-event { padding: 4px 2px; border-top: 1px solid rgba(var(--ink),.05); }
+.pn-dc-event .np-check { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pn-dc-event .pn-event-name { display: flex; flex-direction: column; line-height: 1.25; }
+.pn-dc-event .pn-event-name small { color: var(--faint); font-family: var(--mono); font-size: var(--fs-xs); }
+.pn-dc-event select, .pn-dc-event input[type="text"] { box-sizing: border-box; height: 34px; width: 100%; font: inherit; font-size: var(--fs-base); color: var(--text);
+  background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 0 10px; }
+.pn-dc-event select { -webkit-appearance: none; appearance: none; padding-right: 28px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a93a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; background-size: 12px; }
+.pn-dc-event:has(input[type="checkbox"]:not(:checked)) select, .pn-dc-event:has(input[type="checkbox"]:not(:checked)) input[type="text"] { opacity: .45; }
+.pn-dc-event + .pn-hint, #pn-discord-events + .pn-hint { margin-top: 12px; }
+@media (max-width: 760px) {
+  .pn-dc-head { display: none; }
+  .pn-dc-event { grid-template-columns: 1fr 150px; }
+  .pn-dc-event input[type="text"] { grid-column: 1 / -1; }
+}
+
+/* Profile picture and themes. */
+.pn-avatar.pic { background-size: cover; background-position: center; color: transparent; }
+.pn-avatar.big { width: 88px; height: 88px; font-size: 34px; border-radius: 50%; box-shadow: 0 8px 24px -8px rgba(0,0,0,.5), 0 0 0 3px var(--card), 0 0 0 4px var(--card-border); }
+.pn-profile { display: flex; flex-wrap: wrap; gap: 24px 40px; align-items: flex-start; }
+.pn-profile-pic { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 180px; }
+.pn-profile-themes { flex: 1; min-width: 260px; }
+.pn-profile-themes b { color: var(--strong); font-weight: 600; }
+.pn-profile-themes .pn-hint { margin: 2px 0 10px; }
+.pn-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.pn-theme-card { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--inset);
+  color: var(--text); font: inherit; font-size: var(--fs-sm); font-weight: 500; cursor: pointer; text-align: left; }
+.pn-theme-card:hover { border-color: rgba(var(--ink),.25); }
+.pn-theme-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.pn-theme-swatch { position: relative; display: block; height: 52px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(128,128,128,.25); }
+.pn-theme-swatch span { position: absolute; left: 10px; right: 10px; bottom: 0; height: 30px; border-radius: 6px 6px 0 0; }
+.pn-theme-swatch i { position: absolute; left: 18px; bottom: 10px; width: 34px; height: 8px; border-radius: 4px; }
+.pn-avatar.small { width: 26px; height: 26px; font-size: 12px; flex: none; }
+.pn-user-cell { display: inline-flex; align-items: center; gap: 10px; }
+.pn-user-cell > span:last-child { display: flex; flex-direction: column; }
+
+/* Discord: the bot's state as a pill. */
+.pn-dc-status { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 6px 12px; border-radius: 999px; background: var(--inset); border: 1px solid var(--card-border); font-size: var(--fs-sm); color: var(--muted); }
+.pn-dc-status:empty { display: none; }
+.pn-dc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.pn-dc-status.good .pn-dc-dot { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.pn-dc-status.bad .pn-dc-dot { background: var(--poor); }
+#pn-dc-token-row[hidden] { display: none; }

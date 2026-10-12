@@ -26,19 +26,24 @@
 		<div class="in-hero-inner">
 			<img class="in-logo" id="in-logo" alt="" hidden>
 			<h1 id="in-title">Server info</h1>
+			<div class="in-motd" id="in-motd" hidden></div>
 			<div class="in-intro" id="in-intro"></div>
-			<p class="in-updated" id="in-updated"></p>
+			<div class="in-stats" id="in-stats"></div>
 		</div>
 		<button type="button" class="in-theme" id="in-theme" aria-label="Switch light/dark"><i class="bi bi-circle-half"></i></button>
 	</header>
 	<div class="in-bar">
 		<div class="in-bar-inner">
-			<label class="in-search"><i class="bi bi-search"></i><input type="search" id="in-q" placeholder="Search settings…" autocomplete="off"></label>
-			<nav class="in-jump" id="in-jump" aria-label="Sections"></nav>
+			<button type="button" class="in-menu" id="in-menu" aria-label="Contents"><i class="bi bi-list-nested"></i><span>Contents</span></button>
+			<label class="in-search"><i class="bi bi-search"></i><input type="search" id="in-q" placeholder="Search all settings…" autocomplete="off"><kbd>/</kbd></label>
 		</div>
 	</div>
-	<main class="in-main" id="in-main"><p class="in-empty">Loading…</p></main>
-	<footer class="in-foot">Made with the Nice Control Center</footer>
+	<div class="in-layout">
+		<nav class="in-tree" id="in-tree" aria-label="Contents"></nav>
+		<main class="in-main" id="in-main"><p class="in-empty">Loading…</p></main>
+	</div>
+	<div class="in-backdrop" id="in-backdrop"></div>
+	<footer class="in-foot"><span id="in-updated"></span> · Made with the Nice Control Center</footer>
 	<script src="info.js"></script>
 </body>
 </html>

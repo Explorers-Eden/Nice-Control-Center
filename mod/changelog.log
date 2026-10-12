@@ -3,7 +3,7 @@
 - Item tooltips on the Players page show names and lore with their colours and styles (§ codes and coloured text no longer show as plain text); lore shows like in the game
 - Player cards show when the player first joined and when they were last online (or "online since"); kept in the world folder (nicecontrolcenter-seen.json), with an estimate from file dates for players from before
 - GOML claims show on the map (and player cards) within seconds: they're read from GOML's memory instead of the saved world, which only changed on the next world save; both of GOML's save formats are understood
-- Private messages from the dashboard start with "Admin: " instead of "[Admin]" (a prefix you changed yourself stays)
+- Messages from the panel read "Admin ┃ <name>: …" with the sender's panel account, private ones and chat to everyone alike (chat no longer goes out as /say); message_prefix takes {user}; the old defaults "[Admin]" and "Admin:" move to the new one, a prefix you set yourself stays
 - Waypoint names and descriptions on the Players page are read correctly when stored as text components
 
 ## 1.7.0

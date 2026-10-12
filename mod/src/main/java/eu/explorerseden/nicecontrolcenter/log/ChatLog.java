@@ -86,9 +86,9 @@ public final class ChatLog {
 	/** Server thread. A message from the panel's Discord bridge, shown to everyone as "[Discord] name: text". */
 	public static void relay(MinecraftServer server, String name, String text) {
 		MutableComponent line = Component.empty()
-				.append(Component.literal("[Discord] ").withColor(0x7289DA))
-				.append(Component.literal(name).withColor(0xFFFFFF))
-				.append(Component.literal(": " + text).withColor(0xAAAAAA));
+				.append(Component.literal("Discord").withColor(0x55FFFF))
+				.append(Component.literal(" ┃ ").withColor(0x555555))
+				.append(Component.literal(name + ": " + text).withColor(0xFFFFFF));
 		server.getPlayerList().broadcastSystemMessage(line, false);
 	}
 
