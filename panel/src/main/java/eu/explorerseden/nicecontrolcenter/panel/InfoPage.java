@@ -40,6 +40,8 @@ final class InfoPage {
 		public boolean performance = true;
 		/** The commands every player may use, with descriptions. */
 		public boolean commands = true;
+		/** When the next scheduled restart is, in the banner. */
+		public boolean restart = true;
 		/** server.properties keys left out besides the secret ones. */
 		public List<String> hiddenProperties = new ArrayList<>();
 		/** Config files (paths under config/) shown on the page. */
@@ -94,6 +96,12 @@ final class InfoPage {
 
 	private Auth auth;
 	private Commands commands;
+	private java.util.function.LongSupplier nextRestart = () -> 0;
+
+	/** When the schedule restarts the server next (0 for not planned). */
+	void useRestart(java.util.function.LongSupplier nextRestart) {
+		this.nextRestart = nextRestart;
+	}
 
 	/** Where the public command list comes from. */
 	void useCommands(Commands commands) {
@@ -217,6 +225,8 @@ final class InfoPage {
 		}
 		if (s.packs && src.has("packs")) out.put("packs", packs(src.getAsJsonObject("packs")));
 		if (s.commands && commands != null) out.put("commands", commands.publicList());
+		long restart = s.restart ? nextRestart.getAsLong() : 0;
+		if (restart > System.currentTimeMillis()) out.put("nextRestart", restart);
 		if (s.performance) out.put("performance", performance(Performance.read(serverDir.resolve("config").resolve(Performance.FILE))));
 		List<Map<String, Object>> configs = new ArrayList<>();
 		for (String rel : s.configs) {

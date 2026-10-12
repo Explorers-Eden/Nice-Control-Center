@@ -209,26 +209,118 @@ final class DashboardProxy {
 
 	private void unavailable(Context ctx, String path) {
 		boolean page = path.equals("/") || path.endsWith(".html");
-		String why = switch (server.status().get("state").toString()) {
-			case "RUNNING" -> "The server runs, but the Nice Control Center mod doesn't answer. It needs version 1.1.0 or newer"
-					+ " (the panel installs it when \"Install and update the Nice Control Center mod\" is on), and a restart after installing.";
-			case "STARTING" -> "The server is starting. The dashboard appears once it's up.";
-			default -> "The dashboard is available while the Minecraft server runs.";
-		};
+		Map<String, Object> status = server.status();
+		String state = status.get("state").toString();
 		if (!page) {
-			error(ctx, HttpStatus.SERVICE_UNAVAILABLE, why);
+			error(ctx, HttpStatus.SERVICE_UNAVAILABLE, state.equals("RUNNING")
+					? "The server runs, but the Nice Control Center mod doesn't answer." : "The dashboard is available while the Minecraft server runs.");
 			return;
 		}
-		ctx.status(HttpStatus.SERVICE_UNAVAILABLE).contentType("text/html; charset=utf-8").header("Cache-Control", "no-store").result("""
-				<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-				<script>try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') === 'light' ? 'light' : 'dark'; } catch (e) {}</script>
-				<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-				<link rel="stylesheet" href="../app.css"><link rel="stylesheet" href="../panel.css">
-				<style>html, body { background: transparent; min-height: 0; height: auto; } .pn-offline { margin: 8px 0; }</style>
-				<script>setTimeout(() => location.reload(), 5000)</script></head>
-				<body><section class="np-card pn-offline"><h3 class="np-card-title">Dashboard not available</h3>
-				<p class="np-card-intro">%s</p></section></body></html>""".formatted(why.replace("&", "&amp;").replace("<", "&lt;")));
+		String json = eu.explorerseden.nicecontrolcenter.Json.GSON.toJson(status).replace("<", "\\u003c");
+		ctx.status(HttpStatus.SERVICE_UNAVAILABLE).contentType("text/html; charset=utf-8").header("Cache-Control", "no-store").result(OFFLINE_PAGE.replace("%STATUS%", json));
 	}
+
+	/**
+	 * Shown in the panel's frame instead of a mod page while the server is off, starting, stopping or
+	 * crashed, or the mod doesn't answer. It follows the server's state and opens the page once it's up.
+	 */
+	private static final String OFFLINE_PAGE = """
+			<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+			<script>try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') || 'dark'; } catch (e) {}</script>
+			<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+			<link rel="stylesheet" href="../app.css"><link rel="stylesheet" href="../panel.css">
+			<style>
+			html, body { background: transparent; min-height: 0; height: auto; margin: 0; }
+			.off { --tone: #8a93a6; position: relative; overflow: hidden; margin: 8px 0; padding: 44px 24px 40px; text-align: center; border-radius: 16px;
+				background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--tone) 16%, transparent), transparent 70%), var(--card, rgba(255,255,255,.03));
+				border: 1px solid color-mix(in srgb, var(--tone) 28%, rgba(var(--ink), .08)); }
+			.off::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+				background-image: linear-gradient(rgba(var(--ink), .05) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--ink), .05) 1px, transparent 1px);
+				background-size: 24px 24px; mask-image: radial-gradient(70% 80% at 50% 20%, #000, transparent); -webkit-mask-image: radial-gradient(70% 80% at 50% 20%, #000, transparent); }
+			.off > * { position: relative; }
+			.off.starting, .off.stopping { --tone: #ffb35c; }
+			.off.crashed { --tone: #ff6b6b; }
+			.off.mod { --tone: #a77bff; }
+			.off-icon { width: 76px; height: 76px; margin: 0 auto 18px; display: grid; place-items: center; border-radius: 22px; font-size: 34px; color: var(--tone);
+				background: color-mix(in srgb, var(--tone) 14%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone) 30%, transparent), 0 12px 32px -12px var(--tone); }
+			.off.starting .off-icon i, .off.stopping .off-icon i { animation: spin 1.4s linear infinite; }
+			@keyframes spin { to { transform: rotate(360deg); } }
+			.off h2 { margin: 0 0 8px; font-size: var(--fs-xl, 20px); font-weight: 600; color: var(--strong); letter-spacing: -.01em; }
+			.off p { margin: 0 auto; max-width: 520px; font-size: var(--fs-md, 14px); line-height: 1.55; color: var(--muted); }
+			.off .off-detail { margin-top: 12px; display: inline-block; max-width: 560px; padding: 8px 12px; border-radius: 8px; font-family: var(--mono); font-size: var(--fs-sm, 12px);
+				color: var(--text); background: rgba(var(--ink), .06); text-align: left; overflow-wrap: anywhere; }
+			.off-bar { width: min(280px, 70%); height: 4px; margin: 20px auto 0; border-radius: 999px; overflow: hidden; background: rgba(var(--ink), .08); }
+			.off-bar span { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--tone); animation: slide 1.3s ease-in-out infinite; }
+			@keyframes slide { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
+			.off-actions { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+			.off-note { margin-top: 12px !important; font-size: var(--fs-sm, 12px) !important; color: var(--faint) !important; min-height: 1em; }
+			.off-meta { margin-top: 14px !important; font-size: var(--fs-sm, 12px) !important; color: var(--faint) !important; font-variant-numeric: tabular-nums; }
+			@media (prefers-reduced-motion: reduce) { .off-icon i, .off-bar span { animation: none !important; } }
+			</style></head>
+			<body><section class="off" id="off"></section>
+			<script>
+			let status = %STATUS%;
+			const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+			const ago = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s'; };
+			const go = (hash) => { try { window.top.location.hash = hash; } catch (e) { location.href = '../#' + hash; } };
+			function render() {
+			  // Just started: the mod's dashboard comes up a few seconds after the server.
+			  const fresh = status.state === 'RUNNING' && status.runningSince && Date.now() - status.runningSince < 60000;
+			  const s = fresh ? 'LOADING' : status.state;
+			  const box = document.getElementById('off');
+			  const views = {
+			    STOPPED: ['', 'bi-power', 'The server is off', 'This page shows live data from the Minecraft server. Start it to see what\\'s going on.', true],
+			    CRASHED: ['crashed', 'bi-exclamation-octagon', 'The server crashed', 'It stopped unexpectedly. The console shows what happened.', true],
+			    STARTING: ['starting', 'bi-arrow-repeat', 'The server is starting', 'This page opens on its own as soon as the server is up.', false],
+			    STOPPING: ['stopping', 'bi-arrow-repeat', 'The server is stopping', 'Saving the world and shutting down.', false],
+			    LOADING: ['starting', 'bi-arrow-repeat', 'Almost there', 'The server is up; the page opens in a moment.', false],
+			    RUNNING: ['mod', 'bi-plug', 'The mod doesn\\'t answer', 'The server runs, but the Nice Control Center mod doesn\\'t reply. The panel installs it when \\u201cInstall and update the Nice Control Center mod\\u201d is on (Settings \\u2192 Startup & Java); it needs a restart after installing.', false],
+			  };
+			  const [cls, icon, title, text, canStart] = views[s] || views.STOPPED;
+			  const since = s === 'STARTING' && status.startedAt ? `<p class="off-meta">Starting for ${ago(Date.now() - status.startedAt)}</p>` : '';
+			  const restart = s === 'CRASHED' && status.nextRestartAt > Date.now() ? `<p class="off-meta">Restarts on its own in ${ago(status.nextRestartAt - Date.now())}</p>` : '';
+			  box.className = 'off ' + cls;
+			  box.innerHTML = `<div class="off-icon"><i class="bi ${icon}"></i></div><h2>${title}</h2><p>${text}</p>
+			    ${status.message && s !== 'RUNNING' ? `<div class="off-detail">${esc(status.message)}</div>` : ''}
+			    ${cls === 'starting' || cls === 'stopping' ? '<div class="off-bar"><span></span></div>' : ''}${since}${restart}
+			    <div class="off-actions">${canStart ? '<button type="button" class="np-btn primary" id="start"><i class="bi bi-play-fill"></i> Start the server</button>' : ''}
+			      ${s === 'RUNNING' ? '<button type="button" class="np-btn" data-go="java"><i class="bi bi-sliders"></i> Startup settings</button>' : ''}
+			      <button type="button" class="np-btn" data-go="server"><i class="bi bi-terminal"></i> Open the console</button></div>
+			    <p class="off-note" id="note"></p>`;
+			}
+			document.addEventListener('click', async (e) => {
+			  const g = e.target.closest('[data-go]');
+			  if (g) return go(g.dataset.go);
+			  const b = e.target.closest('#start');
+			  if (!b) return;
+			  b.disabled = true;
+			  try {
+			    const r = await fetch('../api/server/start', { method: 'POST', headers: { 'X-NCC': '1', 'Content-Type': 'application/json' }, body: '{}' });
+			    const d = await r.json().catch(() => ({}));
+			    if (!r.ok) throw new Error(d.error || (r.status === 403 ? 'You may not start the server.' : 'Could not start the server.'));
+			    status = { ...status, state: 'STARTING', startedAt: Date.now(), message: '' };
+			    render();
+			  } catch (err) {
+			    b.disabled = false;
+			    document.getElementById('note').textContent = err.message;
+			  }
+			});
+			render();
+			setInterval(async () => {
+			  try {
+			    const r = await fetch('../api/server', { cache: 'no-store' });
+			    if (!r.ok) return;
+			    const next = await r.json();
+			    const was = status.state;
+			    status = next;
+			    if (next.state === 'RUNNING' && was !== 'RUNNING') { location.reload(); return; }
+			    if (next.state !== was || next.state === 'STARTING' || next.state === 'CRASHED') render();
+			  } catch (e) { /* the panel is restarting */ }
+			}, 2000);
+			// Running but the mod doesn't answer yet: look again soon while it just started, later now and then.
+			if (status.state === 'RUNNING') setTimeout(() => location.reload(), status.runningSince && Date.now() - status.runningSince < 60000 ? 3000 : 10000);
+			</script></body></html>""";
 
 	private static boolean sameOrigin(Context ctx) {
 		String origin = ctx.header("Origin");

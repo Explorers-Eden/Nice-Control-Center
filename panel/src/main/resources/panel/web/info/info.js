@@ -221,6 +221,14 @@
   function render(d) {
     document.title = d.title;
     if (d.motd) { $('in-motd').hidden = false; $('in-motd').innerHTML = mc(d.motd); }
+    if (d.nextRestart) {
+      // Calendar days in the reader's own time zone (named), like on the map.
+      const midnight = (t) => { const x = new Date(t); x.setHours(0, 0, 0, 0); return x.getTime(); };
+      const days = Math.round((midnight(d.nextRestart) - midnight(Date.now())) / 86400000);
+      const when = new Date(d.nextRestart).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+      $('in-restart').hidden = false;
+      $('in-restart').innerHTML = `<i class="bi bi-arrow-clockwise"></i> Next restart <b>${days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}</b> <span>${esc(when)}</span>`;
+    }
     $('in-intro').innerHTML = (d.intro || '').split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
     $('in-updated').textContent = d.updated ? `Last updated ${new Date(d.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '';
     const sections = buildSections(d);

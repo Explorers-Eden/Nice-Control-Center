@@ -144,3 +144,8 @@ body.in-searching .in-crumbs { visibility: hidden; }
 
 .in-preview { position: sticky; top: 0; z-index: 50; padding: 8px 16px; text-align: center; font-size: var(--fs-sm); font-weight: 600; color: #1a1205; background: #ffb35c; }
 .in-preview i { margin-right: 6px; }
+
+.in-restart { display: flex; width: max-content; max-width: 100%; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: -4px auto 14px; padding: 6px 14px;
+  border-radius: 999px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.14); color: #eef2ff; font-size: var(--fs-sm); }
+.in-restart .bi { color: #ffb35c; }
+.in-restart span { opacity: .75; }

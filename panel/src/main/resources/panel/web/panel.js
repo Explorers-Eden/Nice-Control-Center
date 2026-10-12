@@ -862,6 +862,7 @@
       else field.value = value;
     }
     $('pn-preview').textContent = view.command;
+    Dirty.reset('settings');
   }
 
   function readSettings() {
@@ -978,7 +979,88 @@
   function formMsg(id, text, ok) {
     $(id).className = 'np-form-msg ' + (ok ? 'ok' : 'error');
     $(id).textContent = text;
+    Dirty.saved(id, ok);
   }
+
+  // ── Unsaved changes ─────────────────────────────────────────────────────
+  // A settings form's Save button (and a Cancel next to it) only shows once something differs from what
+  // was loaded. Cancel loads the saved values again. Lists that grow and shrink count as changes too.
+
+  const Dirty = (() => {
+    const forms = new Map();
+    /** The fields' values, leaving out search boxes and anything marked data-dirty-ignore. */
+    const fields = (el) => JSON.stringify([...el.querySelectorAll('input, select, textarea')]
+      .filter((i) => !i.closest('[data-dirty-ignore]') && !['search', 'file', 'button', 'submit'].includes(i.type))
+      .map((i) => (i.type === 'checkbox' || i.type === 'radio' ? i.checked : i.value)));
+    const state = (f) => fields(f.el) + (f.extra ? JSON.stringify(f.extra()) : '');
+
+    function show(f, on) {
+      f.dirty = on;
+      f.el.classList.toggle('pn-dirty', on);
+      for (const b of f.buttons) b.hidden = !on;
+      if (f.bar) {
+        // After saving, the bar stays a moment so "Saved." can be read.
+        if (on) {
+          clearTimeout(f.barTimer);
+          f.barTimer = null;
+          f.bar.hidden = false;
+        } else if (!f.barTimer && !f.bar.hidden) {
+          f.barTimer = setTimeout(() => { f.barTimer = null; if (!f.dirty) f.bar.hidden = true; }, f.justSaved ? 2500 : 0);
+        }
+      }
+      f.justSaved = false;
+    }
+    function check(f) {
+      if (f.snap === null) return;
+      show(f, state(f) !== f.snap);
+    }
+
+    return {
+      /** name: key; el: the form or card; saveButtons: what to show/hide; reload: what Cancel does; extra(): state kept outside the fields. */
+      track(name, el, { saveButtons, reload, extra }) {
+        const f = { el, reload, extra, snap: null, dirty: false, buttons: [], bar: null };
+        const saves = saveButtons || [...el.querySelectorAll('button[type="submit"]')];
+        for (const save of saves) {
+          const cancel = document.createElement('button');
+          cancel.type = 'button';
+          cancel.className = 'np-btn';
+          cancel.innerHTML = '<i class="bi bi-x-lg"></i> Cancel';
+          cancel.addEventListener('click', () => { f.snap = null; show(f, false); reload(); });
+          save.after(cancel);
+          f.buttons.push(save, cancel);
+          save.addEventListener('click', () => { f.saving = true; });
+          if (save.parentElement.classList.contains('pn-sticky-save')) f.bar = save.parentElement;
+        }
+        el.addEventListener('submit', () => { f.saving = true; });
+        const recheck = () => check(f);
+        el.addEventListener('input', recheck);
+        el.addEventListener('change', recheck);
+        // Rows added or removed (rules, chips) count too.
+        new MutationObserver(() => queueMicrotask(recheck)).observe(el, { childList: true, subtree: true });
+        forms.set(name, f);
+        show(f, false);
+      },
+      /** The form was just filled from the server: this is the saved state. */
+      reset(name) {
+        const f = forms.get(name);
+        if (!f) return;
+        f.snap = state(f);
+        show(f, false);
+      },
+      /** A success message after Save: the current state is the saved one. */
+      saved(msgId, ok) {
+        const msg = document.getElementById(msgId);
+        for (const f of forms.values()) {
+          if (!f.saving || !f.el.contains(msg) && !(f.bar && f.bar.contains(msg))) continue;
+          f.saving = false;
+          if (ok) { f.snap = state(f); f.justSaved = true; show(f, false); }
+        }
+      },
+      any: () => [...forms.values()].some((f) => f.dirty),
+    };
+  })();
+
+  window.addEventListener('beforeunload', (e) => { if (Dirty.any()) { e.preventDefault(); e.returnValue = ''; } });
 
   $('pn-user-rows').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-user-act]');
@@ -1223,6 +1305,7 @@
       exSet = new Set(backupData.settings.exclude);
       renderExPatterns();
       loadExTree();
+      Dirty.reset('backups');
     }
     $('pn-backup-form').querySelector('button').disabled = st.running;
   }
@@ -2073,6 +2156,7 @@
     $('pn-cleanup-preview').textContent = view.preview.length
       ? `Right now this would delete ${view.preview.length} file${view.preview.length === 1 ? '' : 's'} (${bytes(total)}), e.g. ${view.preview.slice(0, 3).map((c) => c.path).join(', ')}.`
       : 'Right now there is nothing old enough to delete.';
+    Dirty.reset('logs');
   }
 
   async function loadCleanup() {
@@ -2338,6 +2422,7 @@
     $('pn-discord-status').className = 'pn-dc-status ' + (ok ? 'good' : /^Couldn|^Can't/.test(st) ? 'bad' : 'off');
     $('pn-discord-status').innerHTML = `<span class="pn-dc-dot"></span>Bot: ${esc(st)}${discordData.tokenFromEnv ? ' · token from the container settings' : ''}`;
     renderLinks();
+    Dirty.reset('discord');
   }
 
   /** The in-game look of a Discord message, drawn like the game would (same tags as the panel turns into chat). */
@@ -2450,6 +2535,7 @@
     $('pn-map-host').innerHTML = mapData.host
       ? `Public address: <a href="https://${esc(mapData.host)}/" target="_blank" rel="noopener">${esc(mapData.host)}</a>`
       : 'Set <code>MAP_HOST</code> (e.g. map.example.com) to give the map its own address.';
+    Dirty.reset('map');
   }
 
   $('pn-map-form').addEventListener('submit', async (e) => {
@@ -2910,6 +2996,7 @@
     const bordered = worldDims.filter((d) => worldBorders[d.id]);
     sel.innerHTML = bordered.map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('') || '<option value="">No borders saved</option>';
     if (chosen && bordered.some((d) => d.id === chosen)) sel.value = chosen;
+    Dirty.reset('borders');
   }
 
   $('pn-borders').addEventListener('input', (e) => {
@@ -3117,6 +3204,7 @@
     const editable = can('settings.server');
     form.querySelectorAll('input, button').forEach((el) => { el.disabled = !editable; });
     perfNeeds();
+    Dirty.reset('perf');
   }
 
   /** Settings that only matter while their switch is on are greyed out (the switch itself stays usable). */
@@ -3501,6 +3589,7 @@
     $('pn-mt-preview').innerHTML = motdHtml(s.motd);
     const editable = can('players.manage');
     form.querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = !editable; });
+    Dirty.reset('maintenance');
   }
 
   $('pn-mt-form').motd.addEventListener('input', (e) => { $('pn-mt-preview').innerHTML = motdHtml(e.target.value); });
@@ -3680,7 +3769,7 @@
     }
     const s = infoData.settings;
     const f = $('pn-info-form');
-    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands']) f.elements[k].checked = !!s[k];
+    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
     // While it's off, the button opens an admin preview here (the public address shows "switched off").
@@ -3695,6 +3784,7 @@
     $('pn-info-props').innerHTML = infoData.propertyKeys.map((k) => `<label class="np-check"><input type="checkbox" value="${esc(k)}" ${s.hiddenProperties.includes(k) ? 'checked' : ''}> ${esc(k)}</label>`).join('')
       || '<p class="pn-hint">Shows after the server has run once with the mod.</p>';
     renderInfoFiles();
+    Dirty.reset('info');
   }
 
   function renderInfoFiles() {
@@ -3717,7 +3807,7 @@
     const f = e.target;
     const body = {
       enabled: f.enabled.checked, title: f.title.value.trim() || 'Server info', intro: f.intro.value,
-      properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked, commands: f.commands.checked,
+      properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked, commands: f.commands.checked, restart: f.restart.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
     };
@@ -4081,6 +4171,17 @@
   renderTheme();
 
   // ── Start ──────────────────────────────────────────────────────────────
+
+  Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
+  Dirty.track('backups', $('pn-backup-settings'), { reload: () => { delete $('pn-backup-settings').dataset.filled; loadBackups(); },
+    extra: () => [...exSet].sort() });
+  Dirty.track('logs', $('pn-cleanup-save').closest('section'), { saveButtons: [$('pn-cleanup-save')], reload: loadCleanup });
+  Dirty.track('borders', $('pn-borders-save').closest('section'), { saveButtons: [$('pn-borders-save')], reload: renderBorders });
+  Dirty.track('discord', $('pn-discord-form'), { reload: loadDiscord });
+  Dirty.track('map', $('pn-map-form'), { reload: loadMap });
+  Dirty.track('maintenance', $('pn-mt-form'), { reload: loadMaintenance, extra: () => [...mtStaff].sort() });
+  Dirty.track('info', $('pn-info-form'), { reload: loadInfo, extra: () => (infoData ? [...infoData.settings.configs].sort() : []) });
+  Dirty.track('perf', $('pn-perf-form'), { reload: loadTuning, extra: () => junk.slice() });
 
   showApp();
   api('api/health').then((h) => { $('pn-version').textContent = h.version; }).catch(() => {});

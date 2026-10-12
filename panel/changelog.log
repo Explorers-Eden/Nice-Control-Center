@@ -1,3 +1,8 @@
+## 1.7.5
+- The screen in place of a page while the server is off has a proper look per state: off (with Start the server and Open the console), starting and stopping (with a progress bar and how long it's been), crashed (with the reason and when it restarts on its own), and running without the mod. It follows the server and opens the page as soon as it's up, instead of reloading every 5 seconds
+- Save buttons only show while something on the page changed, with a Cancel next to them that loads the saved values again (Startup & Java, Backups, log cleanup, Tuning, Borders, Discord, Map, Maintenance, Public info). Leaving the panel with unsaved changes asks first
+- Public info page: the next scheduled restart in the banner, in the reader's own time zone (switch: "Next scheduled restart")
+
 ## 1.7.4
 - Pages load their scripts and styles with the panel version attached (panel.js?v=1.7.4), and the pages themselves aren't cached, so browsers and proxies can't keep showing an old version after an update (the info page kept Commands in the old place)
 - Public info page switched off means off for everyone, admins included. While it's off, the panel's button says "Preview the page" and opens it with a banner that only you can see it

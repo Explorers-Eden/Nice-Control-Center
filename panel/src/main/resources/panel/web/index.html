@@ -200,11 +200,11 @@
 						</div>
 						<div class="pn-field">Leave out of backups
 							<p class="np-card-intro pn-hint">Tick folders and files that shouldn't be backed up. Everything inside a ticked folder is left out too.</p>
-							<div class="pn-tree" id="pn-ex-tree"></div>
+							<div class="pn-tree" id="pn-ex-tree" data-dirty-ignore></div>
 							<div class="pn-ex-patterns">
 								<span class="pn-hint">Patterns:</span>
 								<div class="np-chips" id="pn-ex-patterns"></div>
-								<input type="text" id="pn-ex-add" placeholder="add a pattern, e.g. **/*.log" spellcheck="false">
+								<input type="text" id="pn-ex-add" data-dirty-ignore placeholder="add a pattern, e.g. **/*.log" spellcheck="false">
 							</div>
 						</div>
 						<div class="np-form-actions">
@@ -487,7 +487,7 @@
 						<label class="np-form-row">Mob arrows go after (seconds)<input type="number" name="despawn.arrowSeconds" min="1" max="60"></label>
 					</div>
 					<div class="pn-chips" id="pn-junk"></div>
-					<div class="pn-type-add"><input type="text" id="pn-junk-new" list="pn-item-types" placeholder="Add an item, e.g. cobblestone"><button type="button" class="np-btn small" id="pn-junk-add"><i class="bi bi-plus-lg"></i> Add</button></div>
+					<div class="pn-type-add"><input type="text" id="pn-junk-new" data-dirty-ignore list="pn-item-types" placeholder="Add an item, e.g. cobblestone"><button type="button" class="np-btn small" id="pn-junk-add"><i class="bi bi-plus-lg"></i> Add</button></div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-floppy"></i> Save limits per chunk</h3>
@@ -617,7 +617,7 @@
 								<input type="text" id="pn-mt-add" maxlength="16" placeholder="Add a name" autocomplete="off">
 								<button type="button" class="np-btn small" id="pn-mt-add-btn"><i class="bi bi-plus-lg"></i> Add</button>
 							</div>
-							<div class="pn-staff" id="pn-mt-staff"></div>
+							<div class="pn-staff" id="pn-mt-staff" data-dirty-ignore></div>
 						</div>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
@@ -693,6 +693,7 @@
 						<label class="np-form-row">Game rules<span class="np-switch"><input type="checkbox" name="gamerules"><span></span></span></label>
 						<label class="np-form-row">Data pack settings<span class="np-switch"><input type="checkbox" name="packs"><span></span></span></label>
 						<label class="np-form-row">Performance tweaks that are on<span class="np-switch"><input type="checkbox" name="performance"><span></span></span></label>
+						<label class="np-form-row">Next scheduled restart<span class="np-switch"><input type="checkbox" name="restart"><span></span></span></label>
 						<label class="np-form-row"><span>Commands for everyone <small class="pn-hint">with the descriptions from the Commands page</small></span><span class="np-switch"><input type="checkbox" name="commands"><span></span></span></label>
 					</div>
 					<details class="pn-advanced"><summary>Server settings to leave out</summary>
@@ -703,7 +704,7 @@
 					<h3 class="np-card-title"><i class="bi bi-gear"></i> Mod configs to publish</h3>
 					<p class="np-card-intro">Each ticked file shows as a list of readable settings (comments in the file become descriptions). Values of keys that look like passwords, tokens or keys are blanked out.</p>
 					<input type="search" class="pn-info-filter" id="pn-info-filter" placeholder="Find a file">
-					<div class="pn-checklist" id="pn-info-configs"></div>
+					<div class="pn-checklist" id="pn-info-configs" data-dirty-ignore></div>
 				</section>
 				<div class="pn-sticky-save">
 					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
