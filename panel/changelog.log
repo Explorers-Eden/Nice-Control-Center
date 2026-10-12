@@ -1,3 +1,6 @@
+## 1.7.2
+- Public info page: a Commands part with every command players can use without operator rights, by mod, with the descriptions from the Commands page (your own texts included), their other names (/tell and /w with /msg, /lp with /luckperms…) and how to write them; parts that need more rights (like /goml admin) are left out. Switch: "Commands for everyone" under What's on it
+
 ## 1.7.1
 - Commands page: descriptions for the commands of NiceMerl (/merl, /nicemerl), Discord JustSync (/discord), GOML, LuckPerms, Chunky, BlueMap, Distant Horizons, C2ME, FallingTree, Polymer, ServerCore and spark, and for subcommands with their own rights (e.g. /nicemerl reindex, /goml admin); subcommand descriptions can be edited too
 - Public info page: no "Server info" heading any more; the logo and the server list message lead the page. The title setting is now only the browser tab's title

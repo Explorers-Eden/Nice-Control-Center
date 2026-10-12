@@ -315,7 +315,9 @@ public final class Panel {
 			tuning.register(routes);
 			home.register(routes);
 			info.register(routes);
-			new Commands(dataDir, server, dashboard, audit).register(routes);
+			Commands commandList = new Commands(dataDir, server, dashboard, audit);
+			commandList.register(routes);
+			info.useCommands(commandList);
 			profiles.register(routes);
 			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
 			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {

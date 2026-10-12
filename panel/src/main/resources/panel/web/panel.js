@@ -3680,7 +3680,7 @@
     }
     const s = infoData.settings;
     const f = $('pn-info-form');
-    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance']) f.elements[k].checked = !!s[k];
+    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
     const url = infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
@@ -3715,7 +3715,7 @@
     const f = e.target;
     const body = {
       enabled: f.enabled.checked, title: f.title.value.trim() || 'Server info', intro: f.intro.value,
-      properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked,
+      properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked, commands: f.commands.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
     };

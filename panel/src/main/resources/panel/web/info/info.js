@@ -137,6 +137,26 @@
         children: [...groups].map(([g, list]) => ({ id: slug(g), title: g || 'Other', icon: 'bi-journal-check',
           body: list.map((r) => row(r.name || humanize(r.id), value(r.value), r.description, r.changed ? ' <span class="in-tag">changed</span>' : '')).join('') })) });
     }
+    if (d.commands && d.commands.length) {
+      const groups = new Map();
+      for (const c of d.commands) {
+        if (!groups.has(c.mod)) groups.set(c.mod, { name: c.modName, list: [] });
+        groups.get(c.mod).list.push(c);
+      }
+      const order = [...groups].sort(([a, ga], [b, gb]) => (a === 'minecraft' ? -1 : b === 'minecraft' ? 1 : ga.name.localeCompare(gb.name)));
+      const cmd = (c) => {
+        const search = [c.name, ...(c.aliases || []), c.description, ...(c.usage || []), ...(c.parts || []).map((p) => p.name + ' ' + (p.description || ''))].join(' ').toLowerCase();
+        const usage = (c.usage || []).filter((u) => c.usage.length > 1 || u !== '/' + c.name);
+        return `<div class="in-row in-cmd" data-search="${esc(search)}">
+          <div class="in-row-text"><b><code>/${esc(c.name)}</code>${(c.aliases || []).map((a) => ` <code class="in-alias">/${esc(a)}</code>`).join('')}</b>
+            ${c.description ? `<small>${esc(c.description)}</small>` : ''}
+            ${(c.parts || []).map((p) => `<small class="in-cmd-part"><code>/${esc(p.name)}</code>${p.description ? ' ' + esc(p.description) : ''}</small>`).join('')}
+            ${usage.length ? `<details class="in-cmd-usage"><summary>How to write it</summary>${usage.map((u) => `<code>${esc(u)}</code>`).join('')}</details>` : ''}</div></div>`;
+      };
+      sections.push({ id: 'commands', title: 'Commands', statLabel: 'commands for everyone', icon: 'bi-slash-square', hue: '#ffd166', count: d.commands.length,
+        children: order.map(([id, g]) => ({ id: slug(g.name), title: g.name, icon: id === 'minecraft' ? 'bi-box' : 'bi-puzzle', sub: `${g.list.length} command${g.list.length === 1 ? '' : 's'}`,
+          body: g.list.map(cmd).join('') })) });
+    }
     if (d.packs && d.packs.length) {
       let settings = 0;
       const packs = d.packs.map((p) => {

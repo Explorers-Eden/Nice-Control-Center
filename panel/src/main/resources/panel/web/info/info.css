@@ -131,3 +131,13 @@ body.in-searching .in-crumbs { visibility: hidden; }
 .in-crumbs a { color: var(--muted); }
 .in-crumbs b { color: var(--strong); font-weight: 600; }
 .in-crumbs .bi { font-size: 10px; }
+
+/* Commands */
+.in-cmd .in-row-text code { font-family: var(--mono); font-size: var(--fs-md); font-weight: 600; color: var(--strong); background: rgba(var(--ink), .07); padding: 1px 6px; border-radius: 6px; }
+.in-cmd .in-row-text code.in-alias { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
+.in-cmd-part { margin-top: 4px; }
+.in-cmd-part code { font-size: var(--fs-sm) !important; font-weight: 500 !important; }
+.in-cmd-usage { margin-top: 6px; }
+.in-cmd-usage summary { cursor: pointer; font-size: var(--fs-sm); color: var(--faint); width: max-content; }
+.in-cmd-usage summary:hover { color: var(--accent); }
+.in-cmd-usage code { display: block; width: max-content; max-width: 100%; margin: 4px 0 0 12px; font-size: var(--fs-sm) !important; font-weight: 400 !important; color: var(--muted) !important; overflow-wrap: anywhere; white-space: normal; }

@@ -1,5 +1,6 @@
 package eu.explorerseden.nicecontrolcenter.panel;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -12,7 +13,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -194,6 +198,8 @@ final class Commands {
 	}
 
 	private JsonObject list() {
+		// Fresh enough for a minute: the public info page reads this on every visit.
+		if (last != null && last.has("at") && System.currentTimeMillis() - last.get("at").getAsLong() < 60_000 && server.running()) return last;
 		if (server.running()) {
 			JsonObject fresh = mod.get("/api/commands");
 			if (fresh != null && fresh.has("commands")) {
@@ -217,6 +223,96 @@ final class Commands {
 		return last;
 	}
 
+	/** The command list with descriptions filled in (see {@link #describe}). */
+	private JsonArray described(JsonObject src) {
+		Map<String, String> notes = notes();
+		JsonArray list = src.getAsJsonArray("commands").deepCopy();
+		for (JsonElement e : list) {
+			JsonObject c = e.getAsJsonObject();
+			String name = c.get("name").getAsString();
+			String alias = c.has("aliasOf") ? c.get("aliasOf").getAsString() : null;
+			describe(c, name, alias, notes);
+			if (c.has("subs")) {
+				for (JsonElement se : c.getAsJsonArray("subs")) {
+					JsonObject sub = se.getAsJsonObject();
+					describe(sub, sub.get("name").getAsString(), null, notes);
+				}
+			}
+		}
+		return list;
+	}
+
+	/** Players can use it without operator rights: level 0, or a player-only check that names no permission node. */
+	private static boolean forEveryone(JsonObject c) {
+		int level = c.get("level").getAsInt();
+		return level == 0 || (level == -1 && !c.has("permission"));
+	}
+
+	/**
+	 * For the public info page: the commands every player may use, by mod, with their other names
+	 * (/tp for /teleport) and without the parts that need more rights (their usage lines too).
+	 */
+	List<Map<String, Object>> publicList() {
+		JsonObject src = list();
+		if (src == null) return List.of();
+		JsonArray all = described(src);
+		Map<String, List<String>> aliases = new HashMap<>();
+		for (JsonElement e : all) {
+			JsonObject c = e.getAsJsonObject();
+			if (c.has("aliasOf") && forEveryone(c)) aliases.computeIfAbsent(c.get("aliasOf").getAsString(), k -> new ArrayList<>()).add(c.get("name").getAsString());
+		}
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (JsonElement e : all) {
+			JsonObject c = e.getAsJsonObject();
+			if (c.has("aliasOf") || !forEveryone(c)) continue;
+			String name = c.get("name").getAsString();
+			List<String> hidden = new ArrayList<>();
+			List<Map<String, Object>> parts = new ArrayList<>();
+			if (c.has("subs")) {
+				for (JsonElement se : c.getAsJsonArray("subs")) {
+					JsonObject sub = se.getAsJsonObject();
+					String subName = sub.get("name").getAsString();
+					if (!forEveryone(sub)) {
+						hidden.add("/" + subName);
+						continue;
+					}
+					Map<String, Object> part = new LinkedHashMap<>();
+					part.put("name", subName);
+					if (sub.has("description")) part.put("description", sub.get("description").getAsString());
+					parts.add(part);
+				}
+			}
+			List<String> usage = new ArrayList<>();
+			for (JsonElement u : c.getAsJsonArray("usage")) {
+				String line = u.getAsString();
+				// "/goml [admin] …" or "/goml admin …": a part that needs more rights.
+				String plain = line.replace("[", "").replace("]", "").replace("(", "").replace(")", "");
+				if (hidden.stream().noneMatch(h -> plain.equals(h) || plain.startsWith(h + " "))) usage.add(line);
+			}
+			Map<String, Object> m = new LinkedHashMap<>();
+			m.put("name", name);
+			m.put("mod", c.get("mod").getAsString());
+			m.put("modName", c.get("modName").getAsString());
+			if (c.has("description")) m.put("description", c.get("description").getAsString());
+			m.put("usage", usage);
+			if (aliases.containsKey(name)) m.put("aliases", aliases.get(name));
+			if (!parts.isEmpty()) m.put("parts", parts);
+			// Separate commands that are the same thing (/lp, /luckperms, /perms…): one entry, the others as names.
+			Map<String, Object> same = c.has("description") ? out.stream()
+					.filter(o -> o.get("mod").equals(m.get("mod")) && m.get("description").equals(o.get("description"))).findFirst().orElse(null) : null;
+			if (same != null) {
+				@SuppressWarnings("unchecked")
+				List<String> names = (List<String>) same.computeIfAbsent("aliases", k -> new ArrayList<String>());
+				names.add(name);
+				if (aliases.containsKey(name)) names.addAll(aliases.get(name));
+				continue;
+			}
+			if (m.containsKey("aliases")) m.put("aliases", new ArrayList<>(aliases.get(name)));
+			out.add(m);
+		}
+		return out;
+	}
+
 	private static void describe(JsonObject c, String name, String alias, Map<String, String> notes) {
 		String mine = notes.get(name);
 		if (mine != null && !mine.isBlank()) {
@@ -237,26 +333,12 @@ final class Commands {
 			out.put("running", server.running());
 			out.put("canEdit", me.can(Permissions.SETTINGS_SERVER));
 			if (src == null) {
-				out.put("commands", java.util.List.of());
+				out.put("commands", List.of());
 				json(ctx, out);
 				return;
 			}
-			Map<String, String> notes = notes();
-			JsonObject copy = src.deepCopy();
-			for (JsonElement e : copy.getAsJsonArray("commands")) {
-				JsonObject c = e.getAsJsonObject();
-				String name = c.get("name").getAsString();
-				String alias = c.has("aliasOf") ? c.get("aliasOf").getAsString() : null;
-				describe(c, name, alias, notes);
-				if (c.has("subs")) {
-					for (JsonElement se : c.getAsJsonArray("subs")) {
-						JsonObject sub = se.getAsJsonObject();
-						describe(sub, sub.get("name").getAsString(), null, notes);
-					}
-				}
-			}
-			out.put("commands", copy.get("commands"));
-			if (copy.has("at")) out.put("updated", copy.get("at").getAsLong());
+			out.put("commands", described(src));
+			if (src.has("at")) out.put("updated", src.get("at").getAsLong());
 			json(ctx, out);
 		}));
 		routes.post("/api/commands/describe", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {

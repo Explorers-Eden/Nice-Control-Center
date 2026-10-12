@@ -38,6 +38,8 @@ final class InfoPage {
 		public boolean packs = true;
 		/** The performance tweaks that are switched on (breeding caps, activation range…). */
 		public boolean performance = true;
+		/** The commands every player may use, with descriptions. */
+		public boolean commands = true;
 		/** server.properties keys left out besides the secret ones. */
 		public List<String> hiddenProperties = new ArrayList<>();
 		/** Config files (paths under config/) shown on the page. */
@@ -91,6 +93,12 @@ final class InfoPage {
 	private volatile long liveAt;
 
 	private Auth auth;
+	private Commands commands;
+
+	/** Where the public command list comes from. */
+	void useCommands(Commands commands) {
+		this.commands = commands;
+	}
 
 	/** Admins may look at the page before it's public. */
 	void useAuth(Auth auth) {
@@ -208,6 +216,7 @@ final class InfoPage {
 			out.put("gamerules", rules);
 		}
 		if (s.packs && src.has("packs")) out.put("packs", packs(src.getAsJsonObject("packs")));
+		if (s.commands && commands != null) out.put("commands", commands.publicList());
 		if (s.performance) out.put("performance", performance(Performance.read(serverDir.resolve("config").resolve(Performance.FILE))));
 		List<Map<String, Object>> configs = new ArrayList<>();
 		for (String rel : s.configs) {
