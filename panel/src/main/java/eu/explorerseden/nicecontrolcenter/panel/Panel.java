@@ -124,6 +124,11 @@ public final class Panel {
 		trimmer.useNotifier(alerts);
 		stats.useNotifier(alerts);
 		stats.start();
+		ServerTuning tuning = new ServerTuning(serverDir, server, audit);
+		tuning.useNotifier(alerts);
+		scheduler.useTuning(tuning);
+		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
+		map.useStatus(stats::uptime7d, tuning::maintenance, () -> scheduler.nextWith("restart"));
 
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;
@@ -264,6 +269,8 @@ public final class Panel {
 			new WorldRoutes(trimmer, jobs).register(routes);
 			new PlayerLists(serverDir, server, audit).register(routes);
 			branding.register(routes);
+			tuning.register(routes);
+			home.register(routes);
 			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
 			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				int days;

@@ -33,6 +33,8 @@ public final class Borders {
 		public boolean pregen = true;
 		/** A square hard border also sets the vanilla world border, so players see the wall. */
 		public boolean worldBorder = true;
+		/** Players near the soft border see it as a line of green particles (and a round hard border as red ones). */
+		public boolean showSoft = true;
 
 		/** How far pregeneration goes. */
 		public int reach() {

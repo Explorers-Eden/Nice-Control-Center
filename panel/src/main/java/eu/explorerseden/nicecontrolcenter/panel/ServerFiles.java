@@ -73,12 +73,7 @@ public final class ServerFiles {
 
 	/** The world folder from server.properties (level-name), relative to the server folder. */
 	public String worldFolder() {
-		Properties props = new Properties();
-		try (InputStream in = Files.newInputStream(root.resolve("server.properties"))) {
-			props.load(in);
-		} catch (IOException e) {
-			// Default.
-		}
+		Properties props = ServerTuning.readProperties(root.resolve("server.properties"));
 		String name = props.getProperty("level-name", "world").strip();
 		return name.isEmpty() ? "world" : name;
 	}

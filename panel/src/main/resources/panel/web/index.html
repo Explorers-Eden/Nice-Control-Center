@@ -14,7 +14,7 @@
 	<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 	<link rel="stylesheet" href="app.css">
 	<link rel="stylesheet" href="panel.css">
@@ -38,11 +38,25 @@
 					<button type="button" class="np-btn small danger" data-action="kill" title="Kill: ends the process without saving"><i class="bi bi-x-octagon"></i><span>Kill</span></button>
 				</div>
 				<button type="button" class="np-btn np-theme-btn" id="pn-theme" aria-label="Switch light/dark"><i class="bi bi-moon-stars"></i></button>
-				<button type="button" class="np-btn" id="pn-logout" hidden><i class="bi bi-box-arrow-right"></i><span>Log out</span></button>
+				<div class="pn-user" id="pn-user-menu" hidden>
+					<button type="button" class="np-btn pn-user-btn" id="pn-user-btn" aria-haspopup="menu" aria-expanded="false"><span class="pn-avatar" id="pn-avatar"></span><span id="pn-user-name"></span><i class="bi bi-chevron-down"></i></button>
+					<div class="pn-user-pop" id="pn-user-pop" role="menu" hidden>
+						<button type="button" role="menuitem" data-menu="account"><i class="bi bi-person-circle"></i> Account &amp; password</button>
+						<button type="button" role="menuitem" data-menu="theme" class="pn-menu-theme"><i class="bi bi-circle-half"></i> Light / dark</button>
+						<button type="button" role="menuitem" data-menu="logout" id="pn-logout"><i class="bi bi-box-arrow-right"></i> Log out</button>
+					</div>
+				</div>
 			</div>
 		</div>
 		<section class="np-stats-row" id="pn-stats" aria-label="Server right now" hidden></section>
 	</header>
+
+	<div class="pn-search" id="pn-search" hidden>
+		<div class="pn-search-box" role="dialog" aria-label="Search">
+			<div class="pn-search-input"><i class="bi bi-search"></i><input type="search" id="pn-search-q" placeholder="Jump to a page or setting…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div>
+			<div class="pn-search-results" id="pn-search-results" role="listbox"></div>
+		</div>
+	</div>
 
 	<main class="np-shell">
 		<section class="np-card pn-login" id="pn-login" hidden>
@@ -60,56 +74,31 @@
 
 		<div id="pn-app" class="pn-app" hidden>
 			<nav class="pn-side" id="pn-tabs" aria-label="Sections">
-				<div class="pn-side-group">
-					<span class="pn-side-head">Dashboard</span>
-					<button type="button" class="np-tab" data-tab="mod:overview" data-perm="dashboard.view"><i class="bi bi-speedometer2"></i><span>Overview</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="mod:performance" data-perm="dashboard.view"><i class="bi bi-stopwatch"></i><span>Performance</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="stats" data-perm="server.view"><i class="bi bi-graph-up"></i><span>Stats</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="mod:reports" data-perm="dashboard.view"><i class="bi bi-record-circle"></i><span>Reports</span><span class="pn-badge" hidden></span></button>
-				</div>
-				<div class="pn-side-group">
-					<span class="pn-side-head">Live</span>
-					<button type="button" class="np-tab" data-tab="server" data-perm="console.read"><i class="bi bi-terminal"></i><span>Console</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="mod:chat" data-perm="dashboard.view"><i class="bi bi-chat-dots"></i><span>Chat</span><span class="pn-badge" hidden></span></button>
-				</div>
-				<div class="pn-side-group">
-					<span class="pn-side-head">Players</span>
-					<button type="button" class="np-tab" data-tab="mod:players" data-perm="dashboard.view"><i class="bi bi-people"></i><span>Players</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="players" data-perm="players.manage"><i class="bi bi-person-check"></i><span>Whitelist &amp; bans</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="discord" data-perm="discord.manage"><i class="bi bi-discord"></i><span>Discord</span><span class="pn-badge" hidden></span></button>
-				</div>
-				<div class="pn-side-group">
-					<span class="pn-side-head">World</span>
-					<button type="button" class="np-tab" data-tab="mod:world" data-perm="dashboard.view"><i class="bi bi-globe-americas"></i><span>World health</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="world" data-perm="world.trim"><i class="bi bi-bounding-box"></i><span>Borders &amp; reset</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="map" data-perm="map.manage"><i class="bi bi-map"></i><span>Map</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="mod:packs" data-perm="dashboard.view"><i class="bi bi-toggles"></i><span>Data packs</span><span class="pn-badge" hidden></span></button>
-				</div>
-				<div class="pn-side-group">
-					<span class="pn-side-head">Server</span>
-					<button type="button" class="np-tab" data-tab="mod:server" data-perm="dashboard.view"><i class="bi bi-sliders"></i><span>Game settings</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="schedule" data-perm="server.view"><i class="bi bi-calendar-check"></i><span>Schedule</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="backups" data-perm="backup.view"><i class="bi bi-archive"></i><span>Backups</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="files" data-perm="files.read"><i class="bi bi-folder2-open"></i><span>Files</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="configs" data-perm-any="files.config files.read"><i class="bi bi-gear"></i><span>Configs</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="versions" data-perm="server.view"><i class="bi bi-box-seam"></i><span>Minecraft version</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="mod:updates" data-perm="dashboard.view"><i class="bi bi-cloud-arrow-down"></i><span>Mod updates</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="java" data-perm="server.view"><i class="bi bi-cpu"></i><span>Startup &amp; Java</span><span class="pn-badge" hidden></span></button>
-				</div>
-				<div class="pn-side-group">
-					<span class="pn-side-head">Admin</span>
-					<button type="button" class="np-tab" data-tab="users" data-perm="users.admin"><i class="bi bi-people-fill"></i><span>Users</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="appearance" data-perm-any="users.admin map.manage"><i class="bi bi-palette"></i><span>Appearance</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="audit" data-perm="audit.view"><i class="bi bi-journal-text"></i><span>Audit log</span><span class="pn-badge" hidden></span></button>
-					<button type="button" class="np-tab" data-tab="account"><i class="bi bi-person-circle"></i><span>Account</span><span class="pn-badge" hidden></span></button>
-				</div>
+				<button type="button" class="pn-side-search" id="pn-search-open"><i class="bi bi-search"></i><span>Search</span><kbd id="pn-search-key">⌘K</kbd></button>
+				<div id="pn-side-groups"></div>
 			</nav>
 			<div class="pn-content">
+			<header class="pn-page-head" id="pn-page-head">
+				<div class="pn-page-title"><h2 id="pn-page-title"></h2><p id="pn-page-desc"></p></div>
+				<div class="pn-subtabs" id="pn-subtabs" role="tablist"></div>
+			</header>
 			<p class="pn-state-note" id="pn-sub" hidden></p>
 
 			<section class="np-card pn-notice" id="pn-eula" hidden>
 				<p>The Minecraft server only starts once you accept the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener">Minecraft EULA</a>.</p>
 				<button type="button" class="np-btn primary" id="pn-eula-accept"><i class="bi bi-check2"></i> I accept the EULA</button>
+			</section>
+
+			<section class="pn-home" id="pn-home" hidden>
+				<div class="np-card pn-attention" id="pn-attention" hidden>
+					<h3 class="np-card-title"><i class="bi bi-exclamation-circle"></i> Needs attention</h3>
+					<ul class="pn-attn-list" id="pn-attn-list"></ul>
+				</div>
+				<div class="np-card pn-setup" id="pn-setup" hidden>
+					<h3 class="np-card-title"><i class="bi bi-check2-square"></i> Getting set up <span class="pn-count" id="pn-setup-count"></span>
+						<button type="button" class="np-btn small pn-setup-hide" id="pn-setup-hide" title="Hide the checklist">Hide</button></h3>
+					<ul class="pn-setup-list" id="pn-setup-list"></ul>
+				</div>
 			</section>
 
 			<div class="np-tab-panel pn-dashboard" data-tab="dashboard" hidden>
@@ -146,12 +135,16 @@
 						<label class="np-form-row" title="Gives the panel its Dashboard tab. Checked before every start.">Install and update the Nice Control Center mod<span class="np-switch"><input type="checkbox" name="companionMod"><span></span></span></label>
 						<label class="np-form-row">Minimum memory (MB)<input type="number" name="memoryMinMb" min="128" step="256"></label>
 						<label class="np-form-row">Maximum memory (MB)<input type="number" name="memoryMaxMb" min="512" step="256"></label>
-						<label class="np-form-row">Garbage collector flags<select name="preset"></select></label>
+					</div>
+					<details class="pn-advanced"><summary>Advanced</summary>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Garbage collector flags<span class="pn-comment">ZGC keeps pauses short; the default fits most servers.</span></span><select name="preset"></select></label>
 						<label class="np-form-row">Java runtime<select name="javaPath"></select></label>
 						<label class="np-form-row">Server jar<input type="text" name="serverJar"></label>
 						<label class="np-form-row">Seconds to wait for a clean stop<input type="number" name="stopTimeoutSeconds" min="10" max="600"></label>
 					</div>
 					<label class="pn-field">Extra JVM flags<input type="text" name="customArgs" placeholder="e.g. -Dfile.encoding=UTF-8" spellcheck="false"></label>
+					</details>
 					<p class="pn-preview-label">Command line</p>
 					<pre class="np-pre pn-preview" id="pn-preview"></pre>
 					<div class="np-form-actions">
@@ -397,6 +390,10 @@
 						<span class="np-form-msg" id="pn-pl-msg"></span>
 					</div>
 				</section>
+				<section class="np-card" id="pn-pl-online-card" hidden>
+					<h3 class="np-card-title"><i class="bi bi-broadcast"></i> Online now <span class="pn-count" id="pn-pl-online-count"></span></h3>
+					<div class="np-table-wrap"><table class="np-table" id="pn-pl-online"></table></div>
+				</section>
 				<div class="pn-pl-grid">
 					<section class="np-card"><h3 class="np-card-title"><i class="bi bi-list-check"></i> Whitelist <span class="pn-count" id="pn-pl-wl-count"></span></h3><div class="np-table-wrap"><table class="np-table" id="pn-pl-whitelist"></table></div></section>
 					<section class="np-card"><h3 class="np-card-title"><i class="bi bi-shield-check"></i> Operators <span class="pn-count" id="pn-pl-op-count"></span></h3><div class="np-table-wrap"><table class="np-table" id="pn-pl-ops"></table></div></section>
@@ -405,13 +402,148 @@
 				</div>
 			</div>
 
+			<div class="np-tab-panel" data-tab="tuning" hidden>
+				<form id="pn-perf-form" autocomplete="off">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-graph-down-arrow"></i> Step down while it lags</h3>
+					<p class="np-card-intro">When ticks take longer than the target for a while, the server lowers the <span data-help="sim">simulation distance</span> one step every 10 seconds, then the mob caps, then the <span data-help="view">view distance</span>. Once it has been calm for a minute, it goes back up step by step. Nothing is saved: a restart starts from your normal settings.</p>
+					<p class="pn-perf-live" id="pn-perf-live"></p>
+					<div class="np-form-grid">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="dynamic.enabled"><span></span></span></label>
+						<label class="np-form-row"><span>Step down above <span data-help="mspt">MSPT</span></span><input type="number" name="dynamic.targetMspt" min="5" max="200"></label>
+						<label class="np-form-row">Go back up below (MSPT)<input type="number" name="dynamic.recoverMspt" min="1" max="199"></label>
+						<label class="np-form-row">Lowest simulation distance<input type="number" name="dynamic.simulationMin" min="2" max="32"></label>
+						<label class="np-form-row">Lowest mob cap (%)<input type="number" name="dynamic.mobCapMin" min="10" max="100" step="10"></label>
+						<label class="np-form-row">Also lower the view distance<span class="np-switch"><input type="checkbox" name="dynamic.view"><span></span></span></label>
+						<label class="np-form-row">Lowest view distance<input type="number" name="dynamic.viewMin" min="2" max="32"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-moon"></i> Tick less where nobody is</h3>
+					<p class="np-card-intro">Mobs far from every player only move every few ticks (like Paper's <i>entity activation range</i>). Mobs that are falling, swimming, fighting, burning, on a lead, riding or in a raid always tick. Items, XP, minecarts and farms are never slowed down.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="activation.enabled"><span></span></span></label>
+					</div>
+					<details class="pn-advanced"><summary>Advanced</summary>
+						<div class="np-form-grid">
+							<label class="np-form-row">Monsters: active within (blocks)<input type="number" name="activation.monsters" min="8" max="256"></label>
+							<label class="np-form-row">Animals: active within (blocks)<input type="number" name="activation.animals" min="8" max="256"></label>
+							<label class="np-form-row">Villagers: active within (blocks)<input type="number" name="activation.villagers" min="8" max="256"></label>
+							<label class="np-form-row">Other mobs: active within (blocks)<input type="number" name="activation.other" min="8" max="256"></label>
+							<label class="np-form-row">Farther away, tick every … ticks<input type="number" name="activation.every" min="2" max="40"></label>
+						</div>
+					</details>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-intersect"></i> Fewer things to tick</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Merge dropped items and XP from farther away<span class="pn-comment">Vanilla merges within half a block; fewer item entities on the ground.</span></span><span class="np-switch"><input type="checkbox" name="merge.enabled"><span></span></span></label>
+						<label class="np-form-row">Items merge within (blocks)<input type="number" name="merge.items" min="0.5" max="8" step="0.5"></label>
+						<label class="np-form-row">XP merges within (blocks)<input type="number" name="merge.xp" min="0.5" max="8" step="0.5"></label>
+						<label class="np-form-row"><span>Breeding caps<span class="pn-comment">Animals and villagers don't breed while too many of their kind live nearby.</span></span><span class="np-switch"><input type="checkbox" name="breeding.enabled"><span></span></span></label>
+						<label class="np-form-row">Animals of one kind, at most<input type="number" name="breeding.animals" min="2" max="1000"></label>
+						<label class="np-form-row">Villagers, at most<input type="number" name="breeding.villagers" min="2" max="1000"></label>
+						<label class="np-form-row">Counted within (blocks)<input type="number" name="breeding.radius" min="4" max="128"></label>
+						<label class="np-form-row"><span>Villagers in trading cells think less<span class="pn-comment">Villagers that can't move (1×1 cells, minecarts) run their brain only every few ticks. Trading and restocking still work.</span></span><span class="np-switch"><input type="checkbox" name="villagers.lobotomize"><span></span></span></label>
+						<label class="np-form-row">…every … ticks<input type="number" name="villagers.every" min="2" max="100"></label>
+					</div>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-perf-msg"></span>
+						<span class="pn-hint">Applies within a few seconds, no restart needed.</span>
+					</div>
+				</section>
+				</form>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Clean up now</h3>
+					<p class="np-card-intro">Check first to see how much would go. Named, tamed, leashed and persistent mobs are never removed. To clean up regularly, add a <b>Clean up</b> step in Schedule.</p>
+					<div class="pn-cleanup-row">
+						<span class="pn-cleanup-label"><b>Dropped items and XP orbs</b><span id="pn-cl-items-note"></span></span>
+						<button type="button" class="np-btn small" data-cleanup="items" data-run="0">Check</button>
+						<button type="button" class="np-btn small danger" data-cleanup="items" data-run="1">Remove</button>
+					</div>
+					<div class="pn-cleanup-row">
+						<span class="pn-cleanup-label"><b>Mobs over <input type="number" id="pn-cl-per" value="24" min="1" max="500"> of one kind per chunk</b><span id="pn-cl-excess-note"></span></span>
+						<button type="button" class="np-btn small" data-cleanup="excess" data-run="0">Check</button>
+						<button type="button" class="np-btn small danger" data-cleanup="excess" data-run="1">Remove</button>
+					</div>
+					<div class="np-table-wrap" id="pn-cl-table-wrap" hidden><table class="np-table" id="pn-cl-table"></table></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-snow"></i> Laggiest chunks</h3>
+					<p class="np-card-intro">The chunks that took the most time in the last 15 minutes. <b>Freeze</b> stops everything in a chunk (mobs, furnaces, hoppers, farms) until you unfreeze it, as a stopgap until you can fix what's there.</p>
+					<div class="np-table-wrap"><table class="np-table" id="pn-hotspots"></table></div>
+					<h4 class="pn-subhead">Frozen chunks <span class="pn-count" id="pn-frozen-count"></span></h4>
+					<div class="np-table-wrap"><table class="np-table" id="pn-frozen"></table></div>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="maintenance" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-cone-striped"></i> Maintenance mode</h3>
+					<p class="np-card-intro">While it's on, only operators and the staff below can join. The server list shows the maintenance message (and icon), and everyone else is warned in chat and kicked after the countdown. Applies right away, no restart.</p>
+					<form id="pn-mt-form" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row"><b>Maintenance mode</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+							<label class="np-form-row">Warn players for … seconds before kicking<input type="number" name="countdown" min="0" max="600"></label>
+						</div>
+						<label class="pn-field"><span>Server list message while in maintenance (<code>§</code> colour codes, two lines)</span><textarea name="motd" rows="2" maxlength="300" spellcheck="false"></textarea></label>
+						<div class="pn-motd-preview" id="pn-mt-preview"></div>
+						<label class="pn-field">Message for players who can't join<textarea name="kickMessage" rows="2" maxlength="500"></textarea></label>
+						<label class="pn-field">Staff who may still join besides operators (one name per line)<textarea name="staff" rows="3" spellcheck="false"></textarea></label>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-mt-msg"></span>
+						</div>
+					</form>
+					<p class="pn-hint">The icon shown during maintenance is set under <a href="#settings/server-list">Settings → Server list</a>. To switch maintenance on a schedule, add a <b>Maintenance</b> step in Schedule.</p>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="serverlist" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-list-ul"></i> Server list entry</h3>
+					<p class="np-card-intro" id="pn-sl-intro">What players see in their multiplayer list. Changes show after the next restart.</p>
+					<div class="pn-sl-preview">
+						<img id="pn-sl-preview-icon" alt="" width="64" height="64">
+						<div><b id="pn-sl-preview-name">Minecraft Server</b><div class="pn-motd-preview" id="pn-sl-preview"></div></div>
+						<span class="pn-sl-players" id="pn-sl-players"></span>
+					</div>
+					<form id="pn-sl-form" autocomplete="off">
+						<label class="pn-field"><span>Message of the day (<code>§</code> colour codes like <code>§6</code> gold, <code>§l</code> bold; two lines)</span><textarea name="motd" rows="2" maxlength="300" spellcheck="false"></textarea></label>
+						<div class="pn-colors" id="pn-sl-colors"></div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-sl-msg"></span>
+						</div>
+					</form>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-image"></i> Icons</h3>
+					<p class="np-card-intro">Any PNG, JPEG or GIF; it's scaled to 64 × 64.</p>
+					<div class="pn-logos">
+						<div class="pn-logo-slot pn-icon-slot" data-icon="normal">
+							<b>Server icon</b>
+							<div class="pn-logo-preview"><img alt="" hidden><span>No icon</span></div>
+							<div class="np-form-actions"><label class="np-btn small"><i class="bi bi-upload"></i> Upload<input type="file" accept="image/png,image/jpeg,image/gif" hidden></label><button type="button" class="np-btn small" data-icon-remove>Remove</button></div>
+						</div>
+						<div class="pn-logo-slot pn-icon-slot" data-icon="maintenance">
+							<b>Icon during maintenance</b>
+							<div class="pn-logo-preview"><img alt="" hidden><span>Same as the server icon</span></div>
+							<div class="np-form-actions"><label class="np-btn small"><i class="bi bi-upload"></i> Upload<input type="file" accept="image/png,image/jpeg,image/gif" hidden></label><button type="button" class="np-btn small" data-icon-remove>Remove</button></div>
+						</div>
+					</div>
+					<span class="np-form-msg" id="pn-icon-msg"></span>
+				</section>
+			</div>
+
 			<div class="np-tab-panel" data-tab="world" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Borders</h3>
 					<p class="np-card-intro">Per dimension, distances in blocks from the center. Inside the <b>soft border</b> is the permanent area: it's never trimmed. Between the soft and the <b>hard border</b> lie the outer wilds, which a scheduled task can reset (trim) every week. Nobody gets past the hard border: players are put back inside, and a square one also sets the world border so they see the wall. Hard border 0 = none.</p>
 					<div class="np-table-wrap">
 						<table class="np-table pn-borders" id="pn-borders">
-							<thead><tr><th>Dimension</th><th>On</th><th>Shape</th><th>Center x</th><th>Center z</th><th>Soft border</th><th>Hard border</th><th title="Pregenerate this dimension">Pregen</th><th title="A square hard border also sets the vanilla world border">World border</th></tr></thead>
+							<thead><tr><th>Dimension</th><th>On</th><th>Shape</th><th>Center x</th><th>Center z</th><th>Soft border</th><th>Hard border</th><th title="Pregenerate this dimension">Pregen</th><th title="A square hard border also sets the vanilla world border">World border</th><th title="Players near the soft border see it as green particles (a round hard border as red ones)">Show soft border</th></tr></thead>
 							<tbody></tbody>
 						</table>
 					</div>
@@ -460,6 +592,9 @@
 							<label class="np-form-row">Title<input type="text" name="title" maxlength="60"></label>
 							<label class="np-form-row">Show online players<span class="np-switch"><input type="checkbox" name="showPlayers"><span></span></span></label>
 							<label class="np-form-row">Show claims (Get Off My Lawn)<span class="np-switch"><input type="checkbox" name="showClaims"><span></span></span></label>
+							<label class="np-form-row">Show the server status (online, players, uptime, next restart)<span class="np-switch"><input type="checkbox" name="showStatus"><span></span></span></label>
+							<label class="np-form-row">…with the names of who's online<span class="np-switch"><input type="checkbox" name="statusNames"><span></span></span></label>
+							<label class="np-form-row">…with the in-game date and time (Nice Actions calendar)<span class="np-switch"><input type="checkbox" name="showClock"><span></span></span></label>
 							<label class="np-form-row">Waypoint hubs<select name="hubs"><option value="public">Public ones</option><option value="all">All</option><option value="none">None</option></select></label>
 						</div>
 						<div class="pn-field">Dimensions on the map<div class="np-chips pn-role-picks" id="pn-map-dims"></div></div>

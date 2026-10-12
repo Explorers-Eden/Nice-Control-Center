@@ -28,7 +28,7 @@
     loggedIn = false;
     me = null;
     $('pn-app').hidden = true;
-    $('pn-logout').hidden = true;
+    $('pn-user-menu').hidden = true;
     $('pn-state-pill').hidden = true;
     $('pn-power').hidden = true;
     $('pn-stats').hidden = true;
@@ -51,8 +51,9 @@
     $('pn-version').textContent = me.version;
     $('pn-login').hidden = true;
     $('pn-app').hidden = false;
-    $('pn-logout').hidden = false;
-    $('pn-logout').title = 'Logged in as ' + me.user;
+    $('pn-user-menu').hidden = false;
+    $('pn-user-name').textContent = me.user;
+    $('pn-avatar').textContent = (me.user || '?').slice(0, 1).toUpperCase();
     applyPermissions();
     if (can('console.read')) openConsole();
     if (can('server.view')) {
@@ -60,6 +61,124 @@
       loadSettings();
       pollServer();
     }
+  }
+
+  // ── Navigation ─────────────────────────────────────────────────────────
+  // One sidebar entry per area; related pages are sub-tabs of it. Each sub-tab is one page (a panel
+  // section, or a page of the mod's dashboard shown in the frame: "mod:<page>").
+
+  const NAV = [
+    { group: '', items: [
+      { id: 'home', label: 'Home', icon: 'bi-house', subs: [
+        { tab: 'mod:overview', label: 'Overview', perm: 'dashboard.view', desc: 'How the server is doing right now, and anything that needs your attention.' }] },
+      { id: 'console', label: 'Console', icon: 'bi-terminal', subs: [
+        { tab: 'server', label: 'Console', perm: 'console.read', desc: 'The server log as it happens. Type commands below it.' },
+        { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' }] },
+      { id: 'players', label: 'Players', icon: 'bi-people', subs: [
+        { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
+        { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' },
+        { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
+      { id: 'performance', label: 'Performance', icon: 'bi-speedometer2', subs: [
+        { tab: 'mod:performance', label: 'Live', perm: 'dashboard.view', desc: 'What takes the server\'s time right now, tick by tick.' },
+        { tab: 'stats', label: 'History', perm: 'server.view', desc: 'TPS, players, memory and disk over days and weeks.' },
+        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' },
+        { tab: 'tuning', label: 'Tuning', perm: 'dashboard.view', desc: 'Make the server lighter: tick less where nobody is, cap what piles up, step down while it lags.' }] },
+      { id: 'world', label: 'World', icon: 'bi-globe-americas', subs: [
+        { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'Chunks, entities and the places that cost the most.' },
+        { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'Decide which part of the world is permanent, pregenerate it, and reset the rest on a schedule.' },
+        { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' }] },
+    ] },
+    { group: 'Server', items: [
+      { id: 'settings', label: 'Settings', icon: 'bi-sliders', subs: [
+        { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'Game rules and server.properties.' },
+        { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
+        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' }] },
+      { id: 'schedule', label: 'Schedule', icon: 'bi-calendar-check', subs: [
+        { tab: 'schedule', label: 'Schedule', perm: 'server.view', desc: 'Things that happen on their own: restarts, backups, resets, messages.' }] },
+      { id: 'backups', label: 'Backups', icon: 'bi-archive', subs: [
+        { tab: 'backups', label: 'Backups', perm: 'backup.view', desc: 'Copies of the world and server to go back to.' }] },
+      { id: 'files', label: 'Files', icon: 'bi-folder2-open', subs: [
+        { tab: 'files', label: 'All files', perm: 'files.read', desc: 'Everything in the server folder.' },
+        { tab: 'configs', label: 'Mod configs', permAny: 'files.config files.read', desc: 'The mods\' settings files, grouped by mod.' },
+        { tab: 'mod:packs', label: 'Data pack settings', perm: 'dashboard.view', desc: 'Options the data packs offer.' }] },
+      { id: 'updates', label: 'Updates', icon: 'bi-cloud-arrow-down', subs: [
+        { tab: 'versions', label: 'Minecraft', perm: 'server.view', desc: 'Move the server to another Minecraft version, with the mods to match.' },
+        { tab: 'mod:updates', label: 'Mods', perm: 'dashboard.view', desc: 'Newer versions of the installed mods and the resource pack.' }] },
+    ] },
+    { group: 'Admin', items: [
+      { id: 'users', label: 'Users & roles', icon: 'bi-person-gear', subs: [
+        { tab: 'users', label: 'Users & roles', perm: 'users.admin', desc: 'Who can log in to the panel and what they may do.' }] },
+      { id: 'discord', label: 'Discord', icon: 'bi-discord', subs: [
+        { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
+      { id: 'appearance', label: 'Appearance', icon: 'bi-palette', subs: [
+        { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage', desc: 'Logos for the panel and the map.' }] },
+      { id: 'audit', label: 'Audit log', icon: 'bi-journal-text', subs: [
+        { tab: 'audit', label: 'Audit log', perm: 'audit.view', desc: 'Every change made through the panel, and by whom.' }] },
+    ] },
+  ];
+  /** Pages outside the sidebar (the user menu). */
+  const EXTRA = { account: { tab: 'account', label: 'Account', desc: 'Your password and SSH keys for SFTP.' } };
+  const ENTRY_OF = {};
+  const SUB_OF = {};
+  NAV.forEach((g) => g.items.forEach((e) => e.subs.forEach((sub) => { ENTRY_OF[sub.tab] = e; SUB_OF[sub.tab] = sub; })));
+  const allowed = (sub) => (sub.perm ? can(sub.perm) : sub.permAny ? sub.permAny.split(' ').some(can) : true);
+  const subsOf = (entry) => entry.subs.filter(allowed);
+  /** Badges by page (the mod's counts), added up on their sidebar entry. */
+  const badges = {};
+
+  function renderSide() {
+    $('pn-side-groups').innerHTML = NAV.map((g) => {
+      const items = g.items.filter((e) => subsOf(e).length);
+      if (!items.length) return '';
+      return `<div class="pn-side-group">${g.group ? `<span class="pn-side-head">${esc(g.group)}</span>` : ''}
+        ${items.map((e) => `<button type="button" class="np-tab" data-entry="${e.id}"><i class="bi ${e.icon}"></i><span>${esc(e.label)}</span><span class="pn-badge" hidden></span></button>`).join('')}</div>`;
+    }).join('');
+    renderBadges();
+  }
+
+  function renderBadges() {
+    document.querySelectorAll('#pn-side-groups [data-entry]').forEach((b) => {
+      const entry = NAV.flatMap((g) => g.items).find((e) => e.id === b.dataset.entry);
+      const total = subsOf(entry).reduce((n, sub) => n + (Number(badges[sub.tab]) || 0), 0);
+      const el = b.querySelector('.pn-badge');
+      el.hidden = !total;
+      el.textContent = total || '';
+    });
+    document.querySelectorAll('#pn-subtabs [data-tab]').forEach((b) => {
+      const el = b.querySelector('.pn-badge');
+      const n = badges[b.dataset.tab];
+      el.hidden = !n;
+      el.textContent = n || '';
+    });
+  }
+
+  function renderPageHead(tab) {
+    const entry = ENTRY_OF[tab];
+    const sub = SUB_OF[tab] || EXTRA[tab];
+    const subs = entry ? subsOf(entry) : [];
+    $('pn-page-title').textContent = entry && subs.length > 1 ? entry.label : (sub ? sub.label : '');
+    $('pn-page-desc').textContent = sub ? sub.desc : '';
+    $('pn-subtabs').hidden = subs.length < 2;
+    $('pn-subtabs').innerHTML = subs.length < 2 ? '' : subs.map((x) => `<button type="button" role="tab" class="pn-subtab${x.tab === tab ? ' active' : ''}" aria-selected="${x.tab === tab}" data-tab="${x.tab}">${esc(x.label)}<span class="pn-badge" hidden></span></button>`).join('');
+    renderBadges();
+  }
+
+  /** "#players/maintenance" for a page, so links and reloads land on it. */
+  function hashOf(tab) {
+    const entry = ENTRY_OF[tab];
+    if (!entry) return tab;
+    const subs = entry.subs;
+    return subs.length > 1 ? entry.id + '/' + subs.find((x) => x.tab === tab).label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : entry.id;
+  }
+
+  function tabFromHash(hash) {
+    const [id, sub] = hash.replace(/^#/, '').split('/');
+    if (EXTRA[id]) return id;
+    const entry = NAV.flatMap((g) => g.items).find((e) => e.id === id);
+    if (!entry) return null;
+    const subs = subsOf(entry);
+    const hit = sub && subs.find((x) => hashOf(x.tab).split('/')[1] === sub);
+    return (hit || subs[0] || {}).tab || null;
   }
 
   // ── Tabs and permissions ───────────────────────────────────────────────
@@ -70,7 +189,7 @@
     document.querySelectorAll('#pn-app [data-perm]').forEach((el) => { el.hidden = !can(el.dataset.perm); });
     document.querySelectorAll('#pn-app [data-perm-any]').forEach((el) => { el.hidden = !el.dataset.permAny.split(' ').some(can); });
     $('pn-power').hidden = !can('server.power');
-    document.querySelectorAll('.pn-side-group').forEach((g) => { g.hidden = ![...g.querySelectorAll('.np-tab')].some((b) => !b.hidden); });
+    renderSide();
     $('pn-menu-btn').hidden = false;
     $('pn-command-form').hidden = !can('console.write');
     const editable = can('settings.java');
@@ -81,6 +200,7 @@
     // Old links (?tab=dashboard#players) open that page of the mod's dashboard.
     if (tab === 'dashboard') tab = 'mod:' + (location.hash.slice(1).split(/[/?]/)[0] || 'overview');
     if (tab) history.replaceState(null, '', location.pathname);
+    if (!tab && location.hash.length > 1) tab = tabFromHash(location.hash);
     if (!tab) {
       tab = 'mod:overview';
       try { tab = localStorage.getItem(TAB_KEY) || tab; } catch (e) { /* default */ }
@@ -98,6 +218,7 @@
     if (activeTab === 'schedule') loadSchedule();
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
     if (activeTab === 'world') worldTick();
+    if (activeTab === 'tuning') loadPerfLive();
     if (activeTab === 'players' && !document.querySelector('#pn-pl-form :focus')) loadPlayerLists();
     if (activeTab === 'stats' && Date.now() - (statsData ? statsData.to : 0) > 60000) loadStats();
   }, 2000);
@@ -110,7 +231,9 @@
     body.embedded { min-height: 0 !important; }
     body.embedded > .navbar, body.embedded .np-tabs, body.embedded .np-toasts { display: none !important; }
     body.embedded .np-inspector-list { height: 640px !important; }
-    body.embedded .np-console-log { height: 520px !important; }`;
+    body.embedded .np-console-log { height: 520px !important; }
+    /* Kick and ban live on Players → Whitelist & bans. */
+    body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }`;
   let frameResize = null;
 
   function showDashboard(page) {
@@ -152,33 +275,44 @@
   setInterval(() => {
     if (!loggedIn) return;
     const page = framePage();
-    if (page && activeTab.startsWith('mod:') && activeTab !== 'mod:' + page && document.querySelector(`#pn-tabs .np-tab[data-tab="mod:${page}"]`)) markTab('mod:' + page);
+    if (page && activeTab.startsWith('mod:') && activeTab !== 'mod:' + page && SUB_OF['mod:' + page]) markTab('mod:' + page);
     try {
       const doc = $('pn-dashboard-frame').contentDocument;
+      let changed = false;
       doc.querySelectorAll('#np-tabs .np-tab').forEach((t) => {
-        const badge = document.querySelector(`#pn-tabs .np-tab[data-tab="mod:${t.dataset.tab}"] .pn-badge`);
         const src = t.querySelector('.np-tab-badge');
-        if (!badge || !src) return;
-        badge.hidden = src.hidden || !src.textContent.trim();
-        badge.textContent = src.textContent.trim();
+        if (!src) return;
+        const n = src.hidden ? '' : src.textContent.trim();
+        if ((badges['mod:' + t.dataset.tab] || '') !== n) { badges['mod:' + t.dataset.tab] = n; changed = true; }
       });
+      if (changed) renderBadges();
     } catch (e) { /* not loaded */ }
   }, 700);
 
   function markTab(tab) {
     activeTab = tab;
-    document.querySelectorAll('#pn-tabs .np-tab').forEach((b) => {
-      b.classList.toggle('active', b.dataset.tab === tab);
-      b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false');
+    const entry = ENTRY_OF[tab];
+    document.querySelectorAll('#pn-side-groups [data-entry]').forEach((b) => {
+      const on = !!entry && b.dataset.entry === entry.id;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-current', on ? 'page' : 'false');
     });
+    renderPageHead(tab);
+    history.replaceState(null, '', '#' + hashOf(tab));
     try { localStorage.setItem(TAB_KEY, tab); } catch (e) { /* not remembered */ }
   }
 
   function selectTab(tab) {
-    const visible = [...document.querySelectorAll('#pn-tabs .np-tab')].filter((b) => !b.hidden).map((b) => b.dataset.tab);
+    const visible = NAV.flatMap((g) => g.items).flatMap(subsOf).map((x) => x.tab).concat(Object.keys(EXTRA));
     if (!visible.includes(tab)) tab = visible[0];
     const panel = tab.startsWith('mod:') ? 'dashboard' : tab;
     markTab(tab);
+    if (ENTRY_OF[tab]) try { localStorage.setItem('pn-sub-' + ENTRY_OF[tab].id, tab); } catch (e) { /* not remembered */ }
+    $('pn-home').hidden = tab !== 'mod:overview';
+    if (tab === 'mod:overview') loadHome();
+    if (tab === 'tuning') loadTuning();
+    if (tab === 'maintenance') loadMaintenance();
+    if (tab === 'serverlist') loadServerList();
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -223,7 +357,7 @@
   showBrandLogo();
 
   function loadLogos() {
-    document.querySelectorAll('.pn-logo-slot').forEach((slot) => {
+    document.querySelectorAll('.pn-logo-slot[data-logo]').forEach((slot) => {
       const img = slot.querySelector('img');
       const empty = slot.querySelector('.pn-logo-preview span');
       img.onload = () => { img.hidden = false; empty.hidden = true; };
@@ -232,7 +366,7 @@
     });
   }
 
-  document.querySelectorAll('.pn-logo-slot').forEach((slot) => {
+  document.querySelectorAll('.pn-logo-slot[data-logo]').forEach((slot) => {
     const which = slot.dataset.logo;
     slot.querySelector('input[type="file"]').addEventListener('change', async (e) => {
       const file = e.target.files[0];
@@ -313,8 +447,38 @@
   }
 
   $('pn-tabs').addEventListener('click', (e) => {
-    const b = e.target.closest('.np-tab');
+    const b = e.target.closest('[data-entry]');
+    if (!b) return;
+    const entry = NAV.flatMap((g) => g.items).find((x) => x.id === b.dataset.entry);
+    // Back to the sub-tab last used in this area.
+    let last = null;
+    try { last = localStorage.getItem('pn-sub-' + entry.id); } catch (err) { /* first one */ }
+    const subs = subsOf(entry);
+    selectTab((subs.find((x) => x.tab === last) || subs[0]).tab);
+  });
+  $('pn-subtabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tab]');
     if (b) selectTab(b.dataset.tab);
+  });
+  window.addEventListener('hashchange', () => {
+    const tab = tabFromHash(location.hash);
+    if (loggedIn && tab && tab !== activeTab) selectTab(tab);
+  });
+
+  // User menu: account and log out.
+  $('pn-user-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const pop = $('pn-user-pop');
+    pop.hidden = !pop.hidden;
+    $('pn-user-btn').setAttribute('aria-expanded', String(!pop.hidden));
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('#pn-user-menu')) $('pn-user-pop').hidden = true; });
+  $('pn-user-pop').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-menu]');
+    if (!b) return;
+    $('pn-user-pop').hidden = true;
+    if (b.dataset.menu === 'account') selectTab('account');
+    if (b.dataset.menu === 'theme') $('pn-theme').click();
   });
 
   $('pn-login-form').addEventListener('submit', async (e) => {
@@ -1172,7 +1336,8 @@
   // ── Scheduled tasks ────────────────────────────────────────────────────
 
   let scheduleData = null;
-  const STEP_LABELS = { restart: 'Restart', stop: 'Stop the server', start: 'Start the server', backup: 'Backup', command: 'Console command', say: 'Chat message', wait: 'Wait', trim: 'Reset the outer wilds', pregen: 'Pregenerate' };
+  const STEP_LABELS = { restart: 'Restart', stop: 'Stop the server', start: 'Start the server', backup: 'Backup', command: 'Console command', say: 'Chat message', wait: 'Wait', trim: 'Reset the outer wilds', pregen: 'Pregenerate',
+    cleanup: 'Clean up', maintenance: 'Maintenance mode' };
 
   async function loadSchedule() {
     try {
@@ -1279,6 +1444,8 @@
       case 'backup': return 'backup' + (s.text ? ` (${s.text})` : '');
       case 'trim': return (s.minutes ? `reset the outer wilds after ${s.minutes} min countdown` : 'reset the outer wilds') + (s.backup ? ' (backup first)' : '');
       case 'pregen': return s.text === 'all' ? 'pregenerate everything' : 'pregenerate the outer wilds';
+      case 'cleanup': return (s.text || '').startsWith('excess') ? `remove mobs over ${s.text.split(':')[1]} per chunk` : 'clear dropped items';
+      case 'maintenance': return s.text === 'off' ? 'maintenance off' : 'maintenance on';
       default: return STEP_LABELS[s.type].toLowerCase();
     }
   }
@@ -1342,6 +1509,13 @@
     if (s.type === 'pregen') fields = `<select data-f="text"><option value="wilds" ${s.text !== 'all' ? 'selected' : ''}>only the outer wilds</option><option value="all" ${s.text === 'all' ? 'selected' : ''}>everything up to the hard border</option></select>`
       + ((m) => `<select data-f="mode"><option value="slow" ${m === 'slow' ? 'selected' : ''}>slow down while players are online</option><option value="pause" ${m === 'pause' ? 'selected' : ''}>pause while players are online</option><option value="full" ${m === 'full' ? 'selected' : ''}>full speed even with players online</option></select>`)(s.mode || 'slow') + `<span>(dimensions with Pregen on, World tab)</span>`;
     if (s.type === 'wait') fields = `<input type="number" data-f="seconds" min="1" max="3600" value="${s.seconds ?? 30}"><span>seconds</span>`;
+    if (s.type === 'cleanup') {
+      const caps = [8, 16, 24, 32, 48, 64];
+      const cur = (s.text || 'items').startsWith('excess') ? s.text : 'items';
+      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
+        <span>warn in chat</span><input type="number" data-f="seconds" min="0" max="600" value="${s.seconds ?? 30}"><span>seconds before (items only)</span>`;
+    }
+    if (s.type === 'maintenance') fields = `<select data-f="text"><option value="on" ${s.text !== 'off' ? 'selected' : ''}>switch on (staff only)</option><option value="off" ${s.text === 'off' ? 'selected' : ''}>switch off</option></select><span>(settings under Players → Maintenance)</span>`;
     // Variables for chat texts: click one to put it into the message.
     const vars = ['say', 'restart', 'trim'].includes(s.type) ? `<div class="pn-vars">${(s.type === 'say' ? [] : [['{time}', 'time left']])
       .concat([['{player}', "reader's name"], ['{online}', 'everyone online'], ['{clock}', 'time now'], ['{date}', 'date'], ['&a', 'green'], ['&c', 'red'], ['&e', 'yellow'], ['&l', 'bold'], ['&r', 'reset']])
@@ -1743,7 +1917,7 @@
       if (activeTab === 'files') loadFiles();
       nextUpload();
     };
-    xhr.onerror = () => {
+    xhr.onerror = xhr.onabort = xhr.ontimeout = () => {
       filesNote('Upload failed (connection).', false);
       nextUpload();
     };
@@ -2055,7 +2229,8 @@
 
   const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline', crash: 'Crash ({mod}, {message})',
     lag: 'Lag (alert)', lagOver: 'Lag over (alert)', taskFailed: 'Task failed (alert, {name})', backupFailed: 'Backup failed (alert)',
-    trimDone: 'Outer wilds reset (alert)', diskLow: 'Disk almost full (alert)', memory: 'Memory pressure (alert)' };
+    trimDone: 'Outer wilds reset (alert)', diskLow: 'Disk almost full (alert)', memory: 'Memory pressure (alert)',
+    perf: 'Distances stepped down or up (alert)', maintenance: 'Maintenance on/off' };
   let discordData = null;
 
   async function loadDiscord() {
@@ -2152,6 +2327,9 @@
     form.title.value = s.title;
     form.showPlayers.checked = s.showPlayers;
     form.showClaims.checked = s.showClaims;
+    form.showStatus.checked = s.showStatus !== false;
+    form.statusNames.checked = !!s.statusNames;
+    form.showClock.checked = s.showClock !== false;
     form.hubs.value = s.hubs;
     $('pn-map-dims').innerHTML = mapData.dimensions.map((d) => `<label><input type="checkbox" value="${esc(d.id)}" ${s.hidden.includes(d.id) ? '' : 'checked'}> ${esc(d.name)}</label>`).join('');
     $('pn-map-status').textContent = `${st.status} · ${st.rendered}/${st.regions} regions · colors: ${st.colors}`;
@@ -2167,6 +2345,7 @@
     try {
       await api('api/map/settings', {
         enabled: form.enabled.checked, title: form.title.value.trim(), showPlayers: form.showPlayers.checked, showClaims: form.showClaims.checked,
+        showStatus: form.showStatus.checked, statusNames: form.statusNames.checked, showClock: form.showClock.checked,
         hubs: form.hubs.value, hidden: mapData.dimensions.map((d) => d.id).filter((id) => !shown.includes(id)),
       });
       formMsg('pn-map-msg', 'Saved.', true);
@@ -2214,8 +2393,26 @@
       (p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td><td class="num">${p.level ?? '–'}</td><td class="num">${btn('deop', p.name, 'Remove')}</td></tr>`, 'No operators.');
     set('pn-pl-bans', 'pn-pl-ban-count', d.bans, '<th>Player</th><th>Reason</th><th>By</th><th></th>',
       (p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td><td>${esc(p.reason || '')}</td><td>${esc(p.source || '')}<br><small>${esc(p.created || '')}</small></td><td class="num">${btn('pardon', p.name, 'Unban')}</td></tr>`, 'Nobody is banned.');
+    loadOnlinePlayers(d.running, head, btn);
     set('pn-pl-ipbans', 'pn-pl-ip-count', d.ipBans, '<th>IP</th><th>Reason</th><th></th>',
       (p) => `<tr><td>${esc(p.ip)}</td><td>${esc(p.reason || '')}</td><td class="num">${btn('pardon-ip', p.ip, 'Unban')}</td></tr>`, 'No IP bans.');
+  }
+
+  /** Kick and ban for whoever is online (the mod's player list); moderation lives here, not on the Players page. */
+  async function loadOnlinePlayers(running, head, btn) {
+    let online = [];
+    if (running) {
+      try {
+        online = ((await api('dashboard/api/players')).players || []).filter((p) => p.online);
+      } catch (e) { /* the mod isn't answering yet */ }
+    }
+    $('pn-pl-online-card').hidden = !running;
+    $('pn-pl-online-count').textContent = online.length ? `(${online.length})` : '';
+    const banned = new Set((plData.bans || []).map((b) => b.name.toLowerCase()));
+    $('pn-pl-online').innerHTML = online.length
+      ? `<thead><tr><th>Player</th><th></th></tr></thead><tbody>${online.map((p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td>
+        <td class="num"><div class="pn-row-actions">${btn('kick', p.name, 'Kick')}${banned.has(p.name.toLowerCase()) ? '' : btn('ban', p.name, 'Ban')}</div></td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td>Nobody is online.</td></tr></tbody>';
   }
 
   async function playerAction(body) {
@@ -2260,7 +2457,13 @@
   document.querySelector('[data-tab="players"].np-tab-panel').addEventListener('click', (e) => {
     const b = e.target.closest('[data-pl]');
     if (!b) return;
-    if (b.dataset.pl.startsWith('pardon') || confirm(`${b.textContent} ${b.dataset.target}?`)) playerAction({ action: b.dataset.pl, target: b.dataset.target });
+    const action = b.dataset.pl;
+    if (action === 'kick' || action === 'ban') {
+      const reason = prompt(`${b.textContent} ${b.dataset.target}? Optional reason:`, '');
+      if (reason !== null) playerAction({ action, target: b.dataset.target, reason });
+      return;
+    }
+    if (action.startsWith('pardon') || confirm(`${b.textContent} ${b.dataset.target}?`)) playerAction({ action, target: b.dataset.target });
   });
 
   /** A step log as a checklist: done steps ticked, the current one spinning, the outcome green or red. */
@@ -2494,7 +2697,11 @@
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(p);
     }
-    const crashesOn = (from, to) => (statsData ? statsData.markers : []).filter((m) => m.type === 'crash' && m.t >= from && m.t < to).length;
+    // Crashes, and how often dynamic distances stepped down (Performance → Tuning).
+    const crashesOn = (from, to) => {
+      const ms = (statsData ? statsData.markers : []).filter((m) => m.t >= from && m.t < to);
+      return [ms.filter((m) => m.type === 'crash').length, ms.filter((m) => m.type === 'perf' && /^Lag/.test(m.text || '')).length];
+    };
     const summary = (list) => {
       const avg = (k) => { const v = list.filter((p) => p[k] != null); return v.length ? v.reduce((s, p) => s + p[k], 0) / v.length : null; };
       const max = (k) => { const v = list.filter((p) => p[k] != null); return v.length ? Math.max(...v.map((p) => p[k])) : null; };
@@ -2503,8 +2710,8 @@
       return { up: avg('up'), tps: avg('tps'), mspt: avg('mspt'), msptMax: max('msptMax'), players: max('players'),
         mem: mem.length ? Math.max(...mem.map((p) => p.heapLive / p.heapMax * 100)) : null, free: disk ? disk.free : null };
     };
-    const cells = (s, label, crashes) => `<td>${label}</td><td class="num">${s.up == null ? '–' : Math.round(s.up * 100) + '%'}</td><td class="num">${num1(s.tps)}</td>
-      <td class="num">${num1(s.mspt)}</td><td class="num">${num1(s.msptMax)}</td><td class="num">${s.players ?? '–'}</td><td class="num">${crashes || ''}</td>
+    const cells = (s, label, [crashes, steps]) => `<td>${label}</td><td class="num">${s.up == null ? '–' : Math.round(s.up * 100) + '%'}</td><td class="num">${num1(s.tps)}</td>
+      <td class="num">${num1(s.mspt)}</td><td class="num">${num1(s.msptMax)}</td><td class="num">${s.players ?? '–'}</td><td class="num">${crashes || ''}</td><td class="num">${steps || ''}</td>
       <td class="num">${s.mem == null ? '–' : Math.round(s.mem) + '%'}</td><td class="num">${s.free == null ? '–' : bytes(s.free)}</td>`;
     const fine = statsData && statsData.step <= 3600000;
     const rows = [...groups].reverse().map(([key, list]) => {
@@ -2524,7 +2731,7 @@
       }).join('');
     }).join('');
     $('pn-stats-table').innerHTML = `<thead><tr><th>Day</th><th class="num">Online</th><th class="num">TPS</th><th class="num">MSPT</th><th class="num">Slowest tick</th>
-      <th class="num">Peak players</th><th class="num">Crashes</th><th class="num">Peak memory</th><th class="num">Free disk</th></tr></thead><tbody>${rows}</tbody>`;
+      <th class="num">Peak players</th><th class="num">Crashes</th><th class="num" title="How often dynamic distances stepped down (Performance → Tuning)">Lag steps</th><th class="num">Peak memory</th><th class="num">Free disk</th></tr></thead><tbody>${rows}</tbody>`;
   }
 
   $('pn-stats-table').addEventListener('click', (e) => {
@@ -2568,7 +2775,7 @@
       const b = worldBorders[d.id];
       const vanilla = d.border && d.border.size < 59999968 ? d.border : null;
       const v = b || { shape: 'square', x: Math.round(vanilla ? vanilla.x : 0), z: Math.round(vanilla ? vanilla.z : 0),
-        soft: vanilla ? Math.round(vanilla.size / 4) : 2000, hard: vanilla ? Math.round(vanilla.size / 2) : 0, pregen: true, worldBorder: true };
+        soft: vanilla ? Math.round(vanilla.size / 4) : 2000, hard: vanilla ? Math.round(vanilla.size / 2) : 0, pregen: true, worldBorder: true, showSoft: true };
       // A <label>, so clicking the switch's track toggles the hidden checkbox.
       const sw = (f, on) => `<label class="np-switch"><input type="checkbox" data-f="${f}" ${on ? 'checked' : ''}><span></span></label>`;
       return `<tr data-dim="${esc(d.id)}" class="${b ? '' : 'off'}">
@@ -2581,8 +2788,9 @@
         <td><input type="number" data-f="hard" min="0" value="${v.hard}"></td>
         <td>${sw('pregen', v.pregen !== false)}</td>
         <td>${sw('worldBorder', v.worldBorder !== false)}</td>
+        <td>${sw('showSoft', v.showSoft !== false)}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="9">No dimensions found yet: start the server once.</td></tr>';
+    }).join('') || '<tr><td colspan="10">No dimensions found yet: start the server once.</td></tr>';
     const sel = $('pn-trim-dim');
     const chosen = sel.value;
     const bordered = worldDims.filter((d) => worldBorders[d.id]);
@@ -2604,7 +2812,7 @@
         const on = f('on').checked;
         if (!on && !worldBorders[row.dataset.dim]) continue;
         const border = on ? { shape: f('shape').value, x: Number(f('x').value), z: Number(f('z').value), soft: Number(f('soft').value),
-          hard: Number(f('hard').value) || 0, pregen: f('pregen').checked, worldBorder: f('worldBorder').checked } : null;
+          hard: Number(f('hard').value) || 0, pregen: f('pregen').checked, worldBorder: f('worldBorder').checked, showSoft: f('showSoft').checked } : null;
         const res = await api('api/borders/save', { dimension: row.dataset.dim, border });
         worldBorders = res.borders;
       }
@@ -2683,7 +2891,15 @@
     $('pn-trim-log').hidden = !st.log.length;
     $('pn-trim-log').innerHTML = stepList(st.log, st.running);
     $('pn-trim-run').disabled = st.running;
-    if (st.running) formMsg('pn-trim-msg', st.phase || 'Trimming…', true);
+    const msg = $('pn-trim-msg');
+    if (st.running) {
+      formMsg('pn-trim-msg', st.phase || 'Trimming…', true);
+      msg.dataset.progress = '1';
+    } else if (msg.dataset.progress) {
+      // Done: the progress line gives way to the outcome (also shown as the last step).
+      delete msg.dataset.progress;
+      formMsg('pn-trim-msg', st.result || '', !/^Failed/.test(st.result || ''));
+    }
   }
 
   $('pn-trim-preview').addEventListener('click', async () => {
@@ -2710,10 +2926,440 @@
       await api('api/trim/run', { keepVisitedMinutes: $('pn-trim-keep').value, backupFirst });
       $('pn-trim-run').disabled = true;
       formMsg('pn-trim-msg', 'Trimming…', true);
+      $('pn-trim-msg').dataset.progress = '1';
     } catch (err) {
       formMsg('pn-trim-msg', err.message, false);
     }
   });
+
+  // ── Home: needs attention, setup checklist ───────────────────────────────
+
+  const SETUP_KEY = 'pn-setup-hidden';
+
+  async function loadHome() {
+    if (!can('server.view')) return;
+    let d;
+    try {
+      d = await api('api/home');
+    } catch (e) {
+      return;
+    }
+    const items = [...d.attention];
+    // Things only the browser knows: the mod's update count and the dynamic distances.
+    if (Number(badges['mod:updates']) > 0) items.push({ level: 'info', text: `${badges['mod:updates']} mod update${badges['mod:updates'] > 1 ? 's are' : ' is'} available.`, tab: 'mod:updates', action: 'Updates' });
+    $('pn-attention').hidden = !items.length;
+    $('pn-attn-list').innerHTML = items.map((i) => `<li class="pn-attn ${esc(i.level)}"><i class="bi ${i.level === 'bad' ? 'bi-x-circle-fill' : i.level === 'warn' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'}"></i>
+      <span>${esc(i.text)}</span><button type="button" class="np-btn small" data-goto="${esc(i.tab)}">${esc(i.action)} <i class="bi bi-arrow-right"></i></button></li>`).join('');
+    let hidden = false;
+    try { hidden = localStorage.getItem(SETUP_KEY) === '1'; } catch (e) { /* shown */ }
+    const open = d.setup.filter((x) => !x.done).length;
+    $('pn-setup').hidden = hidden || !open;
+    $('pn-setup-count').textContent = `${d.setup.length - open} of ${d.setup.length} done`;
+    $('pn-setup-list').innerHTML = d.setup.map((x) => `<li class="${x.done ? 'done' : ''}"><i class="bi ${x.done ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
+      <span>${esc(x.text)}</span>${x.done ? '' : `<button type="button" class="np-btn small" data-goto="${esc(x.tab)}">Set up <i class="bi bi-arrow-right"></i></button>`}</li>`).join('');
+  }
+
+  $('pn-home').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-goto]');
+    if (b) selectTab(b.dataset.goto);
+  });
+  $('pn-setup-hide').addEventListener('click', () => {
+    try { localStorage.setItem(SETUP_KEY, '1'); } catch (e) { /* hidden for now */ }
+    $('pn-setup').hidden = true;
+  });
+
+  // ── Performance → Tuning ─────────────────────────────────────────────────
+
+  let perfSettings = null;
+
+  /** Form fields are named "section.key"; values go back into the settings object. */
+  function fillPerf(s) {
+    const form = $('pn-perf-form');
+    form.querySelectorAll('[name]').forEach((el) => {
+      const [sec, key] = el.name.split('.');
+      const v = s[sec] ? s[sec][key] : undefined;
+      if (el.type === 'checkbox') el.checked = !!v;
+      else el.value = v ?? '';
+    });
+    const editable = can('settings.server');
+    form.querySelectorAll('input, button').forEach((el) => { el.disabled = !editable; });
+  }
+
+  async function loadTuning() {
+    try {
+      perfSettings = await api('api/perf/settings');
+      fillPerf(perfSettings);
+    } catch (e) {
+      formMsg('pn-perf-msg', e.message, false);
+    }
+    renderFrozen();
+    loadPerfLive();
+    loadHotspots();
+  }
+
+  async function loadPerfLive() {
+    const el = $('pn-perf-live');
+    try {
+      const p = await api('dashboard/api/perf');
+      el.className = 'pn-perf-live' + (p.lowered ? ' lowered' : '');
+      el.innerHTML = `<span><b>${p.mspt}</b> ms per tick</span><span>Simulation distance <b>${p.simulation}</b>${p.simulation !== p.simulationBase ? ` of ${p.simulationBase}` : ''}</span>
+        <span>View distance <b>${p.view}</b>${p.view !== p.viewBase ? ` of ${p.viewBase}` : ''}</span><span>Mob caps <b>${p.mobCap} %</b></span>
+        ${p.lastChange ? `<small>${esc(p.lastChange)}</small>` : ''}`;
+    } catch (e) {
+      el.className = 'pn-perf-live off';
+      el.textContent = 'Live values show while the server runs.';
+    }
+  }
+
+  $('pn-perf-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const s = JSON.parse(JSON.stringify(perfSettings || {}));
+    e.target.querySelectorAll('[name]').forEach((el) => {
+      const [sec, key] = el.name.split('.');
+      s[sec] = s[sec] || {};
+      s[sec][key] = el.type === 'checkbox' ? el.checked : Number(el.value);
+    });
+    try {
+      await api('api/perf/settings', s);
+      perfSettings = s;
+      formMsg('pn-perf-msg', 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-perf-msg', err.message, false);
+    }
+  });
+
+  const dimLabel = (id) => ({ 'minecraft:overworld': 'Overworld', 'minecraft:the_nether': 'Nether', 'minecraft:the_end': 'End' }[id] || id);
+
+  async function loadHotspots() {
+    const table = $('pn-hotspots');
+    let spots = [];
+    try {
+      spots = (await api('dashboard/api/window?m=15')).hotspots || [];
+    } catch (e) {
+      table.innerHTML = '<tbody><tr><td>Shows while the server runs.</td></tr></tbody>';
+      return;
+    }
+    const frozen = new Set(((perfSettings && perfSettings.frozen) || []).map((c) => `${c.dimension}|${c.x}|${c.z}`));
+    table.innerHTML = spots.length
+      ? `<thead><tr><th>Where</th><th class="num">ms per tick</th><th class="num">Mobs</th><th class="num">Block entities</th><th>Most</th><th></th></tr></thead><tbody>${spots.map((h) => {
+        const key = `${h.dimension}|${h.chunkX}|${h.chunkZ}`;
+        return `<tr><td>${esc(dimLabel(h.dimension))} <small>x ${h.blockX}, z ${h.blockZ}</small></td><td class="num">${h.ms.toFixed(2)}</td><td class="num">${h.entities}</td><td class="num">${h.blockEntities}</td>
+          <td>${h.topType ? `${esc(h.topType.replace('minecraft:', ''))} × ${h.topTypeCount}` : ''}</td>
+          <td class="num">${frozen.has(key) ? '<span class="pn-tag">frozen</span>' : `<button type="button" class="np-btn small" data-freeze="1" data-dim="${esc(h.dimension)}" data-x="${h.chunkX}" data-z="${h.chunkZ}"><i class="bi bi-snow"></i> Freeze</button>`}</td></tr>`;
+      }).join('')}</tbody>`
+      : '<tbody><tr><td>No data yet. The live monitor finds these (Performance → Live); it needs a few minutes.</td></tr></tbody>';
+  }
+
+  function renderFrozen() {
+    const list = (perfSettings && perfSettings.frozen) || [];
+    $('pn-frozen-count').textContent = list.length ? `(${list.length})` : '';
+    $('pn-frozen').innerHTML = list.length
+      ? `<tbody>${list.map((c) => `<tr><td>${esc(dimLabel(c.dimension))} <small>chunk ${c.x}, ${c.z} · blocks x ${c.x * 16}…${c.x * 16 + 15}, z ${c.z * 16}…${c.z * 16 + 15}</small></td>
+        <td class="num"><button type="button" class="np-btn small" data-freeze="0" data-dim="${esc(c.dimension)}" data-x="${c.x}" data-z="${c.z}">Unfreeze</button></td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td>None.</td></tr></tbody>';
+  }
+
+  document.querySelector('.np-tab-panel[data-tab="tuning"]').addEventListener('click', async (e) => {
+    const f = e.target.closest('[data-freeze]');
+    if (f) {
+      if (f.dataset.freeze === '1' && !confirm('Freeze this chunk? Everything in it stops (mobs, furnaces, hoppers, farms) until you unfreeze it.')) return;
+      try {
+        const res = await api('api/perf/freeze', { dimension: f.dataset.dim, x: f.dataset.x, z: f.dataset.z, on: f.dataset.freeze === '1' });
+        perfSettings.frozen = res.frozen;
+        renderFrozen();
+        loadHotspots();
+      } catch (err) {
+        alert(err.message);
+      }
+      return;
+    }
+    const c = e.target.closest('[data-cleanup]');
+    if (!c) return;
+    const kind = c.dataset.cleanup;
+    const run = c.dataset.run === '1';
+    const per = Math.max(1, Number($('pn-cl-per').value) || 24);
+    const note = $(kind === 'items' ? 'pn-cl-items-note' : 'pn-cl-excess-note');
+    if (run && !confirm(kind === 'items' ? 'Remove all dropped items and XP orbs in loaded chunks?' : `Remove mobs over ${per} of one kind per chunk?`)) return;
+    const q = `kind=${kind}&perChunk=${per}`;
+    try {
+      const r = run ? await api('dashboard/api/cleanup/run?' + q, {}) : await api('dashboard/api/cleanup/preview?' + q);
+      if (kind === 'items') {
+        note.textContent = `${run ? 'Removed' : 'Lying around'}: ${r.items} items, ${r.xp} XP orbs`;
+        $('pn-cl-table-wrap').hidden = true;
+      } else {
+        note.textContent = r.remove ? `${run ? 'Removed' : 'Would remove'} ${r.remove} mobs in ${r.chunkCount} chunks` : 'No chunk is over the cap.';
+        $('pn-cl-table-wrap').hidden = !r.chunks.length || run;
+        $('pn-cl-table').innerHTML = `<thead><tr><th>Where</th><th>Kind</th><th class="num">There</th><th class="num">Would go</th></tr></thead><tbody>${r.chunks.map((x) =>
+          `<tr><td>${esc(dimLabel(x.dimension))} <small>x ${x.x * 16}, z ${x.z * 16}</small></td><td>${esc(x.type.replace('minecraft:', ''))}</td><td class="num">${x.count}</td><td class="num">${x.remove}</td></tr>`).join('')}</tbody>`;
+      }
+    } catch (err) {
+      note.textContent = err.message;
+    }
+  });
+
+  // ── Players → Maintenance ───────────────────────────────────────────────
+
+  const MC_COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
+    8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };
+
+  /** A MOTD with § codes as it looks in the server list. */
+  function motdHtml(text) {
+    let out = '';
+    let style = { color: '#AAAAAA', b: false, i: false, u: false, s: false };
+    const parts = String(text || '').replace(/\\n/g, '\n').split(/(§[0-9a-fk-or])/i);
+    for (const part of parts) {
+      const m = part.match(/^§([0-9a-fk-or])$/i);
+      if (m) {
+        const c = m[1].toLowerCase();
+        if (MC_COLORS[c]) style = { color: MC_COLORS[c], b: false, i: false, u: false, s: false };
+        else if (c === 'l') style.b = true;
+        else if (c === 'o') style.i = true;
+        else if (c === 'n') style.u = true;
+        else if (c === 'm') style.s = true;
+        else if (c === 'r') style = { color: '#AAAAAA', b: false, i: false, u: false, s: false };
+        continue;
+      }
+      if (!part) continue;
+      const deco = [style.u && 'underline', style.s && 'line-through'].filter(Boolean).join(' ');
+      out += `<span style="color:${style.color};${style.b ? 'font-weight:700;' : ''}${style.i ? 'font-style:italic;' : ''}${deco ? `text-decoration:${deco};` : ''}">${esc(part).replace(/\n/g, '<br>')}</span>`;
+    }
+    return out || '&nbsp;';
+  }
+
+  let mtData = null;
+
+  async function loadMaintenance() {
+    try {
+      mtData = await api('api/maintenance');
+    } catch (e) {
+      formMsg('pn-mt-msg', e.message, false);
+      return;
+    }
+    const s = mtData.settings;
+    const form = $('pn-mt-form');
+    form.enabled.checked = s.enabled;
+    form.countdown.value = s.countdown;
+    form.motd.value = s.motd;
+    form.kickMessage.value = s.kickMessage;
+    form.staff.value = (s.staff || []).join('\n');
+    $('pn-mt-preview').innerHTML = motdHtml(s.motd);
+    const editable = can('players.manage');
+    form.querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = !editable; });
+  }
+
+  $('pn-mt-form').motd.addEventListener('input', (e) => { $('pn-mt-preview').innerHTML = motdHtml(e.target.value); });
+  $('pn-mt-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const turningOn = f.enabled.checked && !(mtData && mtData.settings.enabled);
+    if (turningOn && !confirm('Switch maintenance on? Everyone but operators and staff is warned and then kicked.')) return;
+    try {
+      const res = await api('api/maintenance', { enabled: f.enabled.checked, countdown: Number(f.countdown.value) || 0, motd: f.motd.value,
+        kickMessage: f.kickMessage.value, staff: f.staff.value.split('\n').map((x) => x.trim()).filter(Boolean) });
+      formMsg('pn-mt-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
+      loadMaintenance();
+      pollServer();
+    } catch (err) {
+      formMsg('pn-mt-msg', err.message, false);
+    }
+  });
+
+  // ── Settings → Server list ───────────────────────────────────────────────
+
+  async function loadServerList() {
+    let d;
+    try {
+      d = await api('api/serverlist');
+    } catch (e) {
+      formMsg('pn-sl-msg', e.message, false);
+      return;
+    }
+    const form = $('pn-sl-form');
+    form.motd.value = d.motd.replace(/\\n/g, '\n');
+    $('pn-sl-preview').innerHTML = motdHtml(form.motd.value);
+    $('pn-sl-players').textContent = `0/${d.maxPlayers}`;
+    const editable = can('settings.server');
+    form.querySelectorAll('textarea, button').forEach((el) => { el.disabled = !editable; });
+    document.querySelectorAll('.pn-icon-slot').forEach((slot) => {
+      const img = slot.querySelector('img');
+      const empty = slot.querySelector('.pn-logo-preview span');
+      img.onload = () => { img.hidden = false; empty.hidden = true; };
+      img.onerror = () => { img.hidden = true; empty.hidden = false; };
+      img.src = `api/serverlist/icon/${slot.dataset.icon}?t=${Date.now()}`;
+      slot.querySelectorAll('input, button').forEach((el) => { el.disabled = !editable; });
+    });
+    const icon = $('pn-sl-preview-icon');
+    icon.onerror = () => { icon.src = 'img/apple-touch-icon.png'; icon.onerror = null; };
+    icon.src = `api/serverlist/icon/normal?t=${Date.now()}`;
+  }
+
+  $('pn-sl-colors').innerHTML = Object.entries(MC_COLORS).map(([c, hex]) => `<button type="button" class="pn-color" data-code="§${c}" title="§${c}" style="background:${hex}"></button>`).join('')
+    + ['l', 'o', 'n', 'm', 'r'].map((c) => `<button type="button" class="pn-color pn-fmt" data-code="§${c}" title="§${c}">${{ l: '<b>B</b>', o: '<i>I</i>', n: '<u>U</u>', m: '<s>S</s>', r: '↺' }[c]}</button>`).join('');
+  $('pn-sl-colors').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-code]');
+    if (!b) return;
+    const t = $('pn-sl-form').motd;
+    const at = t.selectionStart ?? t.value.length;
+    t.value = t.value.slice(0, at) + b.dataset.code + t.value.slice(t.selectionEnd ?? at);
+    t.focus();
+    t.selectionStart = t.selectionEnd = at + 2;
+    $('pn-sl-preview').innerHTML = motdHtml(t.value);
+  });
+  $('pn-sl-form').motd.addEventListener('input', (e) => { $('pn-sl-preview').innerHTML = motdHtml(e.target.value); });
+  $('pn-sl-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api('api/serverlist/motd', { motd: e.target.motd.value });
+      formMsg('pn-sl-msg', res.running ? 'Saved; shows after the next restart.' : 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-sl-msg', err.message, false);
+    }
+  });
+  document.querySelectorAll('.pn-icon-slot').forEach((slot) => {
+    const which = slot.dataset.icon;
+    slot.querySelector('input[type="file"]').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      const form = new FormData();
+      form.append('icon', file);
+      try {
+        const res = await fetch('api/serverlist/icon/' + which, { method: 'POST', headers: { 'X-NCC': '1' }, body: form });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || res.statusText);
+        formMsg('pn-icon-msg', which === 'maintenance' ? 'Saved; used while maintenance is on.' : 'Saved; shows after the next restart.', true);
+        loadServerList();
+      } catch (err) {
+        formMsg('pn-icon-msg', err.message, false);
+      }
+    });
+    slot.querySelector('[data-icon-remove]').addEventListener('click', async () => {
+      try {
+        await api('api/serverlist/icon/' + which + '/remove', {});
+        formMsg('pn-icon-msg', 'Removed.', true);
+        loadServerList();
+      } catch (err) {
+        formMsg('pn-icon-msg', err.message, false);
+      }
+    });
+  });
+
+  // ── Quick search (Ctrl/⌘ K) ─────────────────────────────────────────────
+  // Pages and sub-pages, plus every setting on the panel's own pages (by its label).
+
+  let searchItems = [];
+  let searchPick = 0;
+
+  function buildSearch() {
+    const items = [];
+    NAV.forEach((g) => g.items.forEach((e) => subsOf(e).forEach((x) => {
+      const multi = subsOf(e).length > 1;
+      items.push({ tab: x.tab, title: multi ? `${e.label} › ${x.label}` : e.label, sub: x.desc, icon: e.icon, kind: 'page' });
+    })));
+    const pages = new Set(items.map((i) => i.tab));
+    document.querySelectorAll('#pn-app .np-tab-panel[data-tab]').forEach((panel) => {
+      const tab = panel.dataset.tab;
+      if (!pages.has(tab)) return;
+      const where = items.find((i) => i.tab === tab).title;
+      panel.querySelectorAll('.np-card-title, .np-form-row, .pn-field > span, label.pn-field').forEach((el) => {
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('input, select, textarea, .pn-comment, .pn-count, button').forEach((x) => x.remove());
+        const text = clone.textContent.replace(/\s+/g, ' ').trim();
+        if (text && text.length < 90 && !items.some((i) => i.tab === tab && i.title === text)) items.push({ tab, title: text, sub: where, el, icon: 'bi-sliders', kind: 'setting' });
+      });
+    });
+    return items;
+  }
+
+  function renderSearch() {
+    const q = $('pn-search-q').value.trim().toLowerCase();
+    const words = q.split(/\s+/).filter(Boolean);
+    const hits = searchItems.filter((i) => words.every((w) => (i.title + ' ' + (i.sub || '')).toLowerCase().includes(w)))
+      .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'page' ? -1 : 1)).slice(0, 12);
+    searchPick = Math.min(searchPick, Math.max(0, hits.length - 1));
+    $('pn-search-results').innerHTML = hits.length ? hits.map((h, i) => `<button type="button" role="option" class="pn-search-hit${i === searchPick ? ' active' : ''}" data-i="${searchItems.indexOf(h)}">
+      <i class="bi ${h.icon}"></i><span><b>${esc(h.title)}</b><small>${esc(h.sub || '')}</small></span></button>`).join('')
+      : '<p class="pn-search-none">Nothing found.</p>';
+  }
+
+  function openSearch() {
+    if (!loggedIn) return;
+    searchItems = buildSearch();
+    searchPick = 0;
+    $('pn-search').hidden = false;
+    $('pn-search-q').value = '';
+    renderSearch();
+    $('pn-search-q').focus();
+  }
+
+  function closeSearch() {
+    $('pn-search').hidden = true;
+  }
+
+  function goSearch(item) {
+    closeSearch();
+    selectTab(item.tab);
+    if (!item.el) return;
+    // Open folded sections around the setting, then point at it.
+    for (let p = item.el.parentElement; p; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true;
+    setTimeout(() => {
+      item.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      item.el.classList.add('pn-found');
+      setTimeout(() => item.el.classList.remove('pn-found'), 1800);
+    }, 60);
+  }
+
+  $('pn-search-key').textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+  $('pn-search-open').addEventListener('click', openSearch);
+  $('pn-search').addEventListener('click', (e) => {
+    if (e.target === $('pn-search')) return closeSearch();
+    const hit = e.target.closest('[data-i]');
+    if (hit) goSearch(searchItems[Number(hit.dataset.i)]);
+  });
+  $('pn-search-q').addEventListener('input', () => { searchPick = 0; renderSearch(); });
+  $('pn-search-q').addEventListener('keydown', (e) => {
+    const hits = [...$('pn-search-results').querySelectorAll('[data-i]')];
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      searchPick = (searchPick + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % Math.max(1, hits.length);
+      renderSearch();
+    } else if (e.key === 'Enter' && hits[searchPick]) {
+      goSearch(searchItems[Number(hits[searchPick].dataset.i)]);
+    } else if (e.key === 'Escape') {
+      closeSearch();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if ($('pn-search').hidden) openSearch(); else closeSearch();
+    }
+  });
+
+  // ── Help for technical terms ─────────────────────────────────────────────
+
+  const HELP = {
+    mspt: 'Milliseconds per tick: how long the server needs for one game step. Under 50 is fine; above 50 the game slows down.',
+    tps: 'Ticks per second: 20 means the game runs at full speed.',
+    sim: 'Simulation distance: how far around players crops grow, mobs move and redstone runs (in chunks of 16 blocks).',
+    view: 'View distance: how far players can see (in chunks). Costs memory and bandwidth, less so tick time.',
+    soft: 'Soft border: the permanent area. Nothing inside it is ever reset.',
+    hard: 'Hard border: the edge of the world. Nobody gets past it.',
+  };
+  function addHelp(root) {
+    root.querySelectorAll('[data-help]:not([data-help-done])').forEach((el) => {
+      el.dataset.helpDone = '1';
+      const tip = HELP[el.dataset.help];
+      if (!tip) return;
+      const q = document.createElement('i');
+      q.className = 'bi bi-question-circle pn-help';
+      q.tabIndex = 0;
+      q.title = tip;
+      q.setAttribute('aria-label', tip);
+      el.after(q);
+    });
+  }
+  addHelp(document);
 
   // ── Theme ──────────────────────────────────────────────────────────────
 

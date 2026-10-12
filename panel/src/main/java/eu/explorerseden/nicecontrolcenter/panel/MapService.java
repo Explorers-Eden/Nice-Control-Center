@@ -48,6 +48,12 @@ public final class MapService {
 		public boolean showClaims = true;
 		public List<String> hidden = new ArrayList<>();
 		public String title = "Server map";
+		/** The status card on the map: online, players, uptime, next restart and reset. */
+		public boolean showStatus = true;
+		/** List the names of who's online in the status card. */
+		public boolean statusNames = false;
+		/** The in-game date and time (Nice Actions calendar, or the vanilla day) in the status card. */
+		public boolean showClock = true;
 	}
 
 	/** Deepest zoom-out level: one tile covers 512 × 2^5 = 16384 blocks. */
@@ -258,12 +264,7 @@ public final class MapService {
 	}
 
 	private String levelName() {
-		Properties props = new Properties();
-		try (InputStream in = Files.newInputStream(serverDir.resolve("server.properties"))) {
-			props.load(in);
-		} catch (IOException e) {
-			// Default.
-		}
+		Properties props = ServerTuning.readProperties(serverDir.resolve("server.properties"));
 		return props.getProperty("level-name", "world").strip();
 	}
 
@@ -388,11 +389,34 @@ public final class MapService {
 		nextReset = next;
 	}
 
+	private volatile java.util.function.DoubleSupplier uptime = () -> -1;
+	private volatile java.util.function.Supplier<eu.explorerseden.nicecontrolcenter.Maintenance.Settings> maintenance = eu.explorerseden.nicecontrolcenter.Maintenance.Settings::new;
+	private volatile java.util.function.LongSupplier nextRestart = () -> 0;
+
+	/** For the status card: uptime over 7 days, maintenance mode, the next scheduled restart. */
+	void useStatus(java.util.function.DoubleSupplier uptime, java.util.function.Supplier<eu.explorerseden.nicecontrolcenter.Maintenance.Settings> maintenance,
+			java.util.function.LongSupplier nextRestart) {
+		this.uptime = uptime;
+		this.maintenance = maintenance;
+		this.nextRestart = nextRestart;
+	}
+
+	private int maxPlayers() {
+		try {
+			return Integer.parseInt(ServerTuning.readProperties(serverDir.resolve("server.properties")).getProperty("max-players", "20").trim());
+		} catch (RuntimeException e) {
+			return 20;
+		}
+	}
+
 	public Map<String, Object> info() {
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("title", settings.title);
 		long reset = nextReset.getAsLong();
 		if (reset > 0) out.put("nextReset", reset);
+		long restart = nextRestart.getAsLong();
+		if (restart > 0) out.put("nextRestart", restart);
+		out.put("showStatus", settings.showStatus);
 		if (hasLogo.getAsBoolean()) out.put("logo", "data/logo");
 		Map<String, eu.explorerseden.nicecontrolcenter.Borders.Border> borders = eu.explorerseden.nicecontrolcenter.Borders.read(
 				serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Borders.FILE));
@@ -432,6 +456,30 @@ public final class MapService {
 		}
 		out.add("hubs", hubs);
 		out.addProperty("online", server.running());
+		if (s.showStatus) {
+			JsonObject status = new JsonObject();
+			boolean running = server.running();
+			status.addProperty("state", !running ? "offline" : maintenance.get().enabled ? "maintenance" : "online");
+			JsonArray all = running && o != null && o.has("players") && o.get("players").isJsonArray() ? o.getAsJsonArray("players") : new JsonArray();
+			status.addProperty("players", all.size());
+			status.addProperty("maxPlayers", maxPlayers());
+			if (s.statusNames) {
+				JsonArray names = new JsonArray();
+				for (JsonElement e : all) if (e.isJsonObject() && e.getAsJsonObject().has("name")) names.add(e.getAsJsonObject().get("name"));
+				status.add("names", names);
+			}
+			if (s.showClock && o != null && o.has("clock") && o.get("clock").isJsonObject()) {
+				JsonObject c = o.getAsJsonObject("clock");
+				JsonObject clock = new JsonObject();
+				for (String k : new String[] { "time", "date", "weekday", "detail", "weather", "day", "minuteOfDay", "twelveHour", "source" }) {
+					if (c.has(k)) clock.add(k, c.get(k));
+				}
+				status.add("clock", clock);
+			}
+			double up = uptime.getAsDouble();
+			if (up >= 0) status.addProperty("uptime7d", up);
+			out.add("status", status);
+		}
 		if (trim && trimPreview != null) out.add("trim", trimPreview);
 		return out;
 	}

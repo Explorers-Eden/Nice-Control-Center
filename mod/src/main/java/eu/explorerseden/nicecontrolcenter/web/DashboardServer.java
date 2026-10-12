@@ -487,6 +487,18 @@ public final class DashboardServer {
 				result.put("error", error);
 				sendJson(exchange, result);
 			}
+			case "/api/perf" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.PerfControl.state(minecraft)));
+			case "/api/cleanup/preview", "/api/cleanup/run" -> {
+				boolean run = path.endsWith("/run");
+				if (run && !requirePost(exchange)) {
+					return;
+				}
+				String kind = query.getOrDefault("kind", "items");
+				int perChunk = (int) Math.max(1, Math.min(500, parseLong(query.get("perChunk"), 24)));
+				sendJson(exchange, onServerThread(() -> kind.equals("excess")
+						? eu.explorerseden.nicecontrolcenter.core.Cleanup.excess(minecraft, perChunk, run)
+						: eu.explorerseden.nicecontrolcenter.core.Cleanup.items(minecraft, run)));
+			}
 			case "/api/pregen" -> sendJson(exchange, eu.explorerseden.nicecontrolcenter.core.Pregen.status());
 			case "/api/pregen/start" -> {
 				if (!requirePost(exchange)) {
@@ -508,7 +520,12 @@ public final class DashboardServer {
 				sendJson(exchange, Map.of("ok", true));
 			}
 			// For the panel's web map (it renders the tiles itself).
-			case "/api/map" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
+			case "/api/map" -> {
+				Map<String, Object> map = new LinkedHashMap<>(onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
+				// The in-game date and time (Nice Actions calendar) for the map's status card.
+				map.put("clock", eu.explorerseden.nicecontrolcenter.core.WorldClock.current());
+				sendJson(exchange, map);
+			}
 			case "/api/map/colors" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.players.MapExport::colors));
 			case "/api/bloat" -> sendJson(exchange, bloatState());
 			case "/api/bloat/run" -> {

@@ -132,13 +132,39 @@ public final class MapExport {
 			h.put("x", (int) Math.floor(PlayerInspector.number(pos.get("x"))));
 			h.put("y", (int) Math.floor(PlayerInspector.number(pos.get("y"))));
 			h.put("z", (int) Math.floor(PlayerInspector.number(pos.get("z"))));
-			h.put("name", hub.getStringOr("waypoint_name", "Unnamed Waypoint"));
-			h.put("description", hub.getStringOr("waypoint_description", "").trim());
+			String name = text(server, hub.get("waypoint_name"));
+			h.put("name", name.isBlank() ? "Unnamed Waypoint" : name);
+			h.put("description", text(server, hub.get("waypoint_description")));
 			h.put("access", hub.getStringOr("access", "private"));
-			h.put("owner", hub.getCompoundOrEmpty("profile").getStringOr("name", ""));
+			CompoundTag profile = hub.getCompoundOrEmpty("profile");
+			h.put("owner", profile.getStringOr("name", ""));
+			profile.getIntArray("id").filter(a -> a.length == 4).ifPresent(a -> h.put("ownerUuid", net.minecraft.core.UUIDUtil.uuidFromIntArray(a).toString()));
+			h.put("color", hub.getStringOr("color", ""));
 			out.add(h);
 		}
 		return out;
+	}
+
+	/**
+	 * Plain text from a name or description as data packs store it: a string, a text component, or a
+	 * string holding a component in SNBT (what a macro makes of an item's custom name).
+	 */
+	static String text(MinecraftServer server, net.minecraft.nbt.Tag tag) {
+		if (tag == null) return "";
+		if (tag instanceof net.minecraft.nbt.StringTag(String value)) {
+			String t = value.strip();
+			if (t.startsWith("{") || t.startsWith("[") || t.startsWith("'") || t.startsWith("\"")) {
+				try {
+					return text(server, net.minecraft.nbt.TagParser.create(net.minecraft.nbt.NbtOps.INSTANCE).parseFully(t));
+				} catch (com.mojang.brigadier.exceptions.CommandSyntaxException | RuntimeException e) {
+					return t;
+				}
+			}
+			return t;
+		}
+		return net.minecraft.network.chat.ComponentSerialization.CODEC
+				.parse(server.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), tag)
+				.result().map(c -> c.getString().strip()).orElse("");
 	}
 
 	/** The map color of every block's default state, as RGB. */

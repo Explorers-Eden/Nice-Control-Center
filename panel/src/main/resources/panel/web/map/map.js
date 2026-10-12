@@ -87,7 +87,9 @@
     }
     for (const h of live.hubs.filter((h) => h.dim === dim.id)) {
       L.marker(ll(h.x + 0.5, h.z + 0.5), { icon: L.divIcon({ className: 'mp-hub', html: '<i class="bi bi-geo-alt-fill"></i>', iconSize: [24, 24], iconAnchor: [12, 22] }) })
-        .bindPopup(`<b>${esc(h.name)}</b>${h.description ? esc(h.description) + '<br>' : ''}<small>${h.owner ? 'by ' + esc(h.owner) + ' · ' : ''}${h.x}, ${h.y}, ${h.z}</small>`)
+        .bindPopup(`<div class="mp-hub-pop">${h.owner || h.ownerUuid ? `<img class="mp-head" src="https://mc-heads.net/avatar/${encodeURIComponent(h.ownerUuid || h.owner)}/40" alt="" width="40" height="40">` : ''}
+          <div><b>${esc(h.name)}</b>${h.description ? `<span class="mp-hub-sub">${esc(h.description)}</span>` : ''}
+          <small>${h.owner ? 'by ' + esc(h.owner) + ' · ' : ''}${h.x}, ${h.y}, ${h.z}</small></div></div>`)
         .addTo(layers.hubs);
     }
     for (const p of live.players.filter((p) => p.dim === dim.id)) {
@@ -117,10 +119,55 @@
       : (live.online ? '' : '<div class="mp-offline">The server is offline right now.</div>');
   }
 
+  /** The in-game time and date; counts on between polls (a game day is 20 real minutes). */
+  let clock = null;
+  let clockAt = 0;
+  function drawClock() {
+    const box = $('mp-clock');
+    if (!clock || (live && live.status && live.status.state === 'offline')) {
+      box.hidden = true;
+      return;
+    }
+    let time = clock.time || '';
+    if (clock.minuteOfDay != null) {
+      const elapsed = Math.min(15, (Date.now() - clockAt) / 1000);
+      const m = ((Math.floor(clock.minuteOfDay + elapsed * 1.2) % 1440) + 1440) % 1440;
+      const h = Math.floor(m / 60);
+      const mm = String(m % 60).padStart(2, '0');
+      time = clock.twelveHour ? `${h % 12 === 0 ? 12 : h % 12}:${mm} ${h < 12 ? 'AM' : 'PM'}` : `${String(h).padStart(2, '0')}:${mm}`;
+    }
+    const icon = clock.weather === 'thunder' ? 'bi-cloud-lightning-rain' : clock.weather === 'rain' ? 'bi-cloud-rain' : clock.day ? 'bi-sun' : 'bi-moon-stars';
+    box.innerHTML = `<i class="bi ${icon}"></i><b>${esc(time)}</b><span>${clock.weekday ? esc(clock.weekday) + ', ' : ''}${esc(clock.date || '')}</span>`;
+    box.title = [clock.weekday, clock.date, clock.detail].filter(Boolean).join(' · ');
+    box.hidden = false;
+  }
+  setInterval(drawClock, 1000);
+
+  /** The status card: online state, players, uptime, next restart and outer wilds reset. */
+  function drawStatus() {
+    const st = live && live.status;
+    $('mp-status').hidden = !st || info.showStatus === false;
+    if (!st) return;
+    clock = st.clock || null;
+    clockAt = Date.now();
+    drawClock();
+    const label = { online: 'Online', offline: 'Offline', maintenance: 'Maintenance' }[st.state] || st.state;
+    $('mp-dot').className = 'mp-dot ' + st.state;
+    $('mp-state').textContent = label;
+    $('mp-count').textContent = st.state === 'offline' ? '' : `${st.players} / ${st.maxPlayers} players`;
+    const facts = [];
+    if (st.names && st.names.length) facts.push(['Playing', st.names.map(esc).join(', ')]);
+    if (st.uptime7d != null) facts.push(['Uptime', `${st.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })} % in the last 7 days`]);
+    if (info.nextRestart) facts.push(['Next restart', esc(resetText(info.nextRestart))]);
+    if (info.nextReset && info.dimensions.some((d) => d.borders && d.borders.hard > 0)) facts.push(['Outer wilds reset', esc(resetText(info.nextReset))]);
+    $('mp-facts').innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  }
+
   async function poll() {
     try {
       live = await (await fetch('data/live.json', { cache: 'no-store' })).json();
       drawLive();
+      drawStatus();
     } catch (e) { /* next time */ }
     setTimeout(poll, 5000);
   }
@@ -163,10 +210,8 @@
       $('mp-title').replaceChildren(logo);
       $('mp-title').classList.add('mp-has-logo');
     }
-    if (info.nextReset && info.dimensions.some((d) => d.borders && d.borders.hard > 0)) {
-      $('mp-reset').hidden = false;
-      $('mp-reset').textContent = `The outer wilds reset ${resetText(info.nextReset)}`;
-    }
+    // The status card folds away; phones start folded (it sits at the bottom there).
+    if (window.matchMedia('(max-width: 640px)').matches) $('mp-status').open = false;
     $('mp-dims').innerHTML = info.dimensions.map((d) => `<button type="button" data-dim="${esc(d.key)}">${esc(d.name)}</button>`).join('');
     $('mp-dims').addEventListener('click', (e) => { const b = e.target.closest('[data-dim]'); if (b) setDim(b.dataset.dim); });
     $('mp-layers').innerHTML = Object.entries(labels).map(([k, l]) => `<label><input type="checkbox" data-layer="${k}" checked> ${l}</label>`).join('');

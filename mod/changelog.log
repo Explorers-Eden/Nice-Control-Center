@@ -1,4 +1,18 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.7.0
+- Performance tools in the spirit of Paper and ServerCore, set up in the panel (config/nicecontrolcenter-performance.json, applied live):
+  - Dynamic distances: while ticks take too long, the simulation distance, then the mob caps, then the view distance step down; they go back up once the server is calm
+  - Entity activation range: mobs far from every player tick only every few ticks (never falling, swimming, fighting, burning, leashed, riding or raiding ones)
+  - Larger merge radius for dropped items and XP, breeding caps for animals and villagers, villagers stuck in trading cells think less often
+  - Frozen chunks: nothing ticks in them until they're unfrozen
+- Cleanup on demand: dropped items and XP, or mobs over a per-chunk cap (never named, tamed, leashed or persistent ones), with a preview of what would go
+- Maintenance mode (config/nicecontrolcenter-maintenance.json): only operators and staff can join, its own server list message and icon (only in the list: server.properties is left alone), a countdown in chat before everyone else is kicked
+- The in-game date and time (Nice Actions calendar) is sent along with the map data, for the panel's public map
+- The soft border shows as green particles to players near it, a round hard border as red ones ("Show soft border" in the panel's borders)
+- Players put back from past the hard border bring their vehicle (and whoever rides it), leashed animals and following pets
+- Waypoint names and descriptions stored as text components are read correctly for the map, with the owner's UUID for their head
+- Charts use the Inter font
+
 ## 1.6.0
 - Pregeneration carries on after a restart: the running job and the queue are kept in config/nicecontrolcenter-pregen.json and pick up at the ring they were working on (Stop clears them)
 - Pregeneration can slow down (default) or pause while players are online, or keep full speed

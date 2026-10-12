@@ -1,3 +1,22 @@
+## 1.5.0
+- New navigation: 13 areas in the sidebar (Home, Console, Players, Performance, World, Settings, Schedule, Backups, Files, Updates, Users & roles, Discord, Appearance, Audit log) with sub-tabs for related pages, a page title and a sentence on what each page is for; links like #world/map open a page directly
+- Quick search (Ctrl/⌘ K or the search field in the sidebar) jumps to any page or setting
+- Home: "Needs attention" (crash, failed backups and tasks, disk almost full, maintenance on, mod updates) and a setup checklist
+- Performance → Tuning: dynamic distances, entity activation range, merge radius, breeding caps, villagers in trading cells, cleanup of items and excess mobs, and the laggiest chunks with Freeze/Unfreeze
+- Players → Maintenance: staff-only mode with its own server list message and icon, kick countdown; also as a scheduled step
+- Settings → Server list: MOTD with colour buttons and a live preview, server icon upload (scaled to 64 × 64)
+- Schedule: Clean up and Maintenance steps
+- Whitelist & bans lists who's online with Kick and Ban; the Players page no longer has its own Kick/Ban buttons
+- Public map: a status card with online/offline/maintenance, players, uptime over 7 days, the next restart and the next outer wilds reset, plus the in-game date and time from the Nice Actions calendar (each can be switched off, names optional)
+- Account and Log out moved to a menu under your name in the navbar; expert Java settings are folded under "Advanced"
+- Cleaner look: Inter instead of Montserrat (kept for the wordmark), one type scale, lighter weights, calmer card titles and buttons, fewer all-caps labels
+- Borders: "Show soft border" per dimension draws the permanent area's edge as green particles for players near it (a round hard border as red ones)
+- Map: clicking a waypoint shows its owner's head and its subtitle (descriptions and names set as text components now show too)
+- Stats: steps of the dynamic distances show as markers, and the day table counts them ("Lag steps")
+- The "Trimming…" line goes away when the reset is done and shows its outcome; an aborted upload no longer leaves its progress box
+- Maintenance mode no longer writes its message into server.properties (the normal MOTD stays as you set it, even after a crash); server.properties is read as UTF-8 like Minecraft writes it, so § and other non-ASCII text show correctly
+- Discord: events for dynamic distance steps (alerts channel, off by default) and maintenance on/off
+
 ## 1.4.3
 - Startup: the Generational ZGC preset adds -XX:SoftMaxHeapSize (7/8 of the maximum memory, e.g. 14G of 16G) and is the default for new installs, listed first
 - Discord: choose per event whether it posts in the chat channel or the alerts channel; by default chat, joins, leaves, deaths, advancements and online/offline go to chat, and lag, crashes and failures go to alerts

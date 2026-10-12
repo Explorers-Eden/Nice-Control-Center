@@ -324,6 +324,26 @@ public final class Stats {
 		return out;
 	}
 
+	private volatile double uptimeCache = -1;
+	private volatile long uptimeAt;
+
+	/** Share of the last 7 days the server was running (0–100, one decimal), or -1 without samples. Cached 5 minutes. */
+	public double uptime7d() {
+		long now = System.currentTimeMillis();
+		if (now - uptimeAt < 300_000) return uptimeCache;
+		List<JsonObject> ps = points(now - 7 * 86_400_000L, now);
+		uptimeCache = ps.isEmpty() ? -1 : Math.round(ps.stream().mapToDouble(p -> p.has("up") ? p.get("up").getAsDouble() : 0).average().orElse(0) * 1000) / 10.0;
+		uptimeAt = now;
+		return uptimeCache;
+	}
+
+	/** The newest sample (free disk, memory), or null. */
+	public JsonObject latest() {
+		long now = System.currentTimeMillis();
+		List<JsonObject> ps = points(now - 3_600_000L, now);
+		return ps.isEmpty() ? null : ps.get(ps.size() - 1);
+	}
+
 	/** Days until the drive is full, from how free space shrank over the last 14 days (null if not shrinking). */
 	private Map<String, Object> forecast() {
 		long to = System.currentTimeMillis();

@@ -65,7 +65,7 @@ public final class Scheduler {
 	public record Run(long time, boolean ok, String message) {
 	}
 
-	static final Set<String> STEP_TYPES = Set.of("restart", "stop", "start", "backup", "command", "say", "wait", "trim", "pregen");
+	static final Set<String> STEP_TYPES = Set.of("restart", "stop", "start", "backup", "command", "say", "wait", "trim", "pregen", "cleanup", "maintenance");
 	/** Countdown messages at these many seconds before a restart (only those within the countdown). */
 	private static final int[] WARN_AT = { 3600, 1800, 900, 600, 300, 120, 60, 30, 10, 5, 4, 3, 2, 1 };
 
@@ -113,6 +113,12 @@ public final class Scheduler {
 	}
 
 	/** For the trim and pregen steps. */
+	private ServerTuning tuning;
+
+	void useTuning(ServerTuning tuning) {
+		this.tuning = tuning;
+	}
+
 	void useWorld(Trimmer trimmer, DashboardProxy mod) {
 		this.trimmer = trimmer;
 		this.mod = mod;
@@ -210,6 +216,11 @@ public final class Scheduler {
 			if ((s.type.equals("command") || s.type.equals("say")) && s.text.isBlank()) return "A " + s.type + " step needs text.";
 			if ((s.type.equals("restart") || s.type.equals("trim")) && (s.minutes < 0 || s.minutes > 60)) return "The countdown is 0–60 minutes.";
 			if (s.type.equals("pregen") && !s.text.equals("all")) s.text = "wilds";
+			if (s.type.equals("maintenance") && !s.text.equals("off")) s.text = "on";
+			if (s.type.equals("cleanup")) {
+				if (!s.text.matches("items|excess:\\d{1,3}")) s.text = "items";
+				if (s.seconds < 0 || s.seconds > 600) return "The warning before a cleanup is 0–600 seconds.";
+			}
 			if (s.type.equals("wait") && (s.seconds < 1 || s.seconds > 3600)) return "Waits are 1–3600 seconds.";
 		}
 		return null;
@@ -340,6 +351,17 @@ public final class Scheduler {
 			case "pregen" -> {
 				return pregen("all".equals(step.text), step.mode);
 			}
+			case "maintenance" -> {
+				if (tuning == null) return "Maintenance mode isn't available.";
+				try {
+					return tuning.setMaintenance(!"off".equals(step.text), by);
+				} catch (java.io.IOException e) {
+					return "Couldn't switch maintenance mode: " + e.getMessage();
+				}
+			}
+			case "cleanup" -> {
+				return cleanup(step);
+			}
 			case "restart" -> {
 				if (server.running()) {
 					countdown(step, "The server restarts in {time}.", "Restarting now…");
@@ -392,6 +414,23 @@ public final class Scheduler {
 	}
 
 	/** Pregenerates every dimension with borders that has pregen on, one after another (in the mod). */
+	/** Removes dropped items and XP (after a warning in chat), or mobs over a per-chunk cap. */
+	private String cleanup(Step step) throws InterruptedException {
+		DashboardProxy m = mod;
+		if (m == null) return "Cleanup isn't available.";
+		if (!server.running()) return null;
+		boolean items = !step.text.startsWith("excess");
+		if (items && step.seconds > 0) {
+			server.quietCommand(say("&eDropped items and XP orbs are cleared in " + step.seconds + " seconds."));
+			Thread.sleep(step.seconds * 1000L);
+			if (!server.running()) return null;
+		}
+		String query = items ? "kind=items" : "kind=excess&perChunk=" + step.text.substring("excess:".length());
+		String error = m.post("/api/cleanup/run?" + query, new JsonObject());
+		if (error == null) server.note("Task: " + (items ? "cleared dropped items and XP" : "removed mobs over the per-chunk cap"));
+		return error;
+	}
+
 	private String pregen(boolean all, String players) throws InterruptedException {
 		Trimmer t = trimmer;
 		DashboardProxy m = mod;
@@ -493,6 +532,8 @@ public final class Scheduler {
 			case "backup" -> "making a backup";
 			case "trim" -> s.minutes > 0 ? "outer wilds reset countdown (" + s.minutes + " min)" : "resetting the outer wilds";
 			case "pregen" -> "starting pregeneration";
+			case "cleanup" -> "cleaning up";
+			case "maintenance" -> "switching maintenance " + ("off".equals(s.text) ? "off" : "on");
 			case "wait" -> "waiting " + s.seconds + " s";
 			case "stop" -> "stopping the server";
 			case "start" -> "starting the server";

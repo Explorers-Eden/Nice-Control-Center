@@ -832,7 +832,7 @@
     const ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.font = '600 10.5px Montserrat, Arial, sans-serif';
+    ctx.font = '500 11px Inter, system-ui, sans-serif';
 
     const pw = w - PAD.left - PAD.right;
     const ph = h - PAD.top - PAD.bottom;

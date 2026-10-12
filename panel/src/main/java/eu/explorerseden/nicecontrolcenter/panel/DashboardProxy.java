@@ -50,7 +50,8 @@ final class DashboardProxy {
 			Map.entry("/api/bloat/run", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/monitor", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/pregen/start", Permissions.WORLD_TRIM),
-			Map.entry("/api/pregen/stop", Permissions.WORLD_TRIM));
+			Map.entry("/api/pregen/stop", Permissions.WORLD_TRIM),
+			Map.entry("/api/cleanup/run", Permissions.SETTINGS_SERVER));
 	/** Reads that show more than the dashboard view: the console and the chat. */
 	private static final Map<String, String> GET_PERMISSIONS = Map.of("/api/console", Permissions.CONSOLE_READ, "/api/chat", Permissions.CONSOLE_READ);
 	/** Only the panel itself calls these. */
@@ -210,7 +211,7 @@ final class DashboardProxy {
 		ctx.status(HttpStatus.SERVICE_UNAVAILABLE).contentType("text/html; charset=utf-8").header("Cache-Control", "no-store").result("""
 				<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 				<script>try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') === 'light' ? 'light' : 'dark'; } catch (e) {}</script>
-				<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap" rel="stylesheet">
+				<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 				<link rel="stylesheet" href="../app.css"><link rel="stylesheet" href="../panel.css">
 				<style>body { background: transparent; } .pn-offline { margin: 8px 0; }</style>
 				<script>setTimeout(() => location.reload(), 5000)</script></head>

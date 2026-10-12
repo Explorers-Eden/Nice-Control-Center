@@ -88,7 +88,8 @@ public final class Discord implements Notifier {
 				"stop", "🔴 The server is offline",
 				"crash", "💥 The server crashed{mod}: {message}"));
 		{
-			events.putAll(Map.of("lag", true, "lagOver", true, "taskFailed", true, "backupFailed", true, "trimDone", true, "diskLow", true, "memory", true));
+			events.putAll(Map.of("lag", true, "lagOver", true, "taskFailed", true, "backupFailed", true, "trimDone", true, "diskLow", true, "memory", true,
+					"perf", false, "maintenance", true));
 			templates.putAll(Map.of(
 					"lag", "🐢 Lag: {message}",
 					"lagOver", "✅ The lag is over ({message})",
@@ -97,6 +98,8 @@ public final class Discord implements Notifier {
 					"trimDone", "🌲 The outer wilds were reset: {message}",
 					"diskLow", "💾 The disk is almost full: {message}",
 					"memory", "🧠 The server is short of memory: {message}"));
+			templates.put("perf", "⚙️ {message}");
+			templates.put("maintenance", "🛠️ Maintenance mode is {message}");
 		}
 		public String kickMessage = "Link your Discord account to play on this server.\n\nSend this code to {bot} as a direct message on Discord:\n\n{code}\n\nThe code works for 15 minutes.";
 		public String notMemberMessage = "Your linked Discord account isn't on our Discord server anymore. Join it again to play.";
@@ -459,7 +462,7 @@ public final class Discord implements Notifier {
 			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null, name, e.has("text") ? e.get("text").getAsString() : "");
 			return;
 		}
-		if (type.equals("lag") || type.equals("lagOver")) {
+		if (type.equals("lag") || type.equals("lagOver") || type.equals("perf")) {
 			alerts.alert(type, Map.of("message", e.has("text") ? e.get("text").getAsString() : ""));
 			return;
 		}
@@ -538,7 +541,7 @@ public final class Discord implements Notifier {
 		return text;
 	}
 
-	static final java.util.Set<String> ALERTS = java.util.Set.of("lag", "lagOver", "taskFailed", "backupFailed", "trimDone", "diskLow", "memory", "crash");
+	static final java.util.Set<String> ALERTS = java.util.Set.of("lag", "lagOver", "taskFailed", "backupFailed", "trimDone", "diskLow", "memory", "crash", "perf");
 
 	private void post(String type, Map<String, String> values) {
 		if (!settings.enabled || !Boolean.TRUE.equals(settings.events.get(type))) return;

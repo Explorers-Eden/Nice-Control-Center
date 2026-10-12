@@ -70,13 +70,7 @@ final class PlayerLists {
 	}
 
 	private Properties properties() {
-		Properties p = new Properties();
-		try (var in = Files.newInputStream(dir.resolve("server.properties"))) {
-			p.load(in);
-		} catch (IOException e) {
-			// Defaults.
-		}
-		return p;
+		return ServerTuning.readProperties(dir.resolve("server.properties"));
 	}
 
 	Map<String, Object> view() {
@@ -124,7 +118,7 @@ final class PlayerLists {
 		return o;
 	}
 
-	/** Returns an error, or null. action: whitelist-add/remove, op/deop, ban/pardon, ban-ip/pardon-ip, whitelist-on/off. */
+	/** Returns an error, or null. action: whitelist-add/remove, op/deop, ban/pardon, ban-ip/pardon-ip, kick, whitelist-on/off. */
 	String apply(String action, String rawTarget, String reason, int level, String by) throws IOException {
 		boolean ip = action.endsWith("-ip");
 		String target = action.startsWith("whitelist-o") ? "" : rawTarget;
@@ -146,6 +140,7 @@ final class PlayerLists {
 				case "pardon" -> "pardon " + target;
 				case "ban-ip" -> "ban-ip " + target + (reason.isEmpty() ? "" : " " + reason);
 				case "pardon-ip" -> "pardon-ip " + target;
+				case "kick" -> "kick " + target + (reason.isEmpty() ? "" : " " + reason);
 				default -> null;
 			};
 			if (cmd == null) return "Unknown action.";
@@ -153,6 +148,7 @@ final class PlayerLists {
 			audit.log(by, "players." + action, note + " (console)", null);
 			return null;
 		}
+		if (action.equals("kick")) return "Nobody is online while the server is stopped.";
 		String created = ZonedDateTime.now().format(CREATED);
 		switch (action) {
 			case "whitelist-add" -> {
