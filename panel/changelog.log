@@ -1,4 +1,5 @@
 ## 1.6.0
+- A server without Fabric API gets the newest one for its Minecraft version from Modrinth before it starts (with "Install and update the Nice Control Center mod" on); one already there is left alone
 - Profile pictures (Account → Profile & look, also in the navbar and the users list) and eight themes to pick from (Dark, Light, Midnight, Forest, Nether, The End, Ocean, Sakura), saved with the account so they follow you to every device
 - Public info page: a contents tree on the left (server settings by group, game rules by category, data packs following their own in-game menus, mod configs) that follows where you are and the search; a banner with the server list message and counts; "Open the page" button in the settings, and admins can look at it before it's public
 - Discord page in clear cards (Connection, Chat, Account linking, Events & alerts) with the bot's state as a pill; events line up in one grid, split into Chat & server and Alerts; the token field is hidden when DISCORD_TOKEN is set; the "players who don't need a link" list is gone
