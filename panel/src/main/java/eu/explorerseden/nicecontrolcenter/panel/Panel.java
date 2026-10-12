@@ -242,8 +242,30 @@ public final class Panel {
 					}
 				}
 				String error = server.command(command);
-				if (error == null) audit.log(me.name(), "console.command", command.strip(), clientIp(ctx));
+				if (error == null) {
+					audit.log(me.name(), "console.command", command.strip(), clientIp(ctx));
+					if (settings.consoleToOps && server.running() && !command.isBlank()) {
+						JsonObject notice = new JsonObject();
+						notice.addProperty("command", command.strip());
+						Thread.startVirtualThread(() -> {
+							try {
+								dashboard.post("/api/chat/ops", notice, me.name());
+							} catch (InterruptedException e) {
+								// Shutting down.
+							}
+						});
+					}
+				}
 				result(ctx, error);
+			}));
+			routes.post("/api/console/ops", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+				boolean on = body(ctx).has("on") && body(ctx).get("on").getAsBoolean();
+				PanelSettings next = PanelSettings.load(settingsFile);
+				next.consoleToOps = on;
+				next.save(settingsFile);
+				settings = next;
+				audit.log(me.name(), "settings.console", (on ? "shows" : "no longer shows") + " console commands to operators in game", clientIp(ctx));
+				json(ctx, Map.of("ok", true, "on", on));
 			}));
 			routes.post("/api/server/eula", guard(Permissions.SERVER_POWER, (ctx, me) -> {
 				server.acceptEula();
@@ -268,6 +290,8 @@ public final class Panel {
 					error(ctx, HttpStatus.BAD_REQUEST, error);
 					return;
 				}
+				// Set from the console page, not this form.
+				next.consoleToOps = settings.consoleToOps;
 				String changes = diff(settings, next);
 				next.save(settingsFile);
 				settings = next;
@@ -290,6 +314,7 @@ public final class Panel {
 			tuning.register(routes);
 			home.register(routes);
 			info.register(routes);
+			new Commands(dataDir, server, dashboard, audit).register(routes);
 			profiles.register(routes);
 			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
 			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {

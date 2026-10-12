@@ -133,6 +133,7 @@
 					<span class="np-console-prompt">/</span>
 					<input type="text" id="pn-command" placeholder="Command, e.g. say Hello" aria-label="Command" spellcheck="false">
 					<button type="submit" class="np-btn primary">Run</button>
+					<label class="np-check pn-console-ops" id="pn-console-ops-wrap" title="Operators who are online see each command run here in chat, grey and italic, like vanilla's own notices: [Admin ┃ you: /time set day]" hidden><input type="checkbox" id="pn-console-ops"> Show to ops in game</label>
 				</form>
 			</section>
 
@@ -497,6 +498,21 @@
 					<p class="np-card-intro">The chunks that took the most time in the last 15 minutes. <b>Frozen</b> stops everything in a chunk (mobs, furnaces, hoppers, farms) until you switch it off again, as a stopgap until you can fix what's there. Frozen chunks stay in this list.</p>
 					<div class="np-table-wrap"><table class="np-table" id="pn-hotspots"></table></div>
 				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="commands" hidden>
+				<section class="np-card">
+					<div class="pn-cmd-tools">
+						<input type="search" id="pn-cmd-q" class="np-input" placeholder="Search commands, e.g. tp or teleport" aria-label="Search commands">
+						<div class="np-filters" id="pn-cmd-who">
+							<button type="button" class="np-filter active" data-who="all">All</button>
+							<button type="button" class="np-filter" data-who="everyone">Everyone can use</button>
+							<button type="button" class="np-filter" data-who="ops">Operators only</button>
+						</div>
+					</div>
+					<p class="pn-hint" id="pn-cmd-note"></p>
+				</section>
+				<div id="pn-cmd-groups"></div>
 			</div>
 
 			<div class="np-tab-panel" data-tab="maintenance" hidden>

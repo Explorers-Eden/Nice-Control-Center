@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.7.3
+- The panel's Commands page: every command with the mod that adds it, the lowest operator level that may use it, its permission node (fabric-permissions-api checks) and how it's written
+- Commands run in the panel's console can be shown to online operators, grey and italic like vanilla's notices ("[Admin ┃ NiceRon: /time set day]"); switched on in the panel
+
 ## 1.7.2
 - The changes of 1.7.1 under a new number, so panels install them: "Admin ┃ <account>: …" for messages from the panel (1.7.1 was rebuilt after its first release, and panels only update to higher numbers)
 - The dashboard on its own gets the panel's look: brand glow and block grid, each page in its colour (tabs and card icons), gradient buttons

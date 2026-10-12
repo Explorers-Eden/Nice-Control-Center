@@ -25,6 +25,8 @@ public final class PanelSettings {
 	public int memoryMaxMb = 4096;
 	public String preset = "zgc";
 	public String customArgs = "";
+	/** Commands run in the panel's console show up for operators in game ("[Admin ┃ NiceRon: /time set day]"). */
+	public boolean consoleToOps = false;
 
 	private static final List<String> PRESETS = List.of("aikar", "zgc", "none");
 

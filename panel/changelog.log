@@ -1,3 +1,7 @@
+## 1.6.3
+- New Commands page (sidebar, under Console): every command on the server in a box per mod (Minecraft folded by default), with who may use it (everyone or the operator level), permission nodes where a mod uses them, how it's written, and a short description; vanilla commands are described already, the others can get your own text (pencil). Search and an "Everyone can use / Operators only" filter. Works with the last known list while the server is off (needs mod 1.7.3)
+- Console: "Show to ops in game" beside Run (off by default): online operators see each command run there in chat, grey and italic like vanilla's notices ("[Admin ┃ NiceRon: /time set day]")
+
 ## 1.6.2
 - Performance → Tuning: "Laggiest chunks" is one list with a Frozen switch in each row; switching it doesn't move the row, and frozen chunks stay listed (marked with a snowflake) even after they stop showing up as laggy
 

@@ -311,6 +311,38 @@ public final class DashboardServer {
 				});
 				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
 			}
+			case "/api/chat/ops" -> {
+				// A command run in the panel's console, shown to operators like vanilla's own notices:
+				// grey and italic, "[Admin ┃ NiceRon: /time set day]". Only the panel calls this.
+				if (!requirePost(exchange)) {
+					return;
+				}
+				if (!PanelMode.active()) {
+					sendText(exchange, 404, "application/json", "{\"error\":\"Not found\"}");
+					return;
+				}
+				String command = jsonBody(exchange).get("command").getAsString().replaceAll("[\\r\\n]+", " ").strip();
+				if (command.isEmpty() || command.length() > 32_500) {
+					sendJson(exchange, Map.of("error", "No command."));
+					return;
+				}
+				String shown = command.length() > 256 ? command.substring(0, 255) + "…" : command;
+				String label = config.adminLabel(exchange.getRequestHeaders().getFirst("X-NCC-User"));
+				net.minecraft.network.chat.Component line = net.minecraft.network.chat.Component
+						.literal("[" + label + " /" + (shown.startsWith("/") ? shown.substring(1) : shown) + "]")
+						.withStyle(net.minecraft.ChatFormatting.GRAY, net.minecraft.ChatFormatting.ITALIC);
+				int shownTo = onServerThread(() -> {
+					int n = 0;
+					for (var player : minecraft.getPlayerList().getPlayers()) {
+						if (minecraft.getPlayerList().isOp(player.nameAndId())) {
+							player.sendSystemMessage(line);
+							n++;
+						}
+					}
+					return n;
+				});
+				sendJson(exchange, Map.of("ok", true, "shownTo", shownTo));
+			}
 			case "/api/chat/relay" -> {
 				// The panel's Discord bridge: Discord → game chat. Only the panel can call this.
 				if (!requirePost(exchange)) {
@@ -424,6 +456,7 @@ public final class DashboardServer {
 				sendJson(exchange, UpdateManager.summary(config));
 			}
 			case "/api/gamerules" -> sendJson(exchange, gamerules());
+			case "/api/commands" -> sendJson(exchange, onServerThread(() -> CommandList.build(minecraft)));
 			case "/api/gamerules/save" -> {
 				if (!requirePost(exchange)) {
 					return;

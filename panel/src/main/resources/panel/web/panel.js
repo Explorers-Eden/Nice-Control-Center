@@ -75,6 +75,8 @@
       { id: 'console', hue: '#9fb0c8', label: 'Console', icon: 'bi-terminal', subs: [
         { tab: 'server', label: 'Console', perm: 'console.read', desc: 'The server log as it happens. Type commands below it.' },
         { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' }] },
+      { id: 'commands', hue: '#ffd166', label: 'Commands', icon: 'bi-slash-square', subs: [
+        { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server, by where it comes from: who may use it and what it does.' }] },
       { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
         { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' },
@@ -201,6 +203,7 @@
     renderSide();
     $('pn-menu-btn').hidden = false;
     $('pn-command-form').hidden = !can('console.write');
+    loadConsoleOps();
     const editable = can('settings.java');
     $('pn-settings').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !editable; });
     // Links from the game (/ncc web) open ?tab=dashboard, optionally with #<dashboard tab>.
@@ -339,6 +342,7 @@
     if (tab === 'maintenance') loadMaintenance();
     if (tab === 'serverlist') loadServerList();
     if (tab === 'info') loadInfo();
+    if (tab === 'commands') loadCommands();
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -815,6 +819,28 @@
       await api('api/server/command', { command });
       input.value = '';
     } catch (err) {
+      addLines(['[panel] ' + err.message]);
+    }
+  });
+
+  /** "Show to ops in game": commands run here appear for operators in chat. Off by default. */
+  async function loadConsoleOps() {
+    const wrap = $('pn-console-ops-wrap');
+    wrap.hidden = !can('settings.server') || !can('server.view');
+    if (wrap.hidden) return;
+    try {
+      $('pn-console-ops').checked = !!(await api('api/settings')).settings.consoleToOps;
+    } catch (e) {
+      wrap.hidden = true;
+    }
+  }
+  $('pn-console-ops').addEventListener('change', async (e) => {
+    const on = e.target.checked;
+    try {
+      await api('api/console/ops', { on });
+      addLines([`[panel] Commands run here are ${on ? 'now shown to operators in game' : 'no longer shown to operators in game'}.`]);
+    } catch (err) {
+      e.target.checked = !on;
       addLines(['[panel] ' + err.message]);
     }
   });
@@ -3645,6 +3671,112 @@
       e.preventDefault();
       if ($('pn-search').hidden) openSearch(); else closeSearch();
     }
+  });
+
+  // ── Commands: grouped by the mod that adds them ───────────────────────────────
+
+  const LEVELS = { 0: 'Everyone', 1: 'Op level 1', 2: 'Op level 2', 3: 'Op level 3', 4: 'Op level 4' };
+  const LEVEL_HELP = { 0: 'Every player', 1: 'Operators (level 1: moderators, can bypass spawn protection)', 2: 'Operators (level 2: game masters, most cheats and command blocks)',
+    3: 'Operators (level 3: admins, kick, ban and op)', 4: 'Operators (level 4: owners, everything incl. stop)' };
+  let cmdData = null;
+
+  async function loadCommands() {
+    try {
+      cmdData = await api('api/commands');
+    } catch (e) {
+      $('pn-cmd-groups').innerHTML = `<section class="np-card"><p class="pn-hint">${esc(e.message)}</p></section>`;
+      return;
+    }
+    renderCommands();
+  }
+
+  function whoPill(c) {
+    if (c.level === -1) return `<span class="pn-who special" title="No operator level passes the check: it needs a player, or a permission from a permissions mod">${c.permission ? 'Permission' : 'Special'}</span>`;
+    return `<span class="pn-who l${c.level}" title="${esc(LEVEL_HELP[c.level] || '')}">${c.level === 0 ? '<i class="bi bi-people"></i> ' : '<i class="bi bi-shield-lock"></i> '}${LEVELS[c.level] || 'Level ' + c.level}</span>`;
+  }
+
+  function cmdRow(c, sub) {
+    const desc = c.description ? esc(c.description) : (sub ? '' : '<span class="pn-muted">No description yet.</span>');
+    const usage = (c.usage || []).filter((u) => u !== '/' + c.name || c.usage.length === 1);
+    const edit = !sub && cmdData.canEdit ? `<button type="button" class="pn-cmd-edit" data-cmd-edit="${esc(c.name)}" title="Write a description"><i class="bi bi-pencil"></i></button>` : '';
+    const search = [c.name, c.description, c.permission, c.aliasOf, ...(c.usage || [])].join(' ').toLowerCase();
+    return `<div class="pn-cmd${sub ? ' sub' : ''}" data-search="${esc(search)}" data-level="${c.level}">
+      <div class="pn-cmd-main">
+        <code class="pn-cmd-name">/${esc(c.name)}</code>${c.aliasOf ? `<span class="pn-muted">same as /${esc(c.aliasOf)}</span>` : ''}
+        <span class="pn-cmd-who">${whoPill(c)}${c.permission ? `<code class="pn-perm" title="Permission node (LuckPerms and other permissions mods)">${esc(c.permission)}</code>` : ''}</span>
+      </div>
+      <div class="pn-cmd-desc" data-cmd-desc="${sub ? '' : esc(c.name)}">${desc}${c.custom ? ' <span class="pn-tag">yours</span>' : ''}${edit}</div>
+      ${usage.length ? `<details class="pn-cmd-usage"><summary>How to use</summary>${usage.map((u) => `<code>${esc(u)}</code>`).join('')}</details>` : ''}
+    </div>`;
+  }
+
+  function renderCommands() {
+    const list = cmdData.commands || [];
+    $('pn-cmd-note').textContent = !list.length
+      ? (cmdData.running ? 'Loading… (needs the Nice Control Center mod 1.7.3 or newer)' : 'Shows after the server has run once with the mod.')
+      : `${list.length} commands${cmdData.updated ? ` · read ${new Date(cmdData.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : ''}${cmdData.running ? '' : ' · the server is off, this is the last known list'}.`
+        + ' Who may use a command is the lowest operator level that passes its check; a permissions mod like LuckPerms can change that with the permission nodes.';
+    const groups = new Map();
+    for (const c of list) {
+      const key = c.mod || 'unknown';
+      if (!groups.has(key)) groups.set(key, { name: c.modName || key, list: [] });
+      groups.get(key).list.push(c);
+    }
+    // Minecraft first, the mods by name, unknown last.
+    const order = [...groups].sort(([a, ga], [b, gb]) => (a === 'minecraft' ? -1 : b === 'minecraft' ? 1 : a === 'unknown' ? 1 : b === 'unknown' ? -1 : ga.name.localeCompare(gb.name)));
+    $('pn-cmd-groups').innerHTML = order.map(([id, g]) => `<section class="np-card pn-cmd-group" id="cmd-${esc(id)}"${id === 'minecraft' ? ' data-folded' : ''}>
+        <h3 class="np-card-title"><i class="bi ${id === 'minecraft' ? 'bi-box' : id === 'unknown' ? 'bi-question-circle' : 'bi-puzzle'}"></i> ${esc(g.name)} <span class="pn-count">${g.list.length}</span></h3>
+        <div class="pn-cmd-list">${g.list.map((c) => cmdRow(c, false) + (c.subs || []).map((sc) => cmdRow(sc, true)).join('')).join('')}</div>
+      </section>`).join('');
+    setupFolding($('pn-cmd-groups'));
+    filterCommands();
+  }
+
+  function filterCommands() {
+    const words = $('pn-cmd-q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const who = document.querySelector('#pn-cmd-who .active').dataset.who;
+    document.querySelectorAll('#pn-cmd-groups .pn-cmd-group').forEach((g) => {
+      let shown = 0;
+      g.querySelectorAll('.pn-cmd').forEach((row) => {
+        const level = Number(row.dataset.level);
+        const ok = words.every((w) => row.dataset.search.includes(w)) && (who === 'all' || (who === 'everyone' ? level === 0 : level !== 0));
+        row.hidden = !ok;
+        if (ok) shown++;
+      });
+      g.hidden = shown === 0;
+      // While searching, matches show even in folded boxes.
+      g.classList.toggle('pn-cmd-searching', words.length > 0);
+    });
+  }
+
+  $('pn-cmd-q').addEventListener('input', filterCommands);
+  $('pn-cmd-who').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-who]');
+    if (!b) return;
+    $('pn-cmd-who').querySelectorAll('.np-filter').forEach((x) => x.classList.toggle('active', x === b));
+    filterCommands();
+  });
+
+  $('pn-cmd-groups').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-cmd-edit]');
+    if (!b) return;
+    const name = b.dataset.cmdEdit;
+    const c = cmdData.commands.find((x) => x.name === name);
+    const box = b.closest('.pn-cmd-desc');
+    box.innerHTML = `<form class="pn-cmd-form"><input class="np-input" maxlength="300" value="${esc(c.custom ? c.description : '')}" placeholder="${esc(c.description || 'What does it do?')}">
+      <button class="np-btn small primary">Save</button><button type="button" class="np-btn small" data-cancel>Cancel</button></form>`;
+    const form = box.querySelector('form');
+    form.querySelector('input').focus();
+    form.querySelector('[data-cancel]').onclick = () => renderCommands();
+    form.onsubmit = async (ev) => {
+      ev.preventDefault();
+      try {
+        await api('api/commands/describe', { name, description: form.querySelector('input').value });
+        loadCommands();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
   });
 
   // ── Folding cards (like the dashboard's): click a card's title ───────────────

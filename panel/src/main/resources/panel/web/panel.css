@@ -662,3 +662,41 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-chunk .np-switch { vertical-align: middle; }
 .pn-chunk .np-switch input:checked + span { background: #4ea8ff; }
 .pn-muted { color: var(--faint); }
+
+/* Console: "Show to ops in game" beside Run. */
+.np-console-form .pn-console-ops { flex: none; white-space: nowrap; font-size: var(--fs-sm); color: var(--muted); }
+.np-console-form .pn-console-ops input { flex: none; }
+.np-console-form .pn-console-ops[hidden] { display: none; }
+
+/* Commands page */
+.pn-cmd-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pn-cmd-tools .np-input { flex: 1 1 260px; }
+.pn-cmd-tools .np-filters { margin: 0; }
+#pn-cmd-note { margin: 12px 0 0; }
+.pn-cmd-group[hidden] { display: none; }
+.pn-cmd-group.collapsed.pn-cmd-searching > :not(.np-card-title) { display: block !important; }
+.pn-cmd { padding: 10px 0; border-top: 1px solid rgba(var(--ink), .08); display: grid; gap: 4px; }
+.pn-cmd:first-child { border-top: 0; }
+.pn-cmd[hidden] { display: none; }
+.pn-cmd.sub { padding-left: 24px; margin-left: 4px; border-top: 0; border-left: 2px solid rgba(var(--ink), .1); padding-top: 6px; }
+.pn-cmd-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pn-cmd-name { font-family: var(--mono); font-size: var(--fs-md); font-weight: 600; color: var(--strong); }
+.pn-cmd.sub .pn-cmd-name { font-size: var(--fs-base); font-weight: 500; }
+.pn-cmd-who { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pn-who { font-size: var(--fs-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; background: rgba(var(--ink), .08); color: var(--muted); white-space: nowrap; }
+.pn-who.l0 { background: rgba(95, 214, 138, .15); color: #5fd68a; }
+.pn-who.l1 { background: rgba(98, 182, 255, .15); color: #62b6ff; }
+.pn-who.l2 { background: rgba(255, 179, 92, .15); color: #ffb35c; }
+.pn-who.l3, .pn-who.l4 { background: rgba(255, 107, 107, .15); color: #ff7b7b; }
+.pn-who.special { background: rgba(167, 123, 255, .15); color: #b49bff; }
+.pn-perm { font-family: var(--mono); font-size: var(--fs-xs); color: var(--faint); }
+.pn-cmd-desc { font-size: var(--fs-base); color: var(--text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pn-cmd-edit { border: 0; background: none; color: var(--faint); cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.pn-cmd-edit:hover { color: var(--accent); background: rgba(var(--ink), .06); }
+.pn-cmd-form { display: flex; gap: 6px; flex: 1; }
+.pn-cmd-form .np-input { flex: 1; }
+.pn-cmd-usage summary { cursor: pointer; font-size: var(--fs-sm); color: var(--faint); width: max-content; }
+.pn-cmd-usage summary:hover { color: var(--accent); }
+.pn-cmd-usage code { display: block; font-family: var(--mono); font-size: var(--fs-sm); color: var(--muted); padding: 2px 0 2px 12px; overflow-wrap: anywhere; }
+.pn-cmd-tools .np-input, .pn-cmd-form .np-input { height: 34px; box-sizing: border-box; padding: 0 10px; font: inherit; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; min-width: 0; }
+.pn-cmd-tools .np-input:focus, .pn-cmd-form .np-input:focus { outline: none; border-color: var(--accent); }
