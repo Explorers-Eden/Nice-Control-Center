@@ -397,9 +397,10 @@
       table.innerHTML = '<tr><td class="np-empty">Nobody was online in this window.</td></tr>';
       return;
     }
-    table.innerHTML = `<thead><tr><th>Player</th><th class="num">Ping</th><th class="num">Entities near</th><th class="num">Block ent. near</th><th class="num">New chunks/min</th>${REPORT ? '' : '<th></th>'}</tr></thead><tbody>` +
+    table.innerHTML = `<thead><tr><th>Player</th><th class="num" title="Measured tick time of the chunks around this player; each chunk counts for the nearest player only, so the shares add up">Tick time around</th><th class="num">Ping</th><th class="num">Entities near</th><th class="num">Block ent. near</th><th class="num">New chunks/min</th>${REPORT ? '' : '<th></th>'}</tr></thead><tbody>` +
       players.map((p) => `<tr>
         <td class="name">${esc(p.name)}${p.online ? '' : ' <span class="np-chip">left</span>'}<small>${esc(prettyDimension(p.dimension))} · ${p.x}, ${p.y}, ${p.z}</small></td>
+        <td class="num">${p.msNear ? `<b>${p.msNear >= 10 ? fixed(p.msNear, 1) : fixed(p.msNear, 2)} ms</b>${p.msNearPercent >= 1 ? `<br><small>${pct(p.msNearPercent)} of all</small>` : ''}${p.msNear >= 0.05 ? `<br><small title="Their costliest chunk">worst at x ${p.hotX * 16 + 8}, z ${p.hotZ * 16 + 8}</small>` : ''}` : '–'}</td>
         <td class="num">${p.online ? num(p.ping) + ' ms' : '–'}</td>
         <td class="num">${num(p.entitiesNear)}</td>
         <td class="num">${num(p.blockEntitiesNear)}</td>

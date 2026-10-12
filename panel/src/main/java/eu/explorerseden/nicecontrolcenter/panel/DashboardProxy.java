@@ -51,7 +51,8 @@ final class DashboardProxy {
 			Map.entry("/api/monitor", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/pregen/start", Permissions.WORLD_TRIM),
 			Map.entry("/api/pregen/stop", Permissions.WORLD_TRIM),
-			Map.entry("/api/cleanup/run", Permissions.SETTINGS_SERVER));
+			Map.entry("/api/cleanup/run", Permissions.SETTINGS_SERVER),
+			Map.entry("/api/loadedchunks/release", Permissions.SETTINGS_SERVER));
 	/** Reads that show more than the dashboard view: the console and the chat. */
 	private static final Map<String, String> GET_PERMISSIONS = Map.of("/api/console", Permissions.CONSOLE_READ, "/api/chat", Permissions.CONSOLE_READ);
 	/** Only the panel itself calls these. */

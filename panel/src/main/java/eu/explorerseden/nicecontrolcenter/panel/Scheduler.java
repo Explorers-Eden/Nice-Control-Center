@@ -218,7 +218,7 @@ public final class Scheduler {
 			if (s.type.equals("pregen") && !s.text.equals("all")) s.text = "wilds";
 			if (s.type.equals("maintenance") && !s.text.equals("off")) s.text = "on";
 			if (s.type.equals("cleanup")) {
-				if (!s.text.matches("items|excess:\\d{1,3}")) s.text = "items";
+				if (!s.text.matches("items|excess|excess:\\d{1,3}")) s.text = "items";
 				if (s.seconds < 0 || s.seconds > 600) return "The warning before a cleanup is 0–600 seconds.";
 			}
 			if (s.type.equals("wait") && (s.seconds < 1 || s.seconds > 3600)) return "Waits are 1–3600 seconds.";
@@ -425,9 +425,10 @@ public final class Scheduler {
 			Thread.sleep(step.seconds * 1000L);
 			if (!server.running()) return null;
 		}
-		String query = items ? "kind=items" : "kind=excess&perChunk=" + step.text.substring("excess:".length());
+		// "excess" uses the mob limits from Performance → Tuning; "excess:24" (older schedules) one limit for every kind.
+		String query = items ? "kind=items" : step.text.startsWith("excess:") ? "kind=excess&perChunk=" + step.text.substring("excess:".length()) : "kind=excess";
 		String error = m.post("/api/cleanup/run?" + query, new JsonObject());
-		if (error == null) server.note("Task: " + (items ? "cleared dropped items and XP" : "removed mobs over the per-chunk cap"));
+		if (error == null) server.note("Task: " + (items ? "cleared dropped items and XP" : "removed mobs over their per-chunk limit"));
 		return error;
 	}
 

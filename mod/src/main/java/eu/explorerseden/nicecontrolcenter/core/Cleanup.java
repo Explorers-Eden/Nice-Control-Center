@@ -1,6 +1,7 @@
 package eu.explorerseden.nicecontrolcenter.core;
 
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
+import eu.explorerseden.nicecontrolcenter.Performance;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -9,6 +10,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.ChunkPos;
@@ -71,8 +74,53 @@ public final class Cleanup {
 	private record Key(ChunkPos chunk, EntityType<?> type) {
 	}
 
-	/** Mobs over perChunk of one type in a chunk; removes the excess when run is set. */
+	/** The mob limits, looked up by id, then group, then *. */
+	public static final class Limits {
+		private final Map<String, Integer> ids = new HashMap<>();
+		private final Map<String, Integer> groups = new HashMap<>();
+		private int any = -1;
+
+		public Limits(List<Performance.MobRule> rules) {
+			for (Performance.MobRule r : rules) {
+				if (r.type.equals("*")) any = r.perChunk;
+				else if (r.type.startsWith("#")) groups.put(r.type, r.perChunk);
+				else ids.put(r.type, r.perChunk);
+			}
+		}
+
+		public boolean isEmpty() {
+			return ids.isEmpty() && groups.isEmpty() && any < 0;
+		}
+
+		/** The limit for this kind of mob, or -1 when no rule names it. */
+		public int of(EntityType<?> type, Mob example) {
+			Integer byId = ids.get(BuiltInRegistries.ENTITY_TYPE.getKey(type).toString());
+			if (byId != null) return byId;
+			Integer byGroup = groups.get(group(type, example));
+			if (byGroup != null) return byGroup;
+			return any;
+		}
+
+		private static String group(EntityType<?> type, Mob example) {
+			if (example instanceof AbstractVillager) return "#villagers";
+			MobCategory category = type.getCategory();
+			return switch (category) {
+				case MONSTER -> "#monsters";
+				case CREATURE -> "#animals";
+				case AMBIENT -> "#ambient";
+				case WATER_CREATURE, WATER_AMBIENT, UNDERGROUND_WATER_CREATURE, AXOLOTLS -> "#water";
+				default -> "";
+			};
+		}
+	}
+
+	/** Old style: one limit for every kind (schedules saved before mob limits existed). */
 	public static Map<String, Object> excess(MinecraftServer server, int perChunk, boolean run) {
+		return excess(server, new Limits(List.of(new Performance.MobRule("*", perChunk))), run);
+	}
+
+	/** Mobs over their limit per chunk (see {@link Limits}); removes the excess when run is set. */
+	public static Map<String, Object> excess(MinecraftServer server, Limits limits, boolean run) {
 		List<Map<String, Object>> chunks = new ArrayList<>();
 		int total = 0;
 		for (ServerLevel level : server.getAllLevels()) {
@@ -83,8 +131,9 @@ public final class Cleanup {
 			String dim = level.dimension().identifier().toString();
 			for (Map.Entry<Key, List<Entity>> g : groups.entrySet()) {
 				List<Entity> list = g.getValue();
-				if (list.size() <= perChunk) continue;
-				int extra = list.size() - perChunk;
+				int limit = limits.of(g.getKey().type(), (Mob) list.get(0));
+				if (limit < 0 || list.size() <= limit) continue;
+				int extra = list.size() - limit;
 				total += extra;
 				Map<String, Object> row = new LinkedHashMap<>();
 				row.put("dimension", dim);
@@ -92,9 +141,10 @@ public final class Cleanup {
 				row.put("z", g.getKey().chunk().z());
 				row.put("type", BuiltInRegistries.ENTITY_TYPE.getKey(g.getKey().type()).toString());
 				row.put("count", list.size());
+				row.put("limit", limit);
 				row.put("remove", extra);
 				chunks.add(row);
-				if (run) list.subList(perChunk, list.size()).forEach(Entity::discard);
+				if (run) list.subList(limit, list.size()).forEach(Entity::discard);
 			}
 		}
 		chunks.sort(Comparator.comparingInt((Map<String, Object> r) -> (int) r.get("remove")).reversed());
@@ -102,7 +152,28 @@ public final class Cleanup {
 		out.put("remove", total);
 		out.put("chunks", chunks.size() > 50 ? chunks.subList(0, 50) : chunks);
 		out.put("chunkCount", chunks.size());
-		if (run) NiceControlCenter.LOGGER.info("Cleanup: removed {} mobs over the cap of {} per type and chunk", total, perChunk);
+		if (run && total > 0) NiceControlCenter.LOGGER.info("Cleanup: removed {} mobs over their limit per chunk", total);
 		return out;
+	}
+
+	/** Dropped items over perChunk in a chunk, oldest first; items younger than 10 seconds always stay. Returns how many went. */
+	public static int itemsOver(MinecraftServer server, int perChunk) {
+		int removed = 0;
+		for (ServerLevel level : server.getAllLevels()) {
+			Map<ChunkPos, List<ItemEntity>> byChunk = new HashMap<>();
+			for (Entity e : level.getAllEntities()) {
+				if (e instanceof ItemEntity item) byChunk.computeIfAbsent(e.chunkPosition(), k -> new ArrayList<>()).add(item);
+			}
+			for (List<ItemEntity> list : byChunk.values()) {
+				if (list.size() <= perChunk) continue;
+				list.sort(Comparator.comparingInt(ItemEntity::getAge).reversed());
+				for (int i = 0; i < list.size() - perChunk; i++) {
+					if (list.get(i).getAge() < 200) break;
+					list.get(i).discard();
+					removed++;
+				}
+			}
+		}
+		return removed;
 	}
 }

@@ -14,6 +14,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
@@ -28,6 +35,8 @@ import net.minecraft.world.phys.AABB;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -53,6 +62,19 @@ public final class PerfControl {
 	private static int view = -1;
 	private static volatile int mobCap = 100;
 	private static long lastStep;
+	// The extra steps before the view distance: activation ranges halved, then entity tracking at 60 %.
+	private static volatile boolean activationTight;
+	private static volatile int tracking = 100;
+	// Resolved on reload, for the checks that run per entity.
+	private static Set<Item> junk = Set.of();
+	private static Map<EntityType<?>, Integer> saveLimits = Map.of();
+	private static Cleanup.Limits limits = new Cleanup.Limits(java.util.List.of());
+	// Auto caps: what went in the last hour, and when the panel last heard about it.
+	private static final java.util.ArrayDeque<long[]> capped = new java.util.ArrayDeque<>();
+	private static long lastCapAlert;
+	// New path searches this tick (the path budget).
+	private static int paths;
+	private static long pathsTick = -1;
 	private static long calmSince = -1;
 	private static volatile String lastChange = "";
 
@@ -71,8 +93,11 @@ public final class PerfControl {
 		modified = -1;
 		baseSim = baseView = sim = view = -1;
 		mobCap = 100;
+		activationTight = false;
+		tracking = 100;
 		calmSince = -1;
 		lastChange = "";
+		capped.clear();
 		players.clear();
 		trapped.clear();
 	}
@@ -82,7 +107,7 @@ public final class PerfControl {
 		int tick = server.getTickCount();
 		if (modified < 0 || tick % 100 == 0) reload(server);
 		players.clear();
-		if (settings.activation.enabled) {
+		if (settings.activation.enabled || settings.ai.enabled) {
 			for (ServerLevel level : server.getAllLevels()) {
 				var list = level.players();
 				double[] xz = new double[list.size() * 2];
@@ -95,6 +120,25 @@ public final class PerfControl {
 			}
 		}
 		if (tick % 20 == 0) dynamic(server);
+		Performance.AutoCaps caps = settings.autoCaps;
+		if (caps.enabled && tick > 0 && tick % (caps.intervalSeconds * 20) == 0) autoCaps(server, caps);
+	}
+
+	/** The mob limits and the dropped item limit, applied on their own. */
+	private static void autoCaps(MinecraftServer server, Performance.AutoCaps caps) {
+		int mobs = limits.isEmpty() ? 0 : (int) Cleanup.excess(server, limits, true).get("remove");
+		int items = caps.items ? Cleanup.itemsOver(server, caps.itemsPerChunk) : 0;
+		long now = System.currentTimeMillis();
+		while (!capped.isEmpty() && now - capped.peekFirst()[0] > 3_600_000L) capped.pollFirst();
+		if (mobs + items == 0) return;
+		capped.addLast(new long[] { now, mobs, items });
+		if (now - lastCapAlert >= 600_000L) {
+			lastCapAlert = now;
+			String text = "Auto caps removed " + (mobs > 0 ? mobs + " mobs over their limit" : "") + (mobs > 0 && items > 0 ? " and " : "")
+					+ (items > 0 ? items + " dropped items" : "");
+			NiceControlCenter.LOGGER.info(text);
+			PanelBridge.alert("perf", text);
+		}
 	}
 
 	private static void reload(MinecraftServer server) {
@@ -112,6 +156,19 @@ public final class PerfControl {
 		Map<String, LongSet> map = new HashMap<>();
 		for (Performance.Chunk c : next.frozen) map.computeIfAbsent(c.dimension, k -> new LongOpenHashSet()).add(ChunkPos.pack(c.x, c.z));
 		frozen = map;
+		Set<Item> items = new HashSet<>();
+		for (String id : next.despawn.items) {
+			Identifier key = Identifier.tryParse(id);
+			if (key != null) BuiltInRegistries.ITEM.getOptional(key).ifPresent(items::add);
+		}
+		junk = items;
+		Map<EntityType<?>, Integer> save = new HashMap<>();
+		next.saveLimits.limits.forEach((id, n) -> {
+			Identifier key = Identifier.tryParse(id);
+			if (key != null) BuiltInRegistries.ENTITY_TYPE.getOptional(key).ifPresent(t -> save.put(t, n));
+		});
+		saveLimits = save;
+		limits = new Cleanup.Limits(next.rules);
 		settings = next;
 		if (!next.dynamic.enabled) restore(server, "dynamic distances switched off");
 		if (!first || now != 0) NiceControlCenter.LOGGER.info("Performance settings loaded ({})", summary(next));
@@ -124,6 +181,13 @@ public final class PerfControl {
 		if (s.merge.enabled) b.append("merge radius, ");
 		if (s.breeding.enabled) b.append("breeding caps, ");
 		if (s.villagers.lobotomize) b.append("villager brains, ");
+		if (s.autoCaps.enabled) b.append("auto caps, ");
+		if (s.collisions.enabled) b.append("collision cap, ");
+		if (s.despawn.enabled) b.append("junk despawn, ");
+		if (s.saveLimits.enabled) b.append("save limits, ");
+		if (s.ai.enabled) b.append("lighter mob AI, ");
+		if (s.hoppers.enabled) b.append("hopper cooldown, ");
+		if (s.decor.armorStands) b.append("armor stands still, ");
 		if (!s.frozen.isEmpty()) b.append(s.frozen.size()).append(" frozen chunks, ");
 		return b.isEmpty() ? "all off" : b.substring(0, b.length() - 2);
 	}
@@ -151,6 +215,12 @@ public final class PerfControl {
 			} else if (mobCap > d.mobCapMin) {
 				mobCap = Math.max(d.mobCapMin, mobCap - 10);
 				what = "mob cap " + mobCap + " %";
+			} else if (d.extraSteps && settings.activation.enabled && !activationTight) {
+				activationTight = true;
+				what = "activation ranges to half";
+			} else if (d.extraSteps && tracking > 60) {
+				tracking = 60;
+				what = "range players see mobs from to 60 %";
 			} else if (d.view && view > Math.min(d.viewMin, baseView)) {
 				view--;
 				list.setViewDistance(view);
@@ -170,6 +240,12 @@ public final class PerfControl {
 			view++;
 			list.setViewDistance(view);
 			what = "view distance " + view;
+		} else if (tracking < 100) {
+			tracking = 100;
+			what = "range players see mobs from to normal";
+		} else if (activationTight) {
+			activationTight = false;
+			what = "activation ranges to normal";
 		} else if (mobCap < 100) {
 			mobCap = Math.min(100, mobCap + 10);
 			what = "mob cap " + mobCap + " %";
@@ -182,7 +258,7 @@ public final class PerfControl {
 	}
 
 	private static boolean lowered() {
-		return baseSim >= 0 && (sim < baseSim || view < baseView || mobCap < 100);
+		return baseSim >= 0 && (sim < baseSim || view < baseView || mobCap < 100 || activationTight || tracking < 100);
 	}
 
 	private static void step(long now, String text) {
@@ -201,6 +277,8 @@ public final class PerfControl {
 		server.getPlayerList().setSimulationDistance(baseSim);
 		server.getPlayerList().setViewDistance(baseView);
 		mobCap = 100;
+		activationTight = false;
+		tracking = 100;
 		NiceControlCenter.LOGGER.info("Distances back to normal ({})", why);
 		lastChange = "Back to normal (" + why + ")";
 		baseSim = baseView = sim = view = -1;
@@ -216,6 +294,16 @@ public final class PerfControl {
 		out.put("simulationBase", baseSim >= 0 ? baseSim : list.getSimulationDistance());
 		out.put("viewBase", baseView >= 0 ? baseView : list.getViewDistance());
 		out.put("mobCap", mobCap);
+		out.put("activationHalved", activationTight);
+		out.put("tracking", tracking);
+		long mobs = 0;
+		long items = 0;
+		for (long[] c : capped) {
+			mobs += c[1];
+			items += c[2];
+		}
+		out.put("cappedMobsHour", mobs);
+		out.put("cappedItemsHour", items);
 		out.put("lowered", lowered());
 		out.put("mspt", Math.round(server.getAverageTickTimeNanos() / 100_000.0) / 10.0);
 		out.put("lastChange", lastChange);
@@ -241,11 +329,14 @@ public final class PerfControl {
 		if (entity instanceof Player) return false;
 		// A vehicle may carry a player, who must keep ticking.
 		if (!frozen.isEmpty() && !entity.isVehicle() && frozen(level, entity.getBlockX() >> 4, entity.getBlockZ() >> 4)) return true;
+		if (entity instanceof ArmorStand stand && settings.decor.armorStands) return stillStand(level, stand);
 		Performance.Activation a = settings.activation;
 		if (!a.enabled || !(entity instanceof Mob mob)) return false;
-		if ((entity.tickCount + entity.getId()) % a.every == 0) return false;
+		// The world's clock, not the entity's: a skipped entity's own tick count doesn't move.
+		if ((level.getGameTime() + entity.getId()) % a.every == 0) return false;
 		if (immune(mob)) return false;
 		int range = entity instanceof Enemy ? a.monsters : entity instanceof AbstractVillager ? a.villagers : entity instanceof Animal ? a.animals : a.other;
+		if (activationTight) range = Math.max(8, range / 2);
 		double[] xz = players.get(level);
 		if (xz == null) return false;
 		double r2 = (double) range * range;
@@ -255,6 +346,91 @@ public final class PerfControl {
 			if (dx * dx + dz * dz <= r2) return false;
 		}
 		return true;
+	}
+
+	/** An armor stand with nothing happening to it: on the ground, still, not hurt, carrying or carried. It still ticks once a second. */
+	private static boolean stillStand(ServerLevel level, ArmorStand stand) {
+		if ((level.getGameTime() + stand.getId()) % 20 == 0) return false;
+		if (!stand.onGround() || stand.isPassenger() || stand.isVehicle() || stand.isOnFire() || stand.hurtTime > 0) return false;
+		// Sideways only: on the ground gravity keeps a small downward speed every tick.
+		var motion = stand.getDeltaMovement();
+		return motion.x * motion.x + motion.z * motion.z < 1.0E-4;
+	}
+
+	/** Whether any player in this level is within range blocks (horizontally). */
+	private static boolean playerWithin(ServerLevel level, Entity entity, double range) {
+		double[] xz = players.get(level);
+		if (xz == null) return true;
+		double r2 = range * range;
+		for (int i = 0; i < xz.length; i += 2) {
+			double dx = xz[i] - entity.getX();
+			double dz = xz[i + 1] - entity.getZ();
+			if (dx * dx + dz * dz <= r2) return true;
+		}
+		return false;
+	}
+
+	// ── Collisions, despawn, save limits, AI, hoppers, tracking ─────────────
+
+	/** How many others one mob may push per tick; -1 for no limit. */
+	public static int collisionMax() {
+		return settings.collisions.enabled ? settings.collisions.max : -1;
+	}
+
+	/** Ticks after which this dropped item goes; -1 to keep vanilla's 5 minutes. */
+	public static int junkTicks(ItemStack stack) {
+		Performance.Despawn d = settings.despawn;
+		return d.enabled && junk.contains(stack.getItem()) ? d.itemSeconds * 20 : -1;
+	}
+
+	/** Ticks a stray arrow (players can't pick it up) stays in the ground; -1 for vanilla. */
+	public static int strayArrowTicks() {
+		Performance.Despawn d = settings.despawn;
+		return d.enabled ? d.arrowSeconds * 20 : -1;
+	}
+
+	/** How many of this kind a chunk keeps when it saves; -1 for all. */
+	public static int saveLimit(EntityType<?> type) {
+		if (!settings.saveLimits.enabled) return -1;
+		Integer n = saveLimits.get(type);
+		return n == null ? -1 : n;
+	}
+
+	public static boolean saveLimitsOn() {
+		return settings.saveLimits.enabled && !saveLimits.isEmpty();
+	}
+
+	/** Whether this mob re-plans its goals this tick (far from players it only does every few ticks). */
+	public static boolean plansGoals(Mob mob) {
+		Performance.Ai ai = settings.ai;
+		if (!ai.enabled || !(mob.level() instanceof ServerLevel level)) return true;
+		if ((level.getGameTime() + mob.getId()) % ai.farGoalEvery == 0) return true;
+		if (immune(mob)) return true;
+		return playerWithin(level, mob, ai.farDistance);
+	}
+
+	/** Whether this mob may search a new path now (at most pathBudget searches per tick). */
+	public static boolean mayPathfind(Mob mob) {
+		Performance.Ai ai = settings.ai;
+		if (!ai.enabled || (ai.whenLagging && !lowered())) return true;
+		if (mob instanceof OwnableEntity owned && owned.getOwnerReference() != null) return true;
+		if (mob instanceof Raider raider && raider.hasActiveRaid()) return true;
+		long now = mob.level().getGameTime();
+		if (now != pathsTick) {
+			pathsTick = now;
+			paths = 0;
+		}
+		return ++paths <= ai.pathBudget;
+	}
+
+	/** Ticks a hopper waits after finding nothing to move; 0 for vanilla (tries again next tick). */
+	public static int hopperIdle() {
+		return settings.hoppers.enabled ? settings.hoppers.idleCooldown : 0;
+	}
+
+	/** How far players see entities, in percent (the lag ladder lowers it). */
+	public static int trackingPercent() {
+		return tracking;
 	}
 
 	/** Entities that always tick: anything in motion through the air or water, fighting, burning, tied or carried. */

@@ -35,6 +35,13 @@ final class Home {
 		this.stats = stats;
 	}
 
+	private DashboardProxy mod;
+
+	/** For the "chunks ticking with nobody near" line. */
+	void useMod(DashboardProxy mod) {
+		this.mod = mod;
+	}
+
 	private static Map<String, Object> item(String level, String text, String tab, String action) {
 		Map<String, Object> m = new LinkedHashMap<>();
 		m.put("level", level);
@@ -63,6 +70,12 @@ final class Home {
 		if (last != null && last.has("free") && last.has("total") && last.get("total").getAsLong() > 0) {
 			double pct = 100.0 * last.get("free").getAsLong() / last.get("total").getAsLong();
 			if (pct < 10) attention.add(item("bad", "The disk is almost full: " + Backups.human(last.get("free").getAsLong()) + " free.", "backups", "Backups"));
+		}
+		if (mod != null && server.running()) {
+			com.google.gson.JsonObject loaded = mod.get("/api/loadedchunks");
+			if (loaded != null && loaded.has("ticking") && loaded.get("ticking").getAsInt() > 25) {
+				attention.add(item("warn", loaded.get("ticking").getAsInt() + " chunks keep ticking with no player near (forceload, ender pearls, portals).", "tuning", "Loaded chunks"));
+			}
 		}
 		if (!server.eulaAccepted()) attention.add(item("warn", "The Minecraft EULA isn't accepted yet, so the server can't start.", "server", "Console"));
 

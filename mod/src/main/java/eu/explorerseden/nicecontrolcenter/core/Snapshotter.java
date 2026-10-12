@@ -213,8 +213,9 @@ public final class Snapshotter {
 			counts.blockTicks += ticks.nicecontrolcenter$blockTicks().count();
 			counts.fluidTicks += ticks.nicecontrolcenter$fluidTicks().count();
 
-			describePlayers(server, level, dimension, perChunk, blockEntitiesPerChunk, b);
+			List<Breakdown.PlayerRow> rows = describePlayers(server, level, dimension, perChunk, blockEntitiesPerChunk, b);
 			Long2LongOpenHashMap chunkNs = bucket.chunkNs.getOrDefault(dimension, new Long2LongOpenHashMap());
+			creditTickTime(server, rows, chunkNs);
 			pickCandidates(level, dimension, chunkNs, perChunk, blockEntitiesPerChunk, candidates);
 		}
 		b.max = copy(counts);
@@ -233,8 +234,9 @@ public final class Snapshotter {
 	}
 
 	/** Per player: where they are, ping, and how much is loaded around them. */
-	private static void describePlayers(MinecraftServer server, ServerLevel level, String dimension, Long2IntOpenHashMap entities,
+	private static List<Breakdown.PlayerRow> describePlayers(MinecraftServer server, ServerLevel level, String dimension, Long2IntOpenHashMap entities,
 			Long2IntOpenHashMap blockEntities, Breakdown b) {
+		List<Breakdown.PlayerRow> rows = new ArrayList<>();
 		int serverView = server.getPlayerList().getViewDistance();
 		for (ServerPlayer player : level.players()) {
 			Breakdown.PlayerRow row = new Breakdown.PlayerRow();
@@ -258,7 +260,41 @@ public final class Snapshotter {
 				}
 			}
 			b.players.put(player.getUUID().toString(), row);
+			rows.add(row);
 		}
+		return rows;
+	}
+
+	/**
+	 * Gives each chunk's measured tick time to the nearest player within simulation distance (+2), so
+	 * the shares add up and nothing counts twice; remembers each player's costliest chunk.
+	 */
+	private static void creditTickTime(MinecraftServer server, List<Breakdown.PlayerRow> rows, Long2LongOpenHashMap chunkNs) {
+		if (rows.isEmpty() || chunkNs.isEmpty()) return;
+		long reach = server.getPlayerList().getSimulationDistance() + 2L;
+		long reach2 = reach * reach * 2;
+		chunkNs.long2LongEntrySet().fastForEach(e -> {
+			int cx = ChunkPos.getX(e.getLongKey());
+			int cz = ChunkPos.getZ(e.getLongKey());
+			Breakdown.PlayerRow nearest = null;
+			long best = reach2;
+			for (Breakdown.PlayerRow row : rows) {
+				long dx = (row.x >> 4) - cx;
+				long dz = (row.z >> 4) - cz;
+				long d = dx * dx + dz * dz;
+				if (Math.abs(dx) <= reach && Math.abs(dz) <= reach && d <= best) {
+					best = d;
+					nearest = row;
+				}
+			}
+			if (nearest == null) return;
+			nearest.nsNear += e.getLongValue();
+			if (e.getLongValue() > nearest.hotNs) {
+				nearest.hotNs = e.getLongValue();
+				nearest.hotX = cx;
+				nearest.hotZ = cz;
+			}
+		});
 	}
 
 	/** Gives each newly generated chunk to the nearest player in that dimension (within 32 chunks). */

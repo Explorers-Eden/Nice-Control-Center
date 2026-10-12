@@ -1512,7 +1512,7 @@
       case 'backup': return 'backup' + (s.text ? ` (${s.text})` : '');
       case 'trim': return (s.minutes ? `reset the outer wilds after ${s.minutes} min countdown` : 'reset the outer wilds') + (s.backup ? ' (backup first)' : '');
       case 'pregen': return s.text === 'all' ? 'pregenerate everything' : 'pregenerate the outer wilds';
-      case 'cleanup': return (s.text || '').startsWith('excess') ? `remove mobs over ${s.text.split(':')[1]} per chunk` : 'clear dropped items';
+      case 'cleanup': return s.text === 'excess' ? 'remove mobs over their limit' : (s.text || '').startsWith('excess') ? `remove mobs over ${s.text.split(':')[1]} per chunk` : 'clear dropped items';
       case 'maintenance': return s.text === 'off' ? 'maintenance off' : 'maintenance on';
       default: return STEP_LABELS[s.type].toLowerCase();
     }
@@ -1580,7 +1580,7 @@
     if (s.type === 'cleanup') {
       const caps = [8, 16, 24, 32, 48, 64];
       const cur = (s.text || 'items').startsWith('excess') ? s.text : 'items';
-      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
+      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option><option value="excess" ${cur === 'excess' ? 'selected' : ''}>remove mobs over their limit (Performance → Tuning)</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
         <span>warn in chat</span><input type="number" data-f="seconds" min="0" max="600" value="${s.seconds ?? 30}"><span>seconds before (items only)</span>`;
     }
     if (s.type === 'maintenance') fields = `<select data-f="text"><option value="on" ${s.text !== 'off' ? 'selected' : ''}>switch on (staff only)</option><option value="off" ${s.text === 'off' ? 'selected' : ''}>switch off</option></select><span>(settings under Players → Maintenance)</span>`;
@@ -3105,6 +3105,9 @@
   /** Form fields are named "section.key"; values go back into the settings object. */
   function fillPerf(s) {
     const form = $('pn-perf-form');
+    renderRules(s.rules || []);
+    renderJunk((s.despawn && s.despawn.items) || []);
+    renderSaveLimits((s.saveLimits && s.saveLimits.limits) || {});
     form.querySelectorAll('[name]').forEach((el) => {
       const [sec, key] = el.name.split('.');
       const v = s[sec] ? s[sec][key] : undefined;
@@ -3139,7 +3142,148 @@
     renderFrozen();
     loadPerfLive();
     loadHotspots();
+    loadLoaded();
+    loadTypes();
   }
+
+  // Mob limits, junk items and save limits: lists the form can't hold in "section.key" fields.
+
+  const GROUP_LABELS = { '#animals': 'All animals', '#monsters': 'All monsters', '#villagers': 'All villagers', '#water': 'All water mobs', '#ambient': 'All bats & ambient', '*': 'Any other mob' };
+  const shortId = (id) => String(id || '').replace(/^minecraft:/, '');
+  let typesLoaded = false;
+
+  /** Mob, entity and item names for the pickers; typed ids work too while the server is off. */
+  async function loadTypes() {
+    if (typesLoaded) return;
+    try {
+      const [e, i] = await Promise.all([api('dashboard/api/entitytypes'), api('dashboard/api/itemtypes')]);
+      const mobs = e.types.filter((t) => t.category !== 'misc' || /villager|golem|trader/.test(t.id));
+      $('pn-mob-types').innerHTML = Object.entries(GROUP_LABELS).map(([id, label]) => `<option value="${esc(id)}">${esc(label)}</option>`).join('')
+        + mobs.map((t) => `<option value="${esc(shortId(t.id))}">${esc(t.name)}</option>`).join('');
+      $('pn-entity-types').innerHTML = e.types.map((t) => `<option value="${esc(shortId(t.id))}">${esc(t.name)}</option>`).join('');
+      $('pn-item-types').innerHTML = i.items.map((t) => `<option value="${esc(shortId(t.id))}">${esc(t.name)}</option>`).join('');
+      typesLoaded = true;
+    } catch (err) { /* names show once the server runs */ }
+  }
+
+  const ruleRow = (r) => `<div class="pn-rule">
+      <input type="text" class="pn-rule-type" list="pn-mob-types" value="${esc(r.type === '*' || r.type.startsWith('#') ? r.type : shortId(r.type))}" placeholder="cow, #animals or *" aria-label="Mob">
+      <span class="pn-rule-label">${esc(GROUP_LABELS[r.type] || '')}</span>
+      <span>at most</span><input type="number" class="pn-rule-n" min="1" max="500" value="${r.perChunk}" aria-label="Per chunk"><span>per chunk</span>
+      <button type="button" class="np-btn small" data-rule-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
+
+  function renderRules(rules) {
+    $('pn-rules').innerHTML = rules.map(ruleRow).join('') || '<p class="pn-hint pn-rules-empty">No limits yet: add a mob or use a preset.</p>';
+  }
+
+  function readRules() {
+    return [...$('pn-rules').querySelectorAll('.pn-rule')].map((row) => ({
+      type: row.querySelector('.pn-rule-type').value.trim().toLowerCase(), perChunk: Number(row.querySelector('.pn-rule-n').value) || 1,
+    })).filter((r) => r.type);
+  }
+
+  function addRule(type, perChunk) {
+    $('pn-rules').querySelector('.pn-rules-empty')?.remove();
+    const existing = [...$('pn-rules').querySelectorAll('.pn-rule')].find((row) => row.querySelector('.pn-rule-type').value.trim() === type && type);
+    if (existing) { existing.querySelector('.pn-rule-n').value = perChunk; return; }
+    $('pn-rules').insertAdjacentHTML('beforeend', ruleRow({ type, perChunk }));
+    if (!type) $('pn-rules').lastElementChild.querySelector('input').focus();
+  }
+
+  $('pn-rule-add').addEventListener('click', () => addRule('', 24));
+  document.querySelectorAll('[data-rule-preset]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.rulePreset === 'animals') addRule('#animals', 24); else addRule('#monsters', 32);
+  }));
+  $('pn-rules').addEventListener('click', (e) => { if (e.target.closest('[data-rule-remove]')) e.target.closest('.pn-rule').remove(); });
+  $('pn-rules').addEventListener('input', (e) => {
+    if (!e.target.classList.contains('pn-rule-type')) return;
+    e.target.parentElement.querySelector('.pn-rule-label').textContent = GROUP_LABELS[e.target.value.trim()] || '';
+  });
+
+  let junk = [];
+  function renderJunk(items) {
+    junk = items.slice();
+    $('pn-junk').innerHTML = junk.map((id, i) => `<span class="pn-chip">${esc(shortId(id))}<button type="button" data-junk-remove="${i}" aria-label="Remove"><i class="bi bi-x"></i></button></span>`).join('')
+      || '<span class="pn-hint">No junk items.</span>';
+  }
+  function addJunk() {
+    const v = $('pn-junk-new').value.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!v) return;
+    const id = v.includes(':') ? v : 'minecraft:' + v;
+    if (!junk.includes(id)) junk.push(id);
+    $('pn-junk-new').value = '';
+    renderJunk(junk);
+  }
+  $('pn-junk-add').addEventListener('click', addJunk);
+  $('pn-junk-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addJunk(); } });
+  $('pn-junk').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-junk-remove]');
+    if (!b) return;
+    junk.splice(Number(b.dataset.junkRemove), 1);
+    renderJunk(junk);
+  });
+
+  const saveRow = (id, n) => `<div class="pn-rule">
+      <input type="text" class="pn-rule-type" list="pn-entity-types" value="${esc(shortId(id))}" placeholder="arrow" aria-label="Kind">
+      <span>keep at most</span><input type="number" class="pn-rule-n" min="0" max="5000" value="${n}" aria-label="Per chunk"><span>per chunk</span>
+      <button type="button" class="np-btn small" data-rule-remove title="Remove"><i class="bi bi-x-lg"></i></button></div>`;
+  function renderSaveLimits(limits) {
+    $('pn-save-limits').innerHTML = Object.entries(limits).map(([id, n]) => saveRow(id, n)).join('');
+  }
+  function readSaveLimits() {
+    const out = {};
+    $('pn-save-limits').querySelectorAll('.pn-rule').forEach((row) => {
+      const t = row.querySelector('.pn-rule-type').value.trim().toLowerCase();
+      if (t) out[t.includes(':') ? t : 'minecraft:' + t] = Number(row.querySelector('.pn-rule-n').value) || 0;
+    });
+    return out;
+  }
+  $('pn-save-add').addEventListener('click', () => {
+    $('pn-save-limits').insertAdjacentHTML('beforeend', saveRow('', 16));
+    $('pn-save-limits').lastElementChild.querySelector('input').focus();
+  });
+  $('pn-save-limits').addEventListener('click', (e) => { if (e.target.closest('[data-rule-remove]')) e.target.closest('.pn-rule').remove(); });
+
+  // Chunks kept loaded with nobody near (the first 15, the rest on request).
+  let loadedAll = false;
+  async function loadLoaded() {
+    const table = $('pn-loaded');
+    let r;
+    try {
+      r = await api('dashboard/api/loadedchunks');
+    } catch (e) {
+      $('pn-loaded-count').textContent = '';
+      table.innerHTML = '<tbody><tr><td>Shows while the server runs.</td></tr></tbody>';
+      return;
+    }
+    $('pn-loaded-count').textContent = r.count ? `${r.count}${r.ticking ? `, ${r.ticking} ticking` : ''}` : '';
+    const REASONS = { forced: '/forceload', ender_pearl: 'Ender pearl', portal: 'Portal', dragon: 'Dragon fight', spawn_search: 'Spawn search', player_spawn: 'Respawn point', unknown: 'Other' };
+    const shown = loadedAll ? r.chunks : r.chunks.slice(0, 15);
+    const more = r.chunks.length - shown.length;
+    table.innerHTML = r.chunks.length
+      ? `<thead><tr><th>Where</th><th>Why</th><th>Ticks</th><th class="num" title="In the chunk and the 2 chunks around it">Mobs around</th><th class="num">Block entities</th><th></th></tr></thead><tbody>${shown.map((c) => `<tr>
+          <td>${esc(dimLabel(c.dimension))} <small>x ${c.x * 16 + 8}, z ${c.z * 16 + 8} · chunk ${c.x}, ${c.z}</small></td>
+          <td>${c.reasons.map((x) => `<span class="pn-tag">${esc(REASONS[x] || x)}</span>`).join(' ')}</td>
+          <td>${c.ticks ? '<span class="pn-tag warn">ticks</span>' : '<span class="pn-muted">only loaded</span>'}</td>
+          <td class="num">${c.entities}</td><td class="num">${c.blockEntities}</td>
+          <td class="num">${can('settings.server') ? `<button type="button" class="np-btn small" data-release data-dim="${esc(c.dimension)}" data-x="${c.x}" data-z="${c.z}">Release</button>` : ''}</td></tr>`).join('')}
+          ${more > 0 ? `<tr><td colspan="6"><button type="button" class="np-btn small" data-loaded-all>Show all ${r.chunks.length}${r.count > r.chunks.length ? ` (of ${r.count})` : ''}</button></td></tr>` : ''}</tbody>`
+      : '<tbody><tr><td>None: every loaded chunk has a player near.</td></tr></tbody>';
+  }
+
+  $('pn-loaded').addEventListener('click', async (e) => {
+    if (e.target.closest('[data-loaded-all]')) { loadedAll = true; loadLoaded(); return; }
+    const b = e.target.closest('[data-release]');
+    if (!b) return;
+    b.disabled = true;
+    try {
+      await api('dashboard/api/loadedchunks/release', { dimension: b.dataset.dim, x: Number(b.dataset.x), z: Number(b.dataset.z) });
+      loadLoaded();
+    } catch (err) {
+      b.disabled = false;
+      alert(err.message);
+    }
+  });
 
   async function loadPerfLive() {
     const el = $('pn-perf-live');
@@ -3147,7 +3291,7 @@
       const p = await api('dashboard/api/perf');
       el.className = 'pn-perf-live' + (p.lowered ? ' lowered' : '');
       el.innerHTML = `<span><b>${p.mspt}</b> ms per tick</span><span>Simulation distance <b>${p.simulation}</b>${p.simulation !== p.simulationBase ? ` of ${p.simulationBase}` : ''}</span>
-        <span>View distance <b>${p.view}</b>${p.view !== p.viewBase ? ` of ${p.viewBase}` : ''}</span><span>Mob caps <b>${p.mobCap} %</b></span>
+        <span>View distance <b>${p.view}</b>${p.view !== p.viewBase ? ` of ${p.viewBase}` : ''}</span><span>Mob caps <b>${p.mobCap} %</b></span>${p.activationHalved ? '<span>Activation ranges <b>halved</b></span>' : ''}${p.tracking < 100 ? `<span>Mobs seen from <b>${p.tracking} %</b></span>` : ''}${p.cappedMobsHour || p.cappedItemsHour ? `<span>Auto caps, last hour: <b>${p.cappedMobsHour}</b> mobs, <b>${p.cappedItemsHour}</b> items</span>` : ''}
         ${p.lastChange ? `<small>${esc(p.lastChange)}</small>` : ''}`;
     } catch (e) {
       el.className = 'pn-perf-live off';
@@ -3163,6 +3307,9 @@
       s[sec] = s[sec] || {};
       s[sec][key] = el.type === 'checkbox' ? el.checked : Number(el.value);
     });
+    s.rules = readRules();
+    s.despawn = { ...(s.despawn || {}), items: junk.slice() };
+    s.saveLimits = { ...(s.saveLimits || {}), limits: readSaveLimits() };
     try {
       await api('api/perf/settings', s);
       perfSettings = s;
@@ -3240,20 +3387,20 @@
     if (!c) return;
     const kind = c.dataset.cleanup;
     const run = c.dataset.run === '1';
-    const per = Math.max(1, Number($('pn-cl-per').value) || 24);
     const note = $(kind === 'items' ? 'pn-cl-items-note' : 'pn-cl-excess-note');
-    if (run && !confirm(kind === 'items' ? 'Remove all dropped items and XP orbs in loaded chunks?' : `Remove mobs over ${per} of one kind per chunk?`)) return;
-    const q = `kind=${kind}&perChunk=${per}`;
+    if (run && !confirm(kind === 'items' ? 'Remove all dropped items and XP orbs in loaded chunks?' : 'Remove mobs over their limit per chunk?')) return;
+    const q = `kind=${kind}`;
     try {
       const r = run ? await api('dashboard/api/cleanup/run?' + q, {}) : await api('dashboard/api/cleanup/preview?' + q);
       if (kind === 'items') {
         note.textContent = `${run ? 'Removed' : 'Lying around'}: ${r.items} items, ${r.xp} XP orbs`;
         $('pn-cl-table-wrap').hidden = true;
       } else {
-        note.textContent = r.remove ? `${run ? 'Removed' : 'Would remove'} ${r.remove} mobs in ${r.chunkCount} chunks` : 'No chunk is over the cap.';
+        if (r.error) { note.textContent = r.error; return; }
+        note.textContent = r.remove ? `${run ? 'Removed' : 'Would remove'} ${r.remove} mobs in ${r.chunkCount} chunks` : 'No chunk is over a limit.';
         $('pn-cl-table-wrap').hidden = !r.chunks.length || run;
-        $('pn-cl-table').innerHTML = `<thead><tr><th>Where</th><th>Kind</th><th class="num">There</th><th class="num">Would go</th></tr></thead><tbody>${r.chunks.map((x) =>
-          `<tr><td>${esc(dimLabel(x.dimension))} <small>x ${x.x * 16}, z ${x.z * 16}</small></td><td>${esc(x.type.replace('minecraft:', ''))}</td><td class="num">${x.count}</td><td class="num">${x.remove}</td></tr>`).join('')}</tbody>`;
+        $('pn-cl-table').innerHTML = `<thead><tr><th>Where</th><th>Kind</th><th class="num">There</th><th class="num">Limit</th><th class="num">Would go</th></tr></thead><tbody>${r.chunks.map((x) =>
+          `<tr><td>${esc(dimLabel(x.dimension))} <small>x ${x.x * 16}, z ${x.z * 16}</small></td><td>${esc(x.type.replace('minecraft:', ''))}</td><td class="num">${x.count}</td><td class="num">${x.limit ?? ''}</td><td class="num">${x.remove}</td></tr>`).join('')}</tbody>`;
       }
     } catch (err) {
       note.textContent = err.message;

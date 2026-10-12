@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -549,10 +550,49 @@ public final class DashboardServer {
 					return;
 				}
 				String kind = query.getOrDefault("kind", "items");
-				int perChunk = (int) Math.max(1, Math.min(500, parseLong(query.get("perChunk"), 24)));
+				// Without perChunk: the mob limits from the performance settings.
+				String per = query.get("perChunk");
+				int perChunk = (int) Math.max(1, Math.min(500, parseLong(per, 24)));
+				var rules = new eu.explorerseden.nicecontrolcenter.core.Cleanup.Limits(eu.explorerseden.nicecontrolcenter.core.PerfControl.settings().rules);
+				if (kind.equals("excess") && per == null && rules.isEmpty()) {
+					sendJson(exchange, Map.of("error", "Add a mob limit first."));
+					return;
+				}
 				sendJson(exchange, onServerThread(() -> kind.equals("excess")
-						? eu.explorerseden.nicecontrolcenter.core.Cleanup.excess(minecraft, perChunk, run)
+						? (per == null ? eu.explorerseden.nicecontrolcenter.core.Cleanup.excess(minecraft, rules, run)
+								: eu.explorerseden.nicecontrolcenter.core.Cleanup.excess(minecraft, perChunk, run))
 						: eu.explorerseden.nicecontrolcenter.core.Cleanup.items(minecraft, run)));
+			}
+			case "/api/entitytypes" -> sendJson(exchange, onServerThread(() -> {
+				List<Map<String, Object>> types = new ArrayList<>();
+				for (var type : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE) {
+					String id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
+					types.add(Map.of("id", id, "name", type.getDescription().getString(), "category", type.getCategory().getName()));
+				}
+				types.sort(java.util.Comparator.comparing(m -> m.get("name").toString()));
+				return Map.of("types", types);
+			}));
+			case "/api/itemtypes" -> sendJson(exchange, onServerThread(() -> {
+				List<Map<String, Object>> items = new ArrayList<>();
+				for (var item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+					String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();
+					if (id.equals("minecraft:air")) continue;
+					items.add(Map.of("id", id, "name", item.getName(item.getDefaultInstance()).getString()));
+				}
+				items.sort(java.util.Comparator.comparing(m -> m.get("name").toString()));
+				return Map.of("items", items);
+			}));
+			case "/api/loadedchunks" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.LoadedChunks.list(minecraft)));
+			case "/api/loadedchunks/release" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String dim = body.get("dimension").getAsString();
+				int x = body.get("x").getAsInt();
+				int z = body.get("z").getAsInt();
+				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.LoadedChunks.release(minecraft, dim, x, z));
+				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
 			}
 			case "/api/pregen" -> sendJson(exchange, eu.explorerseden.nicecontrolcenter.core.Pregen.status());
 			case "/api/pregen/start" -> {

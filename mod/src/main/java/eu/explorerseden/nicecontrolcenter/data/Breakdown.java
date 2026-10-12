@@ -195,6 +195,12 @@ public final class Breakdown {
 		public int blockEntitiesNear;
 		/** New chunks generated closest to this player. */
 		public long newChunks;
+		/** Measured tick time of the chunks around this player (each chunk counted for the nearest player only). */
+		public long nsNear;
+		/** This player's costliest chunk around them in the latest second. */
+		public int hotX;
+		public int hotZ;
+		public long hotNs;
 		public int seconds;
 		/** When this player was last seen online. */
 		public long lastSeen;
@@ -202,6 +208,12 @@ public final class Breakdown {
 		void add(PlayerRow newer) {
 			lastSeen = Math.max(lastSeen, newer.lastSeen);
 			newChunks += newer.newChunks;
+			nsNear += newer.nsNear;
+			if (newer.hotNs > 0) {
+				hotX = newer.hotX;
+				hotZ = newer.hotZ;
+				hotNs = newer.hotNs;
+			}
 			seconds += newer.seconds;
 			name = newer.name;
 			dimension = newer.dimension;

@@ -1,3 +1,9 @@
+## 1.7.0
+- Performance → Tuning, new cards: Lighter mob AI, Mob pushing, Junk despawns sooner (with an item list), Save limits per chunk, Hoppers, Armor stands, and Mob limits per chunk (pick mobs or groups and how many, presets, applied on their own every few seconds if you like); "More steps first" for lag protection; the live line shows the new steps and what the auto caps removed in the last hour (needs mod 1.8.0)
+- Clean up now and the schedule's Clean up step use the mob limits ("remove mobs over their limit"); older steps with one number keep working
+- "Loaded without players": chunks kept loaded with nobody near (forceload, ender pearls, portals) with why, whether they tick, mobs and block entities, and Release; Home warns when more than 25 tick
+- Public info page explains each switched-on tweak in plain words (junk despawn times with the item list, save limits, mob limits, hoppers, armor stands, mob AI, pushing)
+
 ## 1.6.3
 - New Commands page (sidebar, under Console): every command on the server in a box per mod (Minecraft folded by default), with who may use it (everyone or the operator level), permission nodes where a mod uses them, how it's written, and a short description; vanilla commands are described already, the others can get your own text (pencil). Search and an "Everyone can use / Operators only" filter. Works with the last known list while the server is off (needs mod 1.7.3)
 - Console: "Show to ops in game" beside Run (off by default): online operators see each command run there in chat, grey and italic like vanilla's notices ("[Admin ┃ NiceRon: /time set day]")

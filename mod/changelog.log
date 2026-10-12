@@ -1,4 +1,17 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.8.0
+- Fix: with the activation range on, mobs far from players stopped ticking entirely instead of every few ticks (a skipped mob's own tick count doesn't move; the turn now follows the world's clock)
+- Mob limits per chunk: pick mobs or groups (all animals, all monsters, villagers, water mobs) and how many may live in one chunk; used by the cleanup tool, the schedule's cleanup step and the new auto caps, which apply them every few seconds (optionally also a dropped item limit, oldest first). Named, tamed, leashed and persistent mobs are never removed
+- Mob pushing cap (Paper's max-entity-collisions): a mob pushes at most N others per tick, and the search for them stops early; cramming damage unchanged. 150 cows in a pen: 4.7 → 2.9 ms per tick
+- Junk despawns sooner: chosen items (cobblestone, netherrack, rotten flesh…) after e.g. 60 seconds; arrows mobs shot after 10 seconds
+- Save limits per chunk (Paper's entity-per-chunk-save-limit): only N arrows, XP orbs, snowballs… are written when a chunk saves
+- Lighter mob AI: far from players, mobs re-plan their goals only every few ticks (Pufferfish's goal throttle); while lagging, a limit on new path searches per tick
+- Idle hoppers wait a few ticks before looking again (moving and locked hoppers unchanged)
+- Armor stands that stand still tick once a second (Paper's armor-stands-tick: false). 400 stands: 7.3 → 3.6 ms
+- Lag protection has two more steps before the view distance: activation ranges halved, then entities shown from 60 % of the distance
+- Chunks loaded without players (forceload, ender pearls, portals, dragon) with why, whether they tick and what's there, and Release
+- Players table: measured tick time around each player (each chunk counted for the nearest player), their share of the total and their costliest chunk; sorted by it
+
 ## 1.7.3
 - The panel's Commands page: every command with the mod that adds it, the lowest operator level that may use it, its permission node (fabric-permissions-api checks) and how it's written
 - Commands run in the panel's console can be shown to online operators, grey and italic like vanilla's notices ("[Admin ┃ NiceRon: /time set day]"); switched on in the panel

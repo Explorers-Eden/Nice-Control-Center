@@ -416,7 +416,7 @@
 				<form id="pn-perf-form" autocomplete="off">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-graph-down-arrow"></i> Step down while it lags</h3>
-					<p class="np-card-intro">When ticks take longer than the target for a while, the server lowers the <span data-help="sim">simulation distance</span> one step every 10 seconds, then the mob caps, then the <span data-help="view">view distance</span>. Once it has been calm for a minute, it goes back up step by step. Nothing is saved: a restart starts from your normal settings.</p>
+					<p class="np-card-intro">When ticks take longer than the target for a while, the server lowers the <span data-help="sim">simulation distance</span> one step every 10 seconds, then the mob caps, then (with <i>More steps first</i>) the activation ranges and how far players see mobs, and last the <span data-help="view">view distance</span>. Once it has been calm for a minute, it goes back up step by step. Nothing is saved: a restart starts from your normal settings.</p>
 					<p class="pn-perf-live" id="pn-perf-live"></p>
 					<div class="np-form-grid" data-needs="dynamic.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="dynamic.enabled"><span></span></span></label>
@@ -426,6 +426,7 @@
 						<label class="np-form-row">Lowest mob cap (%)<input type="number" name="dynamic.mobCapMin" min="10" max="100" step="10"></label>
 						<label class="np-form-row">Also lower the view distance<span class="np-switch"><input type="checkbox" name="dynamic.view"><span></span></span></label>
 						<label class="np-form-row" data-needs="dynamic.view">Lowest view distance<input type="number" name="dynamic.viewMin" min="2" max="32"></label>
+						<label class="np-form-row"><span>More steps first <small class="pn-hint">halve the activation ranges, then show mobs from less far, before the view distance</small></span><span class="np-switch"><input type="checkbox" name="dynamic.extraSteps"><span></span></span></label>
 					</div>
 				</section>
 				<section class="np-card">
@@ -445,6 +446,29 @@
 					</details>
 				</section>
 				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-cpu"></i> Lighter mob AI</h3>
+					<p class="np-card-intro">Mobs far from every player decide what to do next only every few ticks; what they're already doing keeps running (like Pufferfish). While the server lags, it also limits how many mobs may search a new path per tick; the others try again a moment later.</p>
+					<div class="np-form-grid" data-needs="ai.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="ai.enabled"><span></span></span></label>
+						<label class="np-form-row">Far means more than (blocks)<input type="number" name="ai.farDistance" min="16" max="256"></label>
+					</div>
+					<details class="pn-advanced"><summary>Advanced</summary>
+						<div class="np-form-grid" data-needs="ai.enabled">
+							<label class="np-form-row">Far mobs decide every … ticks<input type="number" name="ai.farGoalEvery" min="2" max="20"></label>
+							<label class="np-form-row">New paths per tick, at most<input type="number" name="ai.pathBudget" min="5" max="1000"></label>
+							<label class="np-form-row">Path limit only while it lags<span class="np-switch"><input type="checkbox" name="ai.whenLagging"><span></span></span></label>
+						</div>
+					</details>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-arrows-collapse"></i> Mob pushing</h3>
+					<p class="np-card-intro">In crowded pens and farms every mob pushes every other one, which grows fast. With this, a mob pushes at most a few others per tick (Paper does 8). Players always push and get pushed; cramming damage stays as it is.</p>
+					<div class="np-form-grid" data-needs="collisions.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="collisions.enabled"><span></span></span></label>
+						<label class="np-form-row">Pushes per mob and tick, at most<input type="number" name="collisions.max" min="1" max="64"></label>
+					</div>
+				</section>
+				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-intersect"></i> Merge dropped items and XP</h3>
 					<p class="np-card-intro">Items and XP orbs on the ground join up from farther away, so fewer of them need ticking. Vanilla merges within half a block.</p>
 					<div class="np-form-grid" data-needs="merge.enabled">
@@ -453,6 +477,26 @@
 						<label class="np-form-row">Items join within (blocks)<input type="number" name="merge.items" min="0.5" max="8" step="0.5"></label>
 						<label class="np-form-row">XP orbs join within (blocks)<input type="number" name="merge.xp" min="0.5" max="8" step="0.5"></label>
 					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-hourglass-split"></i> Junk despawns sooner</h3>
+					<p class="np-card-intro">Dropped items on this list (cobblestone, netherrack, rotten flesh…) disappear after the time below instead of 5 minutes. Everything else keeps the full 5 minutes. Arrows shot by mobs, which nobody can pick up, also leave the ground sooner.</p>
+					<div class="np-form-grid" data-needs="despawn.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="despawn.enabled"><span></span></span></label>
+						<label class="np-form-row">Junk items go after (seconds)<input type="number" name="despawn.itemSeconds" min="5" max="300"></label>
+						<label class="np-form-row">Mob arrows go after (seconds)<input type="number" name="despawn.arrowSeconds" min="1" max="60"></label>
+					</div>
+					<div class="pn-chips" id="pn-junk"></div>
+					<div class="pn-type-add"><input type="text" id="pn-junk-new" list="pn-item-types" placeholder="Add an item, e.g. cobblestone"><button type="button" class="np-btn small" id="pn-junk-add"><i class="bi bi-plus-lg"></i> Add</button></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-floppy"></i> Save limits per chunk</h3>
+					<p class="np-card-intro">When a chunk is saved, only this many of each kind are kept; the rest are gone when it loads again (Paper's <i>entity per chunk save limit</i>). Stops arrows, XP orbs and snowballs from piling up over months. While the chunk stays loaded nothing changes.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="saveLimits.enabled"><span></span></span></label>
+					</div>
+					<div class="pn-rules" id="pn-save-limits" data-needs="saveLimits.enabled"></div>
+					<div class="pn-type-add"><button type="button" class="np-btn small" id="pn-save-add"><i class="bi bi-plus-lg"></i> Add a kind</button></div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-heart"></i> Breeding caps</h3>
@@ -472,6 +516,38 @@
 						<label class="np-form-row">Think every … ticks<input type="number" name="villagers.every" min="2" max="100"></label>
 					</div>
 				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-inboxes"></i> Hoppers</h3>
+					<p class="np-card-intro">A hopper with nothing to move looks again every tick. With this it waits a few ticks after finding nothing. Hoppers that move items keep their normal speed, and locked hoppers behave as in vanilla, so redstone timing stays the same.</p>
+					<div class="np-form-grid" data-needs="hoppers.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="hoppers.enabled"><span></span></span></label>
+						<label class="np-form-row">Idle hoppers wait (ticks)<input type="number" name="hoppers.idleCooldown" min="1" max="40"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-person-standing"></i> Armor stands</h3>
+					<p class="np-card-intro">Armor stands that stand still update only once a second (like Paper's <i>armor stands tick: false</i>). Hit, pushed, falling, burning or ridden ones update normally.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="decor.armorStands"><span></span></span></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-funnel"></i> Mob limits per chunk</h3>
+					<p class="np-card-intro">How many mobs of a kind may live in one chunk. Used by <b>Clean up now</b> below, by the <b>Clean up</b> step in Schedule and, when switched on, every few seconds on their own. Pick single mobs or groups (<i>all animals</i>, <i>all monsters</i>…); a single mob's limit wins over its group's. Named, tamed, leashed and persistent mobs are never removed.</p>
+					<div class="pn-rules" id="pn-rules"></div>
+					<div class="pn-type-add">
+						<button type="button" class="np-btn small" id="pn-rule-add"><i class="bi bi-plus-lg"></i> Add a mob</button>
+						<button type="button" class="np-btn small" data-rule-preset="animals"><i class="bi bi-magic"></i> Farm animals 24</button>
+						<button type="button" class="np-btn small" data-rule-preset="monsters"><i class="bi bi-magic"></i> Monsters 32</button>
+					</div>
+					<h4 class="pn-subhead">Apply on their own</h4>
+					<div class="np-form-grid" data-needs="autoCaps.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="autoCaps.enabled"><span></span></span></label>
+						<label class="np-form-row">Every (seconds)<input type="number" name="autoCaps.intervalSeconds" min="10" max="3600"></label>
+						<label class="np-form-row">Also limit dropped items<span class="np-switch"><input type="checkbox" name="autoCaps.items"><span></span></span></label>
+						<label class="np-form-row" data-needs="autoCaps.items">Dropped items per chunk, at most<input type="number" name="autoCaps.itemsPerChunk" min="8" max="2000"></label>
+					</div>
+				</section>
 				<div class="pn-sticky-save">
 					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save performance settings</button>
 					<span class="np-form-msg" id="pn-perf-msg"></span>
@@ -487,7 +563,7 @@
 						<button type="button" class="np-btn small danger" data-cleanup="items" data-run="1">Remove</button>
 					</div>
 					<div class="pn-cleanup-row">
-						<span class="pn-cleanup-label"><b>Mobs over <input type="number" id="pn-cl-per" value="24" min="1" max="500"> of one kind per chunk</b><span id="pn-cl-excess-note"></span></span>
+						<span class="pn-cleanup-label"><b>Mobs over their limit</b> <small class="pn-hint">(Mob limits per chunk above; save first)</small><span id="pn-cl-excess-note"></span></span>
 						<button type="button" class="np-btn small" data-cleanup="excess" data-run="0">Check</button>
 						<button type="button" class="np-btn small danger" data-cleanup="excess" data-run="1">Remove</button>
 					</div>
@@ -498,6 +574,14 @@
 					<p class="np-card-intro">The chunks that took the most time in the last 15 minutes. <b>Frozen</b> stops everything in a chunk (mobs, furnaces, hoppers, farms) until you switch it off again, as a stopgap until you can fix what's there. Frozen chunks stay in this list.</p>
 					<div class="np-table-wrap"><table class="np-table" id="pn-hotspots"></table></div>
 				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-pin-map"></i> Loaded without players <span class="pn-count" id="pn-loaded-count"></span></h3>
+					<p class="np-card-intro">Chunks kept loaded with nobody near: <b>/forceload</b>, ender pearls (in flight or in stasis chambers), portals, the dragon fight. Ones that also <b>tick</b> run farms, mobs and redstone all the time. <b>Release</b> lets go of them; a pearl or portal that's used again loads its chunk again.</p>
+					<div class="np-table-wrap"><table class="np-table" id="pn-loaded"></table></div>
+				</section>
+				<datalist id="pn-mob-types"></datalist>
+				<datalist id="pn-item-types"></datalist>
+				<datalist id="pn-entity-types"></datalist>
 			</div>
 
 			<div class="np-tab-panel" data-tab="commands" hidden>

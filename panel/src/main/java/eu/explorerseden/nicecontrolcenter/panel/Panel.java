@@ -131,6 +131,7 @@ public final class Panel {
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
+		home.useMod(dashboard);
 		map.useStatus(stats::uptime7d, tuning::maintenance, () -> scheduler.nextWith("restart"));
 
 		Javalin app = Javalin.create(config -> {
