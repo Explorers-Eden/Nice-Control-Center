@@ -161,6 +161,11 @@
       });
       sections.push({ id: 'packs', title: 'Data packs', statLabel: 'data pack settings', icon: 'bi-boxes', hue: '#ffb35c', count: settings, children: packs });
     }
+    if (d.performance && d.performance.length) {
+      sections.push({ id: 'perf', title: 'Performance tweaks', statLabel: 'performance tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
+        children: d.performance.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
+          body: t.rows.map((r) => row(r.label, value(r.value), r.description)).join('') })) });
+    }
     if (d.configs && d.configs.length) {
       sections.push({ id: 'configs', title: 'Mod settings', statLabel: 'mod config files', icon: 'bi-puzzle', hue: '#a77bff', count: d.configs.length,
         children: d.configs.map((c) => {

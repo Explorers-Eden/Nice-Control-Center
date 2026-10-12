@@ -1,3 +1,6 @@
+## 1.6.1
+- Public info page: a "Performance tweaks" part lists the tweaks that are switched on (lag protection, mobs far from players, breeding limits, item/XP merging, villagers in trading halls), explained in plain words with vanilla for comparison; can be left out under "What's on it"
+
 ## 1.6.0
 - Public info page: only the part chosen in the menu shows, with a breadcrumb (search still looks through everything); pack and mod names are capitalised ("Fabled Roots")
 - Public info settings read like the map's (address line, on/off state)
