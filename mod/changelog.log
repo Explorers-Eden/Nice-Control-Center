@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.7.1
+- Item tooltips on the Players page show names and lore with their colours and styles (§ codes and coloured text no longer show as plain text); lore shows like in the game
+- Player cards show when the player first joined and when they were last online (or "online since"); kept in the world folder (nicecontrolcenter-seen.json), with an estimate from file dates for players from before
+- Private messages from the dashboard start with "Admin: " instead of "[Admin]" (a prefix you changed yourself stays)
+- Waypoint names and descriptions on the Players page are read correctly when stored as text components
+
 ## 1.7.0
 - Performance tools in the spirit of Paper and ServerCore, set up in the panel (config/nicecontrolcenter-performance.json, applied live):
   - Dynamic distances: while ticks take too long, the simulation distance, then the mob caps, then the view distance step down; they go back up once the server is calm

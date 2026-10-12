@@ -52,13 +52,19 @@ final class Branding {
 			ctx.status(HttpStatus.NOT_FOUND).result("No logo");
 			return;
 		}
+		// The browser keeps the logo and checks back with its ETag, so pages don't flash the text first.
+		String etag = "\"" + Files.getLastModifiedTime(f).toMillis() + "-" + Files.size(f) + "\"";
+		if (etag.equals(ctx.header("If-None-Match"))) {
+			ctx.status(HttpStatus.NOT_MODIFIED).header("ETag", etag);
+			return;
+		}
 		byte[] bytes = Files.readAllBytes(f);
 		String type = type(bytes);
 		if (type == null) {
 			ctx.status(HttpStatus.NOT_FOUND).result("No logo");
 			return;
 		}
-		ctx.contentType(type).header("Cache-Control", "no-cache").header("X-Content-Type-Options", "nosniff").result(bytes);
+		ctx.contentType(type).header("Cache-Control", "no-cache").header("ETag", etag).header("X-Content-Type-Options", "nosniff").result(bytes);
 	}
 
 	void register(JavalinDefaultRoutingApi routes) {

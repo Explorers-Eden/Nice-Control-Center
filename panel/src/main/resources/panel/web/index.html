@@ -9,12 +9,16 @@
 		// Same theme choice as the mod's dashboard (dark by default).
 		try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') === 'light' ? 'light' : 'dark'; }
 		catch (e) { document.documentElement.dataset.theme = 'dark'; }
+		// A logo seen last time shows right away instead of the text wordmark swapping to it.
+		try { if (localStorage.getItem('pn-logo') === '1') document.documentElement.classList.add('pn-has-logo'); } catch (e) { /* text first */ }
 	</script>
 	<link rel="icon" href="img/favicon.ico" type="image/x-icon">
 	<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+	<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+	<link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2?dd67030699838ea613ee6dbda90effa6" as="font" type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 	<link rel="stylesheet" href="app.css">
 	<link rel="stylesheet" href="panel.css">
@@ -26,7 +30,7 @@
 			<h1 class="np-brand">
 				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-hdd-rack"></i></span>
 				<span class="np-brand-text" id="pn-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
-				<img class="pn-brand-logo" id="pn-brand-logo" alt="" hidden>
+				<img class="pn-brand-logo" id="pn-brand-logo" alt="" src="branding/panel" hidden>
 			</h1>
 			<div class="np-nav-right">
 				<span class="np-clock" id="pn-clock" hidden></span>
@@ -79,7 +83,7 @@
 			</nav>
 			<div class="pn-content">
 			<header class="pn-page-head" id="pn-page-head">
-				<div class="pn-page-title"><h2 id="pn-page-title"></h2><p id="pn-page-desc"></p></div>
+				<div class="pn-page-title"><span class="pn-page-icon" id="pn-page-icon" aria-hidden="true"></span><div><h2 id="pn-page-title"></h2><p id="pn-page-desc"></p></div></div>
 				<div class="pn-subtabs" id="pn-subtabs" role="tablist"></div>
 			</header>
 			<p class="pn-state-note" id="pn-sub" hidden></p>
@@ -90,6 +94,13 @@
 			</section>
 
 			<section class="pn-home" id="pn-home" hidden>
+				<div class="pn-hero" id="pn-hero">
+					<div class="pn-hero-text">
+						<p class="pn-hero-greet" id="pn-hero-greet">Welcome back</p>
+						<div class="pn-hero-motd" id="pn-hero-motd"></div>
+					</div>
+					<div class="pn-hero-facts" id="pn-hero-facts"></div>
+				</div>
 				<div class="np-card pn-attention" id="pn-attention" hidden>
 					<h3 class="np-card-title"><i class="bi bi-exclamation-circle"></i> Needs attention</h3>
 					<ul class="pn-attn-list" id="pn-attn-list"></ul>
@@ -355,11 +366,9 @@
 					<p class="np-card-intro">Average players online per weekday and hour over the last 30 days (<span id="pn-heat-zone"></span>). Quiet hours are good for restarts and resetting the outer wilds.</p>
 					<div class="pn-heat" id="pn-heat"></div>
 				</section>
-				<section class="np-card">
-					<details>
-						<summary>Day by day</summary>
-						<div class="np-table-wrap"><table class="np-table" id="pn-stats-table"></table></div>
-					</details>
+				<section class="np-card" id="pn-stats-days" data-folded>
+					<h3 class="np-card-title"><i class="bi bi-table"></i> Day by day</h3>
+					<div class="np-table-wrap"><table class="np-table" id="pn-stats-table"></table></div>
 				</section>
 			</div>
 
@@ -408,14 +417,14 @@
 					<h3 class="np-card-title"><i class="bi bi-graph-down-arrow"></i> Step down while it lags</h3>
 					<p class="np-card-intro">When ticks take longer than the target for a while, the server lowers the <span data-help="sim">simulation distance</span> one step every 10 seconds, then the mob caps, then the <span data-help="view">view distance</span>. Once it has been calm for a minute, it goes back up step by step. Nothing is saved: a restart starts from your normal settings.</p>
 					<p class="pn-perf-live" id="pn-perf-live"></p>
-					<div class="np-form-grid">
+					<div class="np-form-grid" data-needs="dynamic.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="dynamic.enabled"><span></span></span></label>
 						<label class="np-form-row"><span>Step down above <span data-help="mspt">MSPT</span></span><input type="number" name="dynamic.targetMspt" min="5" max="200"></label>
 						<label class="np-form-row">Go back up below (MSPT)<input type="number" name="dynamic.recoverMspt" min="1" max="199"></label>
 						<label class="np-form-row">Lowest simulation distance<input type="number" name="dynamic.simulationMin" min="2" max="32"></label>
 						<label class="np-form-row">Lowest mob cap (%)<input type="number" name="dynamic.mobCapMin" min="10" max="100" step="10"></label>
 						<label class="np-form-row">Also lower the view distance<span class="np-switch"><input type="checkbox" name="dynamic.view"><span></span></span></label>
-						<label class="np-form-row">Lowest view distance<input type="number" name="dynamic.viewMin" min="2" max="32"></label>
+						<label class="np-form-row" data-needs="dynamic.view">Lowest view distance<input type="number" name="dynamic.viewMin" min="2" max="32"></label>
 					</div>
 				</section>
 				<section class="np-card">
@@ -425,7 +434,7 @@
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="activation.enabled"><span></span></span></label>
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
-						<div class="np-form-grid">
+						<div class="np-form-grid" data-needs="activation.enabled">
 							<label class="np-form-row">Monsters: active within (blocks)<input type="number" name="activation.monsters" min="8" max="256"></label>
 							<label class="np-form-row">Animals: active within (blocks)<input type="number" name="activation.animals" min="8" max="256"></label>
 							<label class="np-form-row">Villagers: active within (blocks)<input type="number" name="activation.villagers" min="8" max="256"></label>
@@ -435,24 +444,38 @@
 					</details>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-intersect"></i> Fewer things to tick</h3>
-					<div class="np-form-grid">
-						<label class="np-form-row"><span>Merge dropped items and XP from farther away<span class="pn-comment">Vanilla merges within half a block; fewer item entities on the ground.</span></span><span class="np-switch"><input type="checkbox" name="merge.enabled"><span></span></span></label>
-						<label class="np-form-row">Items merge within (blocks)<input type="number" name="merge.items" min="0.5" max="8" step="0.5"></label>
-						<label class="np-form-row">XP merges within (blocks)<input type="number" name="merge.xp" min="0.5" max="8" step="0.5"></label>
-						<label class="np-form-row"><span>Breeding caps<span class="pn-comment">Animals and villagers don't breed while too many of their kind live nearby.</span></span><span class="np-switch"><input type="checkbox" name="breeding.enabled"><span></span></span></label>
-						<label class="np-form-row">Animals of one kind, at most<input type="number" name="breeding.animals" min="2" max="1000"></label>
-						<label class="np-form-row">Villagers, at most<input type="number" name="breeding.villagers" min="2" max="1000"></label>
-						<label class="np-form-row">Counted within (blocks)<input type="number" name="breeding.radius" min="4" max="128"></label>
-						<label class="np-form-row"><span>Villagers in trading cells think less<span class="pn-comment">Villagers that can't move (1×1 cells, minecarts) run their brain only every few ticks. Trading and restocking still work.</span></span><span class="np-switch"><input type="checkbox" name="villagers.lobotomize"><span></span></span></label>
-						<label class="np-form-row">…every … ticks<input type="number" name="villagers.every" min="2" max="100"></label>
-					</div>
-					<div class="np-form-actions">
-						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
-						<span class="np-form-msg" id="pn-perf-msg"></span>
-						<span class="pn-hint">Applies within a few seconds, no restart needed.</span>
+					<h3 class="np-card-title"><i class="bi bi-intersect"></i> Merge dropped items and XP</h3>
+					<p class="np-card-intro">Items and XP orbs on the ground join up from farther away, so fewer of them need ticking. Vanilla merges within half a block.</p>
+					<div class="np-form-grid" data-needs="merge.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="merge.enabled"><span></span></span></label>
+						<span></span>
+						<label class="np-form-row">Items join within (blocks)<input type="number" name="merge.items" min="0.5" max="8" step="0.5"></label>
+						<label class="np-form-row">XP orbs join within (blocks)<input type="number" name="merge.xp" min="0.5" max="8" step="0.5"></label>
 					</div>
 				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-heart"></i> Breeding caps</h3>
+					<p class="np-card-intro">Stops animal and villager farms from growing without end: no breeding while too many of the same kind live nearby.</p>
+					<div class="np-form-grid" data-needs="breeding.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="breeding.enabled"><span></span></span></label>
+						<label class="np-form-row">Counted within (blocks)<input type="number" name="breeding.radius" min="4" max="128"></label>
+						<label class="np-form-row">Animals of one kind, at most<input type="number" name="breeding.animals" min="2" max="1000"></label>
+						<label class="np-form-row">Villagers, at most<input type="number" name="breeding.villagers" min="2" max="1000"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shop"></i> Trading halls</h3>
+					<p class="np-card-intro">Villagers that can't move (1×1 cells, minecarts) run their brain only every few ticks. Trading and restocking keep working.</p>
+					<div class="np-form-grid" data-needs="villagers.lobotomize">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="villagers.lobotomize"><span></span></span></label>
+						<label class="np-form-row">Think every … ticks<input type="number" name="villagers.every" min="2" max="100"></label>
+					</div>
+				</section>
+				<div class="pn-sticky-save">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save performance settings</button>
+					<span class="np-form-msg" id="pn-perf-msg"></span>
+					<span class="pn-hint">Applies within a few seconds, no restart needed.</span>
+				</div>
 				</form>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Clean up now</h3>
@@ -490,7 +513,14 @@
 						<label class="pn-field"><span>Server list message while in maintenance (<code>§</code> colour codes, two lines)</span><textarea name="motd" rows="2" maxlength="300" spellcheck="false"></textarea></label>
 						<div class="pn-motd-preview" id="pn-mt-preview"></div>
 						<label class="pn-field">Message for players who can't join<textarea name="kickMessage" rows="2" maxlength="500"></textarea></label>
-						<label class="pn-field">Staff who may still join besides operators (one name per line)<textarea name="staff" rows="3" spellcheck="false"></textarea></label>
+						<div class="pn-field"><span>Who may still join <small class="pn-hint">(operators always can)</small></span>
+							<div class="pn-staff-tools">
+								<input type="search" id="pn-mt-filter" placeholder="Find a player" autocomplete="off">
+								<input type="text" id="pn-mt-add" maxlength="16" placeholder="Add a name" autocomplete="off">
+								<button type="button" class="np-btn small" id="pn-mt-add-btn"><i class="bi bi-plus-lg"></i> Add</button>
+							</div>
+							<div class="pn-staff" id="pn-mt-staff"></div>
+						</div>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 							<span class="np-form-msg" id="pn-mt-msg"></span>
@@ -513,10 +543,19 @@
 						<label class="pn-field"><span>Message of the day (<code>§</code> colour codes like <code>§6</code> gold, <code>§l</code> bold; two lines)</span><textarea name="motd" rows="2" maxlength="300" spellcheck="false"></textarea></label>
 						<div class="pn-colors" id="pn-sl-colors"></div>
 						<div class="np-form-actions">
-							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Use this one</button>
+							<button type="button" class="np-btn" id="pn-motd-add"><i class="bi bi-plus-lg"></i> Add to the collection</button>
 							<span class="np-form-msg" id="pn-sl-msg"></span>
 						</div>
 					</form>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shuffle"></i> MOTD collection</h3>
+					<p class="np-card-intro">Keep several messages and let the server pick one of the ticked ones at random every time it starts.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">Pick a random one at every start<span class="np-switch"><input type="checkbox" id="pn-motd-rotate"><span></span></span></label>
+					</div>
+					<div class="pn-motd-list" id="pn-motd-list"></div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-image"></i> Icons</h3>
@@ -535,6 +574,41 @@
 					</div>
 					<span class="np-form-msg" id="pn-icon-msg"></span>
 				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="info" hidden>
+				<form id="pn-info-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-book"></i> Public info page</h3>
+					<p class="np-card-intro">A page anyone can open to read up on how the server is set up: its settings, game rules, data pack settings and the mod configs you pick. Passwords, tokens and remote-access settings are never shown. <span id="pn-info-link"></span></p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Page is public</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+						<label class="np-form-row">Title<input type="text" name="title" maxlength="80"></label>
+					</div>
+					<label class="pn-field">Text on top (blank lines start a new paragraph)<textarea name="intro" rows="4" maxlength="4000"></textarea></label>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-list-check"></i> What's on it</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row">Server settings<span class="np-switch"><input type="checkbox" name="properties"><span></span></span></label>
+						<label class="np-form-row">Game rules<span class="np-switch"><input type="checkbox" name="gamerules"><span></span></span></label>
+						<label class="np-form-row">Data pack settings<span class="np-switch"><input type="checkbox" name="packs"><span></span></span></label>
+					</div>
+					<details class="pn-advanced"><summary>Server settings to leave out</summary>
+						<div class="pn-checklist" id="pn-info-props"></div>
+					</details>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-gear"></i> Mod configs to publish</h3>
+					<p class="np-card-intro">Each ticked file shows as a list of readable settings (comments in the file become descriptions). Values of keys that look like passwords, tokens or keys are blanked out.</p>
+					<input type="search" class="pn-info-filter" id="pn-info-filter" placeholder="Find a file">
+					<div class="pn-checklist" id="pn-info-configs"></div>
+				</section>
+				<div class="pn-sticky-save">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-info-msg"></span>
+				</div>
+				</form>
 			</div>
 
 			<div class="np-tab-panel" data-tab="world" hidden>

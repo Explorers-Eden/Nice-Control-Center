@@ -124,9 +124,10 @@ public final class Panel {
 		trimmer.useNotifier(alerts);
 		stats.useNotifier(alerts);
 		stats.start();
-		ServerTuning tuning = new ServerTuning(serverDir, server, audit);
+		ServerTuning tuning = new ServerTuning(serverDir, dataDir, server, audit);
 		tuning.useNotifier(alerts);
 		scheduler.useTuning(tuning);
+		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		map.useStatus(stats::uptime7d, tuning::maintenance, () -> scheduler.nextWith("restart"));
 
@@ -145,6 +146,7 @@ public final class Panel {
 			});
 			var routes = config.routes;
 			mapRoutes.registerHostFilter(routes);
+			info.registerHostFilter(routes);
 
 			// Everything under /api needs a session, except logging in and the health check. Changes also
 			// need the X-NCC header, which a cross-site form can't send.
@@ -271,6 +273,7 @@ public final class Panel {
 			branding.register(routes);
 			tuning.register(routes);
 			home.register(routes);
+			info.register(routes);
 			routes.get("/api/stats", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, stats.series(ctx.queryParam("range")))));
 			routes.get("/api/stats/heatmap", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				int days;

@@ -79,9 +79,14 @@ public class NiceControlCenter implements ModInitializer {
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(NiceControlCenter::stop);
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> UpdateManager.stop());
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sendLaterMessages(handler.player));
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			sendLaterMessages(handler.player);
+			eu.explorerseden.nicecontrolcenter.players.Seen.joined(server, handler.player.getUUID());
+		});
+		ServerLifecycleEvents.SERVER_STARTED.register(eu.explorerseden.nicecontrolcenter.players.Seen::load);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			eu.explorerseden.nicecontrolcenter.players.ClientInfo.forget(handler.player.getUUID());
+			eu.explorerseden.nicecontrolcenter.players.Seen.left(handler.player.getUUID());
 			eu.explorerseden.nicecontrolcenter.core.HardBorder.forget(handler.player.getUUID());
 		});
 	}

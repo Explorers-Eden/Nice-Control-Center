@@ -1,0 +1,48 @@
+/* Public info page: the panel's look (app.css tokens), made for reading. */
+body { background:
+  radial-gradient(1100px 480px at 15% -10%, rgba(123,147,255,.16), transparent 60%),
+  radial-gradient(800px 420px at 100% 0%, rgba(167,123,255,.10), transparent 60%), var(--bg); }
+.in-hero { position: relative; padding: 48px 20px 28px; text-align: center; }
+.in-hero-inner { max-width: 760px; margin: 0 auto; }
+.in-logo { display: block; max-width: 320px; max-height: 96px; object-fit: contain; margin: 0 auto 14px; }
+.in-hero h1 { margin: 0 0 10px; font-size: 32px; font-weight: 700; letter-spacing: -.02em; color: var(--strong); }
+.in-intro { color: var(--muted); font-size: var(--fs-md); line-height: 1.6; }
+.in-intro p { margin: 0 0 8px; }
+.in-updated { margin: 10px 0 0; color: var(--faint); font-size: var(--fs-sm); }
+.in-updated:empty { display: none; }
+.in-theme { position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card); color: var(--muted); cursor: pointer; }
+.in-bar { position: sticky; top: 0; z-index: 10; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--card-border); }
+.in-bar-inner { max-width: 960px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.in-search { flex: 1 1 260px; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card); color: var(--faint); }
+.in-search input { flex: 1; border: 0; outline: 0; background: none; color: var(--strong); font: inherit; font-size: var(--fs-md); }
+.in-jump { display: flex; flex-wrap: wrap; gap: 6px; }
+.in-jump a { padding: 7px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--card-border); color: var(--text); font-size: var(--fs-sm); font-weight: 500; text-decoration: none; }
+.in-jump a:hover { border-color: var(--accent); color: var(--strong); }
+.in-main { max-width: 960px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 32px; }
+.in-section { scroll-margin-top: 70px; }
+.in-section[hidden], .in-card[hidden], .in-row[hidden] { display: none; }
+.in-section > h2 { margin: 0 0 12px; font-size: var(--fs-xl); font-weight: 600; color: var(--strong); }
+.in-cards { display: flex; flex-direction: column; gap: 14px; }
+.in-card .np-card-title small { margin-left: 6px; color: var(--faint); font-weight: 400; font-size: var(--fs-xs); font-family: var(--mono); }
+.in-card .np-card-title > .bi:first-child { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px; color: var(--accent); background: rgba(122,147,255,.14); }
+.in-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid rgba(var(--ink),.06); }
+.in-row:first-of-type { border-top: 0; }
+.in-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.in-row-text b { font-weight: 500; color: var(--strong); }
+.in-row-text small { color: var(--muted); font-size: var(--fs-sm); line-height: 1.45; }
+.in-row-value { flex: none; max-width: 50%; text-align: right; }
+.in-v { display: inline-block; padding: 3px 10px; border-radius: 999px; background: rgba(var(--ink),.06); color: var(--strong); font-weight: 500; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.in-v.yes { background: rgba(111,232,155,.14); color: var(--good); }
+.in-v.no { background: rgba(255,144,144,.12); color: var(--poor); }
+.in-v.none { color: var(--faint); }
+.in-v.motd { border-radius: 6px; background: #1d1d1d; color: #aaa; font-family: var(--mono); font-weight: 400; text-align: left; }
+.in-tag { margin-left: 6px; font-size: var(--fs-xs); font-weight: 500; color: var(--accent-2); }
+.in-sub { margin: 14px 0 4px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.in-sub small { font-weight: 400; color: var(--faint); }
+.in-pre { margin: 0; max-height: 420px; overflow: auto; padding: 12px; border-radius: 8px; background: var(--inset); font-family: var(--mono); font-size: var(--fs-sm); white-space: pre-wrap; }
+.in-empty { text-align: center; color: var(--faint); }
+.in-foot { text-align: center; color: var(--faint); font-size: var(--fs-sm); padding: 20px; }
+@media (max-width: 560px) {
+  .in-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .in-row-value { max-width: 100%; text-align: left; }
+}

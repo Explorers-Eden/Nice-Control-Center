@@ -88,7 +88,7 @@ public final class ControlCenterConfig {
 	/** Let the dashboard create and change scheduled commands (they run with full rights, like the console). */
 	public boolean web_schedule = true;
 	/** Shown before private messages from the dashboard. */
-	public String message_prefix = "[Admin]";
+	public String message_prefix = "Admin:";
 	/** Color of that prefix: a Minecraft color name (gold, red, aqua, …) or "#RRGGBB". */
 	public String message_color = "gold";
 	/** Let the dashboard kick and message players. */
@@ -158,8 +158,9 @@ public final class ControlCenterConfig {
 		if (config.update_mode == null) {
 			config.update_mode = "auto";
 		}
-		if (config.message_prefix == null) {
-			config.message_prefix = "[Admin]";
+		// "[Admin]" was the default before 1.7.1; only the untouched default moves to the new one.
+		if (config.message_prefix == null || config.message_prefix.equals("[Admin]")) {
+			config.message_prefix = "Admin:";
 		}
 		if (config.message_color == null || config.message_color.isBlank()) {
 			config.message_color = "gold";

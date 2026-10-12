@@ -73,6 +73,14 @@ final class Home {
 		setup.add(check("logo", "Add your logo", branding.has("panel") || branding.has("map"), "appearance"));
 
 		Map<String, Object> out = new LinkedHashMap<>();
+		// The greeting banner: what players see in the server list, and how the server is doing.
+		java.util.Properties props = ServerTuning.readProperties(server.serverDir().resolve("server.properties"));
+		out.put("motd", props.getProperty("motd", "A Minecraft Server"));
+		out.put("maxPlayers", props.getProperty("max-players", "20"));
+		out.put("state", server.state().name());
+		if (last != null && last.has("players") && server.running()) out.put("players", last.get("players").getAsInt());
+		double up = stats.uptime7d();
+		if (up >= 0) out.put("uptime7d", up);
 		out.put("attention", attention);
 		out.put("setup", setup);
 		return out;

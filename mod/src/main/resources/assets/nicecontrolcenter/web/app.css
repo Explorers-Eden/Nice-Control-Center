@@ -1269,6 +1269,7 @@ body.embedded { background: transparent; }
 .np-hovertip[hidden] { display: none; }
 .np-hovertip b { font-weight: 600; }
 .np-hovertip .ench { color: #a8a8a8; }
+.np-hovertip .lore { color: #AA00AA; }
 .np-hovertip .id { color: #545454; font-size: var(--fs-xs); }
 /* Phones: the clock steps aside so the live badge and buttons fit next to the logo. */
 @media (max-width: 480px) { .navbar .np-clock { display: none; } }
@@ -1278,3 +1279,20 @@ body.embedded { background: transparent; }
 .np-stat-value, .np-table td.num, .np-table .num, .np-mspt { font-variant-numeric: tabular-nums; }
 code, kbd, pre, .np-pre { font-family: var(--mono); }
 button, input, select, textarea { font-family: inherit; }
+
+/* ── Fields: every text box and select is the same height; selects get their own arrow, so the browser's
+   native select box (taller in Safari, shorter in Chrome) doesn't break the line-up. */
+.np-form-row select, .np-form-row input[type="text"], .np-form-row input[type="number"], .np-form-row input[type="password"],
+.pn-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .pn-field select,
+.pn-step select, .pn-step input[type="text"], .pn-step input[type="number"],
+.pn-pl-checks select, .pn-pl-checks input[type="text"], .np-compare-pick select {
+  box-sizing: border-box; height: 34px; line-height: 1.25; padding-top: 0; padding-bottom: 0; }
+.np-form-row select, .pn-field select, .pn-step select, .pn-pl-checks select, .np-compare-pick select {
+  -webkit-appearance: none; appearance: none; padding-right: 30px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a93a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; }
+.pn-step select, .pn-step input[type="text"], .pn-step input[type="number"], .pn-pl-checks select, .pn-pl-checks input[type="text"] { height: 32px; }
+
+/* Player card: first joined, last online. */
+.np-seen { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.np-seen .bi { margin-right: 4px; color: var(--faint); }

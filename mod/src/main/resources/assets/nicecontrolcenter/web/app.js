@@ -1607,9 +1607,54 @@
       <button type="button" class="np-link-btn" data-copy="/${esc(tpCommand(p, loc))}" title="Copies a /tp command for yourself"><i class="bi bi-clipboard"></i> Copy /tp</button></div>`;
   }
 
+  /** All 16 colours as the game draws them (tooltips have a dark background, so black and white are real). */
+  const TIP_COLORS = { ...MC_COLORS, 0: '#000000', f: '#FFFFFF' };
+
+  /**
+   * Minecraft text with § codes as HTML: the 16 colours, §#RRGGBB (how the mod passes any colour),
+   * bold, italic, underlined, struck through and reset. base is the style §r goes back to.
+   */
+  function mcHtml(text, base = {}) {
+    const fresh = () => ({ color: base.color || null, b: false, i: !!base.i, u: false, s: false });
+    let st = fresh();
+    let out = '';
+    const re = /§(#[0-9A-Fa-f]{6}|[0-9a-fk-orA-FK-OR])/g;
+    let at = 0;
+    const emit = (part) => {
+      if (!part) return;
+      const deco = [st.u && 'underline', st.s && 'line-through'].filter(Boolean).join(' ');
+      const css = `${st.color ? `color:${st.color};` : ''}${st.b ? 'font-weight:700;' : ''}${st.i ? 'font-style:italic;' : ''}${deco ? `text-decoration:${deco};` : ''}`;
+      out += css ? `<span style="${css}">${esc(part)}</span>` : esc(part);
+    };
+    for (let m; (m = re.exec(text || ''));) {
+      emit(text.slice(at, m.index));
+      at = m.index + m[0].length;
+      const c = m[1].toLowerCase();
+      if (c.startsWith('#')) st = { ...fresh(), color: c };
+      else if (TIP_COLORS[c]) st = { ...fresh(), color: TIP_COLORS[c] };
+      else if (c === 'l') st.b = true;
+      else if (c === 'o') st.i = true;
+      else if (c === 'n') st.u = true;
+      else if (c === 'm') st.s = true;
+      else if (c === 'r') st = fresh();
+    }
+    emit((text || '').slice(at));
+    return out;
+  }
+  window.nccMcHtml = mcHtml;
+
+  /** First join and last time online ("online since …" while they play). */
+  function seenLine(p) {
+    const bits = [];
+    if (p.firstJoin) bits.push(`<span title="${p.firstJoinEstimated ? 'From the date their save file was made: they joined before this was recorded' : ''}"><i class="bi bi-door-open"></i> First joined ${p.firstJoinEstimated ? 'about ' : ''}${esc(dateTime(p.firstJoin))}</span>`);
+    if (p.online && p.lastJoin) bits.push(`<span><i class="bi bi-broadcast"></i> Online since ${esc(dateTime(p.lastJoin))}</span>`);
+    else if (!p.online && (p.lastLeave || p.lastSeen)) bits.push(`<span title="${p.lastLeave ? '' : 'When their save file last changed'}"><i class="bi bi-clock-history"></i> Last online ${esc(dateTime(p.lastLeave || p.lastSeen))}</span>`);
+    return bits.length ? `<p class="np-loc-sub np-seen">${bits.join('')}</p>` : '';
+  }
+
   function itemTile(item) {
     const icon = item.head ? 'bi-person-bounding-box' : item.enchantments.length ? 'bi-stars' : 'bi-box-seam';
-    const tip = [item.name + (item.count > 1 ? ` ×${item.count}` : ''), item.id, ...item.enchantments].join('\n');
+    const tip = JSON.stringify({ n: (item.rich || item.name) + (item.count > 1 ? `§r §7×${item.count}` : ''), id: item.id, e: item.enchantments, l: item.lore || [] });
     return `<div class="np-item-tile ${item.enchantments.length ? 'enchanted' : ''}" data-tip="${esc(tip)}">
       <i class="bi ${icon}"></i><span class="np-item-name">${esc(item.name)}</span>${item.count > 1 ? `<span class="np-item-count">×${item.count}</span>` : ''}</div>`;
   }
@@ -1654,8 +1699,11 @@
       }
       if (el.dataset.tip !== current) {
         current = el.dataset.tip;
-        const [name, id, ...rest] = current.split('\n');
-        box.innerHTML = `<b>${esc(name)}</b>${rest.map((l) => `<span class="ench">${esc(l)}</span>`).join('')}${id ? `<span class="id">${esc(id)}</span>` : ''}`;
+        let t;
+        try { t = JSON.parse(current); } catch (err) { t = { n: current, e: [], l: [] }; }
+        // Like the game: name, enchantments in grey, lore in purple italics (unless styled), then the id.
+        box.innerHTML = `<b>${mcHtml(t.n)}</b>${(t.e || []).map((l) => `<span class="ench">${esc(l)}</span>`).join('')}`
+          + `${(t.l || []).map((l) => `<span class="lore">${mcHtml(l, { color: '#AA00AA', i: true })}</span>`).join('')}${t.id ? `<span class="id">${esc(t.id)}</span>` : ''}`;
         box.hidden = false;
       }
       place(e);
@@ -1711,7 +1759,8 @@
     const atBottom = !msgs || msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 20;
     const changed = patchHtml(box, `<div class="np-player-head">${face(p, 64)}<div>
         <h3>${esc(p.name)} <span class="np-level ${p.online ? 'good' : 'info'}">${p.online ? 'Online' : 'Offline'}</span>${p.ban ? ' <span class="np-level poor">Banned</span>' : ''}</h3>
-        <p class="np-loc-sub">${[p.race, p.class].filter(Boolean).map(esc).join(' · ')}${p.lastSeen && !p.online ? (p.race || p.class ? ' · ' : '') + 'last seen ' + dateTime(p.lastSeen) : ''}</p>
+        <p class="np-loc-sub">${[p.race, p.class].filter(Boolean).map(esc).join(' · ')}</p>
+        ${seenLine(p)}
         ${p.uuid ? `<p class="np-loc-sub np-mono">${esc(p.uuid)}</p>` : ''}</div></div>
       ${banInfo}
       ${actions}

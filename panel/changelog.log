@@ -1,3 +1,13 @@
+## 1.6.0
+- Public info page (Settings → Public info): the server's settings in plain words and groups, game rules, data pack settings and the mod configs you pick (as readable lists), with search; at /info/ or on its own domain with INFO_HOST. Passwords, tokens and remote-access settings never show; it stays readable while the server is off
+- Settings → Server list: a collection of messages of the day; tick the ones to use and a random one is picked at every start
+- Maintenance: who may join is a list of known players (operators, whitelist, everyone who has joined) with checkboxes, plus a field to add names
+- Performance → Tuning: merging, breeding caps and trading halls are separate cards; settings whose switch is off are greyed out; one save bar stays at hand
+- Cards fold by clicking their title, like on the dashboard pages; "Day by day" is a normal card and starts folded
+- Text fields and selects have the same height everywhere, selects with their own arrow
+- No more flicker on reload: the icon font loads early, the panel logo stays cached and shows from the first frame, the clock badge only redraws when it changes
+- More flavor: each area has its own colour (sidebar, page icon, card icons), a greeting banner on Home with the server list message and how the server is doing, a soft brand glow with a faint block grid behind the pages, gradient primary buttons
+
 ## 1.5.0
 - New navigation: 13 areas in the sidebar (Home, Console, Players, Performance, World, Settings, Schedule, Backups, Files, Updates, Users & roles, Discord, Appearance, Audit log) with sub-tabs for related pages, a page title and a sentence on what each page is for; links like #world/map open a page directly
 - Quick search (Ctrl/⌘ K or the search field in the sidebar) jumps to any page or setting

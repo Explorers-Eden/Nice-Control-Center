@@ -325,6 +325,7 @@ public final class PlayerInspector {
 				}
 			}
 		}
+		if (uuid != null) p.putAll(Seen.view(server, uuid));
 		Map<String, Object> card = p;
 		String lower = ((String) p.get("name")).toLowerCase(Locale.ROOT);
 		CompoundTag entry = live.storageByName().get(lower);
@@ -349,7 +350,7 @@ public final class PlayerInspector {
 			p.put("lastDeath", p.get("vanillaDeath"));
 		}
 		p.remove("vanillaDeath");
-		p.put("waypoints", waypoints(live.hubs(), (String) p.get("uuid"), lower));
+		p.put("waypoints", waypoints(server, live.hubs(), (String) p.get("uuid"), lower));
 		if (p.get("uuid") != null) {
 			p.put("claims", Claims.forOwner(server, UUID.fromString((String) p.get("uuid"))));
 			p.put("ban", live.bans().get((String) p.get("uuid")));
@@ -467,7 +468,14 @@ public final class PlayerInspector {
 		Map<String, Object> item = new LinkedHashMap<>();
 		item.put("slot", slot);
 		item.put("id", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-		item.put("name", stack.getHoverName().getString());
+		item.put("name", stack.getHoverName().getString().replaceAll("§.", ""));
+		// With formatting, for the tooltip: § codes (§#RRGGBB for any colour).
+		item.put("rich", legacy(stack.getHoverName()));
+		List<String> lore = new ArrayList<>();
+		for (net.minecraft.network.chat.Component line : stack.getOrDefault(DataComponents.LORE, net.minecraft.world.item.component.ItemLore.EMPTY).lines()) {
+			lore.add(legacy(line));
+		}
+		item.put("lore", lore);
 		item.put("count", stack.getCount());
 		List<String> enchantments = new ArrayList<>();
 		enchantNames(stack.getEnchantments(), enchantments);
@@ -475,6 +483,23 @@ public final class PlayerInspector {
 		item.put("enchantments", enchantments);
 		item.put("head", stack.getItem() == net.minecraft.world.item.Items.PLAYER_HEAD);
 		out.add(item);
+	}
+
+	/** A text component as a string with § codes, so the dashboard can draw it like the game; § in the text itself stays. */
+	static String legacy(net.minecraft.network.chat.Component component) {
+		StringBuilder b = new StringBuilder();
+		component.visit((style, text) -> {
+			if (text.isEmpty()) return Optional.empty();
+			b.append("§r");
+			if (style.getColor() != null) b.append("§#").append(String.format("%06X", style.getColor().getValue() & 0xFFFFFF));
+			if (style.isBold()) b.append("§l");
+			if (style.isItalic()) b.append("§o");
+			if (style.isUnderlined()) b.append("§n");
+			if (style.isStrikethrough()) b.append("§m");
+			b.append(text);
+			return Optional.<Object>empty();
+		}, net.minecraft.network.chat.Style.EMPTY);
+		return b.toString();
 	}
 
 	private static void enchantNames(ItemEnchantments enchantments, List<String> out) {
@@ -507,7 +532,7 @@ public final class PlayerInspector {
 		return l;
 	}
 
-	private static List<Map<String, Object>> waypoints(CompoundTag hubs, String uuid, String lowerName) {
+	private static List<Map<String, Object>> waypoints(MinecraftServer server, CompoundTag hubs, String uuid, String lowerName) {
 		List<Map<String, Object>> result = new ArrayList<>();
 		for (String key : hubs.keySet()) {
 			CompoundTag hub = hubs.getCompoundOrEmpty(key);
@@ -520,8 +545,9 @@ public final class PlayerInspector {
 			CompoundTag pos = hub.getCompoundOrEmpty("pos");
 			Map<String, Object> w = loc((int) Math.floor(number(pos.get("x"))), (int) Math.floor(number(pos.get("y"))),
 					(int) Math.floor(number(pos.get("z"))), pos.getStringOr("dimension", "minecraft:overworld"));
-			w.put("name", hub.getStringOr("waypoint_name", "Unnamed Waypoint"));
-			w.put("description", hub.getStringOr("waypoint_description", "").trim());
+			String hubName = MapExport.text(server, hub.get("waypoint_name"));
+			w.put("name", hubName.isBlank() ? "Unnamed Waypoint" : hubName);
+			w.put("description", MapExport.text(server, hub.get("waypoint_description")));
 			w.put("access", hub.getStringOr("access", "private"));
 			String shown = hub.getStringOr("dimension_name", "");
 			if (!shown.isEmpty()) {
@@ -637,7 +663,7 @@ public final class PlayerInspector {
 					com.google.gson.JsonArray json = new com.google.gson.JsonArray();
 					com.google.gson.JsonObject prefix = new com.google.gson.JsonObject();
 					var config = NiceControlCenter.config();
-					String label = config == null || config.message_prefix == null ? "[Admin]" : config.message_prefix.strip();
+					String label = config == null || config.message_prefix == null ? "Admin:" : config.message_prefix.strip();
 					String color = config == null ? "gold" : ControlCenterConfig.color(config.message_color);
 					if (color == null) {
 						NiceControlCenter.LOGGER.warn("message_color \"{}\" isn't a color; using gold. Use a Minecraft color name or #RRGGBB.",

@@ -129,6 +129,13 @@ The panel draws a top-down map of the world from the region files, one pixel per
 - **Layers:** online players with their heads, GOML claims, waypoint hubs (public ones by default) and the world border, if one is set.
 - **Colors:** modded blocks get their real map color once the server has run with the Nice Control Center mod.
 - **Own address:** set `MAP_HOST` (e.g. `map.example.com`) and point that subdomain at port 8080 in your reverse proxy. On that address only the map is reachable, nothing of the panel. Without `MAP_HOST` the map is at `/map/` on the panel's address.
+
+## Public info page
+
+Settings → Public info: a read-only page where players can look up the server's settings (in plain words, grouped), its game rules, data pack settings and the mod configs you tick. Passwords, tokens, keys and the RCON/management settings never show. Off until you switch it on.
+
+- It's at `/info/` on the panel's address, or on its own address: set `INFO_HOST` (e.g. `info.example.com`) and point that subdomain at port 8080. On that address only the info page is reachable.
+- It's built from the running server and kept, so it stays readable while the server is off.
 - **Map tab:** choose the layers, hide dimensions, change the title, or have everything drawn again.
 
 ## World: pregenerate and trim
@@ -205,6 +212,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `TIMEZONE` | the container's | time zone for scheduled tasks and backup names, e.g. `Europe/Berlin` |
 | `DISCORD_TOKEN` | – | the Discord bot token (instead of saving it in the panel) |
 | `MAP_HOST` | – | the map's own address, e.g. `map.example.com` |
+| `INFO_HOST` | – | the public info page's own address, e.g. `info.example.com` |
 | `SFTP_PORT` | `2022` | SFTP port inside the container (`off` turns SFTP off) |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
@@ -216,7 +224,7 @@ Point the panel's subdomain (for example `panel.example.com`) at port 8080 and e
 **Traefik:** [portainer-stack-traefik.yml](portainer-stack-traefik.yml) does this with labels, so there's nothing to set up in Traefik itself.
 
 - Set `PANEL_DOMAIN`. `PANEL_PUBLIC_URL` becomes `https://<PANEL_DOMAIN>` by itself.
-- Optionally set `MAP_HOST`: the map domain goes on the same router and gets its own certificate.
+- Optionally set `MAP_HOST` and `INFO_HOST`: those domains go on the same router and get their own certificates.
 - Like a Crafty stack behind the same Traefik, the router listens on all entrypoints and needs no extra Docker network. It uses the certificate resolver `le`; set `TRAEFIK_CERTRESOLVER` if yours is called differently.
 - If Crafty runs on the same host, it already publishes ports 25500–25600. While both run, set `MINECRAFT_PORT` to a free port outside that range (for example 25601).
 - Port 8080 isn't published. Minecraft (25565) and SFTP (2022) stay on their own ports, because they're plain TCP.

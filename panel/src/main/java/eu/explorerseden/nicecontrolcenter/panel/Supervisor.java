@@ -70,7 +70,7 @@ public final class Supervisor {
 	private ScheduledFuture<?> pending;
 	private Supplier<List<String>> extraFlags = List::of;
 	private String hidden;
-	private BeforeStart beforeStart = log -> { };
+	private final List<BeforeStart> beforeStart = new java.util.concurrent.CopyOnWriteArrayList<>();
 	/** Set while something works on the world files (trim); the server can't start meanwhile. */
 	private volatile String lock;
 
@@ -98,8 +98,9 @@ public final class Supervisor {
 		this.hidden = secret;
 	}
 
+	/** Runs before every start, in the order added. */
 	public void beforeStart(BeforeStart hook) {
-		this.beforeStart = hook;
+		beforeStart.add(hook);
 	}
 
 	// ── Control ────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ public final class Supervisor {
 			message = problem;
 			return problem;
 		}
-		beforeStart.run(this::panelLine);
+		for (BeforeStart hook : beforeStart) hook.run(this::panelLine);
 		List<String> cmd = JvmFlags.command(s, extraFlags.get());
 		try {
 			process = new ProcessBuilder(cmd).directory(serverDir.toFile()).redirectErrorStream(true).start();

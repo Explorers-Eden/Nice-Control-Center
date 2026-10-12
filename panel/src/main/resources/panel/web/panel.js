@@ -69,50 +69,51 @@
 
   const NAV = [
     { group: '', items: [
-      { id: 'home', label: 'Home', icon: 'bi-house', subs: [
+      { id: 'home', hue: '#7b93ff', label: 'Home', icon: 'bi-house', subs: [
         { tab: 'mod:overview', label: 'Overview', perm: 'dashboard.view', desc: 'How the server is doing right now, and anything that needs your attention.' }] },
-      { id: 'console', label: 'Console', icon: 'bi-terminal', subs: [
+      { id: 'console', hue: '#9fb0c8', label: 'Console', icon: 'bi-terminal', subs: [
         { tab: 'server', label: 'Console', perm: 'console.read', desc: 'The server log as it happens. Type commands below it.' },
         { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' }] },
-      { id: 'players', label: 'Players', icon: 'bi-people', subs: [
+      { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
         { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' },
         { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
-      { id: 'performance', label: 'Performance', icon: 'bi-speedometer2', subs: [
+      { id: 'performance', hue: '#ffb35c', label: 'Performance', icon: 'bi-speedometer2', subs: [
         { tab: 'mod:performance', label: 'Live', perm: 'dashboard.view', desc: 'What takes the server\'s time right now, tick by tick.' },
         { tab: 'stats', label: 'History', perm: 'server.view', desc: 'TPS, players, memory and disk over days and weeks.' },
         { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' },
         { tab: 'tuning', label: 'Tuning', perm: 'dashboard.view', desc: 'Make the server lighter: tick less where nobody is, cap what piles up, step down while it lags.' }] },
-      { id: 'world', label: 'World', icon: 'bi-globe-americas', subs: [
+      { id: 'world', hue: '#4fd1c5', label: 'World', icon: 'bi-globe-americas', subs: [
         { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'Chunks, entities and the places that cost the most.' },
         { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'Decide which part of the world is permanent, pregenerate it, and reset the rest on a schedule.' },
         { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' }] },
     ] },
     { group: 'Server', items: [
-      { id: 'settings', label: 'Settings', icon: 'bi-sliders', subs: [
+      { id: 'settings', hue: '#a77bff', label: 'Settings', icon: 'bi-sliders', subs: [
         { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'Game rules and server.properties.' },
         { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
-        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' }] },
-      { id: 'schedule', label: 'Schedule', icon: 'bi-calendar-check', subs: [
+        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
+        { tab: 'info', label: 'Public info', perm: 'settings.server', desc: 'A public page where players can read up on the server\'s settings.' }] },
+      { id: 'schedule', hue: '#ff8fc7', label: 'Schedule', icon: 'bi-calendar-check', subs: [
         { tab: 'schedule', label: 'Schedule', perm: 'server.view', desc: 'Things that happen on their own: restarts, backups, resets, messages.' }] },
-      { id: 'backups', label: 'Backups', icon: 'bi-archive', subs: [
+      { id: 'backups', hue: '#62b6ff', label: 'Backups', icon: 'bi-archive', subs: [
         { tab: 'backups', label: 'Backups', perm: 'backup.view', desc: 'Copies of the world and server to go back to.' }] },
-      { id: 'files', label: 'Files', icon: 'bi-folder2-open', subs: [
+      { id: 'files', hue: '#f5c451', label: 'Files', icon: 'bi-folder2-open', subs: [
         { tab: 'files', label: 'All files', perm: 'files.read', desc: 'Everything in the server folder.' },
         { tab: 'configs', label: 'Mod configs', permAny: 'files.config files.read', desc: 'The mods\' settings files, grouped by mod.' },
         { tab: 'mod:packs', label: 'Data pack settings', perm: 'dashboard.view', desc: 'Options the data packs offer.' }] },
-      { id: 'updates', label: 'Updates', icon: 'bi-cloud-arrow-down', subs: [
+      { id: 'updates', hue: '#6ee7b7', label: 'Updates', icon: 'bi-cloud-arrow-down', subs: [
         { tab: 'versions', label: 'Minecraft', perm: 'server.view', desc: 'Move the server to another Minecraft version, with the mods to match.' },
         { tab: 'mod:updates', label: 'Mods', perm: 'dashboard.view', desc: 'Newer versions of the installed mods and the resource pack.' }] },
     ] },
     { group: 'Admin', items: [
-      { id: 'users', label: 'Users & roles', icon: 'bi-person-gear', subs: [
+      { id: 'users', hue: '#c4a6ff', label: 'Users & roles', icon: 'bi-person-gear', subs: [
         { tab: 'users', label: 'Users & roles', perm: 'users.admin', desc: 'Who can log in to the panel and what they may do.' }] },
-      { id: 'discord', label: 'Discord', icon: 'bi-discord', subs: [
+      { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
-      { id: 'appearance', label: 'Appearance', icon: 'bi-palette', subs: [
+      { id: 'appearance', hue: '#ff8fa3', label: 'Appearance', icon: 'bi-palette', subs: [
         { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage', desc: 'Logos for the panel and the map.' }] },
-      { id: 'audit', label: 'Audit log', icon: 'bi-journal-text', subs: [
+      { id: 'audit', hue: '#b6c8ff', label: 'Audit log', icon: 'bi-journal-text', subs: [
         { tab: 'audit', label: 'Audit log', perm: 'audit.view', desc: 'Every change made through the panel, and by whom.' }] },
     ] },
   ];
@@ -131,7 +132,7 @@
       const items = g.items.filter((e) => subsOf(e).length);
       if (!items.length) return '';
       return `<div class="pn-side-group">${g.group ? `<span class="pn-side-head">${esc(g.group)}</span>` : ''}
-        ${items.map((e) => `<button type="button" class="np-tab" data-entry="${e.id}"><i class="bi ${e.icon}"></i><span>${esc(e.label)}</span><span class="pn-badge" hidden></span></button>`).join('')}</div>`;
+        ${items.map((e) => `<button type="button" class="np-tab" data-entry="${e.id}" style="--area:${e.hue}"><i class="bi ${e.icon}"></i><span>${esc(e.label)}</span><span class="pn-badge" hidden></span></button>`).join('')}</div>`;
     }).join('');
     renderBadges();
   }
@@ -157,6 +158,9 @@
     const sub = SUB_OF[tab] || EXTRA[tab];
     const subs = entry ? subsOf(entry) : [];
     $('pn-page-title').textContent = entry && subs.length > 1 ? entry.label : (sub ? sub.label : '');
+    const area = entry ? entry.hue : '#b6c8ff';
+    document.querySelector('.pn-content').style.setProperty('--area', area);
+    $('pn-page-icon').innerHTML = `<i class="bi ${entry ? entry.icon : 'bi-person-circle'}"></i>`;
     $('pn-page-desc').textContent = sub ? sub.desc : '';
     $('pn-subtabs').hidden = subs.length < 2;
     $('pn-subtabs').innerHTML = subs.length < 2 ? '' : subs.map((x) => `<button type="button" role="tab" class="pn-subtab${x.tab === tab ? ' active' : ''}" aria-selected="${x.tab === tab}" data-tab="${x.tab}">${esc(x.label)}<span class="pn-badge" hidden></span></button>`).join('');
@@ -210,6 +214,7 @@
 
   let dashboardHash = '';
   let activeTab = '';
+  let homeTicks = 0;
 
   // Backups and schedules change on their own (progress, next run): refresh the open tab.
   setInterval(() => {
@@ -219,6 +224,7 @@
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
     if (activeTab === 'world') worldTick();
     if (activeTab === 'tuning') loadPerfLive();
+    if (activeTab === 'mod:overview' && ++homeTicks % 5 === 0) loadHome();
     if (activeTab === 'players' && !document.querySelector('#pn-pl-form :focus')) loadPlayerLists();
     if (activeTab === 'stats' && Date.now() - (statsData ? statsData.to : 0) > 60000) loadStats();
   }, 2000);
@@ -313,6 +319,7 @@
     if (tab === 'tuning') loadTuning();
     if (tab === 'maintenance') loadMaintenance();
     if (tab === 'serverlist') loadServerList();
+    if (tab === 'info') loadInfo();
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -347,14 +354,18 @@
 
   // ── Logos (Appearance) ──
 
-  function showBrandLogo() {
+  /** fresh: after an upload, skip the browser's copy. Otherwise the cached logo is checked with its ETag. */
+  function showBrandLogo(fresh) {
     const img = $('pn-brand-logo');
     const login = $('pn-login-logo');
-    img.onload = () => { img.hidden = false; $('pn-brand-text').hidden = true; login.src = img.src; login.hidden = false; };
-    img.onerror = () => { img.hidden = true; $('pn-brand-text').hidden = false; login.hidden = true; };
-    img.src = 'branding/panel?t=' + Date.now();
+    const remember = (on) => { try { localStorage.setItem('pn-logo', on ? '1' : '0'); } catch (e) { /* not remembered */ } };
+    const shown = () => { img.hidden = false; $('pn-brand-text').hidden = true; login.src = img.src; login.hidden = false; remember(true); };
+    img.onload = shown;
+    img.onerror = () => { img.hidden = true; $('pn-brand-text').hidden = false; login.hidden = true; document.documentElement.classList.remove('pn-has-logo'); remember(false); };
+    if (fresh) img.src = 'branding/panel?t=' + Date.now();
+    else if (img.complete) (img.naturalWidth ? shown : img.onerror)();
   }
-  showBrandLogo();
+  showBrandLogo(false);
 
   function loadLogos() {
     document.querySelectorAll('.pn-logo-slot[data-logo]').forEach((slot) => {
@@ -380,7 +391,7 @@
         if (!res.ok) throw new Error(data.error || res.statusText);
         formMsg('pn-logo-msg', 'Saved.', true);
         loadLogos();
-        if (which === 'panel') showBrandLogo();
+        if (which === 'panel') showBrandLogo(true);
       } catch (err) {
         formMsg('pn-logo-msg', err.message, false);
       }
@@ -390,7 +401,7 @@
         await api('api/branding/' + which + '/remove', {});
         formMsg('pn-logo-msg', 'Removed.', true);
         loadLogos();
-        if (which === 'panel') showBrandLogo();
+        if (which === 'panel') showBrandLogo(true);
       } catch (err) {
         formMsg('pn-logo-msg', err.message, false);
       }
@@ -636,7 +647,9 @@
       const mm = String(m % 60).padStart(2, '0');
       time = c.twelveHour ? `${h % 12 === 0 ? 12 : h % 12}:${mm} ${h < 12 ? 'AM' : 'PM'}` : `${String(h).padStart(2, '0')}:${mm}`;
     }
-    box.innerHTML = `<i class="bi ${icon}"></i><b class="np-clock-time">${esc(time || '')}</b><span class="np-clock-date">${c.weekday ? esc(c.weekday.slice(0, 3)) + ', ' : ''}${esc(c.date || '')}</span>`;
+    const html = `<i class="bi ${icon}"></i><b class="np-clock-time">${esc(time || '')}</b><span class="np-clock-date">${c.weekday ? esc(c.weekday.slice(0, 3)) + ', ' : ''}${esc(c.date || '')}</span>`;
+    // Rewriting the same markup makes the icon blink in some browsers.
+    if (box.dataset.html !== html) { box.innerHTML = html; box.dataset.html = html; }
     box.title = [c.weekday, c.date, c.detail].filter(Boolean).join(' · ');
     box.hidden = false;
   }
@@ -2944,6 +2957,7 @@
     } catch (e) {
       return;
     }
+    renderHero(d);
     const items = [...d.attention];
     // Things only the browser knows: the mod's update count and the dynamic distances.
     if (Number(badges['mod:updates']) > 0) items.push({ level: 'info', text: `${badges['mod:updates']} mod update${badges['mod:updates'] > 1 ? 's are' : ' is'} available.`, tab: 'mod:updates', action: 'Updates' });
@@ -2957,6 +2971,21 @@
     $('pn-setup-count').textContent = `${d.setup.length - open} of ${d.setup.length} done`;
     $('pn-setup-list').innerHTML = d.setup.map((x) => `<li class="${x.done ? 'done' : ''}"><i class="bi ${x.done ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
       <span>${esc(x.text)}</span>${x.done ? '' : `<button type="button" class="np-btn small" data-goto="${esc(x.tab)}">Set up <i class="bi bi-arrow-right"></i></button>`}</li>`).join('');
+  }
+
+  /** The greeting banner on Home: time of day, the server list message as players see it, a few facts. */
+  function renderHero(d) {
+    const h = new Date().getHours();
+    const part = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    $('pn-hero-greet').textContent = `${part}, ${me ? me.user : ''}`;
+    $('pn-hero-motd').innerHTML = motdHtml(d.motd);
+    const state = { RUNNING: ['Online', 'good'], STARTING: ['Starting', 'warn'], STOPPING: ['Stopping', 'warn'], CRASHED: ['Crashed', 'bad'] }[d.state] || ['Offline', 'off'];
+    const facts = [`<span class="pn-hero-fact ${state[1]}"><span class="pn-hero-dot"></span>${state[0]}</span>`];
+    if (d.players != null) facts.push(`<span class="pn-hero-fact"><i class="bi bi-people-fill"></i>${d.players} / ${esc(d.maxPlayers)} playing</span>`);
+    if (d.uptime7d != null) facts.push(`<span class="pn-hero-fact"><i class="bi bi-activity"></i>${d.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })}% up this week</span>`);
+    const clock = $('pn-clock');
+    if (!clock.hidden && clock.textContent.trim()) facts.push(`<span class="pn-hero-fact">${clock.innerHTML}</span>`);
+    $('pn-hero-facts').innerHTML = facts.join('');
   }
 
   $('pn-home').addEventListener('click', (e) => {
@@ -2983,7 +3012,21 @@
     });
     const editable = can('settings.server');
     form.querySelectorAll('input, button').forEach((el) => { el.disabled = !editable; });
+    perfNeeds();
   }
+
+  /** Settings that only matter while their switch is on are greyed out (the switch itself stays usable). */
+  function perfNeeds() {
+    const form = $('pn-perf-form');
+    form.querySelectorAll('[data-needs] input').forEach((el) => {
+      let on = true;
+      for (let g = el.closest('[data-needs]'); g; g = g.parentElement.closest('[data-needs]')) {
+        if (g.dataset.needs !== el.name && !form.elements[g.dataset.needs]?.checked) on = false;
+      }
+      el.closest('.np-form-row')?.classList.toggle('pn-off', !on);
+    });
+  }
+  $('pn-perf-form').addEventListener('change', perfNeeds);
 
   async function loadTuning() {
     try {
@@ -3127,6 +3170,38 @@
   }
 
   let mtData = null;
+  let mtStaff = new Set();
+
+  /** Known players as checkboxes; ticked ones may join during maintenance. Operators are always ticked. */
+  function renderStaff() {
+    const q = $('pn-mt-filter').value.trim().toLowerCase();
+    const players = [...(mtData ? mtData.players : [])];
+    for (const n of mtStaff) if (!players.some((p) => p.name.toLowerCase() === n)) players.push({ name: n, op: false });
+    players.sort((a, b) => (b.op - a.op) || (mtStaff.has(b.name.toLowerCase()) - mtStaff.has(a.name.toLowerCase())) || a.name.localeCompare(b.name));
+    const shown = players.filter((p) => !q || p.name.toLowerCase().includes(q));
+    const editable = can('players.manage');
+    $('pn-mt-staff').innerHTML = shown.map((p) => `<label class="pn-staff-item${p.op ? ' op' : ''}">
+        <input type="checkbox" data-staff="${esc(p.name.toLowerCase())}" ${p.op || mtStaff.has(p.name.toLowerCase()) ? 'checked' : ''} ${p.op || !editable ? 'disabled' : ''}>
+        <img src="https://mc-heads.net/avatar/${encodeURIComponent(p.name)}/20" alt="" width="20" height="20" loading="lazy"><span>${esc(p.name)}</span>${p.op ? '<small>operator</small>' : ''}</label>`).join('')
+      || `<p class="pn-hint">${q ? 'Nobody by that name yet: add it above.' : 'Nobody has joined yet: add names above.'}</p>`;
+  }
+
+  $('pn-mt-filter').addEventListener('input', renderStaff);
+  $('pn-mt-filter').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+  $('pn-mt-staff').addEventListener('change', (e) => {
+    const n = e.target.dataset.staff;
+    if (!n) return;
+    if (e.target.checked) mtStaff.add(n); else mtStaff.delete(n);
+  });
+  const addStaff = () => {
+    const name = $('pn-mt-add').value.trim();
+    if (!/^[A-Za-z0-9_]{1,16}$/.test(name)) return formMsg('pn-mt-msg', 'Minecraft names are 1–16 letters, digits or _.', false);
+    mtStaff.add(name.toLowerCase());
+    $('pn-mt-add').value = '';
+    renderStaff();
+  };
+  $('pn-mt-add-btn').addEventListener('click', addStaff);
+  $('pn-mt-add').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addStaff(); } });
 
   async function loadMaintenance() {
     try {
@@ -3141,7 +3216,8 @@
     form.countdown.value = s.countdown;
     form.motd.value = s.motd;
     form.kickMessage.value = s.kickMessage;
-    form.staff.value = (s.staff || []).join('\n');
+    mtStaff = new Set((s.staff || []).map((n) => n.toLowerCase()));
+    renderStaff();
     $('pn-mt-preview').innerHTML = motdHtml(s.motd);
     const editable = can('players.manage');
     form.querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = !editable; });
@@ -3155,7 +3231,7 @@
     if (turningOn && !confirm('Switch maintenance on? Everyone but operators and staff is warned and then kicked.')) return;
     try {
       const res = await api('api/maintenance', { enabled: f.enabled.checked, countdown: Number(f.countdown.value) || 0, motd: f.motd.value,
-        kickMessage: f.kickMessage.value, staff: f.staff.value.split('\n').map((x) => x.trim()).filter(Boolean) });
+        kickMessage: f.kickMessage.value, staff: [...mtStaff] });
       formMsg('pn-mt-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
       loadMaintenance();
       pollServer();
@@ -3176,6 +3252,8 @@
     }
     const form = $('pn-sl-form');
     form.motd.value = d.motd.replace(/\\n/g, '\n');
+    motdState = d.motds || { rotate: false, list: [] };
+    renderMotds();
     $('pn-sl-preview').innerHTML = motdHtml(form.motd.value);
     $('pn-sl-players').textContent = `0/${d.maxPlayers}`;
     const editable = can('settings.server');
@@ -3192,6 +3270,71 @@
     icon.onerror = () => { icon.src = 'img/apple-touch-icon.png'; icon.onerror = null; };
     icon.src = `api/serverlist/icon/normal?t=${Date.now()}`;
   }
+
+  let motdState = { rotate: false, list: [] };
+
+  function renderMotds() {
+    $('pn-motd-rotate').checked = !!motdState.rotate;
+    const editable = can('settings.server');
+    $('pn-motd-rotate').disabled = !editable;
+    $('pn-motd-list').innerHTML = motdState.list.map((m, i) => `<div class="pn-motd-item${m.on ? '' : ' off'}" data-i="${i}">
+        <label class="np-check" title="Can be picked"><input type="checkbox" data-motd-on ${m.on ? 'checked' : ''} ${editable ? '' : 'disabled'}></label>
+        <div class="pn-motd-preview">${motdHtml(m.text)}</div>
+        ${editable ? `<div class="pn-row-actions"><button type="button" class="np-btn small" data-motd-edit title="Edit"><i class="bi bi-pencil"></i></button>
+        <button type="button" class="np-btn small danger" data-motd-del title="Remove"><i class="bi bi-trash3"></i></button></div>` : ''}</div>`).join('')
+      || '<p class="pn-hint">No messages yet: write one above and press <b>Add to the collection</b>.</p>';
+  }
+
+  async function saveMotds(note) {
+    try {
+      await api('api/serverlist/motds', motdState);
+      if (note) formMsg('pn-sl-msg', note, true);
+    } catch (err) {
+      formMsg('pn-sl-msg', err.message, false);
+    }
+    renderMotds();
+  }
+
+  /** Index of the message being edited, so "Add" saves it in place. */
+  let motdEditing = -1;
+  $('pn-motd-add').addEventListener('click', () => {
+    const text = $('pn-sl-form').motd.value;
+    if (!text.trim()) return formMsg('pn-sl-msg', 'Write a message first.', false);
+    if (motdEditing >= 0 && motdState.list[motdEditing]) motdState.list[motdEditing].text = text;
+    else motdState.list.push({ text, on: true });
+    const note = motdEditing >= 0 ? 'Changed in the collection.' : 'Added to the collection.';
+    motdEditing = -1;
+    $('pn-motd-add').innerHTML = '<i class="bi bi-plus-lg"></i> Add to the collection';
+    saveMotds(note);
+  });
+  $('pn-motd-rotate').addEventListener('change', (e) => {
+    motdState.rotate = e.target.checked;
+    saveMotds(e.target.checked ? 'A random ticked message is used from the next start.' : 'The message stays as it is.');
+  });
+  $('pn-motd-list').addEventListener('click', (e) => {
+    const row = e.target.closest('[data-i]');
+    if (!row) return;
+    const i = Number(row.dataset.i);
+    if (e.target.closest('[data-motd-del]')) {
+      if (!confirm('Remove this message from the collection?')) return;
+      motdState.list.splice(i, 1);
+      if (motdEditing === i) motdEditing = -1;
+      saveMotds('Removed.');
+    } else if (e.target.closest('[data-motd-edit]')) {
+      const t = $('pn-sl-form').motd;
+      t.value = motdState.list[i].text;
+      $('pn-sl-preview').innerHTML = motdHtml(t.value);
+      motdEditing = i;
+      $('pn-motd-add').innerHTML = '<i class="bi bi-check2"></i> Save in the collection';
+      t.focus();
+      t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  });
+  $('pn-motd-list').addEventListener('change', (e) => {
+    if (!e.target.matches('[data-motd-on]')) return;
+    motdState.list[Number(e.target.closest('[data-i]').dataset.i)].on = e.target.checked;
+    saveMotds();
+  });
 
   $('pn-sl-colors').innerHTML = Object.entries(MC_COLORS).map(([c, hex]) => `<button type="button" class="pn-color" data-code="§${c}" title="§${c}" style="background:${hex}"></button>`).join('')
     + ['l', 'o', 'n', 'm', 'r'].map((c) => `<button type="button" class="pn-color pn-fmt" data-code="§${c}" title="§${c}">${{ l: '<b>B</b>', o: '<i>I</i>', n: '<u>U</u>', m: '<s>S</s>', r: '↺' }[c]}</button>`).join('');
@@ -3242,6 +3385,62 @@
         formMsg('pn-icon-msg', err.message, false);
       }
     });
+  });
+
+  // ── Settings → Public info ──────────────────────────────────────────────
+
+  let infoData = null;
+  let infoFiles = [];
+
+  async function loadInfo() {
+    try {
+      [infoData, infoFiles] = await Promise.all([api('api/info'), api('api/configs').then((d) => d.files.map((f) => f.path)).catch(() => [])]);
+    } catch (err) {
+      return formMsg('pn-info-msg', err.message, false);
+    }
+    const s = infoData.settings;
+    const f = $('pn-info-form');
+    for (const k of ['enabled', 'properties', 'gamerules', 'packs']) f.elements[k].checked = !!s[k];
+    f.title.value = s.title || '';
+    f.intro.value = s.intro || '';
+    const url = infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
+    $('pn-info-link').innerHTML = `Address: <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${infoData.host ? '' : ' (set INFO_HOST for a domain of its own)'}`;
+    $('pn-info-props').innerHTML = infoData.propertyKeys.map((k) => `<label class="np-check"><input type="checkbox" value="${esc(k)}" ${s.hiddenProperties.includes(k) ? 'checked' : ''}> ${esc(k)}</label>`).join('')
+      || '<p class="pn-hint">Shows after the server has run once with the mod.</p>';
+    renderInfoFiles();
+  }
+
+  function renderInfoFiles() {
+    const q = $('pn-info-filter').value.trim().toLowerCase();
+    const chosen = new Set(infoData ? infoData.settings.configs : []);
+    const list = infoFiles.filter((p) => !q || p.toLowerCase().includes(q));
+    $('pn-info-configs').innerHTML = list.map((p) => `<label class="np-check"><input type="checkbox" value="${esc(p)}" ${chosen.has(p) ? 'checked' : ''}> ${esc(p.replace(/^config\//, ''))}</label>`).join('')
+      || '<p class="pn-hint">No config files found.</p>';
+  }
+
+  $('pn-info-filter').addEventListener('input', renderInfoFiles);
+  $('pn-info-filter').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+  $('pn-info-configs').addEventListener('change', (e) => {
+    const set = new Set(infoData.settings.configs);
+    if (e.target.checked) set.add(e.target.value); else set.delete(e.target.value);
+    infoData.settings.configs = [...set];
+  });
+  $('pn-info-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const body = {
+      enabled: f.enabled.checked, title: f.title.value.trim() || 'Server info', intro: f.intro.value,
+      properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked,
+      hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
+      configs: infoData.settings.configs,
+    };
+    try {
+      await api('api/info', body);
+      infoData.settings = body;
+      formMsg('pn-info-msg', body.enabled ? 'Saved; the page is public.' : 'Saved; the page is off.', true);
+    } catch (err) {
+      formMsg('pn-info-msg', err.message, false);
+    }
   });
 
   // ── Quick search (Ctrl/⌘ K) ─────────────────────────────────────────────
@@ -3335,6 +3534,47 @@
       if ($('pn-search').hidden) openSearch(); else closeSearch();
     }
   });
+
+  // ── Folding cards (like the dashboard's): click a card's title ───────────────
+
+  const FOLD_KEY = 'pn-folded';
+  let folded = {};
+  try { folded = JSON.parse(localStorage.getItem(FOLD_KEY) || '{}') || {}; } catch (e) { /* none folded */ }
+
+  function setupFolding(root) {
+    root.querySelectorAll('.np-card').forEach((card) => {
+      const title = card.querySelector(':scope > .np-card-title');
+      if (!title || title.dataset.fold || card.closest('#pn-login')) return;
+      title.dataset.fold = '1';
+      const page = card.closest('.np-tab-panel');
+      const id = card.id || (page ? page.dataset.tab : '') + ':' + title.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      title.setAttribute('role', 'button');
+      title.setAttribute('tabindex', '0');
+      title.insertAdjacentHTML('beforeend', '<i class="bi bi-chevron-down np-collapse-caret"></i>');
+      const apply = (on) => {
+        card.classList.toggle('collapsed', on);
+        title.setAttribute('aria-expanded', String(!on));
+      };
+      apply(id in folded ? folded[id] : card.hasAttribute('data-folded'));
+      const toggle = (e) => {
+        // Buttons and fields inside a title keep working.
+        if (e.target.closest('button, a, input, select, label') && e.target.closest('button, a, input, select, label') !== title) return;
+        const on = !card.classList.contains('collapsed');
+        apply(on);
+        folded[id] = on;
+        try { localStorage.setItem(FOLD_KEY, JSON.stringify(folded)); } catch (err) { /* this visit only */ }
+        if (!on && card.id === 'pn-stats-days' && statsData) renderStats(statsData);
+      };
+      title.addEventListener('click', toggle);
+      title.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle(e);
+        }
+      });
+    });
+  }
+  setupFolding($('pn-app'));
 
   // ── Help for technical terms ─────────────────────────────────────────────
 

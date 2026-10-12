@@ -9,6 +9,7 @@
 #   TIMEZONE                   for scheduled tasks and backup names, e.g. Europe/Berlin
 #   DISCORD_TOKEN              optional: the Discord bot token (can also be pasted in the panel)
 #   MAP_HOST                   optional: the web map's own domain, e.g. map.explorerseden.eu (gets its own certificate)
+#   INFO_HOST                  optional: the public info page's own domain, e.g. info.explorerseden.eu
 #   MINECRAFT_PORT             the port players connect to (default 25565). Crafty publishes 25500-25600 on the same
 #                              host: while both run, pick a free port outside that range (e.g. 25601), or stop Crafty.
 #   TRAEFIK_CERTRESOLVER       only if yours isn't called "le" (Crafty's stack uses "le")
@@ -30,15 +31,16 @@ services:
       TZ: ${TIMEZONE:-Europe/Berlin}
       DISCORD_TOKEN: ${DISCORD_TOKEN:-}
       MAP_HOST: ${MAP_HOST:-}
+      INFO_HOST: ${INFO_HOST:-}
     ports:
       - "${MINECRAFT_PORT:-25565}:25565"
       # SFTP with the panel's accounts.
       - "${SFTP_PORT:-2022}:2022"
     labels:
       - traefik.enable=true
-      # One router for the panel and the map domain: the panel itself only shows the map on MAP_HOST.
-      # Without MAP_HOST the second Host() is the panel's domain again.
-      - traefik.http.routers.nicecontrolcenter.rule=Host(`${PANEL_DOMAIN}`) || Host(`${MAP_HOST:-${PANEL_DOMAIN}}`)
+      # One router for the panel, the map and the info page domains: on MAP_HOST only the map exists, on
+      # INFO_HOST only the info page. Without them, those Host() rules are the panel's domain again.
+      - traefik.http.routers.nicecontrolcenter.rule=Host(`${PANEL_DOMAIN}`) || Host(`${MAP_HOST:-${PANEL_DOMAIN}}`) || Host(`${INFO_HOST:-${PANEL_DOMAIN}}`)
       - traefik.http.routers.nicecontrolcenter.tls=true
       - traefik.http.routers.nicecontrolcenter.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}
       - traefik.http.routers.nicecontrolcenter.service=nicecontrolcenter

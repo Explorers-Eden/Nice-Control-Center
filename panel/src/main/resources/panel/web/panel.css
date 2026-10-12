@@ -485,3 +485,118 @@ kbd { font-family: var(--mono); font-size: 10.5px; padding: 1px 5px; border-radi
   body:has(#pn-user-menu:not([hidden])) #pn-theme { display: none; }
   .pn-menu-theme { display: flex !important; }
 }
+
+/* Settings whose switch is off: still editable, but clearly not in use. */
+.np-form-row.pn-off { opacity: .45; }
+/* One save for the Tuning cards, always at hand. */
+.pn-sticky-save { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 14px;
+  background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--card-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+
+/* Same field heights and select arrow as app.css; repeated here because the rules above set "background". */
+body .pn-field select, body .pn-step select, body .pn-pl-checks select, body .np-form-row select {
+  -webkit-appearance: none; appearance: none; padding-right: 30px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a93a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; }
+body .pn-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), body .pn-field select { box-sizing: border-box; height: 36px; padding-top: 0; padding-bottom: 0; }
+
+/* A logo remembered from last time is there from the first frame. */
+html.pn-has-logo #pn-brand-text { display: none; }
+html.pn-has-logo #pn-brand-logo[hidden] { display: inline-block; }
+
+/* Maintenance: who may join, as a list of players. */
+.pn-staff-tools { display: flex; flex-wrap: wrap; gap: 8px; font-weight: 400; }
+.pn-staff-tools input { flex: 1 1 160px; }
+.pn-staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px; max-height: 280px; overflow: auto; padding: 6px;
+  border: 1px solid var(--card-border); border-radius: 10px; background: var(--inset); font-weight: 400; }
+.pn-staff-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; cursor: pointer; color: var(--text); }
+.pn-staff-item:hover { background: rgba(var(--ink),.05); }
+.pn-staff-item img { border-radius: 3px; image-rendering: pixelated; }
+.pn-staff-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.pn-staff-item small { color: var(--accent); font-size: var(--fs-xs); }
+.pn-staff-item.op { cursor: default; }
+.pn-staff-item:has(input:checked) span { color: var(--strong); font-weight: 500; }
+
+/* MOTD collection. */
+.pn-motd-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.pn-motd-item { display: flex; align-items: center; gap: 10px; }
+.pn-motd-item .pn-motd-preview { flex: 1; margin: 0; }
+.pn-motd-item.off .pn-motd-preview { opacity: .45; }
+
+/* ── Flavor ───────────────────────────────────────────────────────────────
+   Each area has its own colour (--area): its sidebar icon, the page icon and the card-title icons.
+   The page gets a soft glow in the brand colours over a faint block grid. */
+body {
+  background:
+    radial-gradient(1200px 520px at 12% -10%, rgba(123,147,255,.16), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(167,123,255,.11), transparent 60%),
+    linear-gradient(rgba(var(--ink),.022) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(var(--ink),.022) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg);
+  background-attachment: fixed;
+}
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(1200px 520px at 12% -10%, rgba(53,80,200,.10), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(122,63,209,.08), transparent 60%),
+    linear-gradient(rgba(var(--ink),.03) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(var(--ink),.03) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg);
+  background-attachment: fixed;
+}
+.navbar { background: color-mix(in srgb, var(--nav) 82%, transparent); backdrop-filter: blur(12px); }
+
+/* Sidebar: area-coloured icons; the open area gets a coloured bar and tint. */
+.pn-side .np-tab .bi { color: var(--area, var(--faint)); opacity: .75; }
+.pn-side .np-tab:hover .bi { opacity: 1; }
+.pn-side .np-tab { position: relative; }
+.pn-side .np-tab.active { background: color-mix(in srgb, var(--area, var(--accent)) 16%, transparent); }
+.pn-side .np-tab.active .bi { color: var(--area, var(--accent)); opacity: 1; }
+.pn-side .np-tab.active::before { content: ''; position: absolute; left: -8px; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--area, var(--accent)); }
+
+/* Page header: the area's icon in a tile. */
+.pn-page-title { display: flex; align-items: center; gap: 14px; }
+.pn-page-icon { width: 42px; height: 42px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 20px; color: #fff;
+  background: linear-gradient(135deg, var(--area, var(--brand-a)), color-mix(in srgb, var(--area, var(--brand-b)) 55%, #1b1240));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--area, var(--brand-a)) 35%, transparent), inset 0 1px 0 rgba(255,255,255,.25); }
+.pn-page-icon:empty { display: none; }
+.pn-subtab.active { box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 0 0 1px var(--card-border), inset 0 -2px 0 var(--area, var(--accent)); }
+
+/* Card titles: the icon sits in a small tile in the area's colour. */
+.pn-content .np-card-title > .bi:first-child { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px;
+  color: var(--area, var(--accent)); background: color-mix(in srgb, var(--area, var(--accent)) 15%, transparent); opacity: 1; }
+.pn-content .np-card { box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px -18px rgba(0,0,0,.45); }
+
+/* Primary buttons in the brand gradient. */
+.np-btn.primary { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); border-color: transparent; color: #fff; box-shadow: 0 4px 14px -4px rgba(123,147,255,.6); }
+.np-btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+/* Home: the greeting banner. */
+.pn-hero { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; padding: 22px 24px;
+  border-radius: 16px; border: 1px solid var(--card-border); color: #fff;
+  background:
+    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(120deg, #2b3a8f 0%, #4b2f8f 55%, #1f6a5a 100%); }
+.pn-hero::after { content: ''; position: absolute; right: -40px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(255,209,139,.35), transparent 65%); pointer-events: none; }
+.pn-hero-greet { margin: 0 0 6px; font-size: var(--fs-xl); font-weight: 600; letter-spacing: -.01em; }
+.pn-hero-motd { display: inline-block; font-family: var(--mono); font-size: var(--fs-base); line-height: 1.45; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,.35); color: #aaa; white-space: pre-wrap; }
+.pn-hero-facts { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; }
+.pn-hero-fact { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.12); font-size: var(--fs-sm); color: #eef2ff; }
+.pn-hero-fact .bi { opacity: .85; }
+.pn-hero-fact .np-clock-date { opacity: .75; margin-left: 4px; }
+.pn-hero-dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa3b5; }
+.pn-hero-fact.good .pn-hero-dot { background: #6fe89b; box-shadow: 0 0 0 3px rgba(111,232,155,.25); }
+.pn-hero-fact.warn .pn-hero-dot { background: #ffcf7a; }
+.pn-hero-fact.bad .pn-hero-dot { background: #ff8a8a; }
+#pn-perf-form { display: flex; flex-direction: column; gap: 16px; }
+.pn-setup-hide + .np-collapse-caret { margin-left: 10px; }
+
+/* Public info: tick lists. */
+.pn-stack { display: flex; flex-direction: column; gap: 16px; }
+.pn-checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 12px; max-height: 320px; overflow: auto; padding: 8px 4px; }
+.pn-checklist .np-check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-info-filter { width: 100%; max-width: 320px; height: 34px; box-sizing: border-box; padding: 0 10px; font: inherit; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; }
+body .pn-borders select, body .pn-borders input[type="number"] { box-sizing: border-box; height: 32px; padding-top: 0; padding-bottom: 0; }
+body .pn-borders select { -webkit-appearance: none; appearance: none; padding-right: 28px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238a93a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; background-size: 12px; }

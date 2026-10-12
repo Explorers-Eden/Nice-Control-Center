@@ -38,10 +38,58 @@ final class ServerTuning {
 	private final Audit audit;
 	private Notifier events = (type, values) -> { };
 
-	ServerTuning(Path serverDir, Supervisor server, Audit audit) {
+	/** The MOTD collection: switched-on ones are picked at random at each start (when rotate is on). */
+	static final class Motds {
+		public boolean rotate = false;
+		public List<Motd> list = new ArrayList<>();
+	}
+
+	static final class Motd {
+		public String text = "";
+		public boolean on = true;
+	}
+
+	private final Path motdFile;
+
+	ServerTuning(Path serverDir, Path dataDir, Supervisor server, Audit audit) {
 		this.serverDir = serverDir;
+		this.motdFile = dataDir.resolve("motds.json");
 		this.server = server;
 		this.audit = audit;
+		server.beforeStart(this::pickMotd);
+	}
+
+	Motds motds() {
+		try {
+			if (Files.exists(motdFile)) {
+				Motds m = Json.GSON.fromJson(Files.readString(motdFile), Motds.class);
+				if (m != null) {
+					if (m.list == null) m.list = new ArrayList<>();
+					m.list.removeIf(x -> x == null || x.text == null || x.text.isBlank());
+					return m;
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			// Empty.
+		}
+		return new Motds();
+	}
+
+	/** Before a start: a random switched-on MOTD (another one than now, when there's a choice) into server.properties. */
+	private void pickMotd(java.util.function.Consumer<String> log) {
+		Motds m = motds();
+		if (!m.rotate) return;
+		List<String> on = m.list.stream().filter(x -> x.on).map(x -> x.text).toList();
+		if (on.isEmpty()) return;
+		String now = properties().getProperty("motd", "");
+		List<String> pick = on.size() > 1 ? on.stream().filter(t -> !t.equals(now)).toList() : on;
+		String chosen = pick.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(pick.size()));
+		try {
+			setProperty(serverDir, "motd", chosen);
+			log.accept("Message of the day for this start: " + chosen.replaceAll("§.", "").replace('\n', ' '));
+		} catch (IOException e) {
+			log.accept("Couldn't set the message of the day: " + e.getMessage());
+		}
 	}
 
 	/** Maintenance on/off goes to Discord (and the stats markers). */
@@ -213,6 +261,7 @@ final class ServerTuning {
 		routes.get("/api/maintenance", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("settings", maintenance());
+			out.put("players", knownPlayers());
 			out.put("icon", Files.isRegularFile(serverDir.resolve(Maintenance.ICON)));
 			json(ctx, out);
 		}));
@@ -245,11 +294,29 @@ final class ServerTuning {
 			Properties p = properties();
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("motd", p.getProperty("motd", "A Minecraft Server"));
+			out.put("motds", motds());
 			out.put("maxPlayers", p.getProperty("max-players", "20"));
 			out.put("icon", Files.isRegularFile(serverDir.resolve("server-icon.png")));
 			out.put("maintenanceIcon", Files.isRegularFile(serverDir.resolve(Maintenance.ICON)));
 			out.put("running", server.running());
 			json(ctx, out);
+		}));
+		routes.post("/api/serverlist/motds", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			Motds next;
+			try {
+				next = Json.GSON.fromJson(ctx.body(), Motds.class);
+			} catch (RuntimeException e) {
+				next = null;
+			}
+			if (next == null || next.list == null || next.list.size() > 100 || next.list.stream().anyMatch(x -> x == null || x.text == null || x.text.length() > 300)) {
+				error(ctx, HttpStatus.BAD_REQUEST, "Up to 100 messages of up to 300 characters each.");
+				return;
+			}
+			next.list.removeIf(x -> x.text.isBlank());
+			Files.createDirectories(motdFile.getParent());
+			Files.writeString(motdFile, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(next));
+			audit.log(me.name(), "serverlist.motds", next.list.size() + " messages, " + next.list.stream().filter(x -> x.on).count() + " on, rotate " + (next.rotate ? "on" : "off"), clientIp(ctx));
+			json(ctx, Map.of("ok", true));
 		}));
 		routes.post("/api/serverlist/motd", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			String motd = str(body(ctx), "motd");
@@ -289,6 +356,35 @@ final class ServerTuning {
 				ctx.contentType("image/png").header("Cache-Control", "no-cache").result(Files.readAllBytes(f));
 			}));
 		}
+	}
+
+	/** Names from a player list file (ops.json, whitelist.json, usercache.json). */
+	private List<String> names(String file) {
+		try {
+			Path f = serverDir.resolve(file);
+			if (!Files.exists(f)) return List.of();
+			List<String> out = new ArrayList<>();
+			for (var e : com.google.gson.JsonParser.parseString(Files.readString(f)).getAsJsonArray()) {
+				if (e.isJsonObject() && e.getAsJsonObject().has("name")) out.add(e.getAsJsonObject().get("name").getAsString());
+			}
+			return out;
+		} catch (IOException | RuntimeException e) {
+			return List.of();
+		}
+	}
+
+	/** Everyone the server knows (operators, the whitelist, who has joined), for the staff checkboxes. */
+	private List<Map<String, Object>> knownPlayers() {
+		java.util.Set<String> ops = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+		ops.addAll(names("ops.json"));
+		java.util.Map<String, String> all = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		for (String file : new String[] { "ops.json", "whitelist.json", "usercache.json" }) {
+			for (String n : names(file)) all.putIfAbsent(n, n);
+		}
+		for (String n : maintenance().staff) all.putIfAbsent(n, n);
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (String n : all.values()) out.add(Map.of("name", n, "op", ops.contains(n)));
+		return out;
 	}
 
 	private static String summary(Performance.Settings s) {
