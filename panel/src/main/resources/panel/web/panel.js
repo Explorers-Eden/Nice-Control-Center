@@ -127,6 +127,8 @@
   const subsOf = (entry) => entry.subs.filter(allowed);
   /** Badges by page (the mod's counts), added up on their sidebar entry. */
   const badges = {};
+  /** Which badges are warnings (unread answers, updates waiting); the rest are plain counts like players online. */
+  const badgeWarn = {};
 
   function renderSide() {
     $('pn-side-groups').innerHTML = NAV.map((g) => {
@@ -145,12 +147,14 @@
       const el = b.querySelector('.pn-badge');
       el.hidden = !total;
       el.textContent = total || '';
+      el.classList.toggle('warn', subsOf(entry).some((sub) => badgeWarn[sub.tab] && Number(badges[sub.tab])));
     });
     document.querySelectorAll('#pn-subtabs [data-tab]').forEach((b) => {
       const el = b.querySelector('.pn-badge');
       const n = badges[b.dataset.tab];
       el.hidden = !n;
       el.textContent = n || '';
+      el.classList.toggle('warn', !!badgeWarn[b.dataset.tab]);
     });
   }
 
@@ -236,6 +240,7 @@
   // and schedule are hidden: the panel has those). It's as tall as its content, so the page scrolls as one.
 
   const EMBED_CSS = `
+    html, body { min-height: 0 !important; height: auto !important; }
     body.embedded { min-height: 0 !important; }
     body.embedded > .navbar, body.embedded .np-tabs, body.embedded .np-toasts { display: none !important; }
     body.embedded .np-inspector-list { height: 640px !important; }
@@ -255,8 +260,15 @@
           style.textContent = EMBED_CSS;
           doc.head.appendChild(style);
           if (frameResize) frameResize.disconnect();
-          frameResize = new ResizeObserver(() => { frame.style.height = Math.max(400, Math.ceil(doc.body.getBoundingClientRect().height) + 4) + 'px'; });
+          // Sized to its content. Pages that fill the window (the "server is offline" page) would grow
+          // with every resize, so heights are measured without that, and only real changes count.
+          const fit = () => {
+            const h = Math.max(160, Math.ceil(doc.body.scrollHeight));
+            if (Math.abs(h - frame.offsetHeight) > 2) frame.style.height = h + 'px';
+          };
+          frameResize = new ResizeObserver(fit);
           frameResize.observe(doc.body);
+          fit();
         } catch (e) { /* another origin: leave it as it is */ }
       };
       frame.src = 'dashboard/#' + page;
@@ -291,7 +303,12 @@
         const src = t.querySelector('.np-tab-badge');
         if (!src) return;
         const n = src.hidden ? '' : src.textContent.trim();
-        if ((badges['mod:' + t.dataset.tab] || '') !== n) { badges['mod:' + t.dataset.tab] = n; changed = true; }
+        const warn = src.classList.contains('warn');
+        if ((badges['mod:' + t.dataset.tab] || '') !== n || !!badgeWarn['mod:' + t.dataset.tab] !== warn) {
+          badges['mod:' + t.dataset.tab] = n;
+          badgeWarn['mod:' + t.dataset.tab] = warn;
+          changed = true;
+        }
       });
       if (changed) renderBadges();
     } catch (e) { /* not loaded */ }
@@ -3476,7 +3493,11 @@
     f.intro.value = s.intro || '';
     const url = infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
     $('pn-info-open').href = url;
-    $('pn-info-link').innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>${infoData.host ? '' : ' · set INFO_HOST for a domain of its own'}${s.enabled ? '' : ' · switched off: only you see it until it\'s public'}`;
+    // Same wording as the map's card.
+    $('pn-info-link').innerHTML = infoData.host
+      ? `Public address: <a href="https://${esc(infoData.host)}/" target="_blank" rel="noopener">${esc(infoData.host)}</a>`
+      : 'Set <code>INFO_HOST</code> (e.g. info.example.com) to give the page its own address.';
+    $('pn-info-status').textContent = s.enabled ? 'It\'s public.' : 'It\'s off: only admins can open it.';
     $('pn-info-props').innerHTML = infoData.propertyKeys.map((k) => `<label class="np-check"><input type="checkbox" value="${esc(k)}" ${s.hiddenProperties.includes(k) ? 'checked' : ''}> ${esc(k)}</label>`).join('')
       || '<p class="pn-hint">Shows after the server has run once with the mod.</p>';
     renderInfoFiles();

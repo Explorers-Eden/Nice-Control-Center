@@ -1,4 +1,9 @@
 ## 1.6.0
+- Public info page: only the part chosen in the menu shows, with a breadcrumb (search still looks through everything); pack and mod names are capitalised ("Fabled Roots")
+- Public info settings read like the map's (address line, on/off state)
+- Sidebar counts like players online are neutral; only warnings (unread answers, updates waiting) are coloured
+- With the server off, the page no longer grows a little on every refresh (the dashboard frame measured the "not available" page at window height)
+- "say …" in the console goes out as "Admin ┃ <account>: …" like the panel's other messages
 - A server without Fabric API gets the newest one for its Minecraft version from Modrinth before it starts (with "Install and update the Nice Control Center mod" on); one already there is left alone
 - Profile pictures (Account → Profile & look, also in the navbar and the users list) and eight themes to pick from (Dark, Light, Midnight, Forest, Nether, The End, Ocean, Sakura), saved with the account so they follow you to every device
 - Public info page: a contents tree on the left (server settings by group, game rules by category, data packs following their own in-game menus, mod configs) that follows where you are and the search; a banner with the server list message and counts; "Open the page" button in the settings, and admins can look at it before it's public

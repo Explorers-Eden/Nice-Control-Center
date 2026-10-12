@@ -155,9 +155,15 @@ final class DashboardProxy {
 	 * answered with ok.
 	 */
 	String post(String path, JsonObject body) throws InterruptedException {
-		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-				.timeout(Duration.ofSeconds(15)).header("X-NCC-Secret", secret).header("Content-Type", "application/json")
-				.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+		return post(path, body, null);
+	}
+
+	/** user: the panel account behind it, for "Admin ┃ <name>:" in messages. */
+	String post(String path, JsonObject body, String user) throws InterruptedException {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+				.timeout(Duration.ofSeconds(15)).header("X-NCC-Secret", secret).header("Content-Type", "application/json");
+		if (user != null) builder.header("X-NCC-User", user.replaceAll("[^A-Za-z0-9_ .\\-]", "").strip());
+		HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
 		try {
 			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 			JsonObject answer = com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject();
@@ -217,7 +223,7 @@ final class DashboardProxy {
 				<script>try { document.documentElement.dataset.theme = localStorage.getItem('np-theme') === 'light' ? 'light' : 'dark'; } catch (e) {}</script>
 				<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 				<link rel="stylesheet" href="../app.css"><link rel="stylesheet" href="../panel.css">
-				<style>body { background: transparent; } .pn-offline { margin: 8px 0; }</style>
+				<style>html, body { background: transparent; min-height: 0; height: auto; } .pn-offline { margin: 8px 0; }</style>
 				<script>setTimeout(() => location.reload(), 5000)</script></head>
 				<body><section class="np-card pn-offline"><h3 class="np-card-title">Dashboard not available</h3>
 				<p class="np-card-intro">%s</p></section></body></html>""".formatted(why.replace("&", "&amp;").replace("<", "&lt;")));

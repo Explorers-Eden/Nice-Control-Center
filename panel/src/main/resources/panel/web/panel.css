@@ -303,7 +303,9 @@
 .pn-side .np-tab.active { background: rgba(122,147,255,.16); color: var(--strong); }
 .pn-side .np-tab.active .bi { color: var(--accent); }
 .pn-side .np-tab span:not(.pn-badge) { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-.pn-badge { min-width: 18px; padding: 1px 6px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; text-align: center; background: rgba(255,144,144,.18); color: var(--poor); }
+.pn-badge { min-width: 18px; padding: 1px 6px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; text-align: center; background: rgba(var(--ink),.08); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Warnings (unread answers, updates waiting) stand out; plain counts (players online) don't. */
+.pn-badge.warn { background: color-mix(in srgb, var(--accent-2) 22%, transparent); color: var(--accent-2); }
 .pn-badge[hidden] { display: none; }
 .pn-menu-btn { display: none; }
 .pn-side-backdrop { display: none; }

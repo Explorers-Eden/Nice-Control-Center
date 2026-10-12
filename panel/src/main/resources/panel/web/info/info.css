@@ -122,3 +122,12 @@ body { background:
 /* The body is a flex column (app.css): keep the centred parts full width, also while searching hides content. */
 .in-layout, .in-bar-inner, .in-hero { box-sizing: border-box; width: 100%; }
 .in-hero { width: auto; align-self: stretch; }
+
+/* One part at a time: the one chosen in the tree (search shows every match). */
+body:not(.in-searching) .in-off { display: none !important; }
+body.in-searching .in-crumbs { visibility: hidden; }
+.in-content { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.in-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 22px; font-size: var(--fs-sm); color: var(--faint); }
+.in-crumbs a { color: var(--muted); }
+.in-crumbs b { color: var(--strong); font-weight: 600; }
+.in-crumbs .bi { font-size: 10px; }

@@ -229,6 +229,18 @@ public final class Panel {
 			routes.post("/api/server/kill", guard(Permissions.SERVER_POWER, (ctx, me) -> power(ctx, me, audit, "server.kill", server.kill())));
 			routes.post("/api/server/command", guard(Permissions.CONSOLE_WRITE, (ctx, me) -> {
 				String command = str(body(ctx), "command");
+				// "say …" from the panel goes out like its other messages: "Admin ┃ <account>: …".
+				java.util.regex.Matcher say = java.util.regex.Pattern.compile("^/?say\\s+(.+)$", java.util.regex.Pattern.DOTALL).matcher(command.strip());
+				if (say.matches() && server.running()) {
+					JsonObject msg = new JsonObject();
+					msg.addProperty("text", say.group(1));
+					if (dashboard.post("/api/chat/send", msg, me.name()) == null) {
+						audit.log(me.name(), "console.command", command.strip(), clientIp(ctx));
+						server.note("Said as " + me.name() + ": " + say.group(1));
+						result(ctx, null);
+						return;
+					}
+				}
 				String error = server.command(command);
 				if (error == null) audit.log(me.name(), "console.command", command.strip(), clientIp(ctx));
 				result(ctx, error);

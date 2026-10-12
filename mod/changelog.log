@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.7.2
+- The changes of 1.7.1 under a new number, so panels install them: "Admin ┃ <account>: …" for messages from the panel (1.7.1 was rebuilt after its first release, and panels only update to higher numbers)
+- The dashboard on its own gets the panel's look: brand glow and block grid, each page in its colour (tabs and card icons), gradient buttons
+
 ## 1.7.1
 - Item tooltips on the Players page show names and lore with their colours and styles (§ codes and coloured text no longer show as plain text); lore shows like in the game
 - Player cards show when the player first joined and when they were last online (or "online since"); kept in the world folder (nicecontrolcenter-seen.json), with an estimate from file dates for players from before

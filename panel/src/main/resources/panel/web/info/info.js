@@ -37,6 +37,9 @@
     return t ? t[0].toUpperCase() + t.slice(1) : k;
   };
 
+  /** "fabled_roots" → "Fabled Roots": names of packs and mods, every word capitalised. */
+  const titleCase = (k) => humanize(k).replace(/\b([a-z])/g, (c) => c.toUpperCase());
+
   let uid = 0;
   const slug = (s) => (String(s).toLowerCase().replace(/§./g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'part') + '-' + (++uid);
 
@@ -105,7 +108,7 @@
   }
 
   /** "config/xaerominimap/client.json" → "Xaerominimap › Client". */
-  const fileTitle = (p) => p.replace(/^config\//, '').replace(/\.[^./]+$/, '').split('/').map(humanize).join(' › ');
+  const fileTitle = (p) => p.replace(/^config\//, '').replace(/\.[^./]+$/, '').split('/').map(titleCase).join(' › ');
 
   // ── The model: sections → nodes (cards, or groups of nodes) ──
 
@@ -154,7 +157,7 @@
         let children = walk(p.menu);
         const rest = p.dialogs.filter((dl) => !used.has(dl.id)).map((dl) => card(dl));
         if (rest.length) children = children.length ? children.concat([{ id: slug('more'), title: 'More settings', children: rest }]) : rest;
-        return { id: slug(p.pack), title: humanize(p.pack), icon: 'bi-box-seam', children };
+        return { id: slug(p.pack), title: titleCase(p.pack), icon: 'bi-box-seam', children };
       });
       sections.push({ id: 'packs', title: 'Data packs', statLabel: 'data pack settings', icon: 'bi-boxes', hue: '#ffb35c', count: settings, children: packs });
     }
@@ -206,7 +209,6 @@
         <div class="in-tree-row in-tree-top"><button type="button" class="in-tree-toggle" aria-label="Open"><i class="bi bi-chevron-right"></i></button>
           <a href="#${s.id}"><i class="bi ${s.icon}"></i>${esc(s.title)}</a></div>
         <ul>${s.children.map((c) => treeItem(c, 1)).join('')}</ul></li>`).join('')}</ul>` : '';
-    spy();
   }
 
   // ── Tree behaviour ──
@@ -217,44 +219,56 @@
       toggle.closest('li').classList.toggle('open');
       return;
     }
-    const link = e.target.closest('a');
-    if (link) {
-      link.closest('li').classList.add('open');
-      document.body.classList.remove('in-nav-open');
-    }
+
   });
 
-  /** Marks the part being read in the tree and opens its branch. */
-  let observer = null;
-  function spy() {
-    if (observer) observer.disconnect();
-    const visible = new Map();
-    observer = new IntersectionObserver((entries) => {
-      for (const en of entries) visible.set(en.target.id, en.isIntersecting ? en.boundingClientRect.top : null);
-      // The deepest element whose top has passed the bar: the last visible card, else group, else section.
-      const ids = [...visible].filter(([, top]) => top !== null).sort((a, b) => a[1] - b[1]).map(([id]) => id);
-      const cards = ids.filter((id) => document.getElementById(id)?.classList.contains('in-card'));
-      const current = cards[0] || ids[0];
-      if (!current) return;
-      document.querySelectorAll('#in-tree li.active').forEach((li) => li.classList.remove('active'));
-      const li = document.querySelector(`#in-tree li[data-for="${current}"]`);
-      if (!li) return;
-      li.classList.add('active');
-      for (let p = li.parentElement.closest('li'); p; p = p.parentElement.closest('li')) p.classList.add('open', 'trail');
-      document.querySelectorAll('#in-tree li.trail').forEach((t) => { if (!t.contains(li)) t.classList.remove('trail'); });
-      const tree = $('in-tree');
-      const r = li.getBoundingClientRect();
-      const tr = tree.getBoundingClientRect();
-      if (r.top < tr.top || r.bottom > tr.bottom) li.scrollIntoView({ block: 'nearest' });
-    }, { rootMargin: '-80px 0px -55% 0px' });
-    document.querySelectorAll('[data-node]').forEach((el) => observer.observe(el));
+  /** Shows only the chosen part (a section, a group or one card), with a breadcrumb; the tree marks it. */
+  let selected = null;
+  function select(id, push) {
+    const target = document.getElementById(id) || document.querySelector('.in-section');
+    if (!target) return;
+    selected = target.id;
+    document.querySelectorAll('[data-node]').forEach((el) => {
+      el.classList.toggle('in-off', !(el === target || el.contains(target) || target.contains(el)));
+    });
+    document.querySelectorAll('#in-tree li.active, #in-tree li.trail').forEach((li) => li.classList.remove('active', 'trail'));
+    const li = document.querySelector(`#in-tree li[data-for="${selected}"]`);
+    const path = [];
+    if (li) {
+      li.classList.add('active', 'open');
+      for (let p = li; p; p = p.parentElement.closest('li')) {
+        p.classList.add('open');
+        if (p !== li) p.classList.add('trail');
+        path.unshift(p);
+      }
+    }
+    $('in-crumbs').innerHTML = path.map((p, i) => {
+      const label = p.querySelector(':scope > .in-tree-row a').textContent.trim();
+      return i === path.length - 1 ? `<b>${esc(label)}</b>` : `<a href="#${p.dataset.for}">${esc(label)}</a>`;
+    }).join('<i class="bi bi-chevron-right"></i>');
+    if (push) history.replaceState(null, '', '#' + selected);
+    document.body.classList.remove('in-nav-open');
+    const top = $('in-main').getBoundingClientRect().top + window.scrollY - 70;
+    if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
   }
+
+  // Links in the tree, the breadcrumb and the banner choose a part instead of jumping down the page.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || !document.getElementById(a.getAttribute('href').slice(1))) return;
+    e.preventDefault();
+    if ($('in-q').value) { $('in-q').value = ''; $('in-q').dispatchEvent(new Event('input')); }
+    select(a.getAttribute('href').slice(1), true);
+  });
+  window.addEventListener('hashchange', () => { if (location.hash.length > 1) select(location.hash.slice(1), false); });
 
   // ── Search: rows, cards, groups, sections and the tree follow ──
 
   $('in-q').addEventListener('input', () => {
     const words = $('in-q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const on = words.length > 0;
+    // While searching, everything that matches shows; afterwards the chosen part again.
+    document.body.classList.toggle('in-searching', on);
     document.querySelectorAll('[data-search]').forEach((el) => { el.hidden = !words.every((w) => el.dataset.search.includes(w)); });
     // Bottom-up: a card shows if a row matches (or its title does), a group/section if anything inside shows.
     document.querySelectorAll('.in-card').forEach((c) => {
@@ -300,6 +314,6 @@
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Not available');
     render(d);
-    if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
+    select(location.hash.length > 1 ? decodeURIComponent(location.hash.slice(1)) : null, false);
   }).catch((e) => { $('in-main').innerHTML = `<p class="in-empty">${esc(e.message)}</p>`; });
 })();

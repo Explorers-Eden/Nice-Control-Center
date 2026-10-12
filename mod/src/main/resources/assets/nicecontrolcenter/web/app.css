@@ -1323,3 +1323,55 @@ button, input, select, textarea { font-family: inherit; }
   --accent: #c2417a; --accent-hover: #9c2c5f; --on-accent: #ffffff; --brand-a: #d9578f; --brand-b: #9b59d0; --accent-2: #b26a00; --good: #23894a; --poor: #c9374a;
   --card-border: rgba(74,24,48,.10); --inset: rgba(74,24,48,.04); color-scheme: light;
   --chart-grid: rgba(74,24,48,.07); --chart-label: rgba(74,24,48,.55); --chart-guide: rgba(74,24,48,.35); --chart-muted: rgba(110,74,92,.55); --chart-max: rgba(201,55,74,.5); }
+
+/* ── Flavor (the panel's look, also on this dashboard on its own) ───────────────────────
+   Each page has its area's colour (--area, the same as in the panel's sidebar): its tab, the card icons. */
+body {
+  background:
+    radial-gradient(1200px 520px at 12% -10%, rgba(123,147,255,.16), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(167,123,255,.11), transparent 60%),
+    linear-gradient(rgba(var(--ink),.022) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(var(--ink),.022) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg);
+  background-attachment: fixed;
+}
+:root[data-theme="light"] body, :root[data-theme="sakura"] body {
+  background:
+    radial-gradient(1200px 520px at 12% -10%, rgba(53,80,200,.10), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(122,63,209,.08), transparent 60%),
+    linear-gradient(rgba(var(--ink),.03) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(var(--ink),.03) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--bg);
+  background-attachment: fixed;
+}
+/* Inside the panel the panel's own background shows through. */
+body.embedded { background: transparent !important; }
+.navbar { background: color-mix(in srgb, var(--nav) 82%, transparent); backdrop-filter: blur(12px); }
+
+#tabbtn-overview, #tab-overview { --area: #7b93ff; }
+#tabbtn-performance, #tab-performance { --area: #ffb35c; }
+#tabbtn-reports, #tab-reports { --area: #ffb35c; }
+#tabbtn-world, #tab-world { --area: #4fd1c5; }
+#tabbtn-players, #tab-players { --area: #5fd68a; }
+#tabbtn-server, #tab-server { --area: #a77bff; }
+#tabbtn-packs, #tab-packs { --area: #f5c451; }
+#tabbtn-updates, #tab-updates { --area: #6ee7b7; }
+#tabbtn-console, #tab-console { --area: #9fb0c8; }
+#tabbtn-chat, #tab-chat { --area: #9fb0c8; }
+#tabbtn-schedule, #tab-schedule { --area: #ff8fc7; }
+
+.np-tabs { background: color-mix(in srgb, var(--nav) 82%, transparent); backdrop-filter: blur(12px); border: 1px solid var(--card-border); border-radius: 14px; }
+.np-tab .bi { color: var(--area, var(--accent)); }
+.np-tab.active { background: color-mix(in srgb, var(--area, var(--accent)) 16%, transparent); box-shadow: inset 0 -2px 0 var(--area, var(--accent)); }
+
+/* Card titles: the icon in a small tile of the page's colour. */
+.np-card-title > .bi:first-child { width: 26px; height: 26px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 14px;
+  color: var(--area, var(--accent)); background: color-mix(in srgb, var(--area, var(--accent)) 15%, transparent); opacity: 1; }
+.np-card { box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px -18px rgba(0,0,0,.45); }
+
+/* The health banner gets a soft wash of its state's colour. */
+.np-banner { background: linear-gradient(120deg, color-mix(in srgb, var(--area, var(--accent)) 10%, var(--card)), var(--card) 60%); }
+
+/* Primary buttons in the brand gradient. */
+.np-btn.primary { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); border-color: transparent; color: #fff; box-shadow: 0 4px 14px -4px rgba(123,147,255,.6); }
+.np-btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
