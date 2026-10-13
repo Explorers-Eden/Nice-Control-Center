@@ -1,3 +1,7 @@
+## 1.8.1
+- Claim settings in cards (claims on/off, where players can claim, claim blocks, size and limits, new claims, the shop, claim tool and borders)
+- Dimensions to claim in are ticked from the world's dimensions, and the colours players can pick are ticked from the palette
+
 ## 1.8.0
 - Claims in the sidebar (needs mod 1.9.0): every claim with owner, place, size and members, and editing of name, colour, corners, owner, members and what everyone else may do; server claims that cost nobody claim blocks. While the server is off, changes go to the world file
 - Claim blocks per player (earned, bought, bonus, used) with the bonus editable; Settings for claims (on/off, earning, the shop, where and how big, the claim tool and border blocks, menu colours); GOML import with a check first

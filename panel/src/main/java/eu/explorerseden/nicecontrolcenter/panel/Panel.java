@@ -128,7 +128,7 @@ public final class Panel {
 		tuning.useNotifier(alerts);
 		scheduler.useTuning(tuning);
 		Profiles profiles = new Profiles(dataDir, audit);
-		ClaimService claims = new ClaimService(serverDir, db, server, dashboard, audit);
+		ClaimService claims = new ClaimService(serverDir, db, server, dashboard, audit, map);
 		claims.start();
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
 		info.useClaims(claims);

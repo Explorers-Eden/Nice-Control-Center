@@ -4400,13 +4400,17 @@
     CS_BOOL.forEach((k) => { f[k].checked = !!s[k]; });
     CS_NUM.forEach((k) => { f[k].value = s[k]; });
     CS_TEXT.forEach((k) => { f[k].value = s[k]; });
-    f.dimensions.value = s.dimensions.join(', ');
-    f.colors.value = Object.entries(s.colors).map(([n, c]) => `${n} ${c}`).join('\n');
+    $('pn-cs-dims').innerHTML = csData.dimensions.map((d) => `<label class="np-check"><input type="checkbox" name="dim" value="${esc(d.id)}" ${s.dimensions.includes(d.id) ? 'checked' : ''}>
+      ${esc(d.name)}${d.missing ? ' <small class="pn-hint">(not in this world)</small>' : ''}</label>`).join('');
     $('pn-cs-flags').innerHTML = CS_FLAGS.map(([k, l]) => `<label class="np-check"><input type="checkbox" name="df-${k}" ${s.defaultFlags[k] ? 'checked' : ''}> ${esc(l)}</label>`).join('');
+    // The usual palette plus colours added in the file by hand.
+    const colors = { ...csData.defaults.colors, ...s.colors };
+    $('pn-cs-colors').innerHTML = Object.entries(colors).map(([n, c]) => `<label class="np-check"><input type="checkbox" name="color" value="${esc(n)}" data-hex="${esc(c)}" ${n in s.colors ? 'checked' : ''}>
+      <span class="pn-cl-dot" style="background:${esc(c)}"></span>${esc(n)}</label>`).join('');
     const areas = Object.entries(csData.permanentAreas);
     $('pn-cs-areas').innerHTML = areas.length ? 'Permanent areas: ' + areas.map(([d, a]) => `${esc(dimShort(d))} ${a.shape === 'circle' ? 'radius' : '±'} ${a.radius.toLocaleString()} around ${a.x}, ${a.z}`).join(' · ')
       + ' (set under <a href="#world/borders-reset">World → Borders &amp; reset</a>). Dimensions without one have no limit.'
-      : 'No permanent area is set (World → Borders & reset), so players can claim anywhere in the allowed dimensions.';
+      : 'No permanent area is set (World → Borders & reset), so players can claim anywhere in the dimensions below.';
     const editable = can('claims.manage');
     f.querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = !editable; });
     Dirty.reset('claimsettings');
@@ -4419,14 +4423,11 @@
     CS_BOOL.forEach((k) => { body[k] = f[k].checked; });
     CS_NUM.forEach((k) => { body[k] = Number(f[k].value) || 0; });
     CS_TEXT.forEach((k) => { body[k] = f[k].value.trim(); });
-    body.dimensions = f.dimensions.value.split(/[,\s]+/).map((d) => d.trim()).filter(Boolean);
+    body.dimensions = [...f.querySelectorAll('input[name=dim]:checked')].map((i) => i.value);
     body.defaultFlags = Object.fromEntries(CS_FLAGS.map(([k]) => [k, f['df-' + k].checked]));
-    body.colors = {};
-    for (const line of f.colors.value.split('\n')) {
-      const m = line.trim().match(/^(.+?)\s+(#?[0-9a-fA-F]{6})$/);
-      if (line.trim() && !m) return formMsg('pn-cs-msg', `"${line.trim()}" isn't "Name #RRGGBB".`, false);
-      if (m) body.colors[m[1]] = m[2].startsWith('#') ? m[2] : '#' + m[2];
-    }
+    body.colors = Object.fromEntries([...f.querySelectorAll('input[name=color]:checked')].map((i) => [i.value, i.dataset.hex]));
+    if (!Object.keys(body.colors).length) return formMsg('pn-cs-msg', 'Pick at least one colour.', false);
+    if (body.enabled && !body.dimensions.length) return formMsg('pn-cs-msg', 'Pick at least one dimension, or nobody can claim.', false);
     if (body.enabled && !csData.settings.enabled && !confirm('Switch claims on? Players can claim land and claimed land is protected right away.')) return;
     try {
       const res = await api('api/claims/settings', body);

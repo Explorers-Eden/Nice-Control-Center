@@ -55,13 +55,15 @@ final class ClaimService {
 	private final Supervisor server;
 	private final DashboardProxy dashboard;
 	private final Audit audit;
+	private final MapService map;
 	private volatile long syncedRev = -1;
 	private volatile String syncedWorld;
 	private volatile long syncedAt;
 	private volatile String syncProblem;
 	private volatile long fileModified = -1;
 
-	ClaimService(Path serverDir, Db db, Supervisor server, DashboardProxy dashboard, Audit audit) {
+	ClaimService(Path serverDir, Db db, Supervisor server, DashboardProxy dashboard, Audit audit, MapService map) {
+		this.map = map;
 		this.serverDir = serverDir;
 		this.db = db;
 		this.server = server;
@@ -435,6 +437,13 @@ final class ClaimService {
 				if (b.soft > 0) areas.put(dim, Map.of("shape", b.shape, "x", b.x, "z", b.z, "radius", b.soft));
 			});
 			out.put("permanentAreas", areas);
+			// Every dimension of the world (and ones still in the settings that the world doesn't have).
+			List<Map<String, Object>> dims = new ArrayList<>();
+			for (MapService.Dim d : map.dimensions()) dims.add(Map.of("id", d.id(), "name", d.name()));
+			for (String id : settings().dimensions) {
+				if (dims.stream().noneMatch(d -> d.get("id").equals(id))) dims.add(Map.of("id", id, "name", id, "missing", true));
+			}
+			out.put("dimensions", dims);
 			json(ctx, out);
 		}));
 		routes.post("/api/claims/settings", guard(Permissions.CLAIMS_MANAGE, (ctx, me) -> {
