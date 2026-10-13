@@ -158,7 +158,24 @@ Settings → Public info: a read-only page where players can look up the server'
   - `claim_members`: claim_id, player_uuid, player_name, role (ACCESS, CONTAINERS, BUILD, MANAGE).
   - `claim_players`: player_uuid, name, accrued, bonus, bought, play_minutes, last_seen.
   - `claim_player_summary` (view): per player total, used and available claim blocks and number of claims.
+  - `discord_links`: player_uuid, player_name, discord_id, discord_name, linked_at (the Discord bridge's account links, copied when they change).
 - **Permissions:** "See land claims" (Moderator and Viewer by default) and "Change claims…" (Moderator).
+
+## Tweaks and market
+
+**Tweaks** in the sidebar (needs mod 1.10.0). Everything is off until switched on.
+
+- **Gameplay:** anvil (never "Too Expensive!", cheap renaming), nether portals in any shape, the AFK tag and the tab list header and footer.
+- **Trees & veins:** tree felling (like FallingTree) and vein mining, with all their options. Remove the FallingTree mod when you use this.
+- **Market:**
+  - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
+  - **What's for sale:** with item icons; **Take off** sends a listing back to the seller's mailbox.
+  - **Recent sales.**
+- **Item icons:**
+  - The panel downloads the game's textures for the server's Minecraft version from Mojang once, plus the server resource pack (`resource-pack` in server.properties).
+  - It draws icons from them, custom models included, into `/data/panel/assets` and `/data/panel/icons`.
+  - The public info page shows the market with these icons.
+- **Database:** `market_listings` (id, seller, item id and name, the item as JSON with all components, lore, enchantments, amount left, price each, created, expires) and `market_sales` (listing, item, seller, buyer, amount, total, time), copied every 15 seconds.
 
 ## World: pregenerate and trim
 

@@ -44,6 +44,10 @@ final class InfoPage {
 		public boolean claims = true;
 		/** The permanent area and the world's edge per dimension. */
 		public boolean borders = true;
+		/** The switched-on gameplay tweaks (tree felling, anvil, portals…). */
+		public boolean tweaks = true;
+		/** The player market's listings (while the market is open). */
+		public boolean market = true;
 		/** When the next scheduled restart is, in the banner. */
 		public boolean restart = true;
 		/** server.properties keys left out besides the secret ones. */
@@ -109,6 +113,12 @@ final class InfoPage {
 
 	/** Where the public command list comes from. */
 	private ClaimService claims;
+
+	private MarketService market;
+
+	void useMarket(MarketService market) {
+		this.market = market;
+	}
 
 	void useClaims(ClaimService claims) {
 		this.claims = claims;
@@ -256,7 +266,15 @@ final class InfoPage {
 			});
 			if (!borders.isEmpty()) out.put("borders", borders);
 		}
-		if (s.performance) out.put("performance", performance(Performance.read(serverDir.resolve("config").resolve(Performance.FILE))));
+		if (s.market && market != null) {
+			Map<String, Object> m = market.publicView();
+			if (m != null) out.put("market", m);
+		}
+		if (s.tweaks) {
+			var t = eu.explorerseden.nicecontrolcenter.ServerFacts.tweaks(eu.explorerseden.nicecontrolcenter.Tweaks.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Tweaks.FILE)));
+			if (!t.isEmpty()) out.put("tweaks", t);
+		}
+		if (s.performance) out.put("performance", eu.explorerseden.nicecontrolcenter.ServerFacts.performance(Performance.read(serverDir.resolve("config").resolve(Performance.FILE))));
 		List<Map<String, Object>> configs = new ArrayList<>();
 		for (String rel : s.configs) {
 			String text = configText(rel);
@@ -298,131 +316,6 @@ final class InfoPage {
 	private static boolean hiddenKey(String key, String group, Settings s) {
 		return group.startsWith("Management") || key.startsWith("rcon.") || key.startsWith("management-server") || key.startsWith("query.")
 				|| key.equals("enable-rcon") || key.equals("server-ip") || SECRET_KEY.matcher(key).find() || s.hiddenProperties.contains(key);
-	}
-
-	private static Map<String, Object> tweak(String id, String title, String icon, String desc, List<Map<String, String>> rows) {
-		Map<String, Object> m = new LinkedHashMap<>();
-		m.put("id", id);
-		m.put("title", title);
-		m.put("icon", icon);
-		m.put("description", desc);
-		m.put("rows", rows);
-		return m;
-	}
-
-	private static Map<String, String> line(String label, String value, String desc) {
-		return Map.of("label", label, "value", value, "description", desc);
-	}
-
-	private static String blocks(double v) {
-		return (v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(v)) + (v == 1 ? " block" : " blocks");
-	}
-
-	/** The switched-on performance tweaks, explained for players (what changes for them, compared to vanilla). */
-	static List<Map<String, Object>> performance(Performance.Settings p) {
-		List<Map<String, Object>> out = new ArrayList<>();
-		Performance.Dynamic d = p.dynamic;
-		if (d.enabled) {
-			List<Map<String, String>> rows = new ArrayList<>();
-			rows.add(line("Starts lowering at", d.targetMspt + " ms per tick", "A tick should take at most 50 ms; above this the server starts saving work."));
-			rows.add(line("Back to normal below", d.recoverMspt + " ms per tick", "After a minute below this, everything goes back up step by step."));
-			rows.add(line("Lowest simulation distance", d.simulationMin + " chunks", "How far around players crops grow, mobs move and redstone runs."));
-			rows.add(line("Lowest mob cap", d.mobCapMin + " %", "Fewer mobs spawn naturally while it's lowered (100 % = vanilla)."));
-			if (d.extraSteps) rows.add(line("Then, before the view distance", "true", "Mobs far from players move less often, then they show up from a bit less far away."));
-			rows.add(line("View distance lowered too", d.view ? "true" : "false", d.view ? "As a last step, down to " + d.viewMin + " chunks." : "How far you can see always stays the same."));
-			out.add(tweak("dynamic", "Lag protection", "bi-activity",
-					"When the server can't keep up, it lowers a few distances one step at a time instead of lagging, and raises them again once it's fine.", rows));
-		}
-		Performance.Activation a = p.activation;
-		if (a.enabled) {
-			String tick = "Farther away they move and think every " + a.every + " ticks instead of every tick.";
-			List<Map<String, String>> rows = new ArrayList<>();
-			rows.add(line("Monsters", blocks(a.monsters), "Zombies, skeletons, creepers…"));
-			rows.add(line("Animals", blocks(a.animals), "Cows, sheep, chickens…"));
-			rows.add(line("Villagers", blocks(a.villagers), ""));
-			rows.add(line("Everything else", blocks(a.other), ""));
-			out.add(tweak("activation", "Mobs far from players", "bi-broadcast",
-					"Mobs that are far from every player are updated less often. " + tick
-							+ " Items, projectiles, vehicles, bosses, mobs on a lead and mobs that were just hurt always update normally.", rows));
-		}
-		Performance.Breeding b = p.breeding;
-		if (b.enabled) {
-			out.add(tweak("breeding", "Breeding limits", "bi-heart",
-					"Animals and villagers can't breed while too many of their kind live close together. Spread big farms out to keep breeding.",
-					List.of(line("Animals", "up to " + b.animals + " per kind", "Within " + blocks(b.radius) + "; feeding them does nothing above this."),
-							line("Villagers", "up to " + b.villagers + " villagers", "Within " + blocks(b.radius) + "."))));
-		}
-		Performance.Merge m = p.merge;
-		if (m.enabled) {
-			out.add(tweak("merge", "Item and XP merging", "bi-intersect",
-					"Dropped items of the same kind and experience orbs merge from farther away, so fewer of them lie around.",
-					List.of(line("Dropped items", "within " + blocks(m.items), "Vanilla: 0.5 blocks."),
-							line("Experience orbs", "within " + blocks(m.xp), "The XP isn't lost, it's added together."))));
-		}
-		Performance.Ai ai = p.ai;
-		if (ai.enabled) {
-			out.add(tweak("ai", "Lighter mob AI", "bi-cpu",
-					"Mobs far from every player decide what to do next less often; what they're doing keeps running. While the server lags, only so many mobs can look for a new path at once, the others try again a moment later.",
-					List.of(line("Far from players means", "more than " + blocks(ai.farDistance), ""),
-							line("Far mobs decide every", ai.farGoalEvery + " ticks", "Vanilla: every tick or two."))));
-		}
-		if (p.collisions.enabled) {
-			out.add(tweak("collisions", "Mob pushing", "bi-arrows-collapse",
-					"In crowded pens a mob only pushes a few others per tick. You still push and get pushed as usual, and too many mobs in one spot still take cramming damage.",
-					List.of(line("Pushes per mob and tick", "up to " + p.collisions.max, "Paper servers use 8."))));
-		}
-		Performance.Despawn dsp = p.despawn;
-		if (dsp.enabled) {
-			List<String> names = new ArrayList<>();
-			for (String id : dsp.items) names.add(humanize(id.replaceFirst("^minecraft:", "")));
-			out.add(tweak("despawn", "Junk despawns sooner", "bi-hourglass-split",
-					"These dropped items disappear sooner than the usual 5 minutes. Everything else stays the full 5 minutes. Pick up what you need quickly!",
-					List.of(line("Junk items go after", dsp.itemSeconds + " seconds", String.join(", ", names)),
-							line("Arrows shot by mobs go after", dsp.arrowSeconds + " seconds", "Your own arrows stay the usual minute."))));
-		}
-		if (p.saveLimits.enabled && !p.saveLimits.limits.isEmpty()) {
-			List<Map<String, String>> rows = new ArrayList<>();
-			p.saveLimits.limits.forEach((id, n) -> rows.add(line(id.equals("minecraft:item") ? "Dropped item stacks"
-					: id.equals("minecraft:experience_orb") ? "XP orbs" : humanize(id.replaceFirst("^minecraft:", "")), "up to " + n, "")));
-			out.add(tweak("savelimits", "Save limits per chunk", "bi-floppy",
-					"When an area is saved, only this many of each kind are kept; the rest is gone when you come back. Keep valuables in chests, not on the floor.", rows));
-		}
-		if (!p.rules.isEmpty() && p.autoCaps.enabled) {
-			List<Map<String, String>> rows = new ArrayList<>();
-			for (Performance.MobRule r : p.rules) rows.add(line(mobName(r.type), "up to " + r.perChunk + " per chunk", ""));
-			if (p.autoCaps.items) rows.add(line("Dropped items", "up to " + p.autoCaps.itemsPerChunk + " per chunk", "The oldest go first; anything dropped in the last 10 seconds stays."));
-			out.add(tweak("caps", "Mob limits per chunk", "bi-funnel",
-					"Extra mobs over these limits are removed every " + (p.autoCaps.intervalSeconds == 60 ? "minute" : p.autoCaps.intervalSeconds % 60 == 0
-							? p.autoCaps.intervalSeconds / 60 + " minutes" : p.autoCaps.intervalSeconds + " seconds") + ". Named, tamed, leashed and persistent mobs are never removed: put a name tag on the ones you want to keep for sure.", rows));
-		}
-		if (p.hoppers.enabled) {
-			out.add(tweak("hoppers", "Hoppers", "bi-inboxes",
-					"A hopper that has nothing to move waits a moment before looking again. Hoppers that are moving items work at full speed, and redstone timing stays the same.",
-					List.of(line("Idle hoppers wait", p.hoppers.idleCooldown + " ticks", "Vanilla: they look every tick."))));
-		}
-		if (p.decor.armorStands) {
-			out.add(tweak("armorstands", "Armor stands", "bi-person-standing",
-					"Armor stands that stand still update only once a second. Hitting, pushing or moving one makes it react as usual.", List.of()));
-		}
-		if (p.villagers.lobotomize) {
-			out.add(tweak("villagers", "Villagers in trading halls", "bi-shop",
-					"Villagers that can't move (in 1×1 trading cells) think less often. Trading and restocking still work.",
-					List.of(line("They think every", p.villagers.every + " ticks", "Vanilla: every tick (20 times a second)."))));
-		}
-		return out;
-	}
-
-	/** "minecraft:cow" → "Cow"; "#animals" → "All animals"; "*" → "Any other mob". */
-	private static String mobName(String type) {
-		return switch (type) {
-			case "*" -> "Any other mob";
-			case "#animals" -> "All animals";
-			case "#monsters" -> "All monsters";
-			case "#villagers" -> "All villagers";
-			case "#water" -> "All water mobs";
-			case "#ambient" -> "Bats and other ambient mobs";
-			default -> humanize(type.replaceFirst("^minecraft:", ""));
-		};
 	}
 
 	/** Pack settings as label → shown value (the option's label for choices). */

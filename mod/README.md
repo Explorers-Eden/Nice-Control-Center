@@ -77,6 +77,7 @@ The main command is `/nicecontrolcenter`, short `/ncc`. `[minutes]` is optional 
 | `/ncc updates webhook [regen]` | Prints a token and `curl` command so a build script can trigger a resource pack check |
 | `/nccreply <message>` | **For all players:** answer a private dashboard message |
 | `/claim` | **For all players (while claims are on):** the claim menu. See [Land claims](#land-claims) |
+| `/market` | **For all players (while the market is open):** the market menu. See [Gameplay tweaks and market](#gameplay-tweaks-and-market) |
 
 ## Permissions
 
@@ -94,6 +95,7 @@ With LuckPerms or another Fabric permissions mod you can give parts to other pla
 | `nicecontrolcenter.notify` | Receive lag alerts and "report ready" messages |
 | `nicecontrolcenter.claims.use` | `/claim` (everyone by default) |
 | `nicecontrolcenter.claims.admin` | `/claim admin …`: bypass claims, delete claims, change claim blocks |
+| `nicecontrolcenter.market.use` | `/market` (everyone by default) |
 | `nicecontrolcenter.command.*` / `nicecontrolcenter.*` | Everything |
 
 Note: the dashboard itself has no per-player permissions. Anyone with a valid link can use all of it, within the limits you set in the config (`web_console_commands`, `web_player_actions`, …).
@@ -115,6 +117,26 @@ Players protect their land themselves, like GriefPrevention, but with menus inst
 - **Protected:** placing and breaking blocks, using blocks and items, buckets, animals, villagers, armor stands, frames and vehicles. Also players hurting animals (arrows too) and each other (PvP switch), and arrows setting off buttons, targets, bells or TNT or breaking frames. Explosions (also hurting animals, frames and armor stands), fire and lava lighting fires, water and lava from outside, pistons pushing in, endermen, the wither, ravagers, zombies breaking doors and trampling are stopped too, each unless the claim allows it.
 - **Shortcuts:** `/claim list`, `/claim trust <player> [visitor|containers|builder|coowner]`, `/claim untrust <player>`, `/claim abandon`. Admins have `/claim admin bypass`, `/claim admin delete` and `/claim admin blocks <player> [add|set <n>]`.
 - **Storage:** the claims are kept in the world folder (`nicecontrolcenter-claims.json`), so backups include them. Under the panel they're also copied to its database.
+
+## Gameplay tweaks and market
+
+Things a data pack can't do, switched on in the panel (**Tweaks**, or `config/nicecontrolcenter-tweaks.json` / `-market.json`). Off by default, and normal game clients work.
+
+- **Anvil:** never "Too Expensive!" (costs above a limit, 39 by default, are lowered to it), and cheap renaming.
+- **Nether portals in any shape:** any closed obsidian frame lights, up to a size limit.
+- **Tree felling** (like FallingTree): break one log with an axe and the whole tree falls.
+  - All at once, or one log per hit from the top.
+  - Sneak to break just one log.
+  - The axe wears per log and stops before it breaks.
+  - Player-built log walls (no leaves around) stay.
+  - Leaves fall within seconds; nether wart blocks and mangrove roots go with their trees.
+- **Vein mining:** the same for ores with a pickaxe.
+- **Felling and mining like a player:** both break every block as if the player mined it, so drops, enchantments, tool wear and land claims work as usual.
+- **AFK tag** in the tab list (scoreboard teams are left alone), and a tab list **header and footer**.
+- **Market** (`/market`): sell items for the server's currency, any amount and with all their components, and buy part or all of a listing, all in menus.
+  - Earnings and unsold items wait in the market mailbox.
+  - The panel shows the listings with item icons (custom models included) and can take a listing off.
+  - The public info page lists what's for sale.
 
 ## Configuration
 

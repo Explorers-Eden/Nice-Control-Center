@@ -60,6 +60,10 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.web.PanelBridge.register();
 		// Land claims (off until switched on in the panel or config/nicecontrolcenter-claims.json).
 		eu.explorerseden.nicecontrolcenter.claims.ClaimStore.register();
+		// Who is active (claim blocks, AFK tag) and the gameplay tweaks from the panel.
+		eu.explorerseden.nicecontrolcenter.core.PlayerActivity.register();
+		eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl.register();
+		eu.explorerseden.nicecontrolcenter.market.MarketStore.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.HardBorder::tick);
 		// Performance and maintenance settings from the panel (config files, read again when they change).

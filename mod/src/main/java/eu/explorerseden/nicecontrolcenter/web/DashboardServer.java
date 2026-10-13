@@ -624,6 +624,24 @@ public final class DashboardServer {
 				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
 				sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.action(body, by)));
 			}
+			case "/api/market/changes" -> sendJson(exchange, onServerThread(() -> {
+				eu.explorerseden.nicecontrolcenter.market.MarketStore.reloadSettings();
+				return eu.explorerseden.nicecontrolcenter.market.MarketStore.data().changes(parseLong(query.get("since"), 0));
+			}));
+			case "/api/market/remove" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				sendJson(exchange, onServerThread(() -> {
+					var data = eu.explorerseden.nicecontrolcenter.market.MarketStore.data();
+					var listing = data.listings.get(body.has("id") ? body.get("id").getAsString() : "");
+					if (listing == null) return Map.of("error", "That listing is gone.");
+					data.withdraw(listing);
+					eu.explorerseden.nicecontrolcenter.market.MarketStore.saveNow();
+					return Map.of("ok", true);
+				}));
+			}
 			case "/api/claims/goml" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, false)));
 			case "/api/claims/goml/import" -> {
 				if (!requirePost(exchange)) {

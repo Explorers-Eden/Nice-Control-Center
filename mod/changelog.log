@@ -1,4 +1,15 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.10.0
+- Gameplay tweaks, all set in the panel (Tweaks) and working with normal game clients:
+  - Anvil: never "Too Expensive!" (costs over the limit, 39 by default, are lowered to it) and cheap renaming (1 level by default)
+  - Nether portals in any shape: any closed obsidian frame (circles, arches…) lights, up to a size limit, and stays lit while the frame is whole; rectangles work as always
+  - Tree felling like FallingTree: break one log with an axe and the whole tree comes down (all at once or one log per hit from the top). Sneaking breaks just one log, the axe wears per log and stops before it breaks, logs placed without leaves around stay single blocks, leaves fall within seconds, nether wart blocks and mangrove roots go with their trees, optional drops at the first log, size limits, tool/log/leaf lists
+  - Vein mining: the same for ores with a pickaxe (deepslate and normal ore are one vein)
+  - Every felled or mined block is broken as if the player mined it: drops, Fortune and Silk Touch, XP, tool wear and land claims work as usual
+  - AFK tag in the tab list (scoreboard teams, like Fabled Roots' races, are left alone) and a tab list header/footer with players, TPS, ping and the in-game clock
+- The market (/market): players sell items for the server's currency (any amount, more than a stack is fine, all components kept) and buy part or all of a listing, in dialogs. Earnings and unsold items (after the listing time) wait in the market mailbox; sellers are told when something sells
+- For other mods (Merl): the server's rules in plain words (performance tweaks, borders, claims, gameplay tweaks, the market) and the claims a player owns or is a member of
+
 ## 1.9.3
 - Discord bridge (with the panel): messages data packs send to everyone with /tellraw @a, and /say and /me, go to the panel as their own event (posted when switched on in the panel)
 - Fabled Roots' death messages count as deaths on Discord, with the pack's own English text (data packs' language files are read for that)

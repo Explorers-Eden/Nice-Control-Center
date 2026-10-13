@@ -745,3 +745,8 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 	.pn-cl-coords input { width: 80px; }
 	.pn-cl-member span { min-width: 90px; }
 }
+
+/* Market */
+.pn-mk-item { display: flex; align-items: center; gap: 10px; }
+.pn-mk-item img { image-rendering: pixelated; flex: none; }
+.pn-mk-item span { display: flex; flex-direction: column; }

@@ -102,6 +102,10 @@
         { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
         { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
         { tab: 'info', label: 'Public info', perm: 'settings.server', desc: 'A public page where players can read up on the server\'s settings.' }] },
+      { id: 'tweaks', hue: '#c4a6ff', label: 'Tweaks', icon: 'bi-magic', subs: [
+        { tab: 'tweaks', label: 'Gameplay', perm: 'server.view', desc: 'Anvil, nether portals, the AFK tag and the tab list: things vanilla does differently.' },
+        { tab: 'felling', label: 'Trees & veins', perm: 'server.view', desc: 'Fell whole trees and mine whole ore veins at once.' },
+        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold.' }] },
       { id: 'schedule', hue: '#ff8fc7', label: 'Schedule', icon: 'bi-calendar-check', subs: [
         { tab: 'schedule', label: 'Schedule', perm: 'server.view', desc: 'Things that happen on their own: restarts, backups, resets, messages.' }] },
       { id: 'backups', hue: '#62b6ff', label: 'Backups', icon: 'bi-archive', subs: [
@@ -351,6 +355,8 @@
     if (tab === 'claims') loadClaims();
     if (tab === 'claimblocks') loadClaimBlocks();
     if (tab === 'claimsettings') loadClaimSettings();
+    if (tab === 'tweaks' || tab === 'felling') loadTweaks();
+    if (tab === 'market') loadMarket();
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -3777,7 +3783,7 @@
     }
     const s = infoData.settings;
     const f = $('pn-info-form');
-    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders']) f.elements[k].checked = !!s[k];
+    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders', 'tweaks', 'market']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
     // While it's off, the button opens an admin preview here (the public address shows "switched off").
@@ -3816,7 +3822,7 @@
     const body = {
       enabled: f.enabled.checked, title: f.title.value.trim() || 'Server info', intro: f.intro.value,
       properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked, commands: f.commands.checked, restart: f.restart.checked,
-      claims: f.claims.checked, borders: f.borders.checked,
+      claims: f.claims.checked, borders: f.borders.checked, tweaks: f.tweaks.checked, market: f.market.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
     };
@@ -4470,6 +4476,130 @@
     }
   });
 
+  // ── Tweaks ─────────────────────────────────────────────────────────────
+
+  let twData = null;
+  /** Fields named "section.key" in a tweaks form. */
+  const twGet = (o, path) => path.split('.').reduce((v, k) => (v == null ? v : v[k]), o);
+  const twSet = (o, path, value) => { const ks = path.split('.'); const last = ks.pop(); ks.reduce((v, k) => v[k], o)[last] = value; };
+
+  function twFill(form) {
+    for (const el of form.elements) {
+      if (!el.name || !el.name.includes('.')) continue;
+      const v = twGet(twData.settings, el.name);
+      if (el.type === 'checkbox') el.checked = !!v;
+      else if (Array.isArray(v)) el.value = v.join(', ');
+      else el.value = v ?? '';
+    }
+    const editable = can('settings.server');
+    form.querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !editable; });
+  }
+
+  async function loadTweaks() {
+    try {
+      twData = await api('api/tweaks');
+    } catch (e) {
+      formMsg('pn-tw-msg', e.message, false);
+      formMsg('pn-tf-msg', e.message, false);
+      return;
+    }
+    twFill($('pn-tw-form'));
+    twFill($('pn-tf-form'));
+    Dirty.reset('tweaks');
+    Dirty.reset('felling');
+  }
+
+  async function saveTweaks(e, msgId) {
+    e.preventDefault();
+    const next = JSON.parse(JSON.stringify(twData.settings));
+    for (const el of e.target.elements) {
+      if (!el.name || !el.name.includes('.')) continue;
+      const before = twGet(twData.settings, el.name);
+      let v = el.type === 'checkbox' ? el.checked : el.value;
+      if (Array.isArray(before)) v = String(v).split(',').map((x) => x.trim()).filter(Boolean);
+      else if (typeof before === 'number') v = Number(v) || 0;
+      twSet(next, el.name, v);
+    }
+    try {
+      const res = await api('api/tweaks', next);
+      formMsg(msgId, res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
+      loadTweaks();
+    } catch (err) {
+      formMsg(msgId, err.message, false);
+    }
+  }
+
+  $('pn-tw-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tw-msg'));
+  $('pn-tf-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tf-msg'));
+
+  // ── Tweaks → Market ────────────────────────────────────────────────────
+
+  let mkData = null;
+  let mkSettings = null;
+
+  async function loadMarket() {
+    try {
+      [mkData, mkSettings] = await Promise.all([api('api/market'), api('api/market/settings')]);
+    } catch (e) {
+      return formMsg('pn-mk-msg', e.message, false);
+    }
+    const s = mkSettings.settings;
+    const f = $('pn-mk-form');
+    f.enabled.checked = s.enabled;
+    f.currency.value = s.currency;
+    f.listingDays.value = s.listingDays;
+    f.maxListings.value = s.maxListings;
+    f.maxPrice.value = s.maxPrice;
+    f.bannedItems.value = s.bannedItems.join(', ');
+    f.querySelectorAll('input, button').forEach((el) => { el.disabled = !can('settings.server'); });
+    $('pn-mk-intro').textContent = (mkData.enabled ? '' : 'The market is closed. ') + (mkData.running ? '' : 'The server is off: this is the last saved state. ')
+      + (mkData.icons ? 'Icons: ' + mkData.icons : '');
+    renderMarket();
+    Dirty.reset('market');
+  }
+
+  function renderMarket() {
+    if (!mkData) return;
+    const q = $('pn-mk-search').value.trim().toLowerCase();
+    const rows = mkData.listings.filter((l) => !q || [l.name, l.seller, l.item].some((t) => String(t).toLowerCase().includes(q)));
+    const remove = can('players.manage');
+    $('pn-mk-table').innerHTML = rows.length ? `<thead><tr><th>Item</th><th>Seller</th><th>Left</th><th>Price each</th><th>Ends</th><th></th></tr></thead><tbody>${rows.map((l) => `
+      <tr><td class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${esc(l.name)}<small class="pn-hint">${esc([...(l.enchantments || []), ...(l.lore || [])].join(' · '))}</small></span></td>
+      <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}</td><td>${esc(dateTime(l.expires))}</td>
+      <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's mailbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
+      : `<tbody><tr><td class="pn-hint">${mkData.listings.length ? 'Nothing matches.' : 'Nothing for sale.'}</td></tr></tbody>`;
+    $('pn-mk-sales').innerHTML = mkData.sales.length ? `<thead><tr><th>When</th><th>Item</th><th>Amount</th><th>Total</th><th>Seller</th><th>Buyer</th></tr></thead><tbody>${mkData.sales.map((s) => `
+      <tr><td>${esc(dateTime(s.time))}</td><td>${esc(s.itemName)}</td><td>${s.amount}</td><td>${Number(s.total).toLocaleString()}</td><td>${esc(s.sellerName)}</td><td>${esc(s.buyerName)}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No sales yet.</td></tr></tbody>';
+  }
+
+  $('pn-mk-search').addEventListener('input', renderMarket);
+  $('pn-mk-table').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-remove]');
+    if (!b || !confirm('Take this listing off the market? The items go back to the seller\'s mailbox.')) return;
+    try {
+      await api('api/market/remove', { id: b.dataset.remove });
+      loadMarket();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+  $('pn-mk-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const body = { enabled: f.enabled.checked, currency: f.currency.value.trim(), listingDays: Number(f.listingDays.value) || 7,
+      maxListings: Number(f.maxListings.value) || 10, maxPrice: Number(f.maxPrice.value) || 100000,
+      bannedItems: f.bannedItems.value.split(',').map((x) => x.trim()).filter(Boolean) };
+    if (body.enabled && !mkSettings.settings.enabled && !confirm('Open the market? Players can sell and buy with /market right away.')) return;
+    try {
+      const res = await api('api/market/settings', body);
+      formMsg('pn-mk-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
+      loadMarket();
+    } catch (err) {
+      formMsg('pn-mk-msg', err.message, false);
+    }
+  });
+
   // ── Start ──────────────────────────────────────────────────────────────
 
   Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
@@ -4483,6 +4613,9 @@
   Dirty.track('info', $('pn-info-form'), { reload: loadInfo, extra: () => (infoData ? [...infoData.settings.configs].sort() : []) });
   Dirty.track('perf', $('pn-perf-form'), { reload: loadTuning, extra: () => junk.slice() });
   Dirty.track('claimsettings', $('pn-cs-form'), { reload: loadClaimSettings });
+  Dirty.track('tweaks', $('pn-tw-form'), { reload: loadTweaks });
+  Dirty.track('felling', $('pn-tf-form'), { reload: loadTweaks });
+  Dirty.track('market', $('pn-mk-form'), { reload: loadMarket });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });
 

@@ -63,6 +63,7 @@ public final class Panel {
 		MapRoutes mapRoutes = new MapRoutes(map, auth, audit);
 		Discord discord = new Discord(dataDir.resolve("discord.json"), dataDir.resolve("discord-links.json"), server, audit);
 		discord.useDashboard(dashboard);
+		discord.useDb(db);
 		discord.start();
 		ZoneId zone = zone();
 		Backups backups = new Backups(serverDir, Path.of(env("BACKUP_DIR", "/data/backups")), dataDir.resolve("backups.json"), server, zone);
@@ -130,8 +131,13 @@ public final class Panel {
 		Profiles profiles = new Profiles(dataDir, audit);
 		ClaimService claims = new ClaimService(serverDir, db, server, dashboard, audit, map);
 		claims.start();
+		// The player market, with item icons drawn from the game's textures and the server's resource pack.
+		ItemIcons icons = new ItemIcons(dataDir, serverDir, () -> versions.installed().mc());
+		MarketService market = new MarketService(serverDir, dataDir, db, server, dashboard, audit, icons);
+		market.start();
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
 		info.useClaims(claims);
+		info.useMarket(market);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		home.useMod(dashboard);
@@ -321,6 +327,8 @@ public final class Panel {
 			home.register(routes);
 			info.register(routes);
 			claims.register(routes);
+			market.register(routes);
+			new TweaksRoutes(serverDir, server, audit).register(routes);
 			Commands commandList = new Commands(dataDir, server, dashboard, audit);
 			commandList.register(routes);
 			info.useCommands(commandList);

@@ -166,6 +166,50 @@ public final class Discord implements Notifier {
 		links = l != null ? new ArrayList<>(l) : new ArrayList<>();
 	}
 
+	/** Where the links are copied for a website (discord_links); null without a database. */
+	private volatile Db db;
+	/** The copy in the database is behind the file. */
+	private volatile boolean linksDirty = true;
+
+	void useDb(Db db) {
+		this.db = db;
+	}
+
+	/** Copies all links into the database (every 30 s while it's behind, and right after a change). */
+	private void copyLinks() {
+		Db d = db;
+		if (d == null || !linksDirty || !d.ready()) return;
+		List<Link> all = links();
+		try (java.sql.Connection c = d.connection()) {
+			c.setAutoCommit(false);
+			try (java.sql.PreparedStatement del = c.prepareStatement("DELETE FROM discord_links");
+					java.sql.PreparedStatement ins = c.prepareStatement("INSERT INTO discord_links (player_uuid, player_name, discord_id, discord_name, linked_at) VALUES (?, ?, ?, ?, ?)")) {
+				del.executeUpdate();
+				for (Link l : all) {
+					ins.setObject(1, java.util.UUID.fromString(l.uuid()));
+					ins.setString(2, l.name());
+					ins.setString(3, l.discordId());
+					ins.setString(4, l.discordName());
+					ins.setTimestamp(5, l.linkedAt() > 0 ? new java.sql.Timestamp(l.linkedAt()) : null);
+					ins.addBatch();
+				}
+				ins.executeBatch();
+				c.commit();
+				linksDirty = false;
+			} catch (java.sql.SQLException | RuntimeException e) {
+				c.rollback();
+				throw e;
+			}
+		} catch (java.sql.SQLException | RuntimeException e) {
+			System.err.println("Could not copy the Discord links to the database: " + e.getMessage());
+		}
+	}
+
+	private void linksChanged() {
+		linksDirty = true;
+		timer.execute(this::copyLinks);
+	}
+
 	void useDashboard(DashboardProxy dashboard) {
 		this.dashboard = dashboard;
 	}
@@ -174,6 +218,7 @@ public final class Discord implements Notifier {
 		connect();
 		// Server start/stop/crash and the bot's status follow the supervisor.
 		timer.scheduleAtFixedRate(this::watch, 3, 5, TimeUnit.SECONDS);
+		timer.scheduleWithFixedDelay(this::copyLinks, 20, 30, TimeUnit.SECONDS);
 	}
 
 	// ── Settings and links ─────────────────────────────────────────────────
@@ -225,7 +270,10 @@ public final class Discord implements Notifier {
 
 	public synchronized boolean unlink(String uuid) throws IOException {
 		boolean removed = links.removeIf(l -> l.uuid().equals(uuid));
-		if (removed) write(linksFile, Json.GSON.toJson(links));
+		if (removed) {
+			write(linksFile, Json.GSON.toJson(links));
+			linksChanged();
+		}
 		return removed;
 	}
 
@@ -233,6 +281,7 @@ public final class Discord implements Notifier {
 		links.removeIf(l -> l.uuid().equals(link.uuid()));
 		links.add(link);
 		write(linksFile, Json.GSON.toJson(links));
+		linksChanged();
 	}
 
 	private static void write(Path file, String text) throws IOException {

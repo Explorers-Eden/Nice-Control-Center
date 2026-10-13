@@ -773,6 +773,129 @@
 				</section>
 			</div>
 
+			<div class="np-tab-panel" data-tab="tweaks" hidden>
+				<form id="pn-tw-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-hammer"></i> Anvil</h3>
+					<p class="np-card-intro">Works with normal game clients. Applies within a few seconds.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Never "Too Expensive!"<span class="pn-comment">Anything that would cost more costs the highest price below.</span></span><span class="np-switch"><input type="checkbox" name="anvil.noTooExpensive"><span></span></span></label>
+						<label class="np-form-row"><span>Highest price (levels)<span class="pn-comment">39 is the most the game shows.</span></span><input type="number" name="anvil.maxCost" min="1" max="39"></label>
+						<label class="np-form-row"><span>Cheap renaming<span class="pn-comment">Renaming alone costs the same, however often the item was worked on.</span></span><span class="np-switch"><input type="checkbox" name="anvil.cheapRename"><span></span></span></label>
+						<label class="np-form-row">Renaming costs (levels)<input type="number" name="anvil.renameCost" min="1" max="39"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-circle"></i> Nether portals</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Portals in any shape<span class="pn-comment">Any closed obsidian frame lights: circles, arches, hearts… Rectangles work as always.</span></span><span class="np-switch"><input type="checkbox" name="portals.anyShape"><span></span></span></label>
+						<label class="np-form-row"><span>Biggest portal (blocks inside)<span class="pn-comment">A vanilla 21 × 21 portal has 441.</span></span><input type="number" name="portals.maxBlocks" min="6" max="4096"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-moon"></i> AFK and tab list</h3>
+					<p class="np-card-intro">The AFK tag goes next to the name in the tab list. Scoreboard teams (like Fabled Roots' race colours) stay as they are.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>AFK tag</b><span class="np-switch"><input type="checkbox" name="afk.enabled"><span></span></span></label>
+						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
+						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
+						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
+					</div>
+					<p class="pn-hint">Use <code>§</code> colour codes, <code>\n</code> for a new line, and <code>{players}</code> <code>{max}</code> <code>{tps}</code> <code>{mspt}</code> <code>{ping}</code> <code>{time}</code> (the in-game clock).</p>
+					<label class="pn-field">Header<textarea name="tabList.header" rows="2" maxlength="500" spellcheck="false"></textarea></label>
+					<label class="pn-field">Footer<textarea name="tabList.footer" rows="2" maxlength="500" spellcheck="false"></textarea></label>
+				</section>
+				<div class="pn-sticky-save np-form-actions">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-tw-msg"></span>
+				</div>
+				</form>
+			</div>
+
+			<div class="np-tab-panel" data-tab="felling" hidden>
+				<form id="pn-tf-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-tree"></i> Tree felling</h3>
+					<p class="np-card-intro">Chop one log and the whole tree comes down, like the FallingTree mod (remove that one when you switch this on). Every log is broken as if the player mined it: drops, enchantments, axe wear and land claims work as usual.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Tree felling</b><span class="np-switch"><input type="checkbox" name="felling.enabled"><span></span></span></label>
+						<label class="np-form-row">How the tree falls<select name="felling.breakMode"><option value="instant">All at once</option><option value="shiftDown">One log per hit, from the top</option></select></label>
+						<label class="np-form-row">Sneaking<select name="felling.sneak"><option value="DISABLES">breaks just one log</option><option value="ENABLES">fells the tree (otherwise one log)</option><option value="IGNORED">makes no difference</option></select></label>
+						<label class="np-form-row"><span>Stop before the axe breaks</span><span class="np-switch"><input type="checkbox" name="felling.preserveTool"><span></span></span></label>
+						<label class="np-form-row">Biggest tree (logs)<input type="number" name="felling.maxLogs" min="2" max="4096"></label>
+						<label class="np-form-row">Bigger trees<select name="felling.tooBig"><option value="skip">only lose the one log</option><option value="cutUpTo">fall up to the limit</option></select></label>
+						<label class="np-form-row"><span>Leaves needed at the top<span class="pn-comment">So log walls players built aren't felled.</span></span><input type="number" name="felling.minLeaves" min="0" max="64"></label>
+						<label class="np-form-row"><span>Trunks of mixed log types</span><span class="np-switch"><input type="checkbox" name="felling.mixedLogs"><span></span></span></label>
+						<label class="np-form-row"><span>Leaves fall within seconds</span><span class="np-switch"><input type="checkbox" name="felling.fastLeafDecay"><span></span></span></label>
+						<label class="np-form-row">Leaves up to … blocks away<input type="number" name="felling.leafRadius" min="1" max="16"></label>
+						<label class="np-form-row"><span>Nether trees take their wart blocks</span><span class="np-switch"><input type="checkbox" name="felling.netherWarts"><span></span></span></label>
+						<label class="np-form-row"><span>Mangroves take their roots</span><span class="np-switch"><input type="checkbox" name="felling.mangroveRoots"><span></span></span></label>
+						<label class="np-form-row"><span>All drops where the first log was</span><span class="np-switch"><input type="checkbox" name="felling.dropsAtBreakPoint"><span></span></span></label>
+						<label class="np-form-row"><span>Also in creative mode</span><span class="np-switch"><input type="checkbox" name="felling.inCreative"><span></span></span></label>
+					</div>
+					<p class="pn-hint">Ids or <code>#tags</code>, separated by commas.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">Tools<input type="text" name="felling.tools"></label>
+						<label class="np-form-row">Never these tools<input type="text" name="felling.deniedTools"></label>
+						<label class="np-form-row">Logs<input type="text" name="felling.logs"></label>
+						<label class="np-form-row">Never these logs<input type="text" name="felling.deniedLogs"></label>
+						<label class="np-form-row">Leaves<input type="text" name="felling.leaves"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-gem"></i> Vein mining</h3>
+					<p class="np-card-intro">Mine one ore and the whole vein comes out (deepslate and normal ore count as one vein). Same rules as tree felling.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Vein mining</b><span class="np-switch"><input type="checkbox" name="veins.enabled"><span></span></span></label>
+						<label class="np-form-row">Sneaking<select name="veins.sneak"><option value="DISABLES">mines just one block</option><option value="ENABLES">mines the vein (otherwise one block)</option><option value="IGNORED">makes no difference</option></select></label>
+						<label class="np-form-row">Biggest vein (blocks)<input type="number" name="veins.maxBlocks" min="2" max="1024"></label>
+						<label class="np-form-row"><span>Stop before the pickaxe breaks</span><span class="np-switch"><input type="checkbox" name="veins.preserveTool"><span></span></span></label>
+						<label class="np-form-row"><span>All drops where the first block was</span><span class="np-switch"><input type="checkbox" name="veins.dropsAtBreakPoint"><span></span></span></label>
+						<label class="np-form-row"><span>Also in creative mode</span><span class="np-switch"><input type="checkbox" name="veins.inCreative"><span></span></span></label>
+						<label class="np-form-row">Tools<input type="text" name="veins.tools"></label>
+						<label class="np-form-row">Never these tools<input type="text" name="veins.deniedTools"></label>
+						<label class="np-form-row">Ores<input type="text" name="veins.blocks"></label>
+						<label class="np-form-row">Never these blocks<input type="text" name="veins.deniedBlocks"></label>
+					</div>
+				</section>
+				<div class="pn-sticky-save np-form-actions">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-tf-msg"></span>
+				</div>
+				</form>
+			</div>
+
+			<div class="np-tab-panel" data-tab="market" hidden>
+				<div class="pn-stack">
+				<form id="pn-mk-form" autocomplete="off" class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shop"></i> Market</h3>
+					<p class="np-card-intro">Players type <code>/market</code> to sell items for the server's currency (any amount, more than a stack is fine) and to buy what others sell. Unsold items go back to the seller's mailbox after a while. Items keep everything (names, enchantments, custom models).</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Market open</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+						<label class="np-form-row">Currency (item id)<input type="text" name="currency" placeholder="minecraft:diamond"></label>
+						<label class="np-form-row">Listings last … days<input type="number" name="listingDays" min="1" max="365"></label>
+						<label class="np-form-row">Listings per player<input type="number" name="maxListings" min="1" max="200"></label>
+						<label class="np-form-row">Highest price per item<input type="number" name="maxPrice" min="1"></label>
+						<label class="np-form-row">Items that can't be sold (comma separated)<input type="text" name="bannedItems"></label>
+					</div>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-mk-msg"></span>
+					</div>
+				</form>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-bag"></i> For sale</h3>
+					<p class="np-card-intro" id="pn-mk-intro"></p>
+					<div class="pn-cl-tools"><input type="search" id="pn-mk-search" placeholder="Find an item or seller" autocomplete="off"></div>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-mk-table"></table></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-receipt"></i> Recent sales</h3>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-mk-sales"></table></div>
+				</section>
+				</div>
+			</div>
+
 			<div class="np-tab-panel" data-tab="serverlist" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-ul"></i> Server list entry</h3>
@@ -841,6 +964,8 @@
 						<label class="np-form-row">Next scheduled restart<span class="np-switch"><input type="checkbox" name="restart"><span></span></span></label>
 						<label class="np-form-row">How claiming land works (while claims are on)<span class="np-switch"><input type="checkbox" name="claims"><span></span></span></label>
 						<label class="np-form-row">Permanent area and world edge<span class="np-switch"><input type="checkbox" name="borders"><span></span></span></label>
+						<label class="np-form-row">Gameplay tweaks (tree felling, anvil, portals…)<span class="np-switch"><input type="checkbox" name="tweaks"><span></span></span></label>
+						<label class="np-form-row">Market: what's for sale (while the market is open)<span class="np-switch"><input type="checkbox" name="market"><span></span></span></label>
 						<label class="np-form-row"><span>Commands for everyone <small class="pn-hint">with the descriptions from the Commands page</small></span><span class="np-switch"><input type="checkbox" name="commands"><span></span></span></label>
 					</div>
 					<details class="pn-advanced"><summary>Server settings to leave out</summary>

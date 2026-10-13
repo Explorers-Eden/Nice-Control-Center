@@ -1,0 +1,201 @@
+package eu.explorerseden.nicecontrolcenter;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * Gameplay tweaks that need the server mod (a data pack can't do them), kept in
+ * config/nicecontrolcenter-tweaks.json: anvil limits, nether portals in any shape, tree felling and vein
+ * mining, the AFK tag and the tab list. Written by the panel, read by the mod when the file changes;
+ * Minecraft-free so both compile it. Everything is off until switched on, and vanilla clients work.
+ */
+public final class Tweaks {
+	public static final String FILE = "nicecontrolcenter-tweaks.json";
+
+	public static final class Anvil {
+		/** Never "Too Expensive!": costs above maxCost are lowered to it. */
+		public boolean noTooExpensive = false;
+		/** 39 is the most the game shows without "Too Expensive!". */
+		public int maxCost = 39;
+		/** Renaming alone (nothing in the second slot) costs renameCost levels. */
+		public boolean cheapRename = false;
+		public int renameCost = 1;
+	}
+
+	public static final class Portals {
+		/** Any closed obsidian frame (circles, arches…) lights as a nether portal, not just rectangles. */
+		public boolean anyShape = false;
+		/** The most portal blocks one frame may hold. */
+		public int maxBlocks = 400;
+	}
+
+	/** What sneaking does to tree felling and vein mining. */
+	public enum Sneak {
+		/** Sneaking breaks just the one block (the default). */
+		DISABLES,
+		/** Only sneaking fells the whole tree / vein. */
+		ENABLES,
+		/** Always the whole tree / vein. */
+		IGNORED
+	}
+
+	public static final class Felling {
+		public boolean enabled = false;
+		/** instant: the whole tree breaks at once; shiftDown: each hit removes the top log and the tree sinks. */
+		public String breakMode = "instant";
+		/** Tools that fell trees (ids or #tags). */
+		public List<String> tools = new ArrayList<>(List.of("#minecraft:axes"));
+		public List<String> deniedTools = new ArrayList<>();
+		/** Blocks that count as logs and leaves (ids or #tags). */
+		public List<String> logs = new ArrayList<>(List.of("#minecraft:logs"));
+		public List<String> deniedLogs = new ArrayList<>();
+		public List<String> leaves = new ArrayList<>(List.of("#minecraft:leaves"));
+		public Sneak sneak = Sneak.DISABLES;
+		/** Stop before the tool would break. */
+		public boolean preserveTool = true;
+		public int maxLogs = 256;
+		/** Bigger trees: "skip" (only the one log breaks) or "cutUpTo" (the first maxLogs). */
+		public String tooBig = "skip";
+		/** Leaves (not placed by players) needed next to the top of the trunk, so player builds aren't felled. */
+		public int minLeaves = 3;
+		/** A trunk may be made of different log types. */
+		public boolean mixedLogs = false;
+		/** Leaves around the felled tree fall within a few seconds. */
+		public boolean fastLeafDecay = true;
+		public int leafRadius = 7;
+		/** Nether trees: their wart blocks and shroomlights break with them. */
+		public boolean netherWarts = true;
+		/** Mangroves: their roots break with them. */
+		public boolean mangroveRoots = true;
+		/** All drops land where the first log was broken. */
+		public boolean dropsAtBreakPoint = false;
+		public boolean inCreative = false;
+	}
+
+	public static final class Veins {
+		public boolean enabled = false;
+		public List<String> tools = new ArrayList<>(List.of("#minecraft:pickaxes"));
+		public List<String> deniedTools = new ArrayList<>();
+		/** Blocks that count as ore (ids or #tags); a vein is connected blocks of the same kind. */
+		public List<String> blocks = new ArrayList<>(List.of("#c:ores", "minecraft:ancient_debris"));
+		public List<String> deniedBlocks = new ArrayList<>();
+		public Sneak sneak = Sneak.DISABLES;
+		public boolean preserveTool = true;
+		public int maxBlocks = 64;
+		public boolean dropsAtBreakPoint = false;
+		public boolean inCreative = false;
+	}
+
+	public static final class Afk {
+		/** Players who did nothing for a while get a tag next to their name in the tab list. */
+		public boolean enabled = false;
+		public int minutes = 5;
+		public String tag = "AFK";
+	}
+
+	public static final class TabList {
+		/** A header and footer in the tab list, updated every few seconds. */
+		public boolean enabled = false;
+		/** § colour codes and {players} {max} {tps} {mspt} {ping} {time}; \n for a new line. */
+		public String header = "§6§lExplorer's Eden\n§7{players}/{max} players online";
+		public String footer = "§7TPS §a{tps} §8· §7Ping §a{ping} ms §8· §7{time}";
+	}
+
+	public static final class Settings {
+		public Anvil anvil = new Anvil();
+		public Portals portals = new Portals();
+		public Felling felling = new Felling();
+		public Veins veins = new Veins();
+		public Afk afk = new Afk();
+		public TabList tabList = new TabList();
+
+		public Settings fill() {
+			if (anvil == null) anvil = new Anvil();
+			if (portals == null) portals = new Portals();
+			if (felling == null) felling = new Felling();
+			if (veins == null) veins = new Veins();
+			if (afk == null) afk = new Afk();
+			if (tabList == null) tabList = new TabList();
+			felling.tools = ids(felling.tools);
+			felling.deniedTools = ids(felling.deniedTools);
+			felling.logs = ids(felling.logs);
+			felling.deniedLogs = ids(felling.deniedLogs);
+			felling.leaves = ids(felling.leaves);
+			if (felling.sneak == null) felling.sneak = Sneak.DISABLES;
+			if (!"shiftDown".equals(felling.breakMode)) felling.breakMode = "instant";
+			if (!"cutUpTo".equals(felling.tooBig)) felling.tooBig = "skip";
+			veins.tools = ids(veins.tools);
+			veins.deniedTools = ids(veins.deniedTools);
+			veins.blocks = ids(veins.blocks);
+			veins.deniedBlocks = ids(veins.deniedBlocks);
+			if (veins.sneak == null) veins.sneak = Sneak.DISABLES;
+			if (afk.tag == null) afk.tag = "AFK";
+			if (tabList.header == null) tabList.header = "";
+			if (tabList.footer == null) tabList.footer = "";
+			return this;
+		}
+	}
+
+	private Tweaks() {
+	}
+
+	/** "axes" → "minecraft:axes", "#axes" → "#minecraft:axes"; blanks and doubles dropped. */
+	private static List<String> ids(List<String> list) {
+		if (list == null) return new ArrayList<>();
+		List<String> out = new ArrayList<>();
+		for (String raw : list) {
+			if (raw == null || raw.isBlank()) continue;
+			String t = raw.strip().toLowerCase(Locale.ROOT);
+			boolean tag = t.startsWith("#");
+			if (tag) t = t.substring(1);
+			if (!t.contains(":")) t = "minecraft:" + t;
+			t = (tag ? "#" : "") + t;
+			if (!out.contains(t)) out.add(t);
+		}
+		return out;
+	}
+
+	public static String validate(Settings s) {
+		if (s == null) return "No settings.";
+		s.fill();
+		if (s.anvil.maxCost < 1 || s.anvil.maxCost > 39) return "The highest anvil cost is 1 to 39 levels.";
+		if (s.anvil.renameCost < 1 || s.anvil.renameCost > 39) return "Renaming costs 1 to 39 levels.";
+		if (s.portals.maxBlocks < 6 || s.portals.maxBlocks > 4096) return "A portal holds 6 to 4096 blocks.";
+		if (s.felling.maxLogs < 2 || s.felling.maxLogs > 4096) return "Trees are 2 to 4096 logs.";
+		if (s.felling.minLeaves < 0 || s.felling.minLeaves > 64) return "Leaves needed are 0 to 64.";
+		if (s.felling.leafRadius < 1 || s.felling.leafRadius > 16) return "The leaf radius is 1 to 16 blocks.";
+		if (s.veins.maxBlocks < 2 || s.veins.maxBlocks > 1024) return "Veins are 2 to 1024 blocks.";
+		if (s.afk.minutes < 1 || s.afk.minutes > 120) return "AFK after 1 to 120 minutes.";
+		if (s.afk.tag.length() > 16) return "The AFK tag is up to 16 characters.";
+		if (s.tabList.header.length() > 500 || s.tabList.footer.length() > 500) return "Header and footer are up to 500 characters each.";
+		for (List<String> l : List.of(s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
+				s.veins.tools, s.veins.deniedTools, s.veins.blocks, s.veins.deniedBlocks)) {
+			for (String id : l) if (!id.matches("#?[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't an id or #tag.";
+		}
+		return null;
+	}
+
+	public static Settings read(Path file) {
+		try {
+			if (!Files.exists(file)) return new Settings().fill();
+			Settings s = Json.GSON.fromJson(Files.readString(file), Settings.class);
+			if (s == null || validate(s) != null) return new Settings().fill();
+			return s;
+		} catch (IOException | RuntimeException e) {
+			return new Settings().fill();
+		}
+	}
+
+	public static void write(Path file, Settings settings) throws IOException {
+		Files.createDirectories(file.getParent());
+		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+		Files.writeString(tmp, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(settings), StandardCharsets.UTF_8);
+		Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+	}
+}

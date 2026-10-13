@@ -11,16 +11,18 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 
 import eu.explorerseden.nicecontrolcenter.claims.ClaimDialogs;
 
-/** Buttons in the claim dialogs ("nicecontrolcenter:claim/…") are answered here, with the player who clicked. */
+/** Buttons in the claim and market dialogs ("nicecontrolcenter:claim/…", "…:market/…") are answered here, with the player who clicked. */
 @Mixin(ServerCommonPacketListenerImpl.class)
 public abstract class ClaimClickMixin {
 	@Inject(method = "handleCustomClickAction", cancellable = true,
 			at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;handleCustomClickAction(Lnet/minecraft/resources/Identifier;Ljava/util/Optional;)V"))
 	private void nicecontrolcenter$claimDialog(ServerboundCustomClickActionPacket packet, CallbackInfo ci) {
-		if (!"nicecontrolcenter".equals(packet.id().getNamespace()) || !packet.id().getPath().startsWith("claim/")) return;
+		String path = packet.id().getPath();
+		if (!"nicecontrolcenter".equals(packet.id().getNamespace()) || !(path.startsWith("claim/") || path.startsWith("market/"))) return;
 		ci.cancel();
 		if ((Object) this instanceof ServerGamePacketListenerImpl game && game.player != null) {
-			ClaimDialogs.handle(game.player, packet.id().getPath().substring("claim/".length()), packet.payload());
+			if (path.startsWith("claim/")) ClaimDialogs.handle(game.player, path.substring("claim/".length()), packet.payload());
+			else eu.explorerseden.nicecontrolcenter.market.MarketDialogs.handle(game.player, path.substring("market/".length()), packet.payload());
 		}
 	}
 }

@@ -1,3 +1,11 @@
+## 1.9.0
+- Tweaks in the sidebar (needs mod 1.10.0): Gameplay (anvil, nether portals in any shape, AFK tag, tab list header and footer), Trees & veins (tree felling and vein mining with all their options) and Market (settings, what's for sale with item icons, taking listings off, recent sales)
+- Item icons drawn by the panel from the game's own textures and the server's resource pack, custom models included (item_model, custom_model_data, the GUI view of a model)
+- The public info page shows the market (what's for sale, with icons and prices) and the switched-on gameplay tweaks; both can be switched off there
+- The market is copied into the database (market_listings, market_sales) for a website
+- Discord account links are also copied into the database (discord_links), next to the claims
+- Shared texts: the info page's performance tweak descriptions come from the mod's ServerFacts (the same Merl uses)
+
 ## 1.8.3
 - Discord: new event "Data pack messages and /say" (off by default): what data packs send to everyone with /tellraw @a, plus /say and /me. The same text twice within a minute is skipped, and at most 20 a minute go out (needs mod 1.9.3)
 - Fabled Roots' death messages are posted as deaths, with their real text instead of "has fallen"

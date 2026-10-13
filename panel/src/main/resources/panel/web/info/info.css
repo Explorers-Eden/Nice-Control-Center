@@ -149,3 +149,10 @@ body.in-searching .in-crumbs { visibility: hidden; }
   border-radius: 999px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.14); color: #eef2ff; font-size: var(--fs-sm); }
 .in-restart .bi { color: #ffb35c; }
 .in-restart span { opacity: .75; }
+
+/* Market */
+.in-row-text.in-market__item { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+.in-market__item > span { display: flex; flex-direction: column; }
+.in-item { width: 32px; height: 32px; flex: none; image-rendering: pixelated; }
+.in-item--none { display: inline-block; border-radius: 6px; background: rgba(var(--ink),.08); }
+.in-item--coin { width: 16px; height: 16px; margin-right: 4px; vertical-align: -3px; }

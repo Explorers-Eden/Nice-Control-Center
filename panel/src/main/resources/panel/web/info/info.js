@@ -189,6 +189,25 @@
           { id: 'rules', title: 'Rules', icon: 'bi-rulers', body: rules },
           { id: 'roles', title: 'Member roles', icon: 'bi-people', sub: 'what members may do', body: roles }] });
     }
+    if (d.market) {
+      const m = d.market;
+      const cur = titleCase(String(m.currency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));
+      const coin = m.currencyIcon ? `<img class="in-item in-item--coin" src="items/${esc(m.currencyIcon)}" alt="">` : '';
+      const item = (l) => `<div class="in-row in-market" data-search="${esc([l.name, l.seller, l.item, ...(l.enchantments || []), ...(l.lore || [])].join(' ').toLowerCase())}">
+          <div class="in-row-text in-market__item">${l.icon ? `<img class="in-item" src="items/${esc(l.icon)}" alt="" loading="lazy">` : '<span class="in-item in-item--none"></span>'}
+            <span><b>${esc(l.name)}</b>${(l.enchantments || []).length || (l.lore || []).length ? `<small>${esc([...(l.enchantments || []), ...(l.lore || [])].join(' · '))}</small>` : ''}
+            <small>by ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>
+          <div class="in-row-value"><span class="in-v">${coin}${Number(l.price).toLocaleString()} ${esc(l.price === 1 ? cur : cur + 's')} each</span></div></div>`;
+      const list = m.listings || [];
+      sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length,
+        children: [{ id: 'market-list', title: 'For sale now', icon: 'bi-bag', sub: `type /market in game to buy or sell · paid in ${cur}`,
+          body: list.length ? list.map(item).join('') : '<p class="in-empty">Nothing for sale right now.</p>' }] });
+    }
+    if (d.tweaks && d.tweaks.length) {
+      sections.push({ id: 'tweaks', title: 'Gameplay tweaks', statLabel: 'gameplay tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,
+        children: d.tweaks.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
+          body: t.rows.map((r) => row(r.label, value(r.value), r.description)).join('') })) });
+    }
     if (d.performance && d.performance.length) {
       sections.push({ id: 'perf', title: 'Performance tweaks', statLabel: 'performance tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
         children: d.performance.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
