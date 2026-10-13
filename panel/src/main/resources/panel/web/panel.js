@@ -124,7 +124,7 @@
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
       { id: 'appearance', hue: '#ff8fa3', label: 'Appearance', icon: 'bi-palette', subs: [
-        { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage', desc: 'Logos for the panel and the map.' }] },
+        { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage settings.server', desc: 'Logos for the panel and the map, and the picture of the info page banner.' }] },
       { id: 'audit', hue: '#b6c8ff', label: 'Audit log', icon: 'bi-journal-text', subs: [
         { tab: 'audit', label: 'Audit log', perm: 'audit.view', desc: 'Every change made through the panel, and by whom.' }] },
     ] },
@@ -414,12 +414,104 @@
     });
   }
 
+  /**
+   * Picking the part of a picture for the info page banner: the picture in a banner-shaped frame
+   * (6:1, like the banner on a wide screen), moved by dragging and zoomed by the slider or the wheel.
+   * Resolves with a 2400 × 400 JPEG of that part, or null when cancelled.
+   */
+  function cropBanner(file) {
+    return new Promise((resolve) => {
+      const dlg = $('pn-crop');
+      const frame = $('pn-crop-frame');
+      const img = $('pn-crop-img');
+      const zoom = $('pn-crop-zoom');
+      const url = URL.createObjectURL(file);
+      const st = { x: 0, y: 0, s: 1, base: 1 };
+      const size = () => ({ fw: frame.clientWidth, fh: frame.clientHeight });
+      const place = () => {
+        const { fw, fh } = size();
+        const w = img.naturalWidth * st.s;
+        const h = img.naturalHeight * st.s;
+        st.x = Math.min(0, Math.max(fw - w, st.x));
+        st.y = Math.min(0, Math.max(fh - h, st.y));
+        img.style.width = w + 'px';
+        img.style.height = h + 'px';
+        img.style.transform = `translate(${st.x}px, ${st.y}px)`;
+      };
+      /** Zoom to z (1 = the picture just covers the frame), keeping the point (cx, cy) of the frame still. */
+      const zoomTo = (z, cx, cy) => {
+        const { fw, fh } = size();
+        if (cx == null) { cx = fw / 2; cy = fh / 2; }
+        const next = st.base * Math.min(5, Math.max(1, z));
+        st.x = cx - (cx - st.x) * (next / st.s);
+        st.y = cy - (cy - st.y) * (next / st.s);
+        st.s = next;
+        zoom.value = String(next / st.base);
+        place();
+      };
+      const finish = (result) => {
+        dlg.close();
+        URL.revokeObjectURL(url);
+        frame.onpointerdown = null;
+        frame.onwheel = null;
+        zoom.oninput = null;
+        $('pn-crop-ok').onclick = null;
+        $('pn-crop-cancel').onclick = null;
+        dlg.oncancel = null;
+        resolve(result);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); formMsg('pn-logo-msg', 'That file isn\'t a picture the browser can open.', false); resolve(null); };
+      img.onload = () => {
+        dlg.showModal();
+        const { fw, fh } = size();
+        st.base = Math.max(fw / img.naturalWidth, fh / img.naturalHeight);
+        st.s = st.base;
+        st.x = (fw - img.naturalWidth * st.s) / 2;
+        st.y = (fh - img.naturalHeight * st.s) / 2;
+        zoom.value = '1';
+        place();
+      };
+      img.src = url;
+      frame.onpointerdown = (e) => {
+        e.preventDefault();
+        frame.setPointerCapture(e.pointerId);
+        const start = { px: e.clientX, py: e.clientY, x: st.x, y: st.y };
+        frame.onpointermove = (m) => { st.x = start.x + m.clientX - start.px; st.y = start.y + m.clientY - start.py; place(); };
+        frame.onpointerup = () => { frame.onpointermove = null; frame.onpointerup = null; };
+      };
+      frame.onwheel = (e) => {
+        e.preventDefault();
+        const r = frame.getBoundingClientRect();
+        zoomTo((st.s / st.base) * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX - r.left, e.clientY - r.top);
+      };
+      zoom.oninput = () => zoomTo(Number(zoom.value));
+      dlg.oncancel = (e) => { e.preventDefault(); finish(null); };
+      $('pn-crop-cancel').onclick = () => finish(null);
+      $('pn-crop-ok').onclick = () => {
+        const { fw } = size();
+        const out = document.createElement('canvas');
+        out.width = 2400;
+        out.height = 400;
+        const k = out.width / fw;
+        const ctx = out.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, st.x * k, st.y * k, img.naturalWidth * st.s * k, img.naturalHeight * st.s * k);
+        out.toBlob((blob) => finish(blob), 'image/jpeg', 0.9);
+      };
+    });
+  }
+
   document.querySelectorAll('.pn-logo-slot[data-logo]').forEach((slot) => {
     const which = slot.dataset.logo;
     slot.querySelector('input[type="file"]').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
+      let file = e.target.files[0];
       e.target.value = '';
       if (!file) return;
+      if (which === 'infobanner') {
+        const cropped = await cropBanner(file);
+        if (!cropped) return;
+        file = new File([cropped], 'banner.jpg', { type: 'image/jpeg' });
+      }
       const form = new FormData();
       form.append('logo', file);
       try {

@@ -1217,7 +1217,17 @@
 							</div>
 						</div>
 					</div>
-					<p class="pn-hint">The info page banner is the background picture at the top of the public info page (up to 8 MB). A wide landscape picture works best, e.g. a screenshot of your spawn; it's darkened a little so the text stays readable.</p>
+					<p class="pn-hint">The info page banner is the background picture at the top of the public info page. After choosing a picture you pick the part to show; a screenshot of your spawn works well. It's darkened a little on the left so the text stays readable.</p>
+					<dialog class="pn-crop" id="pn-crop" aria-labelledby="pn-crop-title">
+						<h3 class="np-card-title" id="pn-crop-title"><i class="bi bi-crop"></i> Choose the part to show</h3>
+						<p class="pn-hint">Drag the picture to move it; zoom with the slider or the mouse wheel. This is the shape of the banner on a wide screen, with its dark fade; on phones the middle part shows.</p>
+						<div class="pn-crop-frame" id="pn-crop-frame"><img id="pn-crop-img" alt="" draggable="false"><div class="pn-crop-shade"></div></div>
+						<label class="pn-crop-zoom"><i class="bi bi-zoom-out"></i><input type="range" id="pn-crop-zoom" min="1" max="5" step="0.01" value="1" aria-label="Zoom"><i class="bi bi-zoom-in"></i></label>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn primary" id="pn-crop-ok"><i class="bi bi-check2"></i> Use this part</button>
+							<button type="button" class="np-btn" id="pn-crop-cancel">Cancel</button>
+						</div>
+					</dialog>
 					<p class="np-form-msg" id="pn-logo-msg"></p>
 				</section>
 			</div>

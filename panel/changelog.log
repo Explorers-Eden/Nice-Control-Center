@@ -1,3 +1,7 @@
+## 1.10.5
+- Appearance: after choosing an info page banner picture, you pick the part to show in a banner-shaped frame (drag to move, slider or mouse wheel to zoom, with the page's dark fade as a preview); only that part is uploaded
+- Info page banner: the server list message and the next restart are matching badges side by side, the logo is bigger, and with a picture the banner keeps the shape of the crop frame (6:1) on wide screens
+
 ## 1.10.4
 - Tweaks → Gameplay and the info page: nether portals in any shape use the same frame blocks as normal portals (on 26.3 the block tag minecraft:nether_portal_frame; needs mod 1.11.1)
 

@@ -79,7 +79,7 @@ public final class AfkTabList {
 				if (all || moved && s.tabList.showDimension) update(server, p);
 			}
 		}
-		if (tick % 100 == 0) {
+		if (tick % 20 == 0) {
 			if (s.tabList.enabled) {
 				headerShown = true;
 				for (ServerPlayer p : server.getPlayerList().getPlayers()) {

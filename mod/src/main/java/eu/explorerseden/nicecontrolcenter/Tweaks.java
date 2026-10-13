@@ -106,7 +106,7 @@ public final class Tweaks {
 	}
 
 	public static final class TabList {
-		/** A header and footer in the tab list, updated every few seconds. */
+		/** A header and footer in the tab list, updated every second. */
 		public boolean enabled = false;
 		/** § colour codes and {players} {max} {tps} {mspt} {ping} {time}; \n for a new line. */
 		public String header = "§6§lExplorer's Eden\n§7{players}/{max} players online";
