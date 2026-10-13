@@ -205,3 +205,5 @@ body:not(.in-searching) .in-cards--picked > .in-card:not(.in-card--wide), .in-ca
   .in-card { padding: 16px 16px 6px; }
 }
 .in-row-text .in-tag { align-self: flex-start; margin-left: 0; }
+
+.in-slot img.in-head { image-rendering: pixelated; border-radius: 3px; }

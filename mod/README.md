@@ -78,6 +78,7 @@ The main command is `/nicecontrolcenter`, short `/ncc`. `[minutes]` is optional 
 | `/nccreply <message>` | **For all players:** answer a private dashboard message |
 | `/claim` | **For all players (while claims are on):** the claim menu. See [Land claims](#land-claims) |
 | `/market` | **For all players (while the market is open):** the market menu. See [Gameplay tweaks and market](#gameplay-tweaks-and-market) |
+| `/pets` | **For all players (while pets are on):** your pets and the pet shop |
 
 ## Permissions
 
@@ -96,6 +97,7 @@ With LuckPerms or another Fabric permissions mod you can give parts to other pla
 | `nicecontrolcenter.claims.use` | `/claim` (everyone by default) |
 | `nicecontrolcenter.claims.admin` | `/claim admin …`: bypass claims, delete claims, change claim blocks |
 | `nicecontrolcenter.market.use` | `/market` (everyone by default) |
+| `nicecontrolcenter.pets.use` | `/pets` (everyone by default) |
 | `nicecontrolcenter.command.*` / `nicecontrolcenter.*` | Everything |
 
 Note: the dashboard itself has no per-player permissions. Anyone with a valid link can use all of it, within the limits you set in the config (`web_console_commands`, `web_player_actions`, …).
@@ -142,6 +144,10 @@ Things a data pack can't do, switched on in the panel (**Tweaks**, or `config/ni
   - Earnings and unsold items wait in the market mailbox.
   - The panel shows the listings with item icons (custom models included) and can take a listing off.
   - The public info page lists what's for sale.
+- **Pets** (`/pets`, `config/nicecontrolcenter-pets.json`): floating player heads that follow their owner, only for looks, seen by everyone nearby.
+  - Players pick how theirs moves: float, orbit, bounce, spin or follow.
+  - The pet shop (in `/pets`, and Pets in `/market`) sells the pets set up in the panel: name, head texture, price in the market's currency, how long they last and how many can be sold.
+  - Who owns which pet is kept in the world folder (`nicecontrolcenter-pets.json`).
 
 ## Configuration
 

@@ -643,6 +643,7 @@ public final class DashboardServer {
 					return Map.of("ok", true);
 				}));
 			}
+			case "/api/pets/state" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.pets.PetStore::state));
 			case "/api/claims/goml" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, false)));
 			case "/api/claims/goml/import" -> {
 				if (!requirePost(exchange)) {

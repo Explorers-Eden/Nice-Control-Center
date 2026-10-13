@@ -23,6 +23,7 @@ The **server-side settings** are in the server's `config` folder and would be ov
 - `nicecontrolcenter-claims.json`: claim settings
 - `nicecontrolcenter-tweaks.json`: gameplay tweaks (Tweaks)
 - `nicecontrolcenter-market.json`: market settings (Market → Settings)
+- `nicecontrolcenter-pets.json`: pets and the pet shop (Market → Pets)
 - `nicecontrolcenter.json`: the mod's own config
 
 ## 3. Clean out the test server
@@ -70,9 +71,9 @@ The **server-side settings** are in the server's `config` folder and would be ov
    2. Claims → Settings → switch claims **on**.
    3. Look at a few imported claims on the map.
    4. Remove GOML at the next restart.
-5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and in Market. The market starts empty on the live world.
+5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and in Market (also Pets there). The market starts empty on the live world; pets are set up in the panel, so they carry over.
 6. [ ] **Discord:** the bridge posts "The server is online"; check that chat and joins go both ways.
-7. [ ] **Join yourself:** try `/claim`, `/market`, `/merl`, felling a tree, a death message, and that maintenance mode is **off**.
+7. [ ] **Join yourself:** try `/claim`, `/market`, `/pets`, `/merl`, felling a tree, a death message, and that maintenance mode is **off**.
 8. [ ] Make a **backup** in the panel and check that it finishes.
 
 ## 7. Afterwards

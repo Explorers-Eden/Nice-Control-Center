@@ -139,6 +139,7 @@ public final class MarketDialogs {
 		buttons.add(button("Sell", "List items from your inventory", "sell", args()));
 		buttons.add(button("My listings (" + data.of(me).size() + ")", null, "mine", args()));
 		buttons.add(button("Mailbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Your earnings and items that came back", "mail", args()));
+		if (eu.explorerseden.nicecontrolcenter.pets.PetStore.enabled()) buttons.add(eu.explorerseden.nicecontrolcenter.pets.PetDialogs.button("Pets", "Floating heads that follow you", "shop", args("page", "0")));
 		menu(player, "Market", body, List.of(), buttons);
 	}
 

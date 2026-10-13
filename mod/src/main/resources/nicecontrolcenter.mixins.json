@@ -54,6 +54,7 @@
 		"FellingDropMixin",
 		"DisplayAccessor",
 		"HopperAccessor",
+		"ItemDisplayAccessor",
 		"HopperMixin",
 		"ItemDespawnMixin",
 		"ItemMergeMixin",

@@ -1,3 +1,7 @@
+## 1.12.0
+- Community → Market → Pets: switch pets on, set the head size and run the pet shop: add pets with a name, a head texture (the base64 value from a head website or a textures.minecraft.net link, with a face preview), a price, how long they last (or forever) and how many can be sold (or no limit); edit them, stop selling them or remove them. Shows how many were sold, how many players have each pet, and recent pet purchases (needs mod 1.13.0)
+- Public info page: the Market tab lists the pets for sale with their faces
+
 ## 1.11.5
 - Info page banner picture: exactly the part chosen when cropping spans the whole width; where the banner is taller than that part (narrow windows, phones, a lot of text) a blurred copy of the picture fills above and below, instead of the picture being enlarged and its sides cut off
 

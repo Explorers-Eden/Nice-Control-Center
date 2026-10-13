@@ -180,6 +180,15 @@ Public pages → Info page: a read-only page where players can look up the serve
   - The public info page shows the market with these icons.
 - **Database:** `market_listings` (id, seller, item id and name, the item as JSON with all components, lore, enchantments, amount left, price each, created, expires) and `market_sales` (listing, item, seller, buyer, amount, total, time), copied every 15 seconds.
 
+**Pets** (on the Market page, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
+
+- **Settings:** pets on/off and the head size.
+- **Pet shop:** add a pet with a name, a head texture, a price in the market's currency (0 is free), how long it lasts (or forever) and how many can be sold in all (or no limit).
+  - The texture is the base64 "Value" from a head website (like minecraft-heads.com) or a `textures.minecraft.net/texture/…` link.
+  - The panel fetches each skin from textures.minecraft.net once and keeps the face in `/data/panel/heads`, for the panel and the public info page.
+  - **For sale** off stops selling a pet; removing it does too. Players who have it keep it until its time is up.
+- **Recent pet purchases**, and per pet how many were sold and how many players have it.
+
 ## World: pregenerate and trim
 
 The **World** tab works on one area: dimension, center, radius, square or circle. It can be filled in from the world border or centered on spawn.

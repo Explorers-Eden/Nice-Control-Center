@@ -194,6 +194,19 @@
           { id: 'rules', title: 'Rules', icon: 'bi-rulers', body: rules },
           { id: 'roles', title: 'Member roles', icon: 'bi-people', sub: 'what members may do', body: roles }] });
     }
+    const petTiles = (cur, coin) => (d.pets || []).map((p) => `<div class="in-tile" data-search="${esc(p.name.toLowerCase())} pet">
+          <span class="in-slot">${p.head ? `<img class="in-head" src="heads/${esc(p.head)}" alt="" loading="lazy">` : '<i class="bi bi-emoji-smile"></i>'}</span>
+          <span class="in-tile__text"><b>${esc(p.name)}</b>
+            <span class="in-tile__price">${p.price ? `${coin}${Number(p.price).toLocaleString()} <small>${esc(p.price === 1 ? cur : cur + 's')}</small>` : 'Free'}</span>
+            <small class="in-tile__seller"><i class="bi bi-clock"></i> ${p.days > 0 ? p.days + (p.days === 1 ? ' day' : ' days') : 'forever'}${p.left > 0 ? ' · ' + Number(p.left).toLocaleString() + ' left' : ''}</small></span></div>`).join('');
+    const petChild = (cur, coin = '') => ({ id: 'pets', title: 'Pets', icon: 'bi-emoji-smile', sub: 'floating heads that follow you, only for looks', wide: true,
+      desc: 'Type /pets in game to get one and pick how it moves (float, orbit, bounce, spin or follow). Everyone near you sees it.',
+      body: d.pets.length ? `<div class="in-tiles">${petTiles(cur, coin)}</div>` : '<p class="in-empty">No pets for sale right now.</p>' });
+    if (!d.market && d.pets) {
+      const cur = titleCase(String(d.petCurrency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));
+      sections.push({ id: 'market', title: 'Pets', statLabel: 'pets for sale', icon: 'bi-emoji-smile', hue: '#ffd166', count: d.pets.length,
+        lead: `Floating heads that follow you around. Type /pets in game; pets are paid in ${cur}s.`, children: [petChild(cur)] });
+    }
     if (d.market) {
       const m = d.market;
       const cur = titleCase(String(m.currency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));
@@ -211,7 +224,8 @@
       sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length,
         lead: `Everything players are selling right now. Type /market in game to buy or sell; everything is paid in ${cur}s.`,
         children: [{ id: 'market-list', title: 'For sale now', icon: 'bi-bag', sub: `${list.length} listing${list.length === 1 ? '' : 's'}`, wide: true,
-          body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' }] });
+          body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' },
+          ...(d.pets ? [petChild(cur, coin)] : [])] });
     }
     if (d.tweaks && d.tweaks.length) {
       sections.push({ id: 'tweaks', title: 'Gameplay tweaks', tab: 'Gameplay', statLabel: 'tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,

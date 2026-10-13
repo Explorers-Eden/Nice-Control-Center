@@ -7,7 +7,7 @@ import com.mojang.math.Transformation;
 
 import net.minecraft.world.entity.Display;
 
-/** For the falling tree animation. */
+/** For the falling tree animation and pets. */
 @Mixin(Display.class)
 public interface DisplayAccessor {
 	@Invoker("setTransformation")
@@ -18,4 +18,13 @@ public interface DisplayAccessor {
 
 	@Invoker("setTransformationInterpolationDelay")
 	void nicecontrolcenter$setInterpolationDelay(int ticks);
+
+	@Invoker("setPosRotInterpolationDuration")
+	void nicecontrolcenter$setMoveDuration(int ticks);
+
+	@Invoker("setShadowRadius")
+	void nicecontrolcenter$setShadowRadius(float radius);
+
+	@Invoker("setShadowStrength")
+	void nicecontrolcenter$setShadowStrength(float strength);
 }

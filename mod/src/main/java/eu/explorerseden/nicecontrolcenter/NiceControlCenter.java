@@ -64,6 +64,7 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.core.PlayerActivity.register();
 		eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl.register();
 		eu.explorerseden.nicecontrolcenter.market.MarketStore.register();
+		eu.explorerseden.nicecontrolcenter.pets.PetStore.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.HardBorder::tick);
 		// Performance and maintenance settings from the panel (config files, read again when they change).

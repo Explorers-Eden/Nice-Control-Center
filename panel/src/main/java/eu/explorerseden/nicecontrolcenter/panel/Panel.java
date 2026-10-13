@@ -135,9 +135,11 @@ public final class Panel {
 		ItemIcons icons = new ItemIcons(dataDir, serverDir, () -> versions.installed().mc());
 		MarketService market = new MarketService(serverDir, dataDir, db, server, dashboard, audit, icons);
 		market.start();
+		PetsService pets = new PetsService(serverDir, dataDir, server, dashboard, audit);
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
 		info.useClaims(claims);
 		info.useMarket(market);
+		info.usePets(pets);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		home.useMod(dashboard);
@@ -328,6 +330,7 @@ public final class Panel {
 			info.register(routes);
 			claims.register(routes);
 			market.register(routes);
+			pets.register(routes);
 			new TweaksRoutes(serverDir, server, audit, map).register(routes);
 			Commands commandList = new Commands(dataDir, server, dashboard, audit);
 			commandList.register(routes);

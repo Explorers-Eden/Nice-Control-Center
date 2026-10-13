@@ -23,7 +23,27 @@ public final class ServerFacts {
 		out.addAll(borders(Borders.read(configDir.resolve(Borders.FILE))));
 		out.addAll(claims(Claims.read(configDir.resolve(Claims.FILE))));
 		out.addAll(tweaks(Tweaks.read(configDir.resolve(Tweaks.FILE))));
-		out.addAll(market(Market.read(configDir.resolve(Market.FILE))));
+		Market.Settings market = Market.read(configDir.resolve(Market.FILE));
+		out.addAll(market(market));
+		out.addAll(pets(Pets.read(configDir.resolve(Pets.FILE)), market.currency));
+		return out;
+	}
+
+	/** Pets and the pet shop (nothing while pets are off). */
+	public static List<Map<String, Object>> pets(Pets.Settings p, String currencyId) {
+		List<Map<String, Object>> out = new ArrayList<>();
+		if (!p.enabled) return out;
+		String currency = humanize(currencyId.replaceFirst("^minecraft:", "")).toLowerCase(Locale.ROOT);
+		List<Map<String, String>> rows = new ArrayList<>();
+		for (Pets.Pet pet : p.pets) {
+			if (!pet.forSale) continue;
+			String price = pet.price == 0 ? "free" : String.format(Locale.ROOT, "%,d %s", pet.price, pet.price == 1 ? currency : currency + "s");
+			rows.add(line(pet.name, price + ", " + Pets.duration(pet.days), pet.stock > 0 ? "Only " + pet.stock + " in all." : ""));
+		}
+		out.add(tweak("pets", "Pets", "bi-emoji-smile",
+				"Type /pets for a pet: a floating head that follows you around, only for looks, and everyone sees it. "
+						+ "Pick how it moves (float, orbit, bounce, spin or follow). Get pets in the pet shop (/pets or /market).",
+				rows));
 		return out;
 	}
 

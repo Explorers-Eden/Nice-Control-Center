@@ -116,6 +116,12 @@ final class InfoPage {
 
 	private MarketService market;
 
+	private PetsService pets;
+
+	void usePets(PetsService pets) {
+		this.pets = pets;
+	}
+
 	void useMarket(MarketService market) {
 		this.market = market;
 	}
@@ -269,6 +275,11 @@ final class InfoPage {
 		if (s.market && market != null) {
 			Map<String, Object> m = market.publicView();
 			if (m != null) out.put("market", m);
+			List<Map<String, Object>> p = pets == null ? null : pets.publicView();
+			if (p != null) {
+				out.put("pets", p);
+				if (m == null) out.put("petCurrency", eu.explorerseden.nicecontrolcenter.Market.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Market.FILE)).currency);
+			}
 		}
 		if (s.tweaks) {
 			var t = eu.explorerseden.nicecontrolcenter.ServerFacts.tweaks(eu.explorerseden.nicecontrolcenter.Tweaks.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Tweaks.FILE)));

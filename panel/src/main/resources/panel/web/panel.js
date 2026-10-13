@@ -96,7 +96,7 @@
         { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks, the shop and the claim tool.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
-        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold.' }] },
+        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold, and pets (/pets) with their shop.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
@@ -371,7 +371,7 @@
     if (tab === 'claimblocks') loadClaimBlocks();
     if (tab === 'claimsettings') loadClaimSettings();
     if (tab === 'tweaks' || tab === 'felling' || tab === 'chattweaks') loadTweaks();
-    if (tab === 'market') loadMarket();
+    if (tab === 'market') { loadMarket(); loadPets(); }
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -4754,6 +4754,159 @@
     }
   });
 
+  // ── Community → Market → Pets ─────────────────────────────────────────────
+
+  let ptData = null;
+  let ptEditing = null;
+
+  const ptFace = (hash) => hash ? `<img class="pn-pt-face" src="info/heads/${esc(hash)}" alt="" loading="lazy">` : '<span class="pn-pt-face"></span>';
+  const ptDays = (d) => d > 0 ? (d === 1 ? '1 day' : d + ' days') : 'forever';
+
+  async function loadPets() {
+    try {
+      ptData = await api('api/pets');
+    } catch (e) {
+      return formMsg('pn-pt-msg', e.message, false);
+    }
+    const s = ptData.settings;
+    const f = $('pn-pt-form');
+    f.enabled.checked = s.enabled;
+    f.size.value = s.size;
+    const edit = can('settings.server');
+    f.querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-pt-edit').hidden = !edit;
+    const cur = ptData.currency.replace(/^minecraft:/, '').replace(/_/g, ' ');
+    $('pn-pt-currency').textContent = `In ${cur}s (the market's currency); 0 makes it free`;
+    $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: sold counts are from the last save. ')
+      + `${s.pets.length} pet${s.pets.length === 1 ? '' : 's'}.`;
+    renderPets();
+    Dirty.reset('pets');
+  }
+
+  function renderPets() {
+    const s = ptData.settings;
+    const sold = ptData.state.sold || {};
+    const owners = ptData.state.owners || {};
+    const edit = can('settings.server');
+    $('pn-pt-table').innerHTML = s.pets.length ? `<thead><tr><th>Pet</th><th>Price</th><th>Lasts</th><th>Sold</th><th>Players with it</th><th>For sale</th><th></th></tr></thead><tbody>${s.pets.map((p) => `
+      <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
+      <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptDays(p.days)}</td>
+      <td>${Number(sold[p.id] || 0).toLocaleString()}${p.stock > 0 ? ' of ' + Number(p.stock).toLocaleString() : ''}</td>
+      <td>${Number(owners[p.id] || 0).toLocaleString()}</td>
+      <td>${p.forSale ? (p.stock > 0 && (sold[p.id] || 0) >= p.stock ? '<span class="pn-warn">sold out</span>' : 'yes') : 'no'}</td>
+      <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
+        <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Take it out of the shop for good"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No pets yet. Add one below.</td></tr></tbody>';
+    const buys = ptData.state.purchases || [];
+    $('pn-pt-sales').innerHTML = buys.length ? `<thead><tr><th>When</th><th>Pet</th><th>Player</th><th>Paid</th><th>For</th></tr></thead><tbody>${buys.map((b) => `
+      <tr><td>${esc(dateTime(b.time))}</td><td>${esc(b.petName)}</td><td>${esc(b.buyerName)}</td><td>${b.price ? Number(b.price).toLocaleString() : 'free'}</td><td>${ptDays(b.days)}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">Nobody has bought a pet yet.</td></tr></tbody>';
+  }
+
+  function ptPairs() {
+    const f = $('pn-pt-edit');
+    f.days.disabled = f.forever.checked;
+    f.stock.disabled = f.unlimited.checked;
+  }
+
+  function ptOpen(pet) {
+    ptEditing = pet ? pet.id : null;
+    const f = $('pn-pt-edit');
+    f.name.value = pet ? pet.name : '';
+    f.texture.value = pet ? pet.texture : '';
+    f.price.value = pet ? pet.price : '';
+    f.forever.checked = pet ? pet.days === 0 : true;
+    f.days.value = pet && pet.days > 0 ? pet.days : 30;
+    f.unlimited.checked = pet ? pet.stock === 0 : true;
+    f.stock.value = pet && pet.stock > 0 ? pet.stock : 10;
+    f.forSale.checked = pet ? pet.forSale : true;
+    $('pn-pt-edit-title').textContent = pet ? 'Edit ' + pet.name : 'Add a pet';
+    $('pn-pt-add').innerHTML = pet ? '<i class="bi bi-check2"></i> Save pet' : '<i class="bi bi-plus-lg"></i> Add pet';
+    $('pn-pt-cancel').hidden = !pet;
+    const face = $('pn-pt-face');
+    face.hidden = !(pet && ptData.heads[pet.id]);
+    if (!face.hidden) face.src = 'info/heads/' + ptData.heads[pet.id];
+    formMsg('pn-pt-edit-msg', '', true);
+    ptPairs();
+  }
+
+  async function ptSave(pets, msgId, done) {
+    const body = { enabled: ptData.settings.enabled, size: ptData.settings.size, pets };
+    try {
+      const res = await api('api/pets/settings', body);
+      ptData.settings.pets = pets;
+      ptData.heads = res.heads;
+      renderPets();
+      formMsg(msgId, done + (res.running ? ' Players see it within a few seconds.' : ''), true);
+      return true;
+    } catch (err) {
+      formMsg(msgId, err.message, false);
+      return false;
+    }
+  }
+
+  $('pn-pt-edit').forever.addEventListener('change', ptPairs);
+  $('pn-pt-edit').unlimited.addEventListener('change', ptPairs);
+  $('pn-pt-edit').texture.addEventListener('change', async (e) => {
+    const face = $('pn-pt-face');
+    try {
+      const res = await api('api/pets/texture', { texture: e.target.value });
+      face.src = 'info/heads/' + res.head;
+      face.hidden = false;
+      formMsg('pn-pt-edit-msg', '', true);
+    } catch (err) {
+      face.hidden = true;
+      formMsg('pn-pt-edit-msg', err.message, false);
+    }
+  });
+  $('pn-pt-cancel').addEventListener('click', () => ptOpen(null));
+  $('pn-pt-edit').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const pet = { id: ptEditing || undefined, name: f.name.value.trim(), texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
+      days: f.forever.checked ? 0 : Number(f.days.value) || 0, stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
+    if (!f.forever.checked && pet.days < 1) return formMsg('pn-pt-edit-msg', 'Type how many days a pet lasts, or switch on Lasts forever.', false);
+    if (!f.unlimited.checked && pet.stock < 1) return formMsg('pn-pt-edit-msg', 'Type how many can be sold, or switch on No limit.', false);
+    const pets = ptData.settings.pets.map((p) => (p.id === ptEditing ? pet : p));
+    if (!ptEditing) pets.push(pet);
+    const wasEditing = ptEditing;
+    if (await ptSave(pets, 'pn-pt-edit-msg', wasEditing ? 'Saved.' : 'Added.')) {
+      const fresh = await api('api/pets').catch(() => null);
+      if (fresh) { ptData = fresh; renderPets(); }
+      const msg = $('pn-pt-edit-msg').textContent;
+      ptOpen(null);
+      formMsg('pn-pt-edit-msg', msg, true);
+    }
+  });
+  $('pn-pt-table').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-edit]');
+    if (ed) {
+      ptOpen(ptData.settings.pets.find((p) => p.id === ed.dataset.edit));
+      $('pn-pt-edit').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    const del = e.target.closest('[data-delete]');
+    if (!del) return;
+    const pet = ptData.settings.pets.find((p) => p.id === del.dataset.delete);
+    if (!pet || !confirm(`Take ${pet.name} out of the shop for good? Players who have it keep it until its time is up. (To stop selling it for a while, switch off For sale instead.)`)) return;
+    if (ptEditing === pet.id) ptOpen(null);
+    await ptSave(ptData.settings.pets.filter((p) => p.id !== pet.id), 'pn-pt-edit-msg', 'Removed.');
+  });
+  $('pn-pt-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const enabled = f.enabled.checked;
+    if (enabled && !ptData.settings.enabled && !confirm('Switch pets on? Players can use /pets and the pet shop right away.')) return;
+    try {
+      const res = await api('api/pets/settings', { enabled, size: Number(f.size.value) || 0.8, pets: ptData.settings.pets });
+      formMsg('pn-pt-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
+      loadPets();
+    } catch (err) {
+      formMsg('pn-pt-msg', err.message, false);
+    }
+  });
+  ptOpen(null);
+
   // ── Start ──────────────────────────────────────────────────────────────
 
   Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
@@ -4771,6 +4924,7 @@
   Dirty.track('felling', $('pn-tf-form'), { reload: loadTweaks });
   Dirty.track('chattweaks', $('pn-tc-form'), { reload: loadTweaks });
   Dirty.track('market', $('pn-mk-form'), { reload: loadMarket });
+  Dirty.track('pets', $('pn-pt-form'), { reload: loadPets });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });
 
