@@ -1,3 +1,6 @@
+## 1.10.3
+- Public info page: the section tabs wrap onto a second line when they don't fit next to the search, instead of being cut off (phones still scroll them sideways)
+
 ## 1.10.2
 - Appearance: a background picture for the public info page's banner (up to 8 MB, darkened a little behind the text); without one it stays the purple default
 

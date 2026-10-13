@@ -41,9 +41,9 @@ body { background:
 .in-bar { position: sticky; top: 0; z-index: 20; margin-top: 14px; padding: 8px 24px; box-sizing: border-box; width: 100%;
   background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--card-border); }
 .in-bar-inner { box-sizing: border-box; width: 100%; max-width: 1640px; margin: 0 auto; display: flex; gap: 12px; align-items: center; }
-.in-tabs { flex: 1; min-width: 0; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.in-tabs { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 2px; }
 .in-tabs::-webkit-scrollbar { display: none; }
-.in-tab { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 11px; color: var(--muted);
+.in-tab { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 12px; border-radius: 11px; color: var(--muted);
   text-decoration: none; font-size: var(--fs-md); font-weight: 500; white-space: nowrap; transition: background .15s, color .15s; }
 .in-tab .bi { color: var(--hue); font-size: 16px; }
 .in-tab:hover { background: rgba(var(--ink),.06); color: var(--strong); text-decoration: none; }
@@ -51,7 +51,7 @@ body { background:
 .in-tab-hits { padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--hue) 32%, transparent); color: var(--strong); font-size: var(--fs-xs); font-weight: 600; }
 .in-tab-hits[hidden] { display: none; }
 .in-tab--none { opacity: .4; }
-.in-search { flex: 0 1 300px; min-width: 180px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 11px;
+.in-search { flex: 0 1 280px; min-width: 180px; align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 11px;
   border: 1px solid var(--card-border); background: var(--card); color: var(--faint); }
 .in-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
 .in-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--strong); font: inherit; font-size: var(--fs-md); }
@@ -175,7 +175,7 @@ body:not(.in-searching) .in-cards--picked > .in-card:not(.in-card--wide), .in-ca
   .in-bar { padding: 8px 12px; }
   .in-bar-inner { flex-wrap: wrap; }
   .in-search { flex: 1 1 100%; order: -1; }
-  .in-tabs { flex: 1 1 100%; }
+  .in-tabs { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .in-tab { height: 38px; padding: 0 12px; font-size: var(--fs-base); }
   .in-layout { padding: 18px 12px 40px; }
   .in-section-head { padding: 16px; gap: 14px; }
