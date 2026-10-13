@@ -581,7 +581,7 @@ public final class Claims {
 		public String check(String dim, Box box, String parentId, String ownerUuid, Claim self, Settings s, boolean admin) {
 			if (parentId == null) {
 				if (!admin && !s.dimensionAllowed(dim)) return "You can't claim land in this dimension.";
-				if (!admin && s.onlyPermanentArea && !insidePermanent(dim, box)) return "Claims must be inside the permanent area (land outside it gets reset).";
+				if (!admin && s.onlyPermanentArea && !insidePermanent(dim, box)) return "Part of this claim is too far out: land out there is reset from time to time.";
 				if (!admin && (box.width() < s.minWidth || box.length() < s.minWidth))
 					return "A claim must be at least " + s.minWidth + " blocks wide (this one is " + box.width() + " × " + box.length() + ").";
 				if (!admin && box.area() < s.minArea) return "A claim must cover at least " + s.minArea + " blocks (this one has " + box.area() + ").";

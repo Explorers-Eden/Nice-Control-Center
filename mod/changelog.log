@@ -1,4 +1,17 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.1
+- Pets:
+  - the head faced backwards; it looks the right way now
+  - stays right with you when you run, sprint or fly (before, it fell behind)
+  - /pets is simpler: your pets with Take out / Put away on the front page, and buttons for Moves and Particles that count for whichever pet is out
+  - seven more ways to move: Shoulder, Lazy, Peek, Halo, Spiral, Figure eight and Wander (twelve in all)
+  - particle trails that rise off the pet: Wisps (end rod), Hearts, Notes, Flames, Soul flames, Snow, Glow, Cherry petals, Magic, Sparks, Fireflies, Bubbles (can be switched off for everyone in the panel)
+  - a pet's new name in the panel now reaches the players who have it, like its head did
+  - pets taken out of the shop stay listed in the panel while players have them, so their name and head can still be changed
+  - the player card in Players → Players shows the player's pets: give one (free, for days or forever), add time, make one permanent, take it out or put it away, change how it moves and its particles, or take it away
+- Market and pet shop menus look tidier: clickable [ Buy ] / [ View ] labels instead of underlined names, the facts of an item in one line, and a cleaner item page (it no longer says "You have free" when you carry no diamonds)
+- Claiming land too far out says so plainly: "You can't claim here: land this far out is reset from time to time."
+
 ## 1.13.0
 - Pets: floating player heads that follow their owner, only for looks (no effects, can't be hit or pushed), and every player nearby sees them (normal game clients work)
   - /pets: your pets: take one out, put it away, and pick how it moves: float next to your shoulder, orbit your head, bounce, spin above your head or follow behind you

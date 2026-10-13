@@ -1732,7 +1732,8 @@
       box.innerHTML = '<div class="np-empty">No data for this player.</div>';
       return;
     }
-    // Keep a half-typed message across the 2-second refresh.
+    // Keep a half-typed message (and the pet to give) across the 2-second refresh.
+    if ($('np-pet-give')) playersState.petGive = $('np-pet-give').value;
     const typed = $('np-player-msg') ? $('np-player-msg').value : '';
     const focused = document.activeElement && document.activeElement.id === 'np-player-msg';
     const s = p.status;
@@ -1781,6 +1782,7 @@
         locTile(p, w.access === 'public' ? 'bi-signpost-2' : 'bi-lock', w.name, w, esc(w.access))).join('')}</div>` : ''}
       ${p.claims && p.claims.length ? `<h4 class="np-subhead">Claims</h4><div class="np-loc-grid">${p.claims.map((c) =>
         locTile(p, 'bi-bounding-box', c.anchor, c, c.trusted.length ? 'trusted: ' + esc(c.trusted.join(', ')) : 'nobody trusted')).join('')}</div>` : ''}
+      ${petsSection(p, d)}
       ${p.tags && p.tags.length ? `<h4 class="np-subhead">Tags</h4><div class="np-chips">${p.tags.map((t) => `<span class="np-tag">${esc(t)}</span>`).join('')}</div>` : ''}
       ${clientSection(p)}
       ${miningSection(p)}
@@ -1791,6 +1793,57 @@
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
+  }
+
+  /** The player's pets (cosmetic floating heads), with what an admin can change. */
+  function petsSection(p, d) {
+    const pets = d.pets;
+    if (!p.uuid || !pets || (!pets.enabled && !pets.owned.length)) return '';
+    const edit = !!d.actions;
+    const left = (x) => {
+      if (x.expires === 0) return 'forever';
+      const ms = x.expires - Date.now();
+      if (ms <= 0) return 'running out';
+      return ms < 86400000 ? Math.max(1, Math.round(ms / 3600000)) + ' hours left' : Math.floor(ms / 86400000) + ' days left (until ' + dateTime(x.expires) + ')';
+    };
+    const head = (h) => h ? `<img class="np-pet-face" src="../info/heads/${esc(h)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="np-pet-face"></span>';
+    const rows = pets.owned.map((x) => `<div class="np-pet-row" data-pet="${esc(x.id)}">
+        ${head(x.head)}
+        <div class="np-pet-text"><b>${esc(x.name)}</b>${x.active ? ' <span class="np-level good">out</span>' : ''}${x.inShop ? '' : ' <span class="np-tag">removed from the shop</span>'}
+          <small class="np-loc-sub">${esc(left(x))}</small></div>
+        ${edit ? `<div class="np-pet-actions">
+          <button type="button" class="np-btn small" data-pet-act="${x.active ? 'away' : 'out'}">${x.active ? 'Put away' : 'Take out'}</button>
+          ${x.expires !== 0 ? '<button type="button" class="np-btn small" data-pet-act="add">Add days</button><button type="button" class="np-btn small" data-pet-act="forever">Forever</button>' : ''}
+          <button type="button" class="np-btn small danger" data-pet-act="take" title="Take it away">Take away</button></div>` : ''}
+      </div>`).join('');
+    const label = (list, id) => (list.find((b) => b.id === id) || {}).label || '';
+    const style = pets.owned.length ? `<div class="np-pet-give">
+        ${edit ? `<label class="np-loc-sub">Moves <select data-pet-style="move">${pets.behaviors.map((b) => `<option value="${esc(b.id)}" ${b.id === pets.behavior ? 'selected' : ''}>${esc(b.label)}</option>`).join('')}</select></label>
+        ${pets.particles ? `<label class="np-loc-sub">Particles <select data-pet-style="trail">${pets.trails.map((b) => `<option value="${esc(b.id)}" ${b.id === pets.trail ? 'selected' : ''}>${esc(b.label)}</option>`).join('')}</select></label>` : ''}`
+        : `<span class="np-loc-sub">Moves: ${esc(label(pets.behaviors, pets.behavior))}${pets.particles ? ' · Particles: ' + esc(label(pets.trails, pets.trail)) : ''}</span>`}</div>` : '';
+    const giveable = pets.shop;
+    const give = edit && giveable.length ? `<div class="np-pet-give">
+        <select id="np-pet-give" aria-label="Pet to give">${giveable.map((g) => `<option value="${esc(g.id)}" ${g.id === playersState.petGive ? 'selected' : ''}>${esc(g.name)}${g.retired ? ' (not sold any more)' : ''}</option>`).join('')}</select>
+        <button type="button" class="np-btn small" data-pet-act="give"><i class="bi bi-gift"></i> Give</button>
+        <span class="np-loc-sub">Free, doesn't count as a sale. Giving a pet they have adds the time.</span></div>` : '';
+    const note = playersState.petNote ? `<p class="np-loc-sub ${playersState.petNoteError ? 'np-pet-error' : ''}">${esc(playersState.petNote)}</p>` : '';
+    return `<h4 class="np-subhead">Pets</h4>
+      <div class="np-client-box np-pets" data-uuid="${esc(p.uuid)}">
+        ${rows || `<p class="np-loc-sub">${esc(p.name)} has no pets.</p>`}${style}${give}${note}
+        ${pets.enabled ? '' : '<p class="np-loc-sub">Pets are switched off.</p>'}</div>`;
+  }
+
+  async function petAction(uuid, body) {
+    try {
+      const res = await api('api/players/pets', { method: 'POST', body: JSON.stringify({ uuid, name: (playersState.data.detail || {}).name, ...body }) });
+      playersState.petNote = res.error || 'Done.';
+      playersState.petNoteError = !!res.error;
+    } catch (e) {
+      playersState.petNote = 'The server did not respond: ' + e.message;
+      playersState.petNoteError = true;
+    }
+    loadPlayers();
+    setTimeout(() => { playersState.petNote = ''; renderPlayerDetail(); }, 5000);
   }
 
   /** What the player's game reports: brand and mods seen through their network channels. */
@@ -1862,7 +1915,33 @@
       e.preventDefault();
       playerAction(e.target.dataset.uuid, 'message', $('np-player-msg').value);
     });
+    $('np-player-detail').addEventListener('change', (e) => {
+      if (!e.target.matches('[data-pet-style]')) return;
+      petAction(e.target.closest('[data-uuid]').dataset.uuid, { action: e.target.dataset.petStyle, how: e.target.value });
+    });
     $('np-player-detail').addEventListener('click', (e) => {
+      const pb = e.target.closest('[data-pet-act]');
+      if (pb) {
+        const uuid = pb.closest('[data-uuid]').dataset.uuid;
+        const row = pb.closest('[data-pet]');
+        const pet = row ? row.dataset.pet : $('np-pet-give').value;
+        const act = pb.dataset.petAct;
+        const name = (playersState.data.detail || {}).name;
+        const petName = row ? row.querySelector('b').textContent : $('np-pet-give').selectedOptions[0].textContent;
+        if (act === 'give' || act === 'add') {
+          const def = act === 'give' ? String((playersState.data.pets.shop.find((g) => g.id === pet) || {}).days || '') : '30';
+          const answer = prompt(act === 'give' ? `Give ${petName} to ${name} for how many days? Leave it empty for forever.` : `Add how many days to ${petName}?`, def === '0' ? '' : def);
+          if (answer === null) return;
+          const days = answer.trim() === '' ? 0 : Number(answer);
+          if (!Number.isInteger(days) || days < 0 || (act === 'add' && days < 1)) return alert('Type a whole number of days.');
+          petAction(uuid, { action: act, pet, days });
+          return;
+        }
+        if (act === 'take' && !confirm(`Take ${petName} away from ${name}? It doesn't come back.`)) return;
+        if (act === 'forever' && !confirm(`Make ${petName} ${name}'s forever?`)) return;
+        petAction(uuid, { action: act, pet });
+        return;
+      }
       const b = e.target.closest('[data-player-act]');
       if (!b) return;
       const form = b.closest('[data-uuid]');

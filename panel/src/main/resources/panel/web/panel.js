@@ -4772,13 +4772,12 @@
     const f = $('pn-pt-form');
     f.enabled.checked = s.enabled;
     f.size.value = s.size;
+    f.particles.checked = s.particles;
     const edit = can('settings.server');
     f.querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
     $('pn-pt-edit').hidden = !edit;
     const cur = ptData.currency.replace(/^minecraft:/, '').replace(/_/g, ' ');
     $('pn-pt-currency').textContent = `In ${cur}s (the market's currency); 0 makes it free`;
-    $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: sold counts are from the last save. ')
-      + `${s.pets.length} pet${s.pets.length === 1 ? '' : 's'}.`;
     renderPets();
     Dirty.reset('pets');
   }
@@ -4788,15 +4787,24 @@
     const sold = ptData.state.sold || {};
     const owners = ptData.state.owners || {};
     const edit = can('settings.server');
-    $('pn-pt-table').innerHTML = s.pets.length ? `<thead><tr><th>Pet</th><th>Price</th><th>Lasts</th><th>Sold</th><th>Players with it</th><th>For sale</th><th></th></tr></thead><tbody>${s.pets.map((p) => `
+    const shop = s.pets.filter((p) => !p.retired);
+    const retired = s.pets.filter((p) => p.retired);
+    $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: sold counts are from the last save. ')
+      + `${shop.length} pet${shop.length === 1 ? '' : 's'} in the shop${retired.length ? `, ${retired.length} no longer sold` : ''}.`;
+    $('pn-pt-table').innerHTML = shop.length ? `<thead><tr><th>Pet</th><th>Price</th><th>Lasts</th><th>Sold</th><th>Players with it</th><th>For sale</th><th></th></tr></thead><tbody>${shop.map((p) => `
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
       <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptDays(p.days)}</td>
       <td>${Number(sold[p.id] || 0).toLocaleString()}${p.stock > 0 ? ' of ' + Number(p.stock).toLocaleString() : ''}</td>
       <td>${Number(owners[p.id] || 0).toLocaleString()}</td>
       <td>${p.forSale ? (p.stock > 0 && (sold[p.id] || 0) >= p.stock ? '<span class="pn-warn">sold out</span>' : 'yes') : 'no'}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
-        <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Take it out of the shop for good"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
-      : '<tbody><tr><td class="pn-hint">No pets yet. Add one below.</td></tr></tbody>';
+        <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Take it out of the shop"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No pets in the shop. Add one below.</td></tr></tbody>';
+    $('pn-pt-retired-box').hidden = !retired.length;
+    $('pn-pt-retired').innerHTML = retired.length ? `<thead><tr><th>Pet</th><th>Players with it</th><th></th></tr></thead><tbody>${retired.map((p) => `
+      <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td><td>${Number(owners[p.id] || 0).toLocaleString()}</td>
+      <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Name &amp; head</button>
+        <button type="button" class="np-btn small" data-revive="${esc(p.id)}"><i class="bi bi-arrow-counterclockwise"></i> Back in the shop</button>` : ''}</td></tr>`).join('')}</tbody>` : '';
     const buys = ptData.state.purchases || [];
     $('pn-pt-sales').innerHTML = buys.length ? `<thead><tr><th>When</th><th>Pet</th><th>Player</th><th>Paid</th><th>For</th></tr></thead><tbody>${buys.map((b) => `
       <tr><td>${esc(dateTime(b.time))}</td><td>${esc(b.petName)}</td><td>${esc(b.buyerName)}</td><td>${b.price ? Number(b.price).toLocaleString() : 'free'}</td><td>${ptDays(b.days)}</td></tr>`).join('')}</tbody>`
@@ -4820,7 +4828,8 @@
     f.unlimited.checked = pet ? pet.stock === 0 : true;
     f.stock.value = pet && pet.stock > 0 ? pet.stock : 10;
     f.forSale.checked = pet ? pet.forSale : true;
-    $('pn-pt-edit-title').textContent = pet ? 'Edit ' + pet.name : 'Add a pet';
+    f.classList.toggle('pn-pt-edit--retired', !!(pet && pet.retired));
+    $('pn-pt-edit-title').textContent = pet ? (pet.retired ? 'Name and head of ' : 'Edit ') + pet.name : 'Add a pet';
     $('pn-pt-add').innerHTML = pet ? '<i class="bi bi-check2"></i> Save pet' : '<i class="bi bi-plus-lg"></i> Add pet';
     $('pn-pt-cancel').hidden = !pet;
     const face = $('pn-pt-face');
@@ -4831,7 +4840,7 @@
   }
 
   async function ptSave(pets, msgId, done) {
-    const body = { enabled: ptData.settings.enabled, size: ptData.settings.size, pets };
+    const body = { enabled: ptData.settings.enabled, size: ptData.settings.size, particles: ptData.settings.particles, pets };
     try {
       const res = await api('api/pets/settings', body);
       ptData.settings.pets = pets;
@@ -4865,6 +4874,8 @@
     const f = e.target;
     const pet = { id: ptEditing || undefined, name: f.name.value.trim(), texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
       days: f.forever.checked ? 0 : Number(f.days.value) || 0, stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
+    const before = ptData.settings.pets.find((p) => p.id === ptEditing);
+    if (before && before.retired) Object.assign(pet, { price: before.price, days: before.days, stock: before.stock, forSale: false, retired: true });
     if (!f.forever.checked && pet.days < 1) return formMsg('pn-pt-edit-msg', 'Type how many days a pet lasts, or switch on Lasts forever.', false);
     if (!f.unlimited.checked && pet.stock < 1) return formMsg('pn-pt-edit-msg', 'Type how many can be sold, or switch on No limit.', false);
     const pets = ptData.settings.pets.map((p) => (p.id === ptEditing ? pet : p));
@@ -4878,27 +4889,43 @@
       formMsg('pn-pt-edit-msg', msg, true);
     }
   });
-  $('pn-pt-table').addEventListener('click', async (e) => {
+  async function ptClick(e) {
     const ed = e.target.closest('[data-edit]');
     if (ed) {
       ptOpen(ptData.settings.pets.find((p) => p.id === ed.dataset.edit));
       $('pn-pt-edit').scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    const revive = e.target.closest('[data-revive]');
+    if (revive) {
+      const pets = ptData.settings.pets.map((p) => (p.id === revive.dataset.revive ? { ...p, retired: false, forSale: true } : p));
+      await ptSave(pets, 'pn-pt-edit-msg', 'Back in the shop.');
+      return;
+    }
     const del = e.target.closest('[data-delete]');
     if (!del) return;
     const pet = ptData.settings.pets.find((p) => p.id === del.dataset.delete);
-    if (!pet || !confirm(`Take ${pet.name} out of the shop for good? Players who have it keep it until its time is up. (To stop selling it for a while, switch off For sale instead.)`)) return;
+    if (!pet) return;
+    const have = Number((ptData.state.owners || {})[pet.id] || 0);
+    if (have > 0) {
+      if (!confirm(`Take ${pet.name} out of the shop? ${have} player${have === 1 ? ' has' : 's have'} it and keep${have === 1 ? 's' : ''} it until its time is up. It moves to "No longer sold", where you can still change its name and head.`)) return;
+      if (ptEditing === pet.id) ptOpen(null);
+      await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, retired: true, forSale: false } : p)), 'pn-pt-edit-msg', 'Taken out of the shop.');
+      return;
+    }
+    if (!confirm(`Delete ${pet.name}? Nobody has it.`)) return;
     if (ptEditing === pet.id) ptOpen(null);
-    await ptSave(ptData.settings.pets.filter((p) => p.id !== pet.id), 'pn-pt-edit-msg', 'Removed.');
-  });
+    await ptSave(ptData.settings.pets.filter((p) => p.id !== pet.id), 'pn-pt-edit-msg', 'Deleted.');
+  }
+  $('pn-pt-table').addEventListener('click', ptClick);
+  $('pn-pt-retired').addEventListener('click', ptClick);
   $('pn-pt-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
     const enabled = f.enabled.checked;
     if (enabled && !ptData.settings.enabled && !confirm('Switch pets on? Players can use /pets and the pet shop right away.')) return;
     try {
-      const res = await api('api/pets/settings', { enabled, size: Number(f.size.value) || 0.8, pets: ptData.settings.pets });
+      const res = await api('api/pets/settings', { enabled, size: Number(f.size.value) || 0.8, particles: f.particles.checked, pets: ptData.settings.pets });
       formMsg('pn-pt-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
       loadPets();
     } catch (err) {

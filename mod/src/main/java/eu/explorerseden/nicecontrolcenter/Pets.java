@@ -41,10 +41,17 @@ public final class Pets {
 	/** How a pet moves. */
 	public enum Behavior {
 		FLOAT("Float", "Hovers next to your shoulder"),
-		ORBIT("Orbit", "Circles around your head"),
+		SHOULDER("Shoulder", "Sits still on your shoulder"),
+		FOLLOW("Follow", "Trails behind you"),
+		LAZY("Lazy", "Stays put until you walk off, then catches up"),
+		PEEK("Peek", "Hides behind your head and peeks over your shoulders"),
 		BOUNCE("Bounce", "Hops up and down next to you"),
-		SPIN("Spin", "Spins above your head"),
-		FOLLOW("Follow", "Trails behind you");
+		ORBIT("Orbit", "Circles around your head"),
+		HALO("Halo", "Spins in a small ring above your head"),
+		SPIRAL("Spiral", "Winds up and down around you"),
+		FIGURE_EIGHT("Figure eight", "Loops a figure eight around you"),
+		WANDER("Wander", "Drifts around you on its own"),
+		SPIN("Spin", "Spins on the spot above your head");
 
 		public final String label;
 		public final String description;
@@ -57,6 +64,37 @@ public final class Pets {
 		public static Behavior of(String name) {
 			if (name != null) for (Behavior b : values()) if (b.name().equalsIgnoreCase(name)) return b;
 			return FLOAT;
+		}
+	}
+
+	/** The trail a pet can leave (the mod turns these into the game's particles). */
+	public enum Trail {
+		OFF("Off", 0),
+		SPARKLES("Wisps", 4),
+		HEARTS("Hearts", 18),
+		NOTES("Notes", 14),
+		FLAMES("Flames", 5),
+		SOUL_FLAMES("Soul flames", 5),
+		SNOW("Snow", 5),
+		GLOW("Glow", 6),
+		PETALS("Cherry petals", 6),
+		MAGIC("Magic", 3),
+		SPARKS("Sparks", 6),
+		FIREFLIES("Fireflies", 10),
+		BUBBLES("Bubbles", 6);
+
+		public final String label;
+		/** One particle every this many ticks. */
+		public final int every;
+
+		Trail(String label, int every) {
+			this.label = label;
+			this.every = every;
+		}
+
+		public static Trail of(String name) {
+			if (name != null) for (Trail t : values()) if (t.name().equalsIgnoreCase(name)) return t;
+			return OFF;
 		}
 	}
 
@@ -74,12 +112,24 @@ public final class Pets {
 		public int stock;
 		/** Off keeps the pet (and the ones players own) but stops selling it. */
 		public boolean forSale = true;
+		/**
+		 * Taken out of the shop while players still have it: never sold again, but kept so its name and head
+		 * can still be changed. The panel drops it once nobody has it any more.
+		 */
+		public boolean retired;
+
+		/** In the shop right now (apart from being sold out). */
+		public boolean onSale() {
+			return forSale && !retired;
+		}
 	}
 
 	public static final class Settings {
 		public boolean enabled = false;
 		/** Head size (1 = half a block, like a player head). */
 		public double size = 0.8;
+		/** Players may give their pet a particle trail. */
+		public boolean particles = true;
 		public List<Pet> pets = new ArrayList<>();
 
 		public Settings fill() {
@@ -179,7 +229,8 @@ public final class Pets {
 		public long since;
 		/** 0 = forever. */
 		public long expires;
-		public String behavior = Behavior.FLOAT.name();
+		/** Before 1.13.0's release each pet had its own way of moving; now it's the owner's ({@link Owner#behavior}). */
+		public String behavior;
 	}
 
 	public static final class Owner {
@@ -187,6 +238,9 @@ public final class Pets {
 		public List<Owned> pets = new ArrayList<>();
 		/** The pet that's out, or null. */
 		public String active;
+		/** How their pet moves, and its particle trail (for whichever pet is out). */
+		public String behavior;
+		public String trail;
 
 		public Owned owned(String pet) {
 			for (Owned o : pets) if (o.pet.equals(pet)) return o;
@@ -222,12 +276,22 @@ public final class Pets {
 			for (Owner o : owners.values()) {
 				if (o.pets == null) o.pets = new ArrayList<>();
 				o.pets.removeIf(p -> p == null || p.pet == null || p.texture == null);
+				if (o.behavior == null) {
+					Owned out = o.active == null ? null : o.owned(o.active);
+					o.behavior = Behavior.of(out != null ? out.behavior : null).name();
+				}
+				if (o.trail == null) o.trail = Trail.OFF.name();
 			}
 			return this;
 		}
 
 		public Owner owner(String uuid, String name) {
-			Owner o = owners.computeIfAbsent(uuid, k -> new Owner());
+			Owner o = owners.computeIfAbsent(uuid, k -> {
+				Owner n = new Owner();
+				n.behavior = Behavior.FLOAT.name();
+				n.trail = Trail.OFF.name();
+				return n;
+			});
 			if (name != null) o.name = name;
 			return o;
 		}
@@ -243,7 +307,7 @@ public final class Pets {
 
 		/** Why the player can't buy the pet now (apart from paying), or null. */
 		public String cannotBuy(String uuid, Pet p) {
-			if (!p.forSale) return "That pet isn't for sale any more.";
+			if (!p.onSale()) return "That pet isn't for sale any more.";
 			if (left(p) == 0) return "That pet is sold out.";
 			Owner o = owners.get(uuid);
 			Owned have = o == null ? null : o.owned(p.id);
@@ -276,6 +340,33 @@ public final class Pets {
 			b.time = now;
 			purchases.add(b);
 			while (purchases.size() > PURCHASES) purchases.remove(0);
+		}
+
+		/**
+		 * An admin gives the pet (not a sale): days 0 is forever, else that many days more than it has now.
+		 */
+		public void give(String uuid, String name, Pet p, int days, long now) {
+			Owner o = owner(uuid, name);
+			Owned have = o.owned(p.id);
+			if (have == null) {
+				have = new Owned();
+				have.pet = p.id;
+				have.since = now;
+				have.expires = -1;
+				o.pets.add(have);
+			}
+			have.name = p.name;
+			have.texture = p.texture;
+			if (days <= 0) have.expires = 0;
+			else if (have.expires != 0) have.expires = Math.max(now, have.expires) + days * 86_400_000L;
+		}
+
+		/** Takes a pet away from a player. False when they didn't have it. */
+		public boolean take(String uuid, String pet) {
+			Owner o = owners.get(uuid);
+			if (o == null || !o.pets.removeIf(p -> p.pet.equals(pet))) return false;
+			if (pet.equals(o.active)) o.active = null;
+			return true;
 		}
 
 		/** Takes away pets whose time is up. */

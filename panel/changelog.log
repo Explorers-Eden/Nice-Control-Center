@@ -1,3 +1,7 @@
+## 1.12.1
+- Market → Pets: the pet lists sit below the form for adding one, and the pet count updates right away; a switch for particle trails; taking a pet out of the shop that players still have moves it to "No longer sold", where its name and head can still be changed (it goes away by itself once nobody has it), with "Back in the shop" to sell it again (needs mod 1.13.1)
+- Players → Players: the player card shows their pets and lets you give, extend, take away and change them (in the mod's player view)
+
 ## 1.12.0
 - Community → Market → Pets: switch pets on, set the head size and run the pet shop: add pets with a name, a head texture (the base64 value from a head website or a textures.minecraft.net link, with a face preview), a price, how long they last (or forever) and how many can be sold (or no limit); edit them, stop selling them or remove them. Shows how many were sold, how many players have each pet, and recent pet purchases (needs mod 1.13.0)
 - Public info page: the Market tab lists the pets for sale with their faces

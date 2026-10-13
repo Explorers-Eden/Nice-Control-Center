@@ -775,11 +775,13 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-warn { color: var(--accent-2); }
 .pn-pt-face { width: 28px; height: 28px; image-rendering: pixelated; border-radius: 4px; flex: none; background: rgba(var(--ink),.08); }
 .pn-pt-face--big { width: 72px; height: 72px; border-radius: 8px; }
-.pn-pt-edit { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--card-border); }
+.pn-pt-edit { margin: 4px 0 6px; padding-bottom: 14px; border-bottom: 1px solid var(--card-border); }
 .pn-pt-edit h4 { margin: 0 0 4px; }
 .pn-pt-edit__grid { display: flex; gap: 16px; align-items: flex-start; }
 .pn-pt-edit__grid > div { flex: 1; min-width: 0; }
 .pn-pt-edit__grid img { margin-top: 12px; }
+.pn-pt-subhead { margin: 18px 0 4px; }
+.pn-pt-edit.pn-pt-edit--retired .pn-pt-sale { display: none; }
 .pn-pt-pair { display: inline-flex; align-items: center; gap: 10px; }
 .pn-pt-pair input[type=number] { width: 110px; }
 .pn-pt-pair input:disabled { opacity: .4; }

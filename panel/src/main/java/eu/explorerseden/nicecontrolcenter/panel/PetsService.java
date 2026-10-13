@@ -102,7 +102,7 @@ final class PetsService {
 		Map<String, Object> sold = (Map<String, Object>) state().getOrDefault("sold", Map.of());
 		List<Map<String, Object>> out = new ArrayList<>();
 		for (Pets.Pet p : s.pets) {
-			if (!p.forSale) continue;
+			if (!p.onSale()) continue;
 			int left = p.stock <= 0 ? -1 : Math.max(0, p.stock - number(sold.get(p.id)));
 			if (left == 0) continue;
 			Map<String, Object> m = new LinkedHashMap<>();
@@ -163,12 +163,17 @@ final class PetsService {
 		routes.get("/api/pets", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			Map<String, Object> out = new LinkedHashMap<>();
 			Pets.Settings s = settings();
+			Map<String, Object> state = state();
+			// Pets taken out of the shop go for good once nobody has them any more.
+			Object owners = state.get("owners");
+			if (owners instanceof Map<?, ?> have && s.pets.removeIf(p -> p.retired && number(have.get(p.id)) == 0)) {
+				Pets.write(settingsFile(), s);
+			}
 			out.put("settings", s);
 			out.put("heads", heads(s));
 			out.put("defaults", new Pets.Settings().fill());
 			out.put("currency", Market.read(serverDir.resolve("config").resolve(Market.FILE)).currency);
 			out.put("running", server.state() == Supervisor.State.RUNNING);
-			Map<String, Object> state = state();
 			Object purchases = state.get("purchases");
 			if (purchases instanceof List<?> l) {
 				List<Object> recent = new ArrayList<>(l);

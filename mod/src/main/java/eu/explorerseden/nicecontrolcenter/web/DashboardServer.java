@@ -486,7 +486,28 @@ public final class DashboardServer {
 				result.put("unread", eu.explorerseden.nicecontrolcenter.players.Conversations.unreadTotal());
 				if (key != null) {
 					result.put("detail", detail);
+					if (detail instanceof Map<?, ?> d && d.get("uuid") instanceof String u) {
+						result.put("pets", onServerThread(() -> eu.explorerseden.nicecontrolcenter.pets.PetStore.forPlayer(u)));
+					}
 				}
+				sendJson(exchange, result);
+			}
+			case "/api/players/pets" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				if (!config.web_player_actions) {
+					sendJson(exchange, Map.of("error", "Player actions from the dashboard are switched off (web_player_actions)."));
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
+				java.util.function.Function<String, String> s = k -> body.has(k) && !body.get(k).isJsonNull() ? body.get(k).getAsString() : "";
+				int days = body.has("days") ? body.get("days").getAsInt() : 0;
+				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.pets.PetStore.adminAction(minecraft, s.apply("uuid"), s.apply("name"),
+						s.apply("action"), s.apply("pet"), days, s.apply("how"), by));
+				Map<String, Object> result = new LinkedHashMap<>();
+				result.put("error", error);
 				sendJson(exchange, result);
 			}
 			case "/api/players/action" -> {

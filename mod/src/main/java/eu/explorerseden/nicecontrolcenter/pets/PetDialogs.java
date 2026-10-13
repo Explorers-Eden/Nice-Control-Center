@@ -66,8 +66,9 @@ public final class PetDialogs {
 		return new PlainMessage(Component.literal(s).withStyle(color), TEXT_WIDTH);
 	}
 
+	/** A clickable label that looks like a small button ("[ View ]"). */
 	private static MutableComponent link(String label, String hover, String action, CompoundTag args, ChatFormatting color) {
-		return Component.literal(label).withStyle(st -> st.withColor(color).withUnderlined(true)
+		return Component.literal("[ " + label + " ]").withStyle(st -> st.withColor(color).withBold(true)
 				.withClickEvent(new ClickEvent.Custom(Identifier.fromNamespaceAndPath("nicecontrolcenter", "pets/" + action), Optional.of(args)))
 				.withHoverEvent(new HoverEvent.ShowText(Component.literal(hover))));
 	}
@@ -86,13 +87,11 @@ public final class PetDialogs {
 	private static DialogBody headRow(ServerPlayer player, String texture, Component description) {
 		ItemStack head = PetFollowers.head(player.level().getServer(), texture);
 		if (head.isEmpty()) return new PlainMessage(description, TEXT_WIDTH);
-		return new ItemBody(ItemStackTemplate.fromNonEmptyStack(head), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), false, true, 16, 16);
+		return new ItemBody(ItemStackTemplate.fromNonEmptyStack(head), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), false, false, 16, 16);
 	}
 
 	private static String money(int n) {
-		if (n == 0) return "free";
-		String name = MarketStore.currencyName();
-		return String.format(Locale.ROOT, "%,d %s", n, n == 1 ? name.replaceAll("s$", "") : name);
+		return n == 0 ? "free" : amount(n);
 	}
 
 	private static String left(Pets.Owned o) {
@@ -108,16 +107,16 @@ public final class PetDialogs {
 		return t.getStringOr(k, "");
 	}
 
+	/** A line on top after something happened: green when it starts with a tick, else red. */
 	private static void notice(ServerPlayer player, List<DialogBody> body, String notice) {
 		if (notice == null) return;
-		boolean good = notice.startsWith("Bought") || notice.startsWith("Got") || notice.endsWith("is out.") || notice.contains("now ");
-		body.add(text(notice, good ? ChatFormatting.GREEN : ChatFormatting.RED));
+		body.add(text(notice, notice.startsWith("✔") ? ChatFormatting.GREEN : ChatFormatting.RED));
 		Plop.play(player);
 	}
 
 	private static List<Pets.Pet> shopPets() {
 		List<Pets.Pet> out = new ArrayList<>();
-		for (Pets.Pet p : PetStore.settings().pets) if (p.forSale && PetStore.data().left(p) != 0) out.add(p);
+		for (Pets.Pet p : PetStore.settings().pets) if (p.onSale() && PetStore.data().left(p) != 0) out.add(p);
 		return out;
 	}
 
@@ -129,39 +128,48 @@ public final class PetDialogs {
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
 		if (mine.isEmpty()) {
-			body.add(text("You don't have a pet yet. Pets are floating heads that follow you around, just for looks. Get one in the pet shop.", ChatFormatting.GRAY));
+			body.add(text("You don't have a pet yet: a floating head that follows you around, just for looks. Get one in the pet shop.", ChatFormatting.GRAY));
 		} else {
-			body.add(text("Click a pet to take it out, put it away or change how it moves. Everyone near you sees it.", ChatFormatting.GRAY));
 			for (Pets.Owned o : mine) {
 				boolean out = o.pet.equals(owner.active);
-				Component desc = Component.empty()
-						.append(link(o.name, "Click for this pet", "view", args("id", o.pet), ChatFormatting.WHITE))
+				MutableComponent desc = Component.empty()
+						.append(Component.literal(PetStore.name(o)).withStyle(ChatFormatting.WHITE))
 						.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
-						.append(Component.literal("\n" + Pets.Behavior.of(o.behavior).label + " · " + left(o)).withStyle(ChatFormatting.DARK_GRAY));
+						.append(Component.literal("\n" + left(o) + "  ").withStyle(ChatFormatting.DARK_GRAY))
+						.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
+								: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
 				body.add(headRow(player, PetStore.texture(o), desc));
 			}
 		}
 		List<ActionButton> buttons = new ArrayList<>();
+		if (!mine.isEmpty()) {
+			buttons.add(button("Moves: " + Pets.Behavior.of(owner.behavior).label, "Pick how your pet moves", "moves", args()));
+			if (PetStore.settings().particles) buttons.add(button("Particles: " + Pets.Trail.of(owner.trail).label, "Pick a trail for your pet", "trails", args()));
+		}
 		buttons.add(button("Pet shop", "Pets you can get", "shop", args("page", "0")));
-		if (owner != null && owner.active != null) buttons.add(button("Put away", "Your pet stops following you", "away", args()));
 		menu(player, "Pets", body, buttons, close());
 	}
 
-	private static void view(ServerPlayer player, Pets.Owned o, String notice) {
+	private static void moves(ServerPlayer player, String notice) {
 		Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
-		boolean out = owner != null && o.pet.equals(owner.active);
-		Pets.Behavior now = Pets.Behavior.of(o.behavior);
+		Pets.Behavior now = Pets.Behavior.of(owner == null ? null : owner.behavior);
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
-		body.add(headRow(player, PetStore.texture(o), Component.literal(o.name).withStyle(ChatFormatting.WHITE)
-				.append(Component.literal("\n" + left(o)).withStyle(ChatFormatting.DARK_GRAY))));
-		body.add(text((out ? "Out now. " : "") + "Moves: " + now.label + " (" + now.description.toLowerCase(Locale.ROOT) + "). Pick another below.", ChatFormatting.GRAY));
+		body.add(text("How your pet moves: " + now.label + " · " + now.description.toLowerCase(Locale.ROOT) + ". Hover a button to see what it does.", ChatFormatting.GRAY));
 		List<ActionButton> buttons = new ArrayList<>();
-		buttons.add(out ? button("Put away", null, "away", args("id", o.pet)) : button("Take out", "It follows you around", "out", args("id", o.pet)));
-		for (Pets.Behavior b : Pets.Behavior.values()) {
-			buttons.add(button((b == now ? "● " : "") + b.label, b.description, "move", args("id", o.pet, "how", b.name())));
-		}
-		menu(player, o.name, body, buttons, button("Back", null, "home", args()));
+		for (Pets.Behavior b : Pets.Behavior.values()) buttons.add(button((b == now ? "● " : "") + b.label, b.description, "move", args("how", b.name())));
+		menu(player, "Pets · Moves", body, buttons, button("Back", null, "home", args()));
+	}
+
+	private static void trails(ServerPlayer player, String notice) {
+		Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
+		Pets.Trail now = Pets.Trail.of(owner == null ? null : owner.trail);
+		List<DialogBody> body = new ArrayList<>();
+		notice(player, body, notice);
+		body.add(text("Particles that rise off your pet: " + now.label + ".", ChatFormatting.GRAY));
+		List<ActionButton> buttons = new ArrayList<>();
+		for (Pets.Trail t : Pets.Trail.values()) buttons.add(button((t == now ? "● " : "") + t.label, null, "trail", args("how", t.name())));
+		menu(player, "Pets · Particles", body, buttons, button("Back", null, "home", args()));
 	}
 
 	public static void shop(ServerPlayer player, int page, String notice) {
@@ -173,14 +181,14 @@ public final class PetDialogs {
 		if (pets.isEmpty()) {
 			body.add(text("There are no pets for sale right now.", ChatFormatting.GRAY));
 		} else {
-			body.add(text("Pets are only for looks: a floating head that follows you, seen by everyone. Paid in " + MarketStore.currencyName() + ". Click one to see it.", ChatFormatting.GRAY));
+			body.add(text("Floating heads that follow you, just for looks · paid in " + MarketStore.currencyName(), ChatFormatting.GRAY));
 			if (pages > 1) {
 				MutableComponent nav = Component.empty();
-				if (p > 0) nav.append(link("← Previous", "Page " + p, "shop", args("page", String.valueOf(p - 1)), ChatFormatting.YELLOW));
-				else nav.append(Component.literal("← Previous").withStyle(ChatFormatting.DARK_GRAY));
+				if (p > 0) nav.append(link("←", "Page " + p, "shop", args("page", String.valueOf(p - 1)), ChatFormatting.YELLOW));
+				else nav.append(Component.literal("[ ← ]").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.BOLD));
 				nav.append(Component.literal("  " + (p + 1) + " / " + pages + "  ").withStyle(ChatFormatting.GRAY));
-				if (p < pages - 1) nav.append(link("Next →", "Page " + (p + 2), "shop", args("page", String.valueOf(p + 1)), ChatFormatting.YELLOW));
-				else nav.append(Component.literal("Next →").withStyle(ChatFormatting.DARK_GRAY));
+				if (p < pages - 1) nav.append(link("→", "Page " + (p + 2), "shop", args("page", String.valueOf(p + 1)), ChatFormatting.YELLOW));
+				else nav.append(Component.literal("[ → ]").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.BOLD));
 				body.add(new PlainMessage(nav, TEXT_WIDTH));
 			}
 			Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
@@ -188,10 +196,11 @@ public final class PetDialogs {
 				int left = PetStore.data().left(pet);
 				boolean have = owner != null && owner.owned(pet.id) != null;
 				Component desc = Component.empty()
-						.append(link(pet.name, "Click to see it and buy", "item", args("id", pet.id), ChatFormatting.WHITE))
+						.append(Component.literal(pet.name).withStyle(ChatFormatting.WHITE))
 						.append(have ? Component.literal("  yours").withStyle(ChatFormatting.GREEN) : Component.empty())
-						.append(Component.literal("\n" + money(pet.price)).withStyle(ChatFormatting.GOLD))
-						.append(Component.literal(" · " + Pets.duration(pet.days) + (left > 0 ? " · " + left + " left" : "")).withStyle(ChatFormatting.DARK_GRAY));
+						.append(Component.literal("\n" + (pet.price == 0 ? "Free" : amount(pet.price))).withStyle(ChatFormatting.GOLD))
+						.append(Component.literal(" · " + Pets.duration(pet.days) + (left > 0 ? " · " + left + " left" : "") + "  ").withStyle(ChatFormatting.DARK_GRAY))
+						.append(link("View", "See it and buy", "item", args("id", pet.id), ChatFormatting.GREEN));
 				body.add(headRow(player, pet.texture, desc));
 			}
 		}
@@ -205,16 +214,38 @@ public final class PetDialogs {
 		int left = data.left(pet);
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
-		body.add(headRow(player, pet.texture, Component.literal(pet.name).withStyle(ChatFormatting.WHITE)
-				.append(Component.literal("\n" + money(pet.price)).withStyle(ChatFormatting.GOLD))));
-		body.add(text("Lasts " + Pets.duration(pet.days) + (left > 0 ? " · " + left + " left to buy" : "") + ".", ChatFormatting.WHITE));
-		if (have != null) body.add(text("You have it: " + left(have) + (have.expires > 0 ? ". Buying it again adds " + Pets.duration(pet.days) + "." : "."), ChatFormatting.GREEN));
-		else if (pet.price > 0) body.add(text("You have " + money(MarketStore.count(player, new ItemStack(MarketStore.currency()))) + ".", ChatFormatting.GRAY));
+		body.add(headRow(player, pet.texture, Component.literal(pet.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
+				.append(Component.literal("\nA floating head that follows you").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+		// The facts in one line: label grey, value bright.
+		MutableComponent facts = Component.empty()
+				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(pet.price == 0 ? "Free" : amount(pet.price)).withStyle(ChatFormatting.GOLD))
+				.append(Component.literal("   Lasts ").withStyle(ChatFormatting.GRAY)).append(Component.literal(Pets.duration(pet.days)).withStyle(ChatFormatting.WHITE));
+		if (left > 0) facts.append(Component.literal("   Left ").withStyle(ChatFormatting.GRAY)).append(Component.literal(String.valueOf(left)).withStyle(ChatFormatting.WHITE));
+		body.add(new PlainMessage(facts, TEXT_WIDTH));
 		String why = data.cannotBuy(player.getStringUUID(), pet);
+		if (have != null) {
+			body.add(text("✔ You have it: " + left(have), ChatFormatting.GREEN));
+		}
+		if (why != null) {
+			body.add(text(why, ChatFormatting.GRAY));
+		} else if (pet.price > 0) {
+			int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
+			body.add(carried >= pet.price ? text("You carry " + amount(carried) + ".", ChatFormatting.DARK_GRAY)
+					: text("You carry " + amount(carried) + ": " + amount(pet.price - carried) + " more needed.", ChatFormatting.RED));
+		}
 		List<ActionButton> buttons = new ArrayList<>();
-		if (why == null) buttons.add(button(have != null ? "Buy more time" : pet.price == 0 ? "Get it" : "Buy", null, "buy", args("id", pet.id)));
-		else body.add(text(why, ChatFormatting.GRAY));
+		if (why == null) {
+			String price = pet.price == 0 ? "free" : amount(pet.price);
+			String label = have != null ? "Add " + Pets.duration(pet.days) + " · " + price : pet.price == 0 ? "Get it free" : "Buy · " + price;
+			buttons.add(button(label, null, "buy", args("id", pet.id)));
+		}
 		menu(player, pet.name, body, buttons, button("Back", null, "shop", args("page", "0")));
+	}
+
+	/** "1 diamond", "12 diamonds", "0 diamonds" (never "free"). */
+	private static String amount(int n) {
+		String name = MarketStore.currencyName();
+		return String.format(Locale.ROOT, "%,d %s", n, n == 1 ? name.replaceAll("s$", "") : name);
 	}
 
 	// ---------------------------------------------------------------- answers
@@ -243,12 +274,8 @@ public final class PetDialogs {
 			}
 			case "item" -> {
 				Pets.Pet pet = PetStore.settings().pet(str(in, "id"));
-				if (pet == null || !pet.forSale) shop(player, 0, "That pet isn't for sale any more.");
+				if (pet == null || !pet.onSale()) shop(player, 0, "That pet isn't for sale any more.");
 				else item(player, pet, null);
-			}
-			case "view" -> {
-				if (owned == null) home(player, "You don't have that pet any more.");
-				else view(player, owned, null);
 			}
 			case "out" -> {
 				if (owned == null) {
@@ -257,25 +284,43 @@ public final class PetDialogs {
 				}
 				owner.active = owned.pet;
 				PetStore.changed();
-				view(player, owned, owned.name + " is out.");
+				home(player, "✔ " + PetStore.name(owned) + " is out.");
 			}
 			case "away" -> {
 				if (owner != null) owner.active = null;
 				PetStore.changed();
-				if (owned != null) view(player, owned, null);
-				else home(player, null);
+				home(player, null);
+			}
+			case "moves", "view" -> {
+				if (owner == null || owner.pets.isEmpty()) home(player, null);
+				else moves(player, null);
 			}
 			case "move" -> {
-				if (owned == null) {
-					home(player, "You don't have that pet any more.");
+				if (owner == null || owner.pets.isEmpty()) {
+					home(player, null);
 					return;
 				}
 				Pets.Behavior b = Pets.Behavior.of(str(in, "how"));
-				owned.behavior = b.name();
-				// Picking how it moves also takes it out, so you see it right away.
-				owner.active = owned.pet;
+				owner.behavior = b.name();
+				// Takes a pet out if none is, so you see it right away.
+				if (owner.active == null) owner.active = owner.pets.get(0).pet;
 				PetStore.changed();
-				view(player, owned, owned.name + " now moves like this: " + b.label.toLowerCase(Locale.ROOT) + ".");
+				moves(player, "✔ Your pet moves like this now: " + b.label + ".");
+			}
+			case "trails" -> {
+				if (owner == null || owner.pets.isEmpty() || !PetStore.settings().particles) home(player, null);
+				else trails(player, null);
+			}
+			case "trail" -> {
+				if (owner == null || owner.pets.isEmpty() || !PetStore.settings().particles) {
+					home(player, null);
+					return;
+				}
+				Pets.Trail t = Pets.Trail.of(str(in, "how"));
+				owner.trail = t.name();
+				if (owner.active == null) owner.active = owner.pets.get(0).pet;
+				PetStore.changed();
+				trails(player, t == Pets.Trail.OFF ? "✔ No particles." : "✔ Particles: " + t.label + ".");
 			}
 			case "buy" -> buy(player, PetStore.settings().pet(str(in, "id")));
 			default -> {
@@ -305,7 +350,6 @@ public final class PetDialogs {
 		boolean out = owner.active == null;
 		if (out) owner.active = pet.id;
 		PetStore.saveNow();
-		Pets.Owned owned = owner.owned(pet.id);
-		view(player, owned, (pet.price == 0 ? "Got " : "Bought ") + pet.name + (pet.price == 0 ? "" : " for " + money(pet.price)) + "." + (out ? " It's out now: pick how it moves." : ""));
+		home(player, "✔ " + (pet.price == 0 ? "Got " : "Bought ") + pet.name + (pet.price == 0 ? "" : " for " + money(pet.price)) + "." + (out ? " It's out now." : ""));
 	}
 }

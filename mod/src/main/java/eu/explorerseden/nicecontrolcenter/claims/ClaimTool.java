@@ -245,7 +245,7 @@ public final class ClaimTool {
 			return;
 		}
 		if (settings.onlyPermanentArea && !bypassing(player) && !data.insidePermanent(dim, Claims.Box.of(x, z, x, z))) {
-			bar(player, "You can only claim inside the permanent area (land outside it gets reset).", ChatFormatting.RED);
+			bar(player, "You can't claim here: land this far out is reset from time to time.", ChatFormatting.RED);
 			return;
 		}
 		selections.put(player.getUUID(), new Selection(Kind.CREATE, dim, x, z, null, 0, 0));

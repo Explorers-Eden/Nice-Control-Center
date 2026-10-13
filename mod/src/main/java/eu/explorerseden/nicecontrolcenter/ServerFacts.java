@@ -36,13 +36,13 @@ public final class ServerFacts {
 		String currency = humanize(currencyId.replaceFirst("^minecraft:", "")).toLowerCase(Locale.ROOT);
 		List<Map<String, String>> rows = new ArrayList<>();
 		for (Pets.Pet pet : p.pets) {
-			if (!pet.forSale) continue;
+			if (!pet.onSale()) continue;
 			String price = pet.price == 0 ? "free" : String.format(Locale.ROOT, "%,d %s", pet.price, pet.price == 1 ? currency : currency + "s");
 			rows.add(line(pet.name, price + ", " + Pets.duration(pet.days), pet.stock > 0 ? "Only " + pet.stock + " in all." : ""));
 		}
 		out.add(tweak("pets", "Pets", "bi-emoji-smile",
 				"Type /pets for a pet: a floating head that follows you around, only for looks, and everyone sees it. "
-						+ "Pick how it moves (float, orbit, bounce, spin or follow). Get pets in the pet shop (/pets or /market).",
+						+ "Pick how it moves (float, orbit, halo, spiral, wander and more) and, if allowed, a particle trail. Get pets in the pet shop (/pets or /market).",
 				rows));
 		return out;
 	}

@@ -1375,3 +1375,12 @@ body.embedded { background: transparent !important; }
 /* Primary buttons in the brand gradient. */
 .np-btn.primary { background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); border-color: transparent; color: #fff; box-shadow: 0 4px 14px -4px rgba(123,147,255,.6); }
 .np-btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+.np-pet-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.np-pet-face { width: 32px; height: 32px; border-radius: 4px; image-rendering: pixelated; flex: none; background: rgba(var(--ink),.08); }
+.np-pet-text { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.np-pet-text b .np-level { margin-left: 4px; }
+.np-pet-actions, .np-pet-give { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.np-pet-actions select, .np-pet-give select { height: 30px; font: inherit; font-size: var(--fs-sm); color: var(--text); background: var(--inset); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 0 8px; }
+.np-pet-give { padding-top: 8px; border-top: 1px solid rgba(var(--ink),.06); }
+.np-pet-error { color: var(--poor); }
