@@ -2387,13 +2387,13 @@
 
   // ── Discord ────────────────────────────────────────────────────────────
 
-  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', start: 'Server online', stop: 'Server offline',
+  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', broadcast: 'Data pack messages and /say', start: 'Server online', stop: 'Server offline',
     maintenance: 'Maintenance on/off', crash: 'Crash', lag: 'Lag', lagOver: 'Lag over', taskFailed: 'Task failed', backupFailed: 'Backup failed',
     trimDone: 'Outer wilds reset', diskLow: 'Disk almost full', memory: 'Memory pressure', perf: 'Distances stepped down or up' };
   /** Extra placeholders some events have, shown under their name. */
-  const EVENT_VARS = { crash: '{mod} {message}', taskFailed: '{name} {message}', advancement: '{player} {advancement}', death: '{message}' };
+  const EVENT_VARS = { crash: '{mod} {message}', taskFailed: '{name} {message}', advancement: '{player} {advancement}', death: '{message}', broadcast: '{message} {player}' };
   const EVENT_GROUPS = [
-    ['Chat & server', ['join', 'leave', 'death', 'advancement', 'start', 'stop', 'maintenance']],
+    ['Chat & server', ['join', 'leave', 'death', 'advancement', 'broadcast', 'start', 'stop', 'maintenance']],
     ['Alerts', ['crash', 'lag', 'lagOver', 'taskFailed', 'backupFailed', 'trimDone', 'diskLow', 'memory', 'perf']],
   ];
   let discordData = null;

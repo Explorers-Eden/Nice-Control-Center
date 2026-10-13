@@ -54,6 +54,11 @@ public final class PanelBridge {
 			event.addProperty("text", message.signedContent());
 			send(event);
 		});
+		// /say and /me: public messages that aren't chat.
+		ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) -> {
+			String text = params.decorate(message.decoratedContent()).getString();
+			broadcast(source.getServer(), text, source.getTextName());
+		});
 		ServerMessageEvents.GAME_MESSAGE.register((server, message, overlay) -> {
 			if (overlay || !(message.getContents() instanceof TranslatableContents tr)) {
 				return;
@@ -114,6 +119,37 @@ public final class PanelBridge {
 			NiceControlCenter.LOGGER.warn("The panel didn't answer the login check for {} ({}); letting them in", player.name(), e.toString());
 			return null;
 		}
+	}
+
+	/** Discord messages shown in game come back through tellraw when the panel relays without the mod: never echo them. */
+	private static final java.util.regex.Pattern FROM_DISCORD = java.util.regex.Pattern.compile("^\\s*\\[?Discord\\b", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+	/**
+	 * /tellraw to everyone online. Fabled Roots' death messages become death events (with the pack's
+	 * English text); everything else is a "broadcast" the panel posts when that's switched on.
+	 */
+	public static void tellraw(MinecraftServer server, Component message) {
+		String text = PackLang.plain(message).strip();
+		if (PackLang.uses(message, "message.fabled_roots.death.")) {
+			JsonObject event = new JsonObject();
+			event.addProperty("type", "death");
+			// "▊ Name drifted back into the sky's embrace." → without the decoration in front.
+			event.addProperty("text", text.replaceFirst("^[^\\p{L}\\p{N}]+", ""));
+			event.addProperty("players", server.getPlayerCount());
+			event.addProperty("maxPlayers", server.getMaxPlayers());
+			send(event);
+			return;
+		}
+		broadcast(server, text, null);
+	}
+
+	private static void broadcast(MinecraftServer server, String text, String from) {
+		if (text == null || text.isBlank() || FROM_DISCORD.matcher(text).find()) return;
+		JsonObject event = new JsonObject();
+		event.addProperty("type", "broadcast");
+		event.addProperty("text", text.length() > 1500 ? text.substring(0, 1500) + "…" : text);
+		if (from != null) event.addProperty("name", from);
+		send(event);
 	}
 
 	/** An alert for the panel's Discord alerts (lag, lagOver); nothing happens without the panel. */

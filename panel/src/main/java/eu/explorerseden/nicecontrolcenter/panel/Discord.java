@@ -103,6 +103,9 @@ public final class Discord implements Notifier {
 					"memory", "🧠 The server is short of memory: {message}"));
 			templates.put("perf", "⚙️ {message}");
 			templates.put("maintenance", "🛠️ Maintenance mode is {message}");
+			// /tellraw @a from data packs and /say: off by default, they can be chatty.
+			events.put("broadcast", false);
+			templates.put("broadcast", "📢 {message}");
 		}
 		public String kickMessage = "Link your Discord account to play on this server.\n\nSend this code to {bot} as a direct message on Discord:\n\n{code}\n\nThe code works for 15 minutes.";
 		public String notMemberMessage = "Your linked Discord account isn't on our Discord server anymore. Join it again to play.";
@@ -461,12 +464,27 @@ public final class Discord implements Notifier {
 			alerts.alert(type, Map.of("message", e.has("text") ? e.get("text").getAsString() : ""));
 			return;
 		}
+		if (type.equals("broadcast") && !broadcastAllowed(e.has("text") ? e.get("text").getAsString() : "")) return;
 		Map<String, String> values = new LinkedHashMap<>();
 		values.put("player", name);
 		values.put("message", e.has("text") ? e.get("text").getAsString() : "");
 		values.put("advancement", e.has("advancement") ? e.get("advancement").getAsString() : "");
 		post(type, values);
 		lastPresence = "";
+	}
+
+	/** Recent broadcasts: the same text again within a minute is skipped, and at most 20 a minute go out. */
+	private final java.util.ArrayDeque<long[]> broadcastTimes = new java.util.ArrayDeque<>();
+	private final Map<String, Long> broadcastTexts = new java.util.HashMap<>();
+
+	private synchronized boolean broadcastAllowed(String text) {
+		long now = System.currentTimeMillis();
+		broadcastTexts.values().removeIf(t -> now - t > 60_000);
+		while (!broadcastTimes.isEmpty() && now - broadcastTimes.peekFirst()[0] > 60_000) broadcastTimes.removeFirst();
+		if (broadcastTexts.containsKey(text) || broadcastTimes.size() >= 20) return false;
+		broadcastTexts.put(text, now);
+		broadcastTimes.addLast(new long[] { now });
+		return true;
 	}
 
 	private void watch() {

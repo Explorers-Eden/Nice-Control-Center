@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.9.3
+- Discord bridge (with the panel): messages data packs send to everyone with /tellraw @a, and /say and /me, go to the panel as their own event (posted when switched on in the panel)
+- Fabled Roots' death messages count as deaths on Discord, with the pack's own English text (data packs' language files are read for that)
+
 ## 1.9.2
 - Claims switched on or off in the panel apply right away even while the server is paused with nobody online (before, claims stayed off on the map until someone joined or the server restarted)
 

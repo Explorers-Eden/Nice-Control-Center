@@ -73,6 +73,9 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(eu.explorerseden.nicecontrolcenter.core.Pregen::resume);
 		startConfigWatcher();
 		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> ErrorWatcher.reloadStarted());
+		// Data packs' own English texts, for messages sent to Discord.
+		ServerLifecycleEvents.SERVER_STARTED.register(eu.explorerseden.nicecontrolcenter.web.PackLang::load);
+		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> eu.explorerseden.nicecontrolcenter.web.PackLang.load(server));
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
 			server.execute(() -> reportReloadErrors(server));
 			SourceIndex.reload(server);

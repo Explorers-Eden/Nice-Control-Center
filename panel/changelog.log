@@ -1,3 +1,7 @@
+## 1.8.3
+- Discord: new event "Data pack messages and /say" (off by default): what data packs send to everyone with /tellraw @a, plus /say and /me. The same text twice within a minute is skipped, and at most 20 a minute go out (needs mod 1.9.3)
+- Fabled Roots' death messages are posted as deaths, with their real text instead of "has fallen"
+
 ## 1.8.2
 - Claims: the switch "open chests and use animals" is now "open chests and interact with entities" (villagers, interaction entities and other mobs, chest minecarts and boats)
 

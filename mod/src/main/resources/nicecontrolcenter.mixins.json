@@ -64,6 +64,7 @@
 		"StatusIconAccessor",
 		"StatusMotdMixin",
 		"StructureStartMixin",
+		"TellRawBroadcastMixin",
 		"TicketStorageAccessor",
 		"TrackingRangeMixin",
 		"VillagerPerfMixin",
