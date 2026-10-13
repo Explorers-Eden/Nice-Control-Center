@@ -503,9 +503,8 @@ public final class DashboardServer {
 				JsonObject body = jsonBody(exchange);
 				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
 				java.util.function.Function<String, String> s = k -> body.has(k) && !body.get(k).isJsonNull() ? body.get(k).getAsString() : "";
-				int days = body.has("days") ? body.get("days").getAsInt() : 0;
 				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.pets.PetStore.adminAction(minecraft, s.apply("uuid"), s.apply("name"),
-						s.apply("action"), s.apply("pet"), days, s.apply("how"), by));
+						s.apply("action"), s.apply("pet"), s.apply("how"), by));
 				Map<String, Object> result = new LinkedHashMap<>();
 				result.put("error", error);
 				sendJson(exchange, result);

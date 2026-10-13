@@ -4760,7 +4760,9 @@
   let ptEditing = null;
 
   const ptFace = (hash) => hash ? `<img class="pn-pt-face" src="info/heads/${esc(hash)}" alt="" loading="lazy">` : '<span class="pn-pt-face"></span>';
-  const ptDays = (d) => d > 0 ? (d === 1 ? '1 day' : d + ' days') : 'forever';
+  const ptSale = (p) => !p.saleEnds ? 'always' : (p.saleEnds < Date.now() ? '<span class="pn-warn">ended</span> ' : 'until ') + esc(new Date(p.saleEnds).toLocaleDateString([], { dateStyle: 'medium' }));
+  /** The yyyy-mm-dd of a time, in local time (for the date field). */
+  const ptDay = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
   async function loadPets() {
     try {
@@ -4791,9 +4793,9 @@
     const retired = s.pets.filter((p) => p.retired);
     $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: sold counts are from the last save. ')
       + `${shop.length} pet${shop.length === 1 ? '' : 's'} in the shop${retired.length ? `, ${retired.length} no longer sold` : ''}.`;
-    $('pn-pt-table').innerHTML = shop.length ? `<thead><tr><th>Pet</th><th>Price</th><th>Lasts</th><th>Sold</th><th>Players with it</th><th>For sale</th><th></th></tr></thead><tbody>${shop.map((p) => `
+    $('pn-pt-table').innerHTML = shop.length ? `<thead><tr><th>Pet</th><th>Price</th><th>On sale</th><th>Sold</th><th>Players with it</th><th>For sale</th><th></th></tr></thead><tbody>${shop.map((p) => `
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
-      <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptDays(p.days)}</td>
+      <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptSale(p)}</td>
       <td>${Number(sold[p.id] || 0).toLocaleString()}${p.stock > 0 ? ' of ' + Number(p.stock).toLocaleString() : ''}</td>
       <td>${Number(owners[p.id] || 0).toLocaleString()}</td>
       <td>${p.forSale ? (p.stock > 0 && (sold[p.id] || 0) >= p.stock ? '<span class="pn-warn">sold out</span>' : 'yes') : 'no'}</td>
@@ -4806,14 +4808,14 @@
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Name &amp; head</button>
         <button type="button" class="np-btn small" data-revive="${esc(p.id)}"><i class="bi bi-arrow-counterclockwise"></i> Back in the shop</button>` : ''}</td></tr>`).join('')}</tbody>` : '';
     const buys = ptData.state.purchases || [];
-    $('pn-pt-sales').innerHTML = buys.length ? `<thead><tr><th>When</th><th>Pet</th><th>Player</th><th>Paid</th><th>For</th></tr></thead><tbody>${buys.map((b) => `
-      <tr><td>${esc(dateTime(b.time))}</td><td>${esc(b.petName)}</td><td>${esc(b.buyerName)}</td><td>${b.price ? Number(b.price).toLocaleString() : 'free'}</td><td>${ptDays(b.days)}</td></tr>`).join('')}</tbody>`
+    $('pn-pt-sales').innerHTML = buys.length ? `<thead><tr><th>When</th><th>Pet</th><th>Player</th><th>Paid</th></tr></thead><tbody>${buys.map((b) => `
+      <tr><td>${esc(dateTime(b.time))}</td><td>${esc(b.petName)}</td><td>${esc(b.buyerName)}</td><td>${b.price ? Number(b.price).toLocaleString() : 'free'}</td></tr>`).join('')}</tbody>`
       : '<tbody><tr><td class="pn-hint">Nobody has bought a pet yet.</td></tr></tbody>';
   }
 
   function ptPairs() {
     const f = $('pn-pt-edit');
-    f.days.disabled = f.forever.checked;
+    f.saleEnd.disabled = f.always.checked;
     f.stock.disabled = f.unlimited.checked;
   }
 
@@ -4823,8 +4825,8 @@
     f.name.value = pet ? pet.name : '';
     f.texture.value = pet ? pet.texture : '';
     f.price.value = pet ? pet.price : '';
-    f.forever.checked = pet ? pet.days === 0 : true;
-    f.days.value = pet && pet.days > 0 ? pet.days : 30;
+    f.always.checked = pet ? !pet.saleEnds : true;
+    f.saleEnd.value = ptDay(pet && pet.saleEnds ? pet.saleEnds : Date.now() + 30 * 86400000);
     f.unlimited.checked = pet ? pet.stock === 0 : true;
     f.stock.value = pet && pet.stock > 0 ? pet.stock : 10;
     f.forSale.checked = pet ? pet.forSale : true;
@@ -4854,7 +4856,7 @@
     }
   }
 
-  $('pn-pt-edit').forever.addEventListener('change', ptPairs);
+  $('pn-pt-edit').always.addEventListener('change', ptPairs);
   $('pn-pt-edit').unlimited.addEventListener('change', ptPairs);
   $('pn-pt-edit').texture.addEventListener('change', async (e) => {
     const face = $('pn-pt-face');
@@ -4873,10 +4875,10 @@
     e.preventDefault();
     const f = e.target;
     const pet = { id: ptEditing || undefined, name: f.name.value.trim(), texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
-      days: f.forever.checked ? 0 : Number(f.days.value) || 0, stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
+      saleEnds: f.always.checked || !f.saleEnd.value ? 0 : new Date(f.saleEnd.value + 'T23:59:59').getTime(), stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
     const before = ptData.settings.pets.find((p) => p.id === ptEditing);
-    if (before && before.retired) Object.assign(pet, { price: before.price, days: before.days, stock: before.stock, forSale: false, retired: true });
-    if (!f.forever.checked && pet.days < 1) return formMsg('pn-pt-edit-msg', 'Type how many days a pet lasts, or switch on Lasts forever.', false);
+    if (before && before.retired) Object.assign(pet, { price: before.price, saleEnds: before.saleEnds, stock: before.stock, forSale: false, retired: true });
+    if (!f.always.checked && !(before && before.retired) && (!f.saleEnd.value || pet.saleEnds < Date.now())) return formMsg('pn-pt-edit-msg', 'Pick a day from today on, or switch on Always on sale.', false);
     if (!f.unlimited.checked && pet.stock < 1) return formMsg('pn-pt-edit-msg', 'Type how many can be sold, or switch on No limit.', false);
     const pets = ptData.settings.pets.map((p) => (p.id === ptEditing ? pet : p));
     if (!ptEditing) pets.push(pet);

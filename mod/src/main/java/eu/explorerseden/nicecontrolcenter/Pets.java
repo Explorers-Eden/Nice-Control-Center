@@ -22,8 +22,8 @@ import java.util.regex.Pattern;
 
 /**
  * Pets: floating player heads that follow their owner (/pets), only for looks. The panel puts pets in the
- * pet shop (a price in the market's currency, how long a bought pet lasts, how many can be sold); players
- * buy them from /market or /pets and pick how theirs moves.
+ * pet shop (a price in the market's currency, how long the shop sells it, how many can be sold); players
+ * buy them from /market or /pets, keep them for good and pick how theirs moves.
  *
  * Settings in config/nicecontrolcenter-pets.json (written by the panel), who owns what in the world folder
  * (nicecontrolcenter-pets.json). Minecraft-free.
@@ -106,8 +106,8 @@ public final class Pets {
 		public String texture;
 		/** In the market's currency; 0 is free. */
 		public int price;
-		/** How long a bought pet lasts; 0 is forever. */
-		public int days;
+		/** The shop sells it until then (epoch ms); 0 is always. Bought pets stay with their players for good. */
+		public long saleEnds;
 		/** How many can be sold in all; 0 is no limit. */
 		public int stock;
 		/** Off keeps the pet (and the ones players own) but stops selling it. */
@@ -120,7 +120,12 @@ public final class Pets {
 
 		/** In the shop right now (apart from being sold out). */
 		public boolean onSale() {
-			return forSale && !retired;
+			return forSale && !retired && (saleEnds == 0 || System.currentTimeMillis() < saleEnds);
+		}
+
+		/** The sale was limited in time and is over. */
+		public boolean saleOver() {
+			return saleEnds != 0 && System.currentTimeMillis() >= saleEnds;
 		}
 	}
 
@@ -161,7 +166,7 @@ public final class Pets {
 			if (p.name == null || p.name.isEmpty() || p.name.length() > 32) return "Every pet needs a name of 1 to 32 characters.";
 			if (texture(p.texture) == null) return "The head texture of " + p.name + " isn't a skin value (base64 from a head generator) or a textures.minecraft.net link.";
 			if (p.price < 0 || p.price > 10_000_000) return "The price of " + p.name + " is 0 to 10,000,000.";
-			if (p.days < 0 || p.days > 3650) return "A pet lasts 1 to 3650 days, or 0 for forever.";
+			if (p.saleEnds < 0 || p.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "The sale of " + p.name + " ends within ten years, or never.";
 			if (p.stock < 0 || p.stock > 1_000_000) return "The amount of " + p.name + " is 0 (no limit) to 1,000,000.";
 		}
 		return null;
@@ -214,9 +219,9 @@ public final class Pets {
 		writeJson(file, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(settings));
 	}
 
-	/** "forever", "1 day", "30 days". */
-	public static String duration(int days) {
-		return days <= 0 ? "forever" : days == 1 ? "1 day" : days + " days";
+	/** "13 Nov 2026": the day a sale ends. */
+	public static String date(long time) {
+		return java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH).withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(time));
 	}
 
 	// ---------------------------------------------------------------- who owns what
@@ -227,8 +232,6 @@ public final class Pets {
 		public String name;
 		public String texture;
 		public long since;
-		/** 0 = forever. */
-		public long expires;
 		/** Before 1.13.0's release each pet had its own way of moving; now it's the owner's ({@link Owner#behavior}). */
 		public String behavior;
 	}
@@ -270,12 +273,7 @@ public final class Pets {
 		public String buyer;
 		public String buyerName;
 		public int price;
-		public int days;
 		public long time;
-	}
-
-	/** A pet that ran out. */
-	public record Expired(String owner, String pet, String name, boolean wasActive) {
 	}
 
 	public static final class Data {
@@ -327,11 +325,11 @@ public final class Pets {
 			if (left(p) == 0) return "That pet is sold out.";
 			Owner o = owners.get(uuid);
 			Owned have = o == null ? null : o.owned(p.id);
-			if (have != null && have.expires == 0) return "You already have " + p.name + ".";
+			if (have != null) return "You already have " + p.name + ".";
 			return null;
 		}
 
-		/** A purchase (already paid): the pet is the player's, or lasts longer if they had it. */
+		/** A purchase (already paid): the pet is the player's for good. */
 		public void buy(String uuid, String name, Pet p, long now) {
 			Owner o = owner(uuid, name);
 			Owned have = o.owned(p.id);
@@ -343,8 +341,6 @@ public final class Pets {
 			}
 			have.name = p.name;
 			have.texture = p.texture;
-			if (p.days == 0) have.expires = 0;
-			else have.expires = Math.max(now, have.expires) + p.days * 86_400_000L;
 			sold.merge(p.id, 1, Integer::sum);
 			Purchase b = new Purchase();
 			b.pet = p.id;
@@ -352,29 +348,22 @@ public final class Pets {
 			b.buyer = uuid;
 			b.buyerName = name;
 			b.price = p.price;
-			b.days = p.days;
 			b.time = now;
 			purchases.add(b);
 			while (purchases.size() > PURCHASES) purchases.remove(0);
 		}
 
-		/**
-		 * An admin gives the pet (not a sale): days 0 is forever, else that many days more than it has now.
-		 */
-		public void give(String uuid, String name, Pet p, int days, long now) {
+		/** An admin gives the pet (not a sale). False when they have it already. */
+		public boolean give(String uuid, String name, Pet p, long now) {
 			Owner o = owner(uuid, name);
-			Owned have = o.owned(p.id);
-			if (have == null) {
-				have = new Owned();
-				have.pet = p.id;
-				have.since = now;
-				have.expires = -1;
-				o.pets.add(have);
-			}
+			if (o.owned(p.id) != null) return false;
+			Owned have = new Owned();
+			have.pet = p.id;
+			have.since = now;
 			have.name = p.name;
 			have.texture = p.texture;
-			if (days <= 0) have.expires = 0;
-			else if (have.expires != 0) have.expires = Math.max(now, have.expires) + days * 86_400_000L;
+			o.pets.add(have);
+			return true;
 		}
 
 		/** Takes a pet away from a player. False when they didn't have it. */
@@ -383,19 +372,6 @@ public final class Pets {
 			if (o == null || !o.pets.removeIf(p -> p.pet.equals(pet))) return false;
 			if (pet.equals(o.active)) o.active = null;
 			return true;
-		}
-
-		/** Takes away pets whose time is up. */
-		public List<Expired> expire(long now) {
-			List<Expired> out = new ArrayList<>();
-			owners.forEach((uuid, o) -> o.pets.removeIf(p -> {
-				if (p.expires == 0 || p.expires > now) return false;
-				boolean active = p.pet.equals(o.active);
-				if (active) o.active = null;
-				out.add(new Expired(uuid, p.pet, p.name, active));
-				return true;
-			}));
-			return out;
 		}
 	}
 

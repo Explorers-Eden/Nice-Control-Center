@@ -146,8 +146,8 @@ Things a data pack can't do, switched on in the panel (**Tweaks**, or `config/ni
   - The public info page lists what's for sale.
 - **Pets** (`/pets`, `config/nicecontrolcenter-pets.json`): floating player heads that follow their owner, only for looks, seen by everyone nearby.
   - Players pick how theirs moves (twelve ways, like float, orbit, halo, spiral or wander) and a particle trail.
-  - Admins can give, extend and take away pets on the player card in the dashboard's Players page.
-  - The pet shop (in `/pets`, and Pets in `/market`) sells the pets set up in the panel: name, head texture, price in the market's currency, how long they last and how many can be sold.
+  - Admins can give and take away pets on the player card in the dashboard's Players page.
+  - The pet shop (in `/pets`, and Pets in `/market`) sells the pets set up in the panel: name, head texture, price in the market's currency, how long the shop sells them and how many can be sold. Bought pets stay with their players for good.
   - Who owns which pet is kept in the world folder (`nicecontrolcenter-pets.json`).
 
 ## Configuration

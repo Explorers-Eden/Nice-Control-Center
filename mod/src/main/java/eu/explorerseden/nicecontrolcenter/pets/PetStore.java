@@ -133,22 +133,8 @@ public final class PetStore {
 		if (file == null) return;
 		int tick = s.getTickCount();
 		if (tick % 100 == 0) reloadSettings();
-		if (tick % 200 == 100) expire(s);
 		PetFollowers.tick(s);
 		if (dirty && tick % 100 == 50) save();
-	}
-
-	private static void expire(MinecraftServer s) {
-		List<Pets.Expired> gone = data.expire(System.currentTimeMillis());
-		if (gone.isEmpty()) return;
-		for (Pets.Expired e : gone) {
-			ServerPlayer p = s.getPlayerList().getPlayer(UUID.fromString(e.owner()));
-			if (p == null) continue;
-			Pets.Pet pet = settings.pet(e.pet());
-			p.sendSystemMessage(Component.literal("Your pet " + (pet != null ? pet.name : e.name()) + " has run out. Get it again in /pets.").withStyle(ChatFormatting.GOLD));
-			Plop.play(p);
-		}
-		saveNow();
 	}
 
 	/** Reads the settings again if the panel changed them (also from the dashboard API, which works while paused). */
@@ -229,7 +215,6 @@ public final class PetStore {
 			m.put("name", name(p));
 			m.put("head", Pets.skinHash(texture(p)));
 			m.put("since", p.since);
-			m.put("expires", p.expires);
 			m.put("active", p.pet.equals(o.active));
 			m.put("inShop", settings.pet(p.pet) != null);
 			owned.add(m);
@@ -242,7 +227,7 @@ public final class PetStore {
 		for (Pets.Trail t : Pets.Trail.values()) trails.add(Map.of("id", t.name(), "label", t.label));
 		out.put("trails", trails);
 		List<Map<String, Object>> all = new java.util.ArrayList<>();
-		for (Pets.Pet p : settings.pets) all.add(Map.of("id", p.id, "name", p.name, "days", p.days, "retired", p.retired));
+		for (Pets.Pet p : settings.pets) all.add(Map.of("id", p.id, "name", p.name, "retired", p.retired));
 		out.put("shop", all);
 		List<Map<String, Object>> moves = new java.util.ArrayList<>();
 		for (Pets.Behavior b : Pets.Behavior.values()) moves.add(Map.of("id", b.name(), "label", b.label));
@@ -251,10 +236,10 @@ public final class PetStore {
 	}
 
 	/**
-	 * An admin changes a player's pets: give (days, 0 = forever), add (days more), forever, take (away),
-	 * out, away, move (how), trail (how). Returns an error, or null.
+	 * An admin changes a player's pets: give, take (away), out, away, move (how), trail (how). Returns an error,
+	 * or null.
 	 */
-	public static String adminAction(MinecraftServer server, String uuid, String playerName, String action, String pet, int days, String how, String by) {
+	public static String adminAction(MinecraftServer server, String uuid, String playerName, String action, String pet, String how, String by) {
 		if (!uuid.matches("[0-9a-fA-F-]{36}")) return "Unknown player.";
 		reloadSettings();
 		long now = System.currentTimeMillis();
@@ -266,21 +251,8 @@ public final class PetStore {
 			case "give" -> {
 				Pets.Pet p = settings.pet(pet);
 				if (p == null) return "That pet isn't in the pet shop list.";
-				if (days < 0 || days > 3650) return "Give it for 1 to 3650 days, or forever.";
-				data.give(uuid, playerName, p, days, now);
-				what = "gave " + p.name + " (" + Pets.duration(days) + ")";
-			}
-			case "add" -> {
-				if (owned == null) return "They don't have that pet.";
-				if (owned.expires == 0) return "It's already theirs forever.";
-				if (days < 1 || days > 3650) return "Add 1 to 3650 days.";
-				owned.expires = Math.max(now, owned.expires) + days * 86_400_000L;
-				what = "added " + Pets.duration(days) + " to " + name(owned);
-			}
-			case "forever" -> {
-				if (owned == null) return "They don't have that pet.";
-				owned.expires = 0;
-				what = "made " + name(owned) + " theirs forever";
+				if (!data.give(uuid, playerName, p, now)) return "They have that pet already.";
+				what = "gave " + p.name;
 			}
 			case "take" -> {
 				if (owned == null || !data.take(uuid, pet)) return "They don't have that pet.";
@@ -313,13 +285,8 @@ public final class PetStore {
 		saveNow();
 		NiceControlCenter.LOGGER.info("Pets: {} {} for {}", by == null ? "an admin" : by, what, playerName != null ? playerName : uuid);
 		ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(uuid));
-		if (online != null && (action.equals("give") || action.equals("take") || action.equals("add") || action.equals("forever"))) {
-			String msg = switch (action) {
-				case "give" -> "You got the pet " + settings.pet(pet).name + (days > 0 ? " for " + Pets.duration(days) : "") + "! See /pets.";
-				case "take" -> "Your pet " + name(owned) + " was taken away.";
-				case "add" -> "Your pet " + name(owned) + " got " + Pets.duration(days) + " more.";
-				default -> "Your pet " + name(owned) + " is yours forever now.";
-			};
+		if (online != null && (action.equals("give") || action.equals("take"))) {
+			String msg = action.equals("give") ? "You got the pet " + settings.pet(pet).name + "! See /pets." : "Your pet " + name(owned) + " was taken away.";
 			online.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.GOLD));
 			Plop.play(online);
 		}

@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.3
+- Pets stay with their players for good: they never run out (pets bought with a time limit before are kept for good too). Instead, the shop can sell a pet until a set day.
+- The player card gives a pet for good; Add days and Forever are gone
+- /pets and the pet shop no longer mention how long a pet is yours, and a pet you have shows a single "You have it" line
+- Market and pet menus: the dark grey text is a lighter grey, easier to read
+
 ## 1.13.2
 - /pets on and /pets off: take your pet out or put it away quickly (on brings back the one you had out last)
 

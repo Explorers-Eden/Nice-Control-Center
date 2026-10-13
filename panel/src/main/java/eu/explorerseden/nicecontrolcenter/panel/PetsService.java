@@ -108,7 +108,7 @@ final class PetsService {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("name", p.name);
 			m.put("price", p.price);
-			m.put("days", p.days);
+			if (p.saleEnds != 0) m.put("until", p.saleEnds);
 			m.put("left", left);
 			m.put("head", Pets.skinHash(p.texture));
 			out.add(m);

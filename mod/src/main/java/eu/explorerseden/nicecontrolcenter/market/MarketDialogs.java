@@ -182,7 +182,7 @@ public final class MarketDialogs {
 					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
 					.append(Component.literal("\n" + money(l.price) + " each").withStyle(ChatFormatting.GOLD))
-					.append(Component.literal(" · " + (own ? "you" : l.sellerName) + "  ").withStyle(ChatFormatting.DARK_GRAY))
+					.append(Component.literal(" · " + (own ? "you" : l.sellerName) + "  ").withStyle(ChatFormatting.GRAY))
 					.append(own ? link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA)
 							: link("Buy", "See it and buy", "view", args("id", l.id), ChatFormatting.GREEN));
 			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
@@ -227,14 +227,14 @@ public final class MarketDialogs {
 		List<ActionButton> buttons = new ArrayList<>();
 		if (own) {
 			long days = Math.max(0, (l.expires - System.currentTimeMillis()) / 86_400_000L);
-			body.add(text("Your listing · " + days + (days == 1 ? " day" : " days") + " left. Taking it back sends it to your mailbox.", ChatFormatting.DARK_GRAY));
+			body.add(text("Your listing · " + days + (days == 1 ? " day" : " days") + " left. Taking it back sends it to your mailbox.", ChatFormatting.GRAY));
 			buttons.add(button("Take it back", "Into your mailbox", "cancel", args("id", l.id)));
 			menu(player, l.item.name, body, List.of(), buttons, back("mine", args()));
 			return;
 		}
 		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
 		int afford = Math.min(carried / Math.max(1, l.price), l.amount);
-		body.add(afford > 0 ? text("You carry " + money(carried) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + ".", ChatFormatting.DARK_GRAY)
+		body.add(afford > 0 ? text("You carry " + money(carried) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + ".", ChatFormatting.GRAY)
 				: text("You carry " + money(carried) + ": not enough for one.", ChatFormatting.RED));
 		List<Input> inputs = List.of(new Input("amount", new TextInput(120, Component.literal("How many"), true, "1", 9, Optional.empty())));
 		buttons.add(button("Buy", money(l.price) + " each", "buy", args("id", l.id)));
@@ -289,7 +289,7 @@ public final class MarketDialogs {
 					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
 					.append(Component.literal("\n" + money(l.price) + " each").withStyle(ChatFormatting.GOLD))
-					.append(Component.literal(" · " + days + (days == 1 ? " day" : " days") + " left  ").withStyle(ChatFormatting.DARK_GRAY))
+					.append(Component.literal(" · " + days + (days == 1 ? " day" : " days") + " left  ").withStyle(ChatFormatting.GRAY))
 					.append(link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA));
 			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
 		}

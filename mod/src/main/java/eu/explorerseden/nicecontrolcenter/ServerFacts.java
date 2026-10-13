@@ -38,10 +38,11 @@ public final class ServerFacts {
 		for (Pets.Pet pet : p.pets) {
 			if (!pet.onSale()) continue;
 			String price = pet.price == 0 ? "free" : String.format(Locale.ROOT, "%,d %s", pet.price, pet.price == 1 ? currency : currency + "s");
-			rows.add(line(pet.name, price + ", " + Pets.duration(pet.days), pet.stock > 0 ? "Only " + pet.stock + " in all." : ""));
+			String limits = (pet.saleEnds != 0 ? "On sale until " + Pets.date(pet.saleEnds) + ". " : "") + (pet.stock > 0 ? "Only " + pet.stock + " in all." : "");
+			rows.add(line(pet.name, price, limits.strip()));
 		}
 		out.add(tweak("pets", "Pets", "bi-emoji-smile",
-				"Type /pets for a pet: a floating head that follows you around, only for looks, and everyone sees it. "
+				"Type /pets for a pet: a floating head that follows you around, only for looks, and everyone sees it. Pets are yours for good. "
 						+ "Pick how it moves (float, orbit, halo, spiral, wander and more) and, if allowed, a particle trail. Get pets in the pet shop (/pets or /market).",
 				rows));
 		return out;

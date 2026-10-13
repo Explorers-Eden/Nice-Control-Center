@@ -183,11 +183,11 @@ Public pages → Info page: a read-only page where players can look up the serve
 **Pets** (on the Market page, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
 
 - **Settings:** pets on/off, the head size and whether players may give their pet a particle trail.
-- **Pet shop:** add a pet with a name, a head texture, a price in the market's currency (0 is free), how long it lasts (or forever) and how many can be sold in all (or no limit).
+- **Pet shop:** add a pet with a name, a head texture, a price in the market's currency (0 is free), how long the shop sells it (always, or until a day) and how many can be sold in all (or no limit). Players keep their pets for good.
   - The texture is the base64 "Value" from a head website (like minecraft-heads.com) or a `textures.minecraft.net/texture/…` link.
   - The panel fetches each skin from textures.minecraft.net once and keeps the face in `/data/panel/heads`, for the panel and the public info page.
-  - **For sale** off stops selling a pet for a while. Removing one that players still have moves it to **No longer sold**: they keep it until its time is up, and you can still change its name and head (changes reach them). It goes away by itself once nobody has it.
-- **Players → Players:** a player's card shows their pets; give one (free, for days or forever), add time, make it permanent, take it out, change how it moves, or take it away.
+  - **For sale** off stops selling a pet for a while. Removing one that players still have moves it to **No longer sold**: they keep it, and you can still change its name and head (changes reach them). It goes away by itself once nobody has it.
+- **Players → Players:** a player's card shows their pets; give one (free, for good), take it out or put it away, change how it moves, or take it away.
 - **Recent pet purchases**, and per pet how many were sold and how many players have it.
 
 ## World: pregenerate and trim

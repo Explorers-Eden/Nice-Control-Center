@@ -784,4 +784,5 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-pt-edit.pn-pt-edit--retired .pn-pt-sale { display: none; }
 .pn-pt-pair { display: inline-flex; align-items: center; gap: 10px; }
 .pn-pt-pair input[type=number] { width: 110px; }
+.pn-pt-pair input[type=date] { width: 150px; }
 .pn-pt-pair input:disabled { opacity: .4; }

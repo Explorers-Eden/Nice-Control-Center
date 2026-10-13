@@ -26,9 +26,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -43,7 +40,6 @@ public final class PetDialogs {
 	private static final int WIDTH = 150;
 	private static final int TEXT_WIDTH = 310;
 	private static final int PAGE = 10;
-	private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH).withZone(ZoneId.systemDefault());
 
 	private PetDialogs() {
 	}
@@ -94,13 +90,9 @@ public final class PetDialogs {
 		return n == 0 ? "free" : amount(n);
 	}
 
-	private static String left(Pets.Owned o) {
-		if (o.expires == 0) return "yours forever";
-		long ms = o.expires - System.currentTimeMillis();
-		if (ms < 3_600_000L) return "less than an hour left";
-		if (ms < 86_400_000L) return (ms / 3_600_000L) + " hours left";
-		long days = ms / 86_400_000L;
-		return days + (days == 1 ? " day" : " days") + " left (until " + DATE.format(Instant.ofEpochMilli(o.expires)) + ")";
+	/** When the shop stops selling a pet, if it does. */
+	private static String saleLine(Pets.Pet pet) {
+		return pet.saleEnds == 0 ? null : "on sale until " + Pets.date(pet.saleEnds);
 	}
 
 	private static String str(CompoundTag t, String k) {
@@ -135,7 +127,7 @@ public final class PetDialogs {
 				MutableComponent desc = Component.empty()
 						.append(Component.literal(PetStore.name(o)).withStyle(ChatFormatting.WHITE))
 						.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
-						.append(Component.literal("\n" + left(o) + "  ").withStyle(ChatFormatting.DARK_GRAY))
+						.append(Component.literal("\n").withStyle(ChatFormatting.GRAY))
 						.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
 								: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
 				body.add(headRow(player, PetStore.texture(o), desc));
@@ -199,7 +191,7 @@ public final class PetDialogs {
 						.append(Component.literal(pet.name).withStyle(ChatFormatting.WHITE))
 						.append(have ? Component.literal("  yours").withStyle(ChatFormatting.GREEN) : Component.empty())
 						.append(Component.literal("\n" + (pet.price == 0 ? "Free" : amount(pet.price))).withStyle(ChatFormatting.GOLD))
-						.append(Component.literal(" · " + Pets.duration(pet.days) + (left > 0 ? " · " + left + " left" : "") + "  ").withStyle(ChatFormatting.DARK_GRAY))
+						.append(Component.literal((saleLine(pet) != null ? " · until " + Pets.date(pet.saleEnds) : "") + (left > 0 ? " · " + left + " left" : "") + "  ").withStyle(ChatFormatting.GRAY))
 						.append(link("View", "See it and buy", "item", args("id", pet.id), ChatFormatting.GREEN));
 				body.add(headRow(player, pet.texture, desc));
 			}
@@ -218,25 +210,24 @@ public final class PetDialogs {
 				.append(Component.literal("\nA floating head that follows you").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 		// The facts in one line: label grey, value bright.
 		MutableComponent facts = Component.empty()
-				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(pet.price == 0 ? "Free" : amount(pet.price)).withStyle(ChatFormatting.GOLD))
-				.append(Component.literal("   Lasts ").withStyle(ChatFormatting.GRAY)).append(Component.literal(Pets.duration(pet.days)).withStyle(ChatFormatting.WHITE));
+				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(pet.price == 0 ? "Free" : amount(pet.price)).withStyle(ChatFormatting.GOLD));
+		if (pet.saleEnds != 0) facts.append(Component.literal("   Sold until ").withStyle(ChatFormatting.GRAY)).append(Component.literal(Pets.date(pet.saleEnds)).withStyle(ChatFormatting.WHITE));
 		if (left > 0) facts.append(Component.literal("   Left ").withStyle(ChatFormatting.GRAY)).append(Component.literal(String.valueOf(left)).withStyle(ChatFormatting.WHITE));
 		body.add(new PlainMessage(facts, TEXT_WIDTH));
 		String why = data.cannotBuy(player.getStringUUID(), pet);
 		if (have != null) {
-			body.add(text("✔ You have it: " + left(have), ChatFormatting.GREEN));
-		}
-		if (why != null) {
+			body.add(text("✔ You have it.", ChatFormatting.GREEN));
+		} else if (why != null) {
 			body.add(text(why, ChatFormatting.GRAY));
 		} else if (pet.price > 0) {
 			int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
-			body.add(carried >= pet.price ? text("You carry " + amount(carried) + ".", ChatFormatting.DARK_GRAY)
+			body.add(carried >= pet.price ? text("You carry " + amount(carried) + ".", ChatFormatting.GRAY)
 					: text("You carry " + amount(carried) + ": " + amount(pet.price - carried) + " more needed.", ChatFormatting.RED));
 		}
 		List<ActionButton> buttons = new ArrayList<>();
 		if (why == null) {
 			String price = pet.price == 0 ? "free" : amount(pet.price);
-			String label = have != null ? "Add " + Pets.duration(pet.days) + " · " + price : pet.price == 0 ? "Get it free" : "Buy · " + price;
+			String label = pet.price == 0 ? "Get it free" : "Buy · " + price;
 			buttons.add(button(label, null, "buy", args("id", pet.id)));
 		}
 		menu(player, pet.name, body, buttons, button("Back", null, "shop", args("page", "0")));

@@ -1800,20 +1800,13 @@
     const pets = d.pets;
     if (!p.uuid || !pets || (!pets.enabled && !pets.owned.length)) return '';
     const edit = !!d.actions;
-    const left = (x) => {
-      if (x.expires === 0) return 'forever';
-      const ms = x.expires - Date.now();
-      if (ms <= 0) return 'running out';
-      return ms < 86400000 ? Math.max(1, Math.round(ms / 3600000)) + ' hours left' : Math.floor(ms / 86400000) + ' days left (until ' + dateTime(x.expires) + ')';
-    };
     const head = (h) => h ? `<img class="np-pet-face" src="../info/heads/${esc(h)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="np-pet-face"></span>';
     const rows = pets.owned.map((x) => `<div class="np-pet-row" data-pet="${esc(x.id)}">
         ${head(x.head)}
         <div class="np-pet-text"><b>${esc(x.name)}</b>${x.active ? ' <span class="np-level good">out</span>' : ''}${x.inShop ? '' : ' <span class="np-tag">removed from the shop</span>'}
-          <small class="np-loc-sub">${esc(left(x))}</small></div>
+          <small class="np-loc-sub">since ${esc(dateTime(x.since))}</small></div>
         ${edit ? `<div class="np-pet-actions">
           <button type="button" class="np-btn small" data-pet-act="${x.active ? 'away' : 'out'}">${x.active ? 'Put away' : 'Take out'}</button>
-          ${x.expires !== 0 ? '<button type="button" class="np-btn small" data-pet-act="add">Add days</button><button type="button" class="np-btn small" data-pet-act="forever">Forever</button>' : ''}
           <button type="button" class="np-btn small danger" data-pet-act="take" title="Take it away">Take away</button></div>` : ''}
       </div>`).join('');
     const label = (list, id) => (list.find((b) => b.id === id) || {}).label || '';
@@ -1821,11 +1814,11 @@
         ${edit ? `<label class="np-loc-sub">Moves <select data-pet-style="move">${pets.behaviors.map((b) => `<option value="${esc(b.id)}" ${b.id === pets.behavior ? 'selected' : ''}>${esc(b.label)}</option>`).join('')}</select></label>
         ${pets.particles ? `<label class="np-loc-sub">Particles <select data-pet-style="trail">${pets.trails.map((b) => `<option value="${esc(b.id)}" ${b.id === pets.trail ? 'selected' : ''}>${esc(b.label)}</option>`).join('')}</select></label>` : ''}`
         : `<span class="np-loc-sub">Moves: ${esc(label(pets.behaviors, pets.behavior))}${pets.particles ? ' · Particles: ' + esc(label(pets.trails, pets.trail)) : ''}</span>`}</div>` : '';
-    const giveable = pets.shop;
+    const giveable = pets.shop.filter((g) => !pets.owned.some((x) => x.id === g.id));
     const give = edit && giveable.length ? `<div class="np-pet-give">
         <select id="np-pet-give" aria-label="Pet to give">${giveable.map((g) => `<option value="${esc(g.id)}" ${g.id === playersState.petGive ? 'selected' : ''}>${esc(g.name)}${g.retired ? ' (not sold any more)' : ''}</option>`).join('')}</select>
         <button type="button" class="np-btn small" data-pet-act="give"><i class="bi bi-gift"></i> Give</button>
-        <span class="np-loc-sub">Free, doesn't count as a sale. Giving a pet they have adds the time.</span></div>` : '';
+        <span class="np-loc-sub">Free and for good; it doesn't count as a sale.</span></div>` : '';
     const note = playersState.petNote ? `<p class="np-loc-sub ${playersState.petNoteError ? 'np-pet-error' : ''}">${esc(playersState.petNote)}</p>` : '';
     return `<h4 class="np-subhead">Pets</h4>
       <div class="np-client-box np-pets" data-uuid="${esc(p.uuid)}">
@@ -1928,17 +1921,8 @@
         const act = pb.dataset.petAct;
         const name = (playersState.data.detail || {}).name;
         const petName = row ? row.querySelector('b').textContent : $('np-pet-give').selectedOptions[0].textContent;
-        if (act === 'give' || act === 'add') {
-          const def = act === 'give' ? String((playersState.data.pets.shop.find((g) => g.id === pet) || {}).days || '') : '30';
-          const answer = prompt(act === 'give' ? `Give ${petName} to ${name} for how many days? Leave it empty for forever.` : `Add how many days to ${petName}?`, def === '0' ? '' : def);
-          if (answer === null) return;
-          const days = answer.trim() === '' ? 0 : Number(answer);
-          if (!Number.isInteger(days) || days < 0 || (act === 'add' && days < 1)) return alert('Type a whole number of days.');
-          petAction(uuid, { action: act, pet, days });
-          return;
-        }
+        if (act === 'give' && !confirm(`Give ${petName} to ${name}?`)) return;
         if (act === 'take' && !confirm(`Take ${petName} away from ${name}? It doesn't come back.`)) return;
-        if (act === 'forever' && !confirm(`Make ${petName} ${name}'s forever?`)) return;
         petAction(uuid, { action: act, pet });
         return;
       }
