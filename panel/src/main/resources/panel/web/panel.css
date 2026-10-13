@@ -757,3 +757,6 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-tw-dims input[type=color] { width: 3rem; height: 2rem; padding: 0; border: 0; background: none; }
 .pn-tw-dims { width: 100%; }
 .pn-tw-dim-preview { display: inline-block; padding: 4px 10px; background: rgba(0,0,0,.55); color: #fff; font-family: var(--mono); white-space: nowrap; border-radius: 4px; }
+.pn-logo-slot--wide { grid-column: 1 / -1; }
+.pn-logo-slot--wide .pn-logo-preview { height: 140px; overflow: hidden; }
+.pn-logo-slot--wide .pn-logo-preview img { max-height: none; max-width: none; width: 100%; height: 100%; object-fit: cover; }

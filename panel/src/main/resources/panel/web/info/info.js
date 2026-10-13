@@ -380,6 +380,11 @@
     try { localStorage.setItem('np-theme', next); } catch (e) { /* this visit only */ }
   });
 
+  // The banner's own background picture, when one is set (Appearance in the panel).
+  const banner = new Image();
+  banner.onload = () => { document.querySelector('.in-hero').classList.add('in-hero--picture'); document.querySelector('.in-hero').style.setProperty('--banner', 'url("banner")'); };
+  banner.src = 'banner';
+
   const logo = $('in-logo');
   logo.onload = () => { logo.hidden = false; };
   logo.src = '../branding/panel';

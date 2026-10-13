@@ -410,7 +410,7 @@
       const empty = slot.querySelector('.pn-logo-preview span');
       img.onload = () => { img.hidden = false; empty.hidden = true; };
       img.onerror = () => { img.hidden = true; empty.hidden = false; };
-      img.src = (slot.dataset.logo === 'panel' ? 'branding/panel' : 'map/data/logo') + '?t=' + Date.now();
+      img.src = ({ panel: 'branding/panel', map: 'map/data/logo', infobanner: 'info/banner' }[slot.dataset.logo]) + '?t=' + Date.now();
     });
   }
 

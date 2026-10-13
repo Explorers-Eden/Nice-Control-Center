@@ -15,11 +15,13 @@ import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
 
 /**
  * Logos: one for the panel (replaces the "Nice Control Center" text in the navbar, the icon stays) and one
- * for the public map. Kept in /data/panel/branding. Only PNG, JPEG, WebP and GIF, checked by their
- * content, up to 2 MB (no SVG: it can carry scripts).
+ * for the public map, plus the background picture of the public info page's banner. Kept in
+ * /data/panel/branding. Only PNG, JPEG, WebP and GIF, checked by their content, up to 2 MB (the banner
+ * picture 8 MB; no SVG: it can carry scripts).
  */
 final class Branding {
 	private static final long MAX = 2L * 1024 * 1024;
+	private static final long MAX_BANNER = 8L * 1024 * 1024;
 
 	private final Path dir;
 	private final Audit audit;
@@ -71,22 +73,29 @@ final class Branding {
 		// Public: the login screen and the public map show them.
 		routes.get("/branding/panel", ctx -> serve(ctx, "panel"));
 		routes.get("/map/data/logo", ctx -> serve(ctx, "map"));
+		routes.get("/info/banner", ctx -> serve(ctx, "infobanner"));
 
-		for (String which : new String[] { "panel", "map" }) {
-			String perm = which.equals("map") ? Permissions.MAP_MANAGE : Permissions.USERS_ADMIN;
+		for (String which : new String[] { "panel", "map", "infobanner" }) {
+			String perm = switch (which) {
+				case "map" -> Permissions.MAP_MANAGE;
+				case "infobanner" -> Permissions.SETTINGS_SERVER;
+				default -> Permissions.USERS_ADMIN;
+			};
+			long max = which.equals("infobanner") ? MAX_BANNER : MAX;
+			String what = which.equals("infobanner") ? "picture" : "logo";
 			routes.post("/api/branding/" + which, guard(perm, (ctx, me) -> {
 				UploadedFile upload = ctx.uploadedFile("logo");
 				if (upload == null) {
 					error(ctx, HttpStatus.BAD_REQUEST, "Choose an image.");
 					return;
 				}
-				if (upload.size() > MAX) {
-					error(ctx, HttpStatus.BAD_REQUEST, "The logo can be up to 2 MB.");
+				if (upload.size() > max) {
+					error(ctx, HttpStatus.BAD_REQUEST, "The " + what + " can be up to " + max / 1024 / 1024 + " MB.");
 					return;
 				}
 				byte[] bytes;
 				try (InputStream in = upload.content()) {
-					bytes = in.readNBytes((int) MAX + 1);
+					bytes = in.readNBytes((int) max + 1);
 				}
 				if (type(bytes) == null) {
 					error(ctx, HttpStatus.BAD_REQUEST, "Use a PNG, JPEG, WebP or GIF image.");
@@ -96,12 +105,12 @@ final class Branding {
 				Path tmp = dir.resolve(which + ".tmp");
 				Files.write(tmp, bytes);
 				Files.move(tmp, file(which), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-				audit.log(me.name(), "branding." + which, "new logo (" + bytes.length + " bytes)", clientIp(ctx));
+				audit.log(me.name(), "branding." + which, "new " + what + " (" + bytes.length + " bytes)", clientIp(ctx));
 				json(ctx, Map.of("ok", true));
 			}));
 			routes.post("/api/branding/" + which + "/remove", guard(perm, (ctx, me) -> {
 				Files.deleteIfExists(file(which));
-				audit.log(me.name(), "branding." + which, "logo removed", clientIp(ctx));
+				audit.log(me.name(), "branding." + which, what + " removed", clientIp(ctx));
 				json(ctx, Map.of("ok", true));
 			}));
 		}

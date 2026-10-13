@@ -16,6 +16,12 @@ body { background:
     linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px) 0 0 / 18px 18px,
     linear-gradient(115deg, #26357f 0%, #46298a 50%, #1b5f53 100%);
   box-shadow: 0 24px 60px -36px rgba(43,58,143,.9); }
+/* With a picture (Appearance → Info page banner): it fills the banner, darkened towards the text. */
+.in-hero--picture { background:
+    linear-gradient(90deg, rgba(8,10,20,.78) 0%, rgba(8,10,20,.45) 55%, rgba(8,10,20,.2) 100%),
+    var(--banner) center / cover no-repeat, #1b1f33;
+  min-height: 190px; display: flex; align-items: center; }
+.in-hero--picture .in-hero-inner { flex: 1; }
 .in-hero-inner { position: relative; z-index: 1; display: flex; align-items: center; gap: 32px; max-width: 1640px; margin: 0 auto; }
 .in-logo { flex: none; display: block; max-width: 300px; max-height: 110px; object-fit: contain; filter: drop-shadow(0 8px 18px rgba(0,0,0,.4)); }
 .in-hero-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
