@@ -16,11 +16,16 @@ body { background:
     linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px) 0 0 / 18px 18px,
     linear-gradient(115deg, #26357f 0%, #46298a 50%, #1b5f53 100%);
   box-shadow: 0 24px 60px -36px rgba(43,58,143,.9); }
-/* With a picture (Appearance → Info page banner): it fills the banner, darkened towards the text. */
-.in-hero--picture { background:
+/* With a picture (Public pages → Appearance): exactly the part chosen when cropping, across the whole
+   width, darkened towards the text. When the banner is taller than that part (narrow windows, a lot of
+   text), a blurred copy of the picture fills above and below instead of cutting off the sides. */
+/* At least 7:1 (its width is the window minus the 24px margins), taller when the text needs it. */
+.in-hero--picture { background: #1b1f33; min-height: max(160px, calc((100vw - 48px) / 7)); display: flex; align-items: center; }
+.in-hero--picture::before, .in-hero--picture::after { content: ''; position: absolute; pointer-events: none; }
+.in-hero--picture::before { inset: -30px; background: var(--banner) center / cover no-repeat; filter: blur(22px) brightness(.75); }
+.in-hero--picture::after { inset: 0; background:
     linear-gradient(90deg, rgba(8,10,20,.78) 0%, rgba(8,10,20,.45) 55%, rgba(8,10,20,.2) 100%),
-    var(--banner) center / cover no-repeat, #1b1f33;
-  aspect-ratio: 7 / 1; min-height: 160px; display: flex; align-items: center; }
+    var(--banner) center / 100% auto no-repeat; }
 .in-hero--picture .in-hero-inner { flex: 1; }
 .in-hero-inner { position: relative; z-index: 1; display: flex; align-items: center; gap: 32px; max-width: 1640px; margin: 0 auto; }
 .in-logo { flex: none; display: block; max-width: min(400px, 36%); max-height: 130px; object-fit: contain; filter: drop-shadow(0 8px 18px rgba(0,0,0,.4)); }
@@ -175,6 +180,7 @@ body:not(.in-searching) .in-cards--picked > .in-card:not(.in-card--wide), .in-ca
 /* ── Smaller windows ── */
 @media (max-width: 900px) {
   .in-hero { margin: 10px 12px 0; padding: 24px 20px; }
+  .in-hero--picture { min-height: max(120px, calc((100vw - 24px) / 7)); }
   .in-hero-inner { flex-direction: column; align-items: center; text-align: center; gap: 16px; }
   .in-hero-text { align-items: center; }
   .in-hero-badges { align-items: center; }

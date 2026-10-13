@@ -1,3 +1,6 @@
+## 1.11.5
+- Info page banner picture: exactly the part chosen when cropping spans the whole width; where the banner is taller than that part (narrow windows, phones, a lot of text) a blurred copy of the picture fills above and below, instead of the picture being enlarged and its sides cut off
+
 ## 1.11.4
 - Gameplay → Items & tools: the tool wear settings say "per log" / "per block", since the block you break yourself counts too now (mod 1.12.3)
 
