@@ -1,3 +1,6 @@
+## 1.10.1
+- Public info page redesigned again, over the whole width: a compact banner (logo next to the text), bigger tabs, a header per section with a short explanation and its count, cards that flow in up to three columns (a single card spreads its rows in two), and the market as item tiles in inventory slots with the stack size
+
 ## 1.10.0
 - Public info page redesigned: a tab per section above the content (with the search next to it), chips for the parts of a section, no number badges in the banner; the search counts its hits per tab
 - Tweaks (needs mod 1.11.0): anvil without a cost limit (the highest price setting is gone), tool wear multiplier for tree felling and vein mining, the falling tree animation switch, an empty line around the tab list's player list, and each player's dimension in the tab list with a name and colour per dimension (all of the world's dimensions are listed)

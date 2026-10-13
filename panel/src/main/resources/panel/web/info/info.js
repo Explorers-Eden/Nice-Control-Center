@@ -122,7 +122,8 @@
         groups.get(p.group).push(p);
       }
       const ICONS = { Gameplay: 'bi-controller', World: 'bi-globe-americas', 'Players & access': 'bi-people', Network: 'bi-wifi', 'Resource pack': 'bi-palette', Performance: 'bi-speedometer2' };
-      sections.push({ id: 'server', title: 'Server settings', icon: 'bi-hdd-rack', hue: '#7b93ff', count: d.properties.length,
+      sections.push({ id: 'server', title: 'Server settings', icon: 'bi-hdd-rack', hue: '#7b93ff', count: d.properties.length, statLabel: 'settings',
+        lead: 'How the server is set up: difficulty, the world, who can join and how far you can see.',
         children: [...groups].map(([g, list]) => ({ id: slug(g), title: g || 'Other', icon: ICONS[g] || 'bi-sliders',
           body: list.map((p) => row(p.label || humanize(p.key), value(p.value, p.key), p.description)).join('') })) });
     }
@@ -133,7 +134,8 @@
         groups.get(r.category).push(r);
       }
       const changed = d.gamerules.filter((r) => r.changed).length;
-      sections.push({ id: 'rules', title: 'Game rules', icon: 'bi-journal-check', hue: '#4fd1c5', count: d.gamerules.length, note: changed ? `${changed} changed` : '',
+      sections.push({ id: 'rules', title: 'Game rules', icon: 'bi-journal-check', hue: '#4fd1c5', count: d.gamerules.length, statLabel: 'rules', note: changed ? `${changed} changed from vanilla` : '',
+        lead: 'The game rules of this world. The ones marked "changed" differ from a fresh vanilla world.',
         children: [...groups].map(([g, list]) => ({ id: slug(g), title: g || 'Other', icon: 'bi-journal-check',
           body: list.map((r) => row(r.name || humanize(r.id), value(r.value), r.description, r.changed ? ' <span class="in-tag">changed</span>' : '')).join('') })) });
     }
@@ -159,12 +161,14 @@
         if (rest.length) children = children.length ? children.concat([{ id: slug('more'), title: 'More settings', children: rest }]) : rest;
         return { id: slug(p.pack), title: titleCase(p.pack), icon: 'bi-box-seam', children };
       });
-      sections.push({ id: 'packs', title: 'Data packs', statLabel: 'data pack settings', icon: 'bi-boxes', hue: '#ffb35c', count: settings, children: packs });
+      sections.push({ id: 'packs', title: 'Data packs', statLabel: 'settings', icon: 'bi-boxes', hue: '#ffb35c', count: settings, children: packs,
+        lead: 'How the data packs are set up, laid out like their own menus in game.' });
     }
     if (d.borders && d.borders.length) {
       const dim = (id) => titleCase(id.replace(/^minecraft:/, '').replace(/^the_/, '').replace(/_/g, ' '));
       const size = (b, r) => b.shape === 'circle' ? `${(r * 2).toLocaleString()} blocks across (radius ${r.toLocaleString()})` : `${(r * 2).toLocaleString()} × ${(r * 2).toLocaleString()} blocks`;
-      sections.push({ id: 'borders', title: 'World borders', statLabel: 'dimensions with borders', icon: 'bi-bounding-box-circles', hue: '#5fd68a', count: d.borders.length,
+      sections.push({ id: 'borders', title: 'World borders', statLabel: 'dimensions', icon: 'bi-bounding-box-circles', hue: '#5fd68a', count: d.borders.length,
+        lead: 'How far each dimension goes, and the permanent area where your builds are always kept.',
         children: d.borders.map((b) => ({ id: slug(b.dim), title: dim(b.dim), icon: 'bi-globe-americas', sub: `around ${b.x}, ${b.z}`,
           body: (b.permanent > 0 ? row('Permanent area', value(size(b, b.permanent)), 'Builds here are kept. Land outside it may be reset to fresh terrain from time to time.') : '')
             + (b.edge > 0 ? row('Edge of the world', value(size(b, b.edge)), 'You can\'t go further than this.') : row('Edge of the world', value('None'))) })) });
@@ -183,7 +187,8 @@
         + (c.maxClaims ? row('Claims per player', value(c.maxClaims)) : '')
         + (c.inactiveDays ? row('Inactive players', value(`Claims go after ${c.inactiveDays} days away`)) : '');
       const roles = c.roles.map((r) => row(r.label, '', r.description)).join('');
-      sections.push({ id: 'claims', title: 'Land claims', statLabel: 'ways to protect your land', icon: 'bi-shield-check', hue: '#f2b233', count: c.roles.length,
+      sections.push({ id: 'claims', title: 'Land claims', statLabel: 'member roles', icon: 'bi-shield-check', hue: '#f2b233', count: c.roles.length,
+        lead: 'Protect your builds: claimed land is yours, and only the people you add can change it.',
         children: [{ id: 'how', title: 'How to claim land', icon: 'bi-question-circle', body: how },
           { id: 'blocks', title: 'Claim blocks', icon: 'bi-grid-3x3', body: blocks },
           { id: 'rules', title: 'Rules', icon: 'bi-rulers', body: rules },
@@ -193,32 +198,40 @@
       const m = d.market;
       const cur = titleCase(String(m.currency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));
       const coin = m.currencyIcon ? `<img class="in-item in-item--coin" src="items/${esc(m.currencyIcon)}" alt="">` : '';
-      const item = (l) => `<div class="in-row in-market" data-search="${esc([l.name, l.seller, l.item, ...(l.enchantments || []), ...(l.lore || [])].join(' ').toLowerCase())}">
-          <div class="in-row-text in-market__item">${l.icon ? `<img class="in-item" src="items/${esc(l.icon)}" alt="" loading="lazy">` : '<span class="in-item in-item--none"></span>'}
-            <span><b>${esc(l.name)}</b>${(l.enchantments || []).length || (l.lore || []).length ? `<small>${esc([...(l.enchantments || []), ...(l.lore || [])].join(' · '))}</small>` : ''}
-            <small>by ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>
-          <div class="in-row-value"><span class="in-v">${coin}${Number(l.price).toLocaleString()} ${esc(l.price === 1 ? cur : cur + 's')} each</span></div></div>`;
+      const item = (l) => {
+        const extra = [...(l.enchantments || []), ...(l.lore || [])];
+        return `<div class="in-tile" data-search="${esc([l.name, l.seller, l.item, ...extra].join(' ').toLowerCase())}">
+          <span class="in-slot">${l.icon ? `<img src="items/${esc(l.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}${l.amount > 1 ? `<b class="in-slot__count">${l.amount > 999 ? Math.round(l.amount / 100) / 10 + 'k' : l.amount}</b>` : ''}</span>
+          <span class="in-tile__text"><b${extra.length ? ' class="in-tile__name--magic"' : ''}>${esc(l.name)}</b>
+            ${extra.length ? `<small class="in-tile__extra">${esc(extra.join(' · '))}</small>` : ''}
+            <span class="in-tile__price">${coin}${Number(l.price).toLocaleString()} <small>${esc(l.price === 1 ? cur : cur + 's')} each</small></span>
+            <small class="in-tile__seller"><i class="bi bi-person"></i> ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>`;
+      };
       const list = m.listings || [];
       sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length,
-        children: [{ id: 'market-list', title: 'For sale now', icon: 'bi-bag', sub: `type /market in game to buy or sell · paid in ${cur}`,
-          body: list.length ? list.map(item).join('') : '<p class="in-empty">Nothing for sale right now.</p>' }] });
+        lead: `Everything players are selling right now. Type /market in game to buy or sell; everything is paid in ${cur}s.`,
+        children: [{ id: 'market-list', title: 'For sale now', icon: 'bi-bag', sub: `${list.length} listing${list.length === 1 ? '' : 's'}`, wide: true,
+          body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' }] });
     }
     if (d.tweaks && d.tweaks.length) {
-      sections.push({ id: 'tweaks', title: 'Gameplay tweaks', statLabel: 'gameplay tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,
+      sections.push({ id: 'tweaks', title: 'Gameplay tweaks', statLabel: 'tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,
+        lead: 'Things that work differently from vanilla here.',
         children: d.tweaks.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
           body: t.rows.map((r) => row(r.label, value(r.value), r.description)).join('') })) });
     }
     if (d.performance && d.performance.length) {
-      sections.push({ id: 'perf', title: 'Performance tweaks', statLabel: 'performance tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
+      sections.push({ id: 'perf', title: 'Performance tweaks', statLabel: 'tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
+        lead: 'What the server does to stay fast with many players and farms. Good to know before you build a big farm.',
         children: d.performance.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
           body: t.rows.map((r) => row(r.label, value(r.value), r.description)).join('') })) });
     }
     if (d.configs && d.configs.length) {
-      sections.push({ id: 'configs', title: 'Mod settings', statLabel: 'mod config files', icon: 'bi-puzzle', hue: '#a77bff', count: d.configs.length,
+      sections.push({ id: 'configs', title: 'Mod settings', statLabel: 'files', icon: 'bi-puzzle', hue: '#a77bff', count: d.configs.length,
+        lead: 'Settings of the server\'s mods.',
         children: d.configs.map((c) => {
           const rows = configRows(c.path, c.text);
           return { id: slug(c.path), title: fileTitle(c.path), icon: 'bi-gear', sub: c.path,
-            body: rows ? rows.map((r) => row(r.label, value(r.value), r.desc)).join('') : `<pre class="in-pre" data-search="${esc(c.text.toLowerCase())}">${esc(c.text)}</pre>` };
+            wide: !rows, body: rows ? rows.map((r) => row(r.label, value(r.value), r.desc)).join('') : `<pre class="in-pre" data-search="${esc(c.text.toLowerCase())}">${esc(c.text)}</pre>` };
         }) });
     }
     if (d.commands && d.commands.length) {
@@ -237,7 +250,8 @@
             ${(c.parts || []).map((p) => `<small class="in-cmd-part"><code>/${esc(p.name)}</code>${p.description ? ' ' + esc(p.description) : ''}</small>`).join('')}
             ${usage.length ? `<details class="in-cmd-usage"><summary>How to write it</summary>${usage.map((u) => `<code>${esc(u)}</code>`).join('')}</details>` : ''}</div></div>`;
       };
-      sections.push({ id: 'commands', title: 'Commands', statLabel: 'commands for everyone', icon: 'bi-slash-square', hue: '#ffd166', count: d.commands.length,
+      sections.push({ id: 'commands', title: 'Commands', statLabel: 'commands', icon: 'bi-slash-square', hue: '#6cc7ff', count: d.commands.length,
+        lead: 'Commands everyone can use, by the mod or pack they come from.',
         children: order.map(([id, g]) => ({ id: slug(g.name), title: g.name, icon: id === 'minecraft' ? 'bi-box' : 'bi-puzzle', sub: `${g.list.length} command${g.list.length === 1 ? '' : 's'}`,
           body: g.list.map(cmd).join('') })) });
     }
@@ -252,7 +266,7 @@
         <h3 class="in-group-title">${n.icon ? `<i class="bi ${n.icon}"></i>` : ''}${mc(n.title)}</h3>${n.desc ? `<p class="in-group-desc">${mc(n.desc)}</p>` : ''}
         <div class="in-cards">${n.children.map((c) => renderNode(c, depth + 1)).join('')}</div></div>`;
     }
-    return `<section class="np-card in-card" id="${n.id}" data-node>
+    return `<section class="in-card${n.wide ? ' in-card--wide' : ''}" id="${n.id}" data-node>
       <h3 class="in-card-title"><span class="in-icon"><i class="bi ${n.icon || 'bi-sliders'}"></i></span><span>${mc(n.title)}${n.sub ? `<small>${esc(n.sub)}</small>` : ''}</span></h3>
       ${n.desc ? `<p class="in-card-desc">${mc(n.desc)}</p>` : ''}${n.body}</section>`;
   }
@@ -274,10 +288,14 @@
     $('in-tabs').innerHTML = sections.map((s) => `<a class="in-tab" href="#${s.id}" data-tab="${s.id}" style="--hue:${s.hue}">
         <i class="bi ${s.icon}"></i><span>${esc(s.title)}</span><small class="in-tab-hits" hidden></small></a>`).join('');
     $('in-main').innerHTML = sections.map((s) => `<div class="in-section" id="${s.id}" data-node style="--hue:${s.hue}">
-        <h2 class="in-section-title"><span class="in-icon big"><i class="bi ${s.icon}"></i></span><span>${esc(s.title)}${s.note ? `<small>${esc(s.note)}</small>` : ''}</span></h2>
+        <header class="in-section-head">
+          <span class="in-icon big"><i class="bi ${s.icon}"></i></span>
+          <div class="in-section-head__text"><h2 class="in-section-title">${esc(s.title)}</h2>${s.lead ? `<p class="in-section-lead">${mc(s.lead)}</p>` : ''}</div>
+          <div class="in-section-count"><b>${Number(s.count).toLocaleString()}</b><span>${esc(s.statLabel || '')}</span>${s.note ? `<small>${esc(s.note)}</small>` : ''}</div>
+        </header>
         ${s.children.length > 1 ? `<nav class="in-pills" aria-label="${esc(s.title)}"><a class="in-pill" href="#${s.id}" data-pill="">All</a>${s.children.map((c) =>
           `<a class="in-pill" href="#${c.id}" data-pill="${c.id}">${c.icon ? `<i class="bi ${c.icon}"></i>` : ''}${esc(plain(c.title))}</a>`).join('')}</nav>` : ''}
-        <div class="in-cards">${s.children.map((c) => renderNode(c, 1)).join('')}</div></div>`).join('')
+        <div class="in-cards${s.children.length === 1 ? ' in-cards--single' : ''}">${s.children.map((c) => renderNode(c, 1)).join('')}</div></div>`).join('')
       || '<p class="in-empty">Nothing is published here yet.</p>';
   }
 
@@ -299,6 +317,8 @@
     while (top !== section && top.parentElement !== cards) top = top.parentElement;
     const part = top === section ? null : top;
     [...cards.children].forEach((c) => c.classList.toggle('in-off', !!part && c !== part));
+    // One card picked: it gets the whole width, its rows flow in columns.
+    cards.classList.toggle('in-cards--picked', !!part && part.classList.contains('in-card'));
     section.querySelectorAll('.in-pill').forEach((p) => p.classList.toggle('active', p.dataset.pill === (part ? part.id : '')));
     if (push) history.replaceState(null, '', '#' + target.id);
     if (target !== section && target !== part) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
