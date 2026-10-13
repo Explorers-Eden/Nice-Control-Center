@@ -59,7 +59,7 @@ public final class Tweaks {
 		public Sneak sneak = Sneak.DISABLES;
 		/** Stop before the tool would break. */
 		public boolean preserveTool = true;
-		/** Tool wear for each extra log: 1 = like chopping it, 0.5 = half, 0 = none, 2 = double. */
+		/** Tool wear for each log of a felled tree (the chopped one included): 1 = normal, 0.5 = half, 0 = none, 2 = double. */
 		public double durability = 1.0;
 		/** The tree tips over and falls before its logs drop (instant mode). */
 		public boolean animation = true;
@@ -91,7 +91,7 @@ public final class Tweaks {
 		public List<String> deniedBlocks = new ArrayList<>();
 		public Sneak sneak = Sneak.DISABLES;
 		public boolean preserveTool = true;
-		/** Tool wear for each extra block: 1 = like mining it, 0.5 = half, 0 = none, 2 = double. */
+		/** Tool wear for each block of a mined vein (the mined one included): 1 = normal, 0.5 = half, 0 = none, 2 = double. */
 		public double durability = 1.0;
 		public int maxBlocks = 64;
 		public boolean dropsAtBreakPoint = false;

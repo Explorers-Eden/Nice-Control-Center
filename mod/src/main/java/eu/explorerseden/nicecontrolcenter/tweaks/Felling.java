@@ -137,6 +137,8 @@ public final class Felling {
 		Set<BlockPos> fallen = new HashSet<>();
 		try {
 			pieces = breakAll(level, player, origin, logs, fel.preserveTool, fel.durability, fel.dropsAtBreakPoint, !fel.animation);
+			// The log the player chopped wears the tool like the others.
+			if (!pieces.isEmpty()) ToolWear.afterThisBreak(fel.durability, fel.preserveTool, player, player.getMainHandItem(), player.getMainHandItem().getDamageValue());
 			busy = true;
 			BlockPos before = dropPoint;
 			dropPoint = fel.dropsAtBreakPoint ? origin : null;
@@ -326,7 +328,9 @@ public final class Felling {
 		}
 		if (found.isEmpty()) return;
 		found.sort(Comparator.comparingDouble(b -> b.distSqr(origin)));
-		breakAll(level, player, origin, found, veins.preserveTool, veins.durability, veins.dropsAtBreakPoint, true);
+		List<TreeFall.Piece> mined = breakAll(level, player, origin, found, veins.preserveTool, veins.durability, veins.dropsAtBreakPoint, true);
+		// The ore the player mined wears the tool like the others.
+		if (!mined.isEmpty()) ToolWear.afterThisBreak(veins.durability, veins.preserveTool, player, player.getMainHandItem(), player.getMainHandItem().getDamageValue());
 	}
 
 	/** Iron ore and deepslate iron ore are one vein. */

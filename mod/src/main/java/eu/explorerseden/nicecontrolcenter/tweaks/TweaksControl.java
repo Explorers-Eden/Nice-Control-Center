@@ -55,6 +55,7 @@ public final class TweaksControl {
 			if (modified < 0 || s.getTickCount() % 100 == 0) reload();
 			Felling.tick(s);
 			TreeFall.tick(s);
+			ToolWear.tick();
 			AfkTabList.tick(s);
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTING.register(s -> modified = -1);

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.12.3
+- Tool wear multipliers fixed:
+  - silk touch spawners only ever took the normal 1 point, because the game wears the tool after the break event;
+  - tree felling and vein mining now also scale the wear of the block you break yourself (before, only the extra logs and ores were scaled, so a small tree or vein barely showed the multiplier).
+
 ## 1.12.2
 - @Mentions also work in messages sent from the panel's Chat tab: the mentioned player hears the plop, and the mention is coloured when that's switched on
 - Bone meal on more plants shows the green sparkles like vanilla bone meal (before, only the sound came)

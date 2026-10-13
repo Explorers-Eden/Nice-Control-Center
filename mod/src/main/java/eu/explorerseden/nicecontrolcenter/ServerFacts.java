@@ -49,9 +49,9 @@ public final class ServerFacts {
 	}
 
 	private static String wear(double m, String what) {
-		if (m <= 0) return "none for the extra " + what + "s";
+		if (m <= 0) return "none";
 		if (m == 1) return "one use per " + what;
-		return String.format(Locale.ROOT, "%s uses per extra %s", java.math.BigDecimal.valueOf(m).stripTrailingZeros().toPlainString(), what);
+		return String.format(Locale.ROOT, "%s uses per %s", java.math.BigDecimal.valueOf(m).stripTrailingZeros().toPlainString(), what);
 	}
 
 	/** The switched-on gameplay tweaks, for players. */

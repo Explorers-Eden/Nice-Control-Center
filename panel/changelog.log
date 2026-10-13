@@ -1,3 +1,6 @@
+## 1.11.4
+- Gameplay → Items & tools: the tool wear settings say "per log" / "per block", since the block you break yourself counts too now (mod 1.12.3)
+
 ## 1.11.3
 - Gameplay → Items & tools: silk touch spawners get a tool list and a switch for whether Silk Touch is needed (needs mod 1.12.2)
 

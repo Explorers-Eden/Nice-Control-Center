@@ -26,9 +26,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Silk touch spawners: a spawner mined with one of the configured tools (with Silk Touch, unless that's
@@ -38,19 +35,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Spawners {
 	public static final String MARK = "nicecontrolcenter:spawner";
-	/** The tool's damage before the break, to scale the wear afterwards. */
-	private static final Map<UUID, Integer> damageBefore = new ConcurrentHashMap<>();
 
 	private Spawners() {
 	}
 
 	static void register() {
-		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, be) -> {
-			if (state.is(Blocks.SPAWNER) && player instanceof ServerPlayer sp && TweaksControl.settings().spawners.silkTouch) {
-				damageBefore.put(sp.getUUID(), sp.getMainHandItem().getDamageValue());
-			}
-			return true;
-		});
 		PlayerBlockBreakEvents.AFTER.register(Spawners::after);
 	}
 
@@ -60,7 +49,6 @@ public final class Spawners {
 	}
 
 	private static void after(Level lvl, Player p, BlockPos pos, BlockState state, BlockEntity be) {
-		Integer before = p instanceof ServerPlayer sp0 ? damageBefore.remove(sp0.getUUID()) : null;
 		if (!state.is(Blocks.SPAWNER) || be == null || !(p instanceof ServerPlayer player) || !(lvl instanceof ServerLevel level)) return;
 		Tweaks.Spawners s = TweaksControl.settings().spawners;
 		if (!s.silkTouch || player.isCreative()) return;
@@ -82,6 +70,7 @@ public final class Spawners {
 		}
 		Block.popResource(level, pos, drop);
 		if (s.dropXp) ExperienceOrb.award(level, Vec3.atCenterOf(pos), 15 + level.getRandom().nextInt(29));
-		if (before != null) new ToolWear(s.durability, false).apply(player, tool, before);
+		// The game wears the tool only after this event, so the scaling waits until it has.
+		ToolWear.afterThisBreak(s.durability, false, player, tool, tool.getDamageValue());
 	}
 }

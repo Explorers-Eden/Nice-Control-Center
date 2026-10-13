@@ -822,7 +822,7 @@
 						<label class="np-form-row">Sneaking<select name="felling.sneak"><option value="DISABLES">breaks just one log</option><option value="ENABLES">fells the tree (otherwise one log)</option><option value="IGNORED">makes no difference</option></select></label>
 						<label class="np-form-row"><span>The tree tips over and falls<span class="pn-comment">With "All at once": the tree topples away from the player and the drops land where it falls.</span></span><span class="np-switch"><input type="checkbox" name="felling.animation"><span></span></span></label>
 						<label class="np-form-row"><span>Stop before the axe breaks</span><span class="np-switch"><input type="checkbox" name="felling.preserveTool"><span></span></span></label>
-						<label class="np-form-row"><span>Axe wear per extra log<span class="pn-comment">1 = like chopping each log, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="felling.durability" min="0" max="100" step="0.05"></label>
+						<label class="np-form-row"><span>Axe wear per log<span class="pn-comment">For every log of a felled tree, the one you chop included: 1 = normal, 0.5 = half, 0 = none, 25 = 25 times.</span></span><input type="number" name="felling.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row">Biggest tree (logs)<input type="number" name="felling.maxLogs" min="2" max="4096"></label>
 						<label class="np-form-row">Bigger trees<select name="felling.tooBig"><option value="skip">only lose the one log</option><option value="cutUpTo">fall up to the limit</option></select></label>
 						<label class="np-form-row"><span>Leaves needed at the top<span class="pn-comment">So log walls players built aren't felled.</span></span><input type="number" name="felling.minLeaves" min="0" max="64"></label>
@@ -851,7 +851,7 @@
 						<label class="np-form-row">Sneaking<select name="veins.sneak"><option value="DISABLES">mines just one block</option><option value="ENABLES">mines the vein (otherwise one block)</option><option value="IGNORED">makes no difference</option></select></label>
 						<label class="np-form-row">Biggest vein (blocks)<input type="number" name="veins.maxBlocks" min="2" max="1024"></label>
 						<label class="np-form-row"><span>Stop before the pickaxe breaks</span><span class="np-switch"><input type="checkbox" name="veins.preserveTool"><span></span></span></label>
-						<label class="np-form-row"><span>Pickaxe wear per extra block<span class="pn-comment">1 = like mining each block, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="veins.durability" min="0" max="100" step="0.05"></label>
+						<label class="np-form-row"><span>Pickaxe wear per block<span class="pn-comment">For every block of a mined vein, the one you mine included: 1 = normal, 0.5 = half, 0 = none, 25 = 25 times.</span></span><input type="number" name="veins.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row"><span>All drops where the first block was</span><span class="np-switch"><input type="checkbox" name="veins.dropsAtBreakPoint"><span></span></span></label>
 						<label class="np-form-row"><span>Also in creative mode</span><span class="np-switch"><input type="checkbox" name="veins.inCreative"><span></span></span></label>
 						<label class="np-form-row">Tools<input type="text" name="veins.tools"></label>
