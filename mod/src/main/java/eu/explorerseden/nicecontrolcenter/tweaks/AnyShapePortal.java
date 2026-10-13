@@ -6,6 +6,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.BaseFireBlock;
+import eu.explorerseden.nicecontrolcenter.compat.PortalFrames;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,7 +19,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * Nether portals in any shape: any area closed by obsidian in one upright plane (a circle, an arch, a
+ * Nether portals in any shape: any area closed by frame blocks (obsidian, or in 26.3 whatever the
+ * minecraft:nether_portal_frame tag holds) in one upright plane (a circle, an arch, a
  * heart…) lights like a rectangle does, and stays lit while its frame is whole. Vanilla handles
  * rectangles as always; this only takes over where vanilla finds no portal.
  */
@@ -34,8 +36,9 @@ public final class AnyShapePortal {
 		return level.dimension() == Level.OVERWORLD || level.dimension() == Level.NETHER;
 	}
 
+	/** The same frame blocks as vanilla portals (in 26.3 the minecraft:nether_portal_frame tag). */
 	private static boolean isFrame(BlockState state) {
-		return state.is(Blocks.OBSIDIAN);
+		return PortalFrames.isFrame(state);
 	}
 
 	private static boolean isEmpty(BlockState state) {
@@ -43,7 +46,7 @@ public final class AnyShapePortal {
 	}
 
 	/**
-	 * The blocks of the area around start in the plane of axis, or null when it isn't closed by obsidian
+	 * The blocks of the area around start in the plane of axis, or null when it isn't closed by frame blocks
 	 * (or bigger than allowed). inside: what may fill the area.
 	 */
 	static List<BlockPos> area(BlockGetter level, BlockPos start, Direction.Axis axis, Predicate<BlockState> inside) {

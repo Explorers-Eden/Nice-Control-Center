@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.11.1
+- Nether portals in any shape use the same frame blocks as normal portals: on 26.3 the block tag minecraft:nether_portal_frame (so blocks a data pack adds to it work for custom shapes too), on 26.1 and 26.2 obsidian
+
 ## 1.11.0
 - Anvil: "never Too Expensive" now charges the full cost however high it is (it used to lower it to a limit). Game clients can't show more than 39, so the anvil shows 39 and the real price appears above the hotbar; taking the result checks and charges the real price
 - Tree felling: the tree tips over away from the player and falls (block displays, seen by normal clients); its logs, crown and drops land where it falls. Can be switched off

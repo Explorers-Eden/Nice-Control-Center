@@ -64,7 +64,7 @@ public final class ServerFacts {
 			out.add(tweak("anvil", "Anvil", "bi-hammer", "The anvil is kinder than in vanilla.", rows));
 		}
 		if (t.portals.anyShape) {
-			out.add(tweak("portals", "Nether portals in any shape", "bi-circle", "Any closed obsidian frame lights as a nether portal: circles, arches, hearts... not just rectangles.",
+			out.add(tweak("portals", "Nether portals in any shape", "bi-circle", "Any closed portal frame (obsidian, plus what the server adds as frame blocks) lights as a nether portal: circles, arches, hearts... not just rectangles.",
 					List.of(line("Biggest portal", t.portals.maxBlocks + " portal blocks", "Bigger frames don't light."))));
 		}
 		if (t.felling.enabled) {

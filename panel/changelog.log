@@ -1,3 +1,6 @@
+## 1.10.4
+- Tweaks → Gameplay and the info page: nether portals in any shape use the same frame blocks as normal portals (on 26.3 the block tag minecraft:nether_portal_frame; needs mod 1.11.1)
+
 ## 1.10.3
 - Public info page: the section tabs wrap onto a second line when they don't fit next to the search, instead of being cut off (phones still scroll them sideways)
 
