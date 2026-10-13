@@ -1,3 +1,6 @@
+## 1.12.3
+- Market → Pets: taking a pet out of the shop no longer says players keep it "until its time is up" (they keep it for good)
+
 ## 1.12.2
 - Market → Pets: "Always on sale" or on sale until a day you pick, instead of how long a bought pet lasts; players keep their pets for good (needs mod 1.13.3)
 

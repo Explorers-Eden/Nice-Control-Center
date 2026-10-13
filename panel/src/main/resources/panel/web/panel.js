@@ -4910,7 +4910,7 @@
     if (!pet) return;
     const have = Number((ptData.state.owners || {})[pet.id] || 0);
     if (have > 0) {
-      if (!confirm(`Take ${pet.name} out of the shop? ${have} player${have === 1 ? ' has' : 's have'} it and keep${have === 1 ? 's' : ''} it until its time is up. It moves to "No longer sold", where you can still change its name and head.`)) return;
+      if (!confirm(`Take ${pet.name} out of the shop? ${have} player${have === 1 ? ' has' : 's have'} it and keep${have === 1 ? 's' : ''} it. It moves to "No longer sold", where you can still change its name and head.`)) return;
       if (ptEditing === pet.id) ptOpen(null);
       await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, retired: true, forSale: false } : p)), 'pn-pt-edit-msg', 'Taken out of the shop.');
       return;

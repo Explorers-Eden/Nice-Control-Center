@@ -1801,13 +1801,14 @@
     if (!p.uuid || !pets || (!pets.enabled && !pets.owned.length)) return '';
     const edit = !!d.actions;
     const head = (h) => h ? `<img class="np-pet-face" src="../info/heads/${esc(h)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="np-pet-face"></span>';
-    const rows = pets.owned.map((x) => `<div class="np-pet-row" data-pet="${esc(x.id)}">
+    const rows = pets.owned.map((x) => `<div class="np-pet-card${x.active ? ' is-out' : ''}" data-pet="${esc(x.id)}">
         ${head(x.head)}
-        <div class="np-pet-text"><b>${esc(x.name)}</b>${x.active ? ' <span class="np-level good">out</span>' : ''}${x.inShop ? '' : ' <span class="np-tag">removed from the shop</span>'}
-          <small class="np-loc-sub">since ${esc(dateTime(x.since))}</small></div>
+        <b title="${esc(x.name)}">${esc(x.name)}</b>
+        <small class="np-loc-sub">${x.active ? '<span class="np-pet-out">out</span> · ' : ''}since ${esc(new Date(x.since).toLocaleDateString([], { dateStyle: 'medium' }))}</small>
+        ${x.inShop ? '' : '<small class="np-loc-sub">removed from the shop</small>'}
         ${edit ? `<div class="np-pet-actions">
           <button type="button" class="np-btn small" data-pet-act="${x.active ? 'away' : 'out'}">${x.active ? 'Put away' : 'Take out'}</button>
-          <button type="button" class="np-btn small danger" data-pet-act="take" title="Take it away">Take away</button></div>` : ''}
+          <button type="button" class="np-btn small danger" data-pet-act="take" title="Take it away"><i class="bi bi-trash"></i></button></div>` : ''}
       </div>`).join('');
     const label = (list, id) => (list.find((b) => b.id === id) || {}).label || '';
     const style = pets.owned.length ? `<div class="np-pet-give">
@@ -1822,7 +1823,7 @@
     const note = playersState.petNote ? `<p class="np-loc-sub ${playersState.petNoteError ? 'np-pet-error' : ''}">${esc(playersState.petNote)}</p>` : '';
     return `<h4 class="np-subhead">Pets</h4>
       <div class="np-client-box np-pets" data-uuid="${esc(p.uuid)}">
-        ${rows || `<p class="np-loc-sub">${esc(p.name)} has no pets.</p>`}${style}${give}${note}
+        ${rows ? `<div class="np-pet-grid">${rows}</div>` : `<p class="np-loc-sub">${esc(p.name)} has no pets.</p>`}${style}${give}${note}
         ${pets.enabled ? '' : '<p class="np-loc-sub">Pets are switched off.</p>'}</div>`;
   }
 
@@ -1920,7 +1921,7 @@
         const pet = row ? row.dataset.pet : $('np-pet-give').value;
         const act = pb.dataset.petAct;
         const name = (playersState.data.detail || {}).name;
-        const petName = row ? row.querySelector('b').textContent : $('np-pet-give').selectedOptions[0].textContent;
+        const petName = row ? row.querySelector('b').textContent.trim() : $('np-pet-give').selectedOptions[0].textContent;
         if (act === 'give' && !confirm(`Give ${petName} to ${name}?`)) return;
         if (act === 'take' && !confirm(`Take ${petName} away from ${name}? It doesn't come back.`)) return;
         petAction(uuid, { action: act, pet });

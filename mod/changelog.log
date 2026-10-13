@@ -1,4 +1,11 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.4
+- Pet particles start outside the head instead of inside it: wisps and flames rise off the top, snow and cherry petals fall from below, magic letters fly into the head, glow, sparks and fireflies float around it
+- Bubbles are gone from the particle choices (they barely showed); pets that had them have no particles now
+- Player card: the player's pets are boxes in a grid, so more fit at once
+- Seven more ways for pets to move (nineteen in all): Wobble, Guide (floats ahead and looks back at you), Sleepy (dozes by your feet), Pendulum, Zigzag, Satellite (a tilted ring over and under you) and Dart (jumps to a new spot every few seconds)
+- Eleven more particles (twenty-two in all): Fireworks, Totem, Souls, Portal, Nautilus, Spores, Ash, Honey drips, Pale leaves, Crits and Happy
+
 ## 1.13.3
 - Pets stay with their players for good: they never run out (pets bought with a time limit before are kept for good too). Instead, the shop can sell a pet until a set day.
 - The player card gives a pet for good; Add days and Forever are gone

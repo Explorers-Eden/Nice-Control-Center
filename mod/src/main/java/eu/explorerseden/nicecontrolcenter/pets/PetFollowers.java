@@ -183,6 +183,30 @@ final class PetFollowers {
 			case WANDER -> path(t, 0.25, s -> new Vec3(Math.sin(s * 0.031) * 1.1 + Math.sin(s * 0.017 + 1) * 0.5, h * 0.8 + Math.sin(s * 0.05) * 0.25,
 					Math.cos(s * 0.023) * 1.1 + Math.cos(s * 0.041 + 2) * 0.4));
 			case SPIN -> new Target(new Vec3(0, h + 0.55 + 0.08 * Math.sin(t * 0.1), 0), (float) ((t * 9) % 360), 0.7);
+			case WOBBLE -> new Target(l.at(0.75, h * 0.85 + 0.06 * Math.sin(t * 0.11), -0.2), look + (float) (35 * Math.sin(t * 0.15)), 0.35);
+			// Looks back at the player (the other way than they look).
+			case GUIDE -> new Target(l.at(0.35, h * 0.8 + 0.1 * Math.sin(t * 0.07), 1.4), look + 180, 0.2);
+			case SLEEPY -> new Target(l.at(0.6, 0.3 + 0.04 * Math.sin(t * 0.03), -0.3), look + (float) (8 * Math.sin(t * 0.02)), 0.15);
+			case PENDULUM -> {
+				// Hangs from a point above and behind the head.
+				double swing = Math.sin(t * 0.08) * 1.0;
+				yield new Target(l.at(Math.sin(swing) * 0.7, h + 1.0 - Math.cos(swing) * 0.7, -0.45), look + (float) Math.toDegrees(swing) * 0.5f, 0.5);
+			}
+			case ZIGZAG -> {
+				// A triangle wave: straight runs with sharp turns.
+				double side = Math.asin(Math.sin(t * 0.06)) * 2 / Math.PI;
+				yield new Target(l.at(side * 0.9, h * 0.75, -0.9), look, 0.45);
+			}
+			case SATELLITE -> path(t, 0.6, s -> l.at(Math.cos(s * 0.09) * 1.1, h * 0.6 + Math.sin(s * 0.09) * 0.85, Math.sin(s * 0.09) * 0.35));
+			case DART -> {
+				// A new random spot around the player every 2.5 seconds, reached quickly.
+				long hop = t / 50;
+				double a = frac(Math.sin(hop * 12.9898) * 43758.5453) * Math.PI * 2;
+				double up = frac(Math.sin(hop * 78.233) * 12543.123);
+				Vec3 spot = new Vec3(Math.cos(a) * 1.2, h * (0.45 + 0.6 * up), Math.sin(a) * 1.2);
+				// Looks at the player.
+				yield new Target(spot, (float) Math.toDegrees(Math.atan2(Math.cos(a), -Math.sin(a))), 0.3);
+			}
 			case LAZY -> {
 				Vec3 base = player.position();
 				Vec3 at = f.pos == null ? base.add(l.at(0.9, h * 0.7, 0)) : f.pos;
@@ -197,6 +221,11 @@ final class PetFollowers {
 		};
 	}
 
+	/** The part after the decimal point (0 to 1). */
+	private static double frac(double x) {
+		return x - Math.floor(x);
+	}
+
 	/** A pet on a path around the player, looking the way it flies. */
 	private static Target path(long t, double follow, java.util.function.LongFunction<Vec3> at) {
 		Vec3 now = at.apply(t);
@@ -209,17 +238,32 @@ final class PetFollowers {
 		Pets.Trail trail = Pets.Trail.of(owner.trail);
 		if (trail == Pets.Trail.OFF || t % trail.every != 0) return;
 		ServerLevel level = player.level();
-		double x = f.pos.x, y = f.pos.y - 0.15 * size, z = f.pos.z;
+		var r = player.getRandom();
+		// The head is half a block (times the size) around f.pos; particles start just outside it.
+		double half = 0.25 * size;
+		double x = f.pos.x, y = f.pos.y, z = f.pos.z;
+		double sx = (r.nextDouble() - 0.5) * 2 * half, sz = (r.nextDouble() - 0.5) * 2 * half;
+		double drift = (r.nextDouble() - 0.5) * 0.15;
 		switch (trail) {
 			// For notes the speed is the colour.
-			case NOTES -> level.sendParticles(ParticleTypes.NOTE, x, y + 0.3 * size, z, 0, player.getRandom().nextDouble(), 0, 0, 1);
-			case HEARTS -> level.sendParticles(ParticleTypes.HEART, x, y + 0.3 * size, z, 1, 0.1, 0.05, 0.1, 0);
+			case NOTES -> level.sendParticles(ParticleTypes.NOTE, x + sx * 0.5, y + half + 0.2, z + sz * 0.5, 0, r.nextDouble(), 0, 0, 1);
+			case HEARTS -> level.sendParticles(ParticleTypes.HEART, x + sx * 0.5, y + half + 0.2, z + sz * 0.5, 1, 0, 0, 0, 0);
+			// Rising off the top of the head; count 0 makes the three numbers the direction, the last one the speed.
+			case SPARKLES -> level.sendParticles(ParticleTypes.END_ROD, x + sx, y + half + 0.05, z + sz, 0, drift, 1, drift, 0.06);
+			case FLAMES, SOUL_FLAMES -> level.sendParticles(particle(trail), x + sx, y + half + 0.03, z + sz, 0, drift, 1, drift, 0.03);
+			// These fall on their own: from under the head.
+			case FIREWORKS, SOULS -> level.sendParticles(particle(trail), x + sx, y + half + 0.05, z + sz, 0, drift, 1, drift, trail == Pets.Trail.FIREWORKS ? 0.08 : 0.03);
+			// Totem confetti is thrown up and falls back down.
+			case TOTEM -> level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, x + sx, y + half + 0.05, z + sz, 0, drift * 2, 1, drift * 2, 0.25);
+			case SNOW, PETALS, PALE_LEAVES, HONEY -> level.sendParticles(particle(trail), x + sx, y - half - 0.05, z + sz, 0, drift, -1, drift, 0.02);
+			// Enchanting letters, portal and nautilus particles fly from the given offset into the spot: from above, into the head.
+			case MAGIC, PORTAL, NAUTILUS -> level.sendParticles(particle(trail), x, y, z, 0, (r.nextDouble() - 0.5) * 1.2, 0.6 + r.nextDouble() * 0.5, (r.nextDouble() - 0.5) * 1.2, 1);
+			// Floating around the head (crits fly out of it).
 			default -> {
-				// A small wisp rising off the head: count 0 makes the three numbers the particle's direction.
-				var r = player.getRandom();
-				double jx = (r.nextDouble() - 0.5) * 0.25 * size, jz = (r.nextDouble() - 0.5) * 0.25 * size;
-				double rise = trail == Pets.Trail.MAGIC ? 0.5 : trail == Pets.Trail.SPARKLES ? 0.035 : 0.02;
-				level.sendParticles(particle(trail), x + jx, y + 0.1 * size, z + jz, 0, (r.nextDouble() - 0.5) * 0.2, 1, (r.nextDouble() - 0.5) * 0.2, rise);
+				double a = r.nextDouble() * Math.PI * 2;
+				double out = half + 0.12;
+				level.sendParticles(particle(trail), x + Math.cos(a) * out, y + (r.nextDouble() - 0.3) * half * 2, z + Math.sin(a) * out, 0, Math.cos(a), 0.6, Math.sin(a),
+						trail == Pets.Trail.CRITS ? 0.2 : 0.025);
 			}
 		}
 	}
@@ -235,7 +279,17 @@ final class PetFollowers {
 			case MAGIC -> ParticleTypes.ENCHANT;
 			case SPARKS -> ParticleTypes.ELECTRIC_SPARK;
 			case FIREFLIES -> ParticleTypes.FIREFLY;
-			case BUBBLES -> ParticleTypes.BUBBLE_POP;
+			case FIREWORKS -> ParticleTypes.FIREWORK;
+			case TOTEM -> ParticleTypes.TOTEM_OF_UNDYING;
+			case SOULS -> ParticleTypes.SCULK_SOUL;
+			case PORTAL -> ParticleTypes.PORTAL;
+			case NAUTILUS -> ParticleTypes.NAUTILUS;
+			case SPORES -> ParticleTypes.SPORE_BLOSSOM_AIR;
+			case ASH -> ParticleTypes.WHITE_ASH;
+			case HONEY -> ParticleTypes.DRIPPING_HONEY;
+			case PALE_LEAVES -> ParticleTypes.PALE_OAK_LEAVES;
+			case CRITS -> ParticleTypes.ENCHANTED_HIT;
+			case HAPPY -> ParticleTypes.HAPPY_VILLAGER;
 			case HEARTS -> ParticleTypes.HEART;
 			case NOTES -> ParticleTypes.NOTE;
 			case OFF -> ParticleTypes.END_ROD;

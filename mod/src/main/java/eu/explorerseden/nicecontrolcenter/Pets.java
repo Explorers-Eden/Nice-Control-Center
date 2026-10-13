@@ -51,7 +51,14 @@ public final class Pets {
 		SPIRAL("Spiral", "Winds up and down around you"),
 		FIGURE_EIGHT("Figure eight", "Loops a figure eight around you"),
 		WANDER("Wander", "Drifts around you on its own"),
-		SPIN("Spin", "Spins on the spot above your head");
+		SPIN("Spin", "Spins on the spot above your head"),
+		WOBBLE("Wobble", "Floats next to you, wobbling its head"),
+		GUIDE("Guide", "Floats ahead of you and looks back at you"),
+		SLEEPY("Sleepy", "Dozes low by your feet"),
+		PENDULUM("Pendulum", "Swings from side to side behind your head"),
+		ZIGZAG("Zigzag", "Zips left and right behind you"),
+		SATELLITE("Satellite", "Circles you over and under on a tilted ring"),
+		DART("Dart", "Darts to a new spot around you every few seconds");
 
 		public final String label;
 		public final String description;
@@ -81,7 +88,17 @@ public final class Pets {
 		MAGIC("Magic", 3),
 		SPARKS("Sparks", 6),
 		FIREFLIES("Fireflies", 10),
-		BUBBLES("Bubbles", 6);
+		FIREWORKS("Fireworks", 5),
+		TOTEM("Totem", 4),
+		SOULS("Souls", 8),
+		PORTAL("Portal", 2),
+		NAUTILUS("Nautilus", 3),
+		SPORES("Spores", 5),
+		ASH("Ash", 4),
+		HONEY("Honey drips", 12),
+		PALE_LEAVES("Pale leaves", 7),
+		CRITS("Crits", 5),
+		HAPPY("Happy", 6);
 
 		public final String label;
 		/** One particle every this many ticks. */
