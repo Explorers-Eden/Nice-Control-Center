@@ -28,12 +28,14 @@ public final class ClaimApi {
 	}
 
 	public static Map<String, Object> changes(long since) {
+		ClaimStore.reloadSettings();
 		Map<String, Object> out = ClaimStore.data().changes(since);
 		out.put("enabled", ClaimStore.enabled());
 		return out;
 	}
 
 	public static Map<String, Object> action(JsonObject body, String by) {
+		ClaimStore.reloadSettings();
 		Map<String, Object> result = Claims.apply(ClaimStore.data(), ClaimStore.settings(), body, System.currentTimeMillis());
 		if (result.containsKey("ok")) {
 			ClaimStore.changed();
@@ -45,6 +47,7 @@ public final class ClaimApi {
 	/** Claims for the panel's map: rectangles with colour, name and owner. */
 	public static List<Map<String, Object>> mapClaims() {
 		List<Map<String, Object>> out = new ArrayList<>();
+		ClaimStore.reloadSettings();
 		if (!ClaimStore.enabled()) return out;
 		for (Claim c : ClaimStore.data().claims.values()) {
 			Map<String, Object> m = new LinkedHashMap<>();

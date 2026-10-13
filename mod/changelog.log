@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.9.2
+- Claims switched on or off in the panel apply right away even while the server is paused with nobody online (before, claims stayed off on the map until someone joined or the server restarted)
+
 ## 1.9.1
 - Claims: minecarts with chests or hoppers and chest boats can only be opened by members with the containers role (or with the claim's switch on); before, anyone could open them
 - The switch "open chests and use animals" is now "open chests and interact with entities": it always covered villagers, interaction entities and other mobs too

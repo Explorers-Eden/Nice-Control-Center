@@ -133,7 +133,11 @@ public final class ClaimStore {
 		if (dirty && tick % SAVE_EVERY == 0) save();
 	}
 
-	private static void reloadSettings() {
+	/**
+	 * Reads the settings again if the panel changed them. Ticks do this every 5 seconds, but a server
+	 * that pauses while empty doesn't tick, so the dashboard API asks too (server thread).
+	 */
+	public static void reloadSettings() {
 		Path f = settingsFile();
 		long now;
 		try {
