@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.2
+- /pets on and /pets off: take your pet out or put it away quickly (on brings back the one you had out last)
+
 ## 1.13.1
 - Pets:
   - the head faced backwards; it looks the right way now

@@ -241,6 +241,22 @@ public final class Pets {
 		/** How their pet moves, and its particle trail (for whichever pet is out). */
 		public String behavior;
 		public String trail;
+		/** The pet that was out last, for /pets on. */
+		public String last;
+
+		/** Puts the pet away, remembering it for /pets on. */
+		public void putAway() {
+			if (active != null) last = active;
+			active = null;
+		}
+
+		/** Takes out the pet that was out last (or the first one). Null when they have none. */
+		public Owned takeOut() {
+			Owned o = last == null ? null : owned(last);
+			if (o == null && !pets.isEmpty()) o = pets.get(0);
+			if (o != null) active = o.pet;
+			return o;
+		}
 
 		public Owned owned(String pet) {
 			for (Owned o : pets) if (o.pet.equals(pet)) return o;

@@ -70,14 +70,41 @@ public final class PetStore {
 				.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
 				.executes(ctx -> {
 					ServerPlayer player = ctx.getSource().getPlayerOrException();
-					if (!enabled()) {
-						player.sendSystemMessage(Component.literal("There are no pets on this server.").withStyle(ChatFormatting.RED));
-						Plop.play(player);
-						return 0;
-					}
+					if (!enabled()) return off(player);
 					PetDialogs.home(player, null);
 					return 1;
-				}));
+				})
+				.then(Commands.literal("on").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), true)))
+				.then(Commands.literal("off").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), false))));
+	}
+
+	private static int off(ServerPlayer player) {
+		player.sendSystemMessage(Component.literal("There are no pets on this server.").withStyle(ChatFormatting.RED));
+		Plop.play(player);
+		return 0;
+	}
+
+	/** /pets on and /pets off: the quick way, with a line above the hotbar. */
+	private static int toggle(ServerPlayer player, boolean on) {
+		if (!enabled()) return off(player);
+		Pets.Owner o = data.owners.get(player.getStringUUID());
+		Component msg;
+		if (o == null || o.pets.isEmpty()) {
+			msg = Component.literal("You don't have a pet yet: get one with /pets").withStyle(ChatFormatting.RED);
+		} else if (on) {
+			Pets.Owned out = o.active != null ? o.owned(o.active) : o.takeOut();
+			msg = Component.literal(name(out) + " is out").withStyle(ChatFormatting.GREEN);
+		} else if (o.active == null) {
+			msg = Component.literal("Your pet is already put away").withStyle(ChatFormatting.GRAY);
+		} else {
+			String n = name(o.owned(o.active));
+			o.putAway();
+			msg = Component.literal(n + " is put away").withStyle(ChatFormatting.YELLOW);
+		}
+		changed();
+		player.sendOverlayMessage(msg);
+		Plop.play(player);
+		return 1;
 	}
 
 	private static Path settingsFile() {
@@ -266,7 +293,7 @@ public final class PetStore {
 			}
 			case "away" -> {
 				if (o == null) return null;
-				o.active = null;
+				o.putAway();
 				what = "put their pet away";
 			}
 			case "move" -> {

@@ -287,7 +287,7 @@ public final class PetDialogs {
 				home(player, "✔ " + PetStore.name(owned) + " is out.");
 			}
 			case "away" -> {
-				if (owner != null) owner.active = null;
+				if (owner != null) owner.putAway();
 				PetStore.changed();
 				home(player, null);
 			}

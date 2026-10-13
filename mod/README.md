@@ -78,7 +78,7 @@ The main command is `/nicecontrolcenter`, short `/ncc`. `[minutes]` is optional 
 | `/nccreply <message>` | **For all players:** answer a private dashboard message |
 | `/claim` | **For all players (while claims are on):** the claim menu. See [Land claims](#land-claims) |
 | `/market` | **For all players (while the market is open):** the market menu. See [Gameplay tweaks and market](#gameplay-tweaks-and-market) |
-| `/pets` | **For all players (while pets are on):** your pets and the pet shop |
+| `/pets` | **For all players (while pets are on):** your pets and the pet shop. `/pets on` / `/pets off` take your pet out or put it away |
 
 ## Permissions
 
