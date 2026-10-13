@@ -7,6 +7,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.permissions.PermissionLevel;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /** /market: the market menu. */
 public final class MarketCommand {
@@ -22,6 +23,7 @@ public final class MarketCommand {
 					var player = ctx.getSource().getPlayerOrException();
 					if (!MarketStore.enabled()) {
 						player.sendSystemMessage(Component.literal("The market is closed.").withStyle(ChatFormatting.RED));
+						Plop.play(player);
 						return 0;
 					}
 					MarketDialogs.home(player, null);

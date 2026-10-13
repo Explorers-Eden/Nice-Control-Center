@@ -6,7 +6,10 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.dialog.ActionButton;
 import net.minecraft.server.dialog.CommonButtonData;
@@ -15,6 +18,7 @@ import net.minecraft.server.dialog.Dialog;
 import net.minecraft.server.dialog.DialogAction;
 import net.minecraft.server.dialog.Input;
 import net.minecraft.server.dialog.MultiActionDialog;
+import net.minecraft.server.dialog.NoticeDialog;
 import net.minecraft.server.dialog.action.CustomAll;
 import net.minecraft.server.dialog.body.DialogBody;
 import net.minecraft.server.dialog.body.ItemBody;
@@ -31,6 +35,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * The market menu (/market), as dialogs: browse and buy, sell from your inventory, your listings and your
@@ -40,7 +45,7 @@ import java.util.Optional;
 public final class MarketDialogs {
 	private static final int WIDTH = 150;
 	private static final int TEXT_WIDTH = 310;
-	private static final int PAGE = 12;
+	private static final int PAGE = 10;
 
 	private MarketDialogs() {
 	}
@@ -71,8 +76,32 @@ public final class MarketDialogs {
 	}
 
 	private static void menu(ServerPlayer player, String title, List<DialogBody> body, List<Input> inputs, List<ActionButton> buttons) {
+		menu(player, title, body, inputs, buttons, new ActionButton(new CommonButtonData(Component.literal("Close"), WIDTH), Optional.empty()));
+	}
+
+	/** A menu whose bottom button (apart from the others) is exit, e.g. Back. */
+	private static void menu(ServerPlayer player, String title, List<DialogBody> body, List<Input> inputs, List<ActionButton> buttons, ActionButton exit) {
 		CommonDialogData common = new CommonDialogData(Component.literal(title), Optional.empty(), true, false, DialogAction.CLOSE, body, inputs);
-		show(player, new MultiActionDialog(common, buttons, Optional.of(new ActionButton(new CommonButtonData(Component.literal("Close"), WIDTH), Optional.empty())), 2));
+		if (buttons.isEmpty()) show(player, new NoticeDialog(common, exit));
+		else show(player, new MultiActionDialog(common, buttons, Optional.of(exit), 2));
+	}
+
+	private static ActionButton back(String action, CompoundTag args) {
+		return button("Back", null, action, args);
+	}
+
+	/** Clickable text: sends the same "market/…" click as a button. */
+	private static MutableComponent link(String label, String hover, String action, CompoundTag args, ChatFormatting color) {
+		return Component.literal(label).withStyle(st -> st.withColor(color).withUnderlined(true)
+				.withClickEvent(new ClickEvent.Custom(Identifier.fromNamespaceAndPath("nicecontrolcenter", "market/" + action), Optional.of(args)))
+				.withHoverEvent(new HoverEvent.ShowText(Component.literal(hover))));
+	}
+
+	/** An item row: its icon (with the item's own tooltip on hover) and a description next to it. */
+	private static Optional<DialogBody> itemRow(ServerPlayer player, Market.Item item, int count, Component description) {
+		ItemStack stack = MarketStore.stack(player.level().getServer(), item, Math.max(1, Math.min(count, 99)));
+		if (stack.isEmpty()) return Optional.empty();
+		return Optional.of(new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), true, true, 16, 16));
 	}
 
 	private static String money(int n) {
@@ -98,7 +127,10 @@ public final class MarketDialogs {
 		String me = player.getStringUUID();
 		Market.Mailbox mail = data.mail.get(me);
 		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) body.add(text(notice, notice.startsWith("Bought") || notice.startsWith("Listed") || notice.startsWith("Collected") ? ChatFormatting.GREEN : ChatFormatting.RED));
+		if (notice != null) {
+			body.add(text(notice, notice.startsWith("Bought") || notice.startsWith("Listed") || notice.startsWith("Collected") ? ChatFormatting.GREEN : ChatFormatting.RED));
+			Plop.play(player);
+		}
 		body.add(text(data.listings.size() + " listings on the market. Everything is paid in " + MarketStore.currencyName() + ".", ChatFormatting.WHITE));
 		if (mail != null && !mail.isEmpty()) body.add(text("Your mailbox: " + (mail.currency > 0 ? money(mail.currency) : "") + (mail.currency > 0 && !mail.parcels.isEmpty() ? " and " : "")
 				+ (mail.parcels.isEmpty() ? "" : mail.parcels.size() + " parcel" + (mail.parcels.size() == 1 ? "" : "s")), ChatFormatting.GOLD));
@@ -123,30 +155,57 @@ public final class MarketDialogs {
 		all.sort(order);
 		int pages = Math.max(1, (all.size() + PAGE - 1) / PAGE);
 		int p = Math.max(0, Math.min(page, pages - 1));
+		String sortName = switch (sort) {
+			case "new" -> "newest first";
+			case "name" -> "by name";
+			default -> "cheapest first";
+		};
 		List<DialogBody> body = new ArrayList<>();
-		body.add(text(all.isEmpty() ? "Nothing found." : all.size() + " listings · page " + (p + 1) + " of " + pages, ChatFormatting.GRAY));
+		// Searching and paging on top, apart from the listings.
+		MutableComponent nav = Component.empty()
+				.append(link("Search / order", "Search by item or seller, change the order", "search", args("keepq", query, "keepsort", sort), ChatFormatting.AQUA))
+				.append(Component.literal("   "));
+		if (p > 0) nav.append(link("← Previous", "Page " + p, "browse", args("page", String.valueOf(p - 1), "keepq", query, "keepsort", sort), ChatFormatting.YELLOW));
+		else nav.append(Component.literal("← Previous").withStyle(ChatFormatting.DARK_GRAY));
+		nav.append(Component.literal("  " + (p + 1) + " / " + pages + "  ").withStyle(ChatFormatting.GRAY));
+		if (p < pages - 1) nav.append(link("Next →", "Page " + (p + 2), "browse", args("page", String.valueOf(p + 1), "keepq", query, "keepsort", sort), ChatFormatting.YELLOW));
+		else nav.append(Component.literal("Next →").withStyle(ChatFormatting.DARK_GRAY));
+		body.add(new PlainMessage(nav, TEXT_WIDTH));
+		body.add(text((all.isEmpty() ? "Nothing found" : all.size() + (all.size() == 1 ? " listing" : " listings")) + (q.isEmpty() ? "" : " for \"" + query.strip() + "\"")
+				+ " · " + sortName + ". Click an item to buy.", ChatFormatting.GRAY));
+		for (Market.Listing l : all.subList(p * PAGE, Math.min(all.size(), (p + 1) * PAGE))) {
+			Component desc = Component.empty()
+					.append(link(l.item.name, "Click to see it and buy", "view", args("id", l.id), ChatFormatting.WHITE))
+					.append(Component.literal(" ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
+					.append(Component.literal("\n" + money(l.price) + " each").withStyle(ChatFormatting.GOLD))
+					.append(Component.literal(" · " + l.sellerName).withStyle(ChatFormatting.DARK_GRAY));
+			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
+		}
+		menu(player, "Market · Browse", body, List.of(), List.of(), back("home", args()));
+	}
+
+	private static void search(ServerPlayer player, String query, String sort) {
 		List<Input> inputs = List.of(
-				new Input("q", new TextInput(250, Component.literal("Search"), true, query, 50, Optional.empty())),
+				new Input("q", new TextInput(250, Component.literal("Item or seller"), true, query, 50, Optional.empty())),
 				new Input("sort", new SingleOptionInput(250, List.of(
 						new SingleOptionInput.Entry("price", Optional.of(Component.literal("Cheapest first")), sort.equals("price")),
 						new SingleOptionInput.Entry("new", Optional.of(Component.literal("Newest first")), sort.equals("new")),
 						new SingleOptionInput.Entry("name", Optional.of(Component.literal("By name")), sort.equals("name"))), Component.literal("Order"), true)));
-		List<ActionButton> buttons = new ArrayList<>();
-		buttons.add(button("Search", null, "browse", args("page", "0")));
-		for (Market.Listing l : all.subList(p * PAGE, Math.min(all.size(), (p + 1) * PAGE))) {
-			buttons.add(button(Component.literal(l.item.name + " ×" + l.amount), "by " + l.sellerName + " · " + money(l.price) + " each", "view", args("id", l.id)));
-		}
-		if (p > 0) buttons.add(button("← Previous", null, "browse", args("page", String.valueOf(p - 1), "keepq", query, "keepsort", sort)));
-		if (p < pages - 1) buttons.add(button("Next →", null, "browse", args("page", String.valueOf(p + 1), "keepq", query, "keepsort", sort)));
-		buttons.add(button("Back", null, "home", args()));
-		menu(player, "Market · Browse", body, inputs, buttons);
+		List<ActionButton> buttons = List.of(button("Search", null, "browse", args("page", "0")),
+				button("Show everything", null, "browse", args("page", "0", "keepq", "", "keepsort", sort, "clear", "1")));
+		menu(player, "Market · Search", List.of(text("Leave the search empty to see everything.", ChatFormatting.GRAY)), inputs, buttons,
+				back("browse", args("page", "0", "keepq", query, "keepsort", sort)));
 	}
 
 	private static void view(ServerPlayer player, Market.Listing l, String notice) {
 		ItemStack stack = MarketStore.stack(player.level().getServer(), l.item, 1);
 		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) body.add(text(notice, ChatFormatting.RED));
+		if (notice != null) {
+			body.add(text(notice, ChatFormatting.RED));
+			Plop.play(player);
+		}
 		if (!stack.isEmpty()) body.add(new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(Component.literal(l.item.name), 200)), true, true, 16, 16));
+		else body.add(text(l.item.name, ChatFormatting.WHITE));
 		body.add(text(money(l.price) + " each · " + l.amount + " left · sold by " + l.sellerName, ChatFormatting.WHITE));
 		int afford = MarketStore.count(player, new ItemStack(MarketStore.currency())) / Math.max(1, l.price);
 		body.add(text("You can afford " + Math.min(afford, l.amount) + ".", ChatFormatting.GRAY));
@@ -154,8 +213,8 @@ public final class MarketDialogs {
 		List<ActionButton> buttons = new ArrayList<>();
 		if (l.seller.equals(player.getStringUUID())) buttons.add(button("Take it back", "Into your mailbox", "cancel", args("id", l.id)));
 		else buttons.add(button("Buy", null, "buy", args("id", l.id)));
-		buttons.add(button("Back", null, "browse", args("page", "0")));
-		menu(player, l.item.name, body, inputs, buttons);
+		boolean own = l.seller.equals(player.getStringUUID());
+		menu(player, l.item.name, body, own ? List.of() : inputs, buttons, own ? back("mine", args()) : back("browse", args("page", "0")));
 	}
 
 	/** One entry per kind of item the player carries (same item and components). */
@@ -173,10 +232,13 @@ public final class MarketDialogs {
 	private static void sell(ServerPlayer player, String notice) {
 		List<ItemStack> kinds = kinds(player);
 		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) body.add(text(notice, ChatFormatting.RED));
+		if (notice != null) {
+			body.add(text(notice, ChatFormatting.RED));
+			Plop.play(player);
+		}
 		if (kinds.isEmpty()) {
 			body.add(text("Your inventory is empty.", ChatFormatting.GRAY));
-			menu(player, "Market · Sell", body, List.of(), List.of(button("Back", null, "home", args())));
+			menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));
 			return;
 		}
 		body.add(text("Pick what to sell, how many (more than a stack is fine) and the price per item in " + MarketStore.currencyName() + ". "
@@ -190,20 +252,23 @@ public final class MarketDialogs {
 				new Input("slot", new SingleOptionInput(250, entries, Component.literal("Item"), true)),
 				new Input("amount", new TextInput(120, Component.literal("How many"), true, "", 9, Optional.empty())),
 				new Input("price", new TextInput(120, Component.literal("Price each"), true, "", 9, Optional.empty())));
-		menu(player, "Market · Sell", body, inputs, List.of(button("List it", null, "list", args()), button("Back", null, "home", args())));
+		menu(player, "Market · Sell", body, inputs, List.of(button("List it", null, "list", args())), back("home", args()));
 	}
 
 	private static void mine(ServerPlayer player) {
 		List<Market.Listing> mine = MarketStore.data().of(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();
 		body.add(text(mine.isEmpty() ? "You're not selling anything." : "Click one to see it or take it back.", ChatFormatting.GRAY));
-		List<ActionButton> buttons = new ArrayList<>();
 		for (Market.Listing l : mine) {
 			long days = Math.max(0, (l.expires - System.currentTimeMillis()) / 86_400_000L);
-			buttons.add(button(l.item.name + " ×" + l.amount, money(l.price) + " each · " + days + " days left", "view", args("id", l.id)));
+			Component desc = Component.empty()
+					.append(link(l.item.name, "Click to see it or take it back", "view", args("id", l.id), ChatFormatting.WHITE))
+					.append(Component.literal(" ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
+					.append(Component.literal("\n" + money(l.price) + " each").withStyle(ChatFormatting.GOLD))
+					.append(Component.literal(" · " + days + (days == 1 ? " day" : " days") + " left").withStyle(ChatFormatting.DARK_GRAY));
+			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
 		}
-		buttons.add(button("Back", null, "home", args()));
-		menu(player, "Market · My listings", body, List.of(), buttons);
+		menu(player, "Market · My listings", body, List.of(), List.of(), back("home", args()));
 	}
 
 	private static void mail(ServerPlayer player) {
@@ -213,12 +278,15 @@ public final class MarketDialogs {
 			body.add(text("Your mailbox is empty.", ChatFormatting.GRAY));
 		} else {
 			if (m.currency > 0) body.add(text("Earnings: " + money(m.currency), ChatFormatting.GOLD));
-			for (Market.Parcel p : m.parcels) body.add(text(p.item.name + " ×" + p.amount, ChatFormatting.WHITE));
+			for (Market.Parcel p : m.parcels) {
+				Component desc = Component.literal(p.item.name).withStyle(ChatFormatting.WHITE)
+						.append(Component.literal(" ×" + String.format(Locale.ROOT, "%,d", p.amount)).withStyle(ChatFormatting.GRAY));
+				itemRow(player, p.item, p.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
+			}
 		}
 		List<ActionButton> buttons = new ArrayList<>();
 		if (m != null && !m.isEmpty()) buttons.add(button("Collect", "What fits in your inventory", "collect", args()));
-		buttons.add(button("Back", null, "home", args()));
-		menu(player, "Market · Mailbox", body, List.of(), buttons);
+		menu(player, "Market · Mailbox", body, List.of(), buttons, back("home", args()));
 	}
 
 	// ---------------------------------------------------------------- answers
@@ -227,6 +295,7 @@ public final class MarketDialogs {
 	public static void handle(ServerPlayer player, String what, Optional<Tag> payload) {
 		if (!MarketStore.enabled()) {
 			player.sendSystemMessage(Component.literal("The market is closed.").withStyle(ChatFormatting.RED));
+			Plop.play(player);
 			return;
 		}
 		CompoundTag in = payload.orElse(null) instanceof CompoundTag t ? t : new CompoundTag();
@@ -234,10 +303,11 @@ public final class MarketDialogs {
 		switch (what) {
 			case "home" -> home(player, null);
 			case "browse" -> {
-				String q = in.contains("q") ? str(in, "q") : str(in, "keepq");
+				String q = in.contains("clear") ? "" : in.contains("q") ? str(in, "q") : str(in, "keepq");
 				String sort = in.contains("sort") ? str(in, "sort") : str(in, "keepsort");
 				browse(player, q, sort.isEmpty() ? "price" : sort, Math.max(0, num(in, "page")));
 			}
+			case "search" -> search(player, str(in, "keepq"), str(in, "keepsort").isEmpty() ? "price" : str(in, "keepsort"));
 			case "sell" -> sell(player, null);
 			case "mine" -> mine(player);
 			case "mail" -> mail(player);
@@ -309,8 +379,11 @@ public final class MarketDialogs {
 		}
 		MarketStore.saveNow();
 		ServerPlayer seller = player.level().getServer().getPlayerList().getPlayer(java.util.UUID.fromString(sellerId));
-		if (seller != null) seller.sendSystemMessage(Component.literal(player.getPlainTextName() + " bought " + amount + " × " + item.name + " for " + money((int) cost)
-				+ ". Collect it in /market.").withStyle(ChatFormatting.GOLD));
+		if (seller != null) {
+			seller.sendSystemMessage(Component.literal(player.getPlainTextName() + " bought " + amount + " × " + item.name + " for " + money((int) cost)
+					+ ". Collect it in /market.").withStyle(ChatFormatting.GOLD));
+			Plop.play(seller);
+		}
 		home(player, "Bought " + amount + " × " + item.name + " for " + money((int) cost) + (left > 0 ? "; " + left + " didn't fit and wait in your mailbox." : "."));
 	}
 

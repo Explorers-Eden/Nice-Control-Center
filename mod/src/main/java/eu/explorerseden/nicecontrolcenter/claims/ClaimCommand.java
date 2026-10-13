@@ -18,6 +18,7 @@ import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.players.NameAndId;
 
 import java.util.Locale;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * /claim: the claim menu. Everything players need is in the menu; the subcommands are shortcuts.
@@ -108,9 +109,11 @@ public final class ClaimCommand {
 		String me = p.getStringUUID();
 		var mine = data.ownedBy(me);
 		p.sendSystemMessage(Component.literal(mine.size() + (mine.size() == 1 ? " claim · " : " claims · ") + data.available(me) + " claim blocks available").withStyle(ChatFormatting.GOLD));
+		Plop.play(p);
 		for (Claim c : mine) {
 			p.sendSystemMessage(Component.literal("■ ").withColor(c.color).append(Component.literal(c.displayName() + " · " + c.box().width() + " × " + c.box().length()
 					+ " at " + (c.minX + c.maxX) / 2 + ", " + (c.minZ + c.maxZ) / 2 + " (" + c.dim.replace("minecraft:", "") + ")").withStyle(ChatFormatting.GRAY)));
+			Plop.play(p);
 		}
 	}
 

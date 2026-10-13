@@ -21,6 +21,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
 
 import java.util.List;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * Claim mode: entered from the claim menu or with /claim mode. The player gets the claim tool (a
@@ -78,10 +79,12 @@ public final class ClaimMode {
 	public static void enter(ServerPlayer player) {
 		if (!ClaimStore.enabled()) {
 			player.sendSystemMessage(Component.literal("Claims are off on this server.").withStyle(ChatFormatting.RED));
+			Plop.play(player);
 			return;
 		}
 		if (active(player)) {
 			player.sendSystemMessage(Component.literal("You're already in claim mode.").withStyle(ChatFormatting.GRAY));
+			Plop.play(player);
 			return;
 		}
 		if (player.isSpectator()) return;
@@ -101,6 +104,7 @@ public final class ClaimMode {
 				.append(Component.literal("right-click two opposite corners to claim land, or a corner of your claim to move it. "
 						+ "Sneak + right-click opens the claim menu. ").withStyle(ChatFormatting.GRAY))
 				.append(Component.literal("You have " + ClaimStore.data().available(player.getStringUUID()) + " claim blocks.").withStyle(ChatFormatting.YELLOW)));
+		Plop.play(player);
 	}
 
 	/** Leaves claim mode: takes the tools, gives the kept item back. {@code why} is shown when not null. */
@@ -115,6 +119,7 @@ public final class ClaimMode {
 		if (kept != null) ClaimStore.saveNow();
 		if (kept != null) {
 			player.sendSystemMessage(Component.literal(why == null ? "Claim mode off." : why).withStyle(ChatFormatting.GRAY));
+			Plop.play(player);
 		}
 	}
 
@@ -161,6 +166,7 @@ public final class ClaimMode {
 				else ClaimTool.statusBar(p);
 			} else if (removeTools(p)) {
 				p.sendSystemMessage(Component.literal("The claim tool only works in claim mode (/claim mode).").withStyle(ChatFormatting.GRAY));
+				Plop.play(p);
 			}
 		}
 	}

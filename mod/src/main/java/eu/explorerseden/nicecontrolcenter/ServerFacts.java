@@ -48,12 +48,18 @@ public final class ServerFacts {
 		};
 	}
 
+	private static String wear(double m, String what) {
+		if (m <= 0) return "none for the extra " + what + "s";
+		if (m == 1) return "one use per " + what;
+		return String.format(Locale.ROOT, "%s uses per extra %s", java.math.BigDecimal.valueOf(m).stripTrailingZeros().toPlainString(), what);
+	}
+
 	/** The switched-on gameplay tweaks, for players. */
 	public static List<Map<String, Object>> tweaks(Tweaks.Settings t) {
 		List<Map<String, Object>> out = new ArrayList<>();
 		if (t.anvil.noTooExpensive || t.anvil.cheapRename) {
 			List<Map<String, String>> rows = new ArrayList<>();
-			if (t.anvil.noTooExpensive) rows.add(line("Most an anvil costs", t.anvil.maxCost + " levels", "Never \"Too Expensive!\": anything that would cost more costs this."));
+			if (t.anvil.noTooExpensive) rows.add(line("Too Expensive", "never", "Repairs and enchantments of 40 levels or more work too, at their full price. The anvil shows 39; the real price appears above your hotbar."));
 			if (t.anvil.cheapRename) rows.add(line("Renaming costs", t.anvil.renameCost + (t.anvil.renameCost == 1 ? " level" : " levels"), "Renaming alone, however often the item went through an anvil."));
 			out.add(tweak("anvil", "Anvil", "bi-hammer", "The anvil is kinder than in vanilla.", rows));
 		}
@@ -65,7 +71,7 @@ public final class ServerFacts {
 			List<Map<String, String>> rows = new ArrayList<>();
 			rows.add(line("Sneaking", sneak(t.felling.sneak, "the whole tree", "the one log"), ""));
 			rows.add(line("Biggest tree", t.felling.maxLogs + " logs", "cutUpTo".equals(t.felling.tooBig) ? "Bigger trees: the first " + t.felling.maxLogs + " logs fall." : "Bigger trees only lose the one log."));
-			rows.add(line("Axe wear", "one use per log", t.felling.preserveTool ? "It stops before your axe would break." : ""));
+			rows.add(line("Axe wear", wear(t.felling.durability, "log"), t.felling.preserveTool ? "It stops before your axe would break." : ""));
 			if (t.felling.fastLeafDecay) rows.add(line("Leaves", "fall within a few seconds", ""));
 			out.add(tweak("felling", "Tree felling", "bi-tree",
 					"Chop one log with an axe and the whole tree comes down" + ("shiftDown".equals(t.felling.breakMode) ? " one log at a time from the top" : "")
@@ -74,7 +80,7 @@ public final class ServerFacts {
 		if (t.veins.enabled) {
 			out.add(tweak("veins", "Vein mining", "bi-gem", "Mine one ore with a pickaxe and the whole vein (up to " + t.veins.maxBlocks + " blocks) comes out.",
 					List.of(line("Sneaking", sneak(t.veins.sneak, "the whole vein", "the one ore"), ""),
-							line("Pickaxe wear", "one use per block", t.veins.preserveTool ? "It stops before your pickaxe would break." : ""))));
+							line("Pickaxe wear", wear(t.veins.durability, "block"), t.veins.preserveTool ? "It stops before your pickaxe would break." : ""))));
 		}
 		if (t.afk.enabled) {
 			out.add(tweak("afk", "AFK", "bi-moon", "Players who haven't moved for " + t.afk.minutes + " minutes get \"" + t.afk.tag + "\" next to their name in the tab list.", List.of()));

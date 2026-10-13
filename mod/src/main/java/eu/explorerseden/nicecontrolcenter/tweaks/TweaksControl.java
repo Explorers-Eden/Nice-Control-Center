@@ -53,9 +53,14 @@ public final class TweaksControl {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(s -> {
 			if (modified < 0 || s.getTickCount() % 100 == 0) reload();
 			Felling.tick(s);
+			TreeFall.tick(s);
 			AfkTabList.tick(s);
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTING.register(s -> modified = -1);
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> TreeFall.finishAll());
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((e, level) -> {
+			if (TreeFall.leftOver(e)) e.discard();
+		});
 		Felling.register();
 	}
 

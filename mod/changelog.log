@@ -1,4 +1,13 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.11.0
+- Anvil: "never Too Expensive" now charges the full cost however high it is (it used to lower it to a limit). Game clients can't show more than 39, so the anvil shows 39 and the real price appears above the hotbar; taking the result checks and charges the real price
+- Tree felling: the tree tips over away from the player and falls (block displays, seen by normal clients); its logs, crown and drops land where it falls. Can be switched off
+- Tree felling and vein mining: tool wear per extra block can be set (1 = normal, 0.5 = half, 0 = none, 2 = double)
+- Felling and vein mining show the breaking of every block to the player too
+- Tab list: an empty line between the header/footer and the players, and optionally each player's dimension after their name, with a name and colour per dimension
+- Market: Browse shows every listing with its item icon and the item's own tooltip (enchantments, lore…); click a name to buy. Search, order and pages are above the listings, Back is its own button at the bottom (also in Sell, My listings, Mailbox and the listing itself). My listings and the mailbox show icons too
+- Claim and market messages come with the little chicken-egg "plop", like the Explorer's Eden data packs
+
 ## 1.10.0
 - Gameplay tweaks, all set in the panel (Tweaks) and working with normal game clients:
   - Anvil: never "Too Expensive!" (costs over the limit, 39 by default, are lowered to it) and cheap renaming (1 level by default)

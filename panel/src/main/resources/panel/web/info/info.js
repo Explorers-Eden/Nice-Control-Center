@@ -2,8 +2,8 @@
   'use strict';
 
   // The public info page: server settings, game rules, data pack settings and published config files,
-  // in plain words. A tree on the left mirrors the page (data packs follow their own in-game menus);
-  // it follows the scroll position and the search. Read-only; everything comes from data.json.
+  // in plain words. Each section is a tab; inside it, chips pick one part (data packs follow their own
+  // in-game menus). The search looks through everything. Read-only; everything comes from data.json.
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -257,14 +257,6 @@
       ${n.desc ? `<p class="in-card-desc">${mc(n.desc)}</p>` : ''}${n.body}</section>`;
   }
 
-  function treeItem(n, depth) {
-    const kids = n.children || [];
-    return `<li data-for="${n.id}"${kids.length ? ' class="has-kids"' : ''}>
-      <div class="in-tree-row" style="--depth:${depth}">${kids.length ? '<button type="button" class="in-tree-toggle" aria-label="Open"><i class="bi bi-chevron-right"></i></button>' : '<span class="in-tree-pad"></span>'}
-        <a href="#${n.id}">${mc(plain(n.title))}</a></div>
-      ${kids.length ? `<ul>${kids.map((k) => treeItem(k, depth + 1)).join('')}</ul>` : ''}</li>`;
-  }
-
   function render(d) {
     document.title = d.title;
     if (d.motd) { $('in-motd').hidden = false; $('in-motd').innerHTML = mc(d.motd); }
@@ -279,59 +271,44 @@
     $('in-intro').innerHTML = (d.intro || '').split(/\n\s*\n/).filter((p) => p.trim()).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
     $('in-updated').textContent = d.updated ? `Last updated ${new Date(d.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '';
     const sections = buildSections(d);
-    $('in-stats').innerHTML = sections.map((s) => `<a class="in-stat" href="#${s.id}" style="--hue:${s.hue}"><i class="bi ${s.icon}"></i><b>${s.count}</b><span>${esc(s.statLabel || s.title)}${s.note ? ` · ${esc(s.note)}` : ''}</span></a>`).join('');
+    $('in-tabs').innerHTML = sections.map((s) => `<a class="in-tab" href="#${s.id}" data-tab="${s.id}" style="--hue:${s.hue}">
+        <i class="bi ${s.icon}"></i><span>${esc(s.title)}</span><small class="in-tab-hits" hidden></small></a>`).join('');
     $('in-main').innerHTML = sections.map((s) => `<div class="in-section" id="${s.id}" data-node style="--hue:${s.hue}">
-        <h2 class="in-section-title"><span class="in-icon big"><i class="bi ${s.icon}"></i></span>${esc(s.title)}<small>${s.count}</small></h2>
+        <h2 class="in-section-title"><span class="in-icon big"><i class="bi ${s.icon}"></i></span><span>${esc(s.title)}${s.note ? `<small>${esc(s.note)}</small>` : ''}</span></h2>
+        ${s.children.length > 1 ? `<nav class="in-pills" aria-label="${esc(s.title)}"><a class="in-pill" href="#${s.id}" data-pill="">All</a>${s.children.map((c) =>
+          `<a class="in-pill" href="#${c.id}" data-pill="${c.id}">${c.icon ? `<i class="bi ${c.icon}"></i>` : ''}${esc(plain(c.title))}</a>`).join('')}</nav>` : ''}
         <div class="in-cards">${s.children.map((c) => renderNode(c, 1)).join('')}</div></div>`).join('')
       || '<p class="in-empty">Nothing is published here yet.</p>';
-    $('in-tree').innerHTML = sections.length ? `<ul class="in-tree-root">${sections.map((s) => `<li data-for="${s.id}" class="has-kids open" style="--hue:${s.hue}">
-        <div class="in-tree-row in-tree-top"><button type="button" class="in-tree-toggle" aria-label="Open"><i class="bi bi-chevron-right"></i></button>
-          <a href="#${s.id}"><i class="bi ${s.icon}"></i>${esc(s.title)}</a></div>
-        <ul>${s.children.map((c) => treeItem(c, 1)).join('')}</ul></li>`).join('')}</ul>` : '';
   }
 
-  // ── Tree behaviour ──
-
-  $('in-tree').addEventListener('click', (e) => {
-    const toggle = e.target.closest('.in-tree-toggle');
-    if (toggle) {
-      toggle.closest('li').classList.toggle('open');
-      return;
-    }
-
-  });
-
-  /** Shows only the chosen part (a section, a group or one card), with a breadcrumb; the tree marks it. */
-  let selected = null;
+  /** Shows the tab holding the chosen part (a section, a part of it, or a card deeper down). */
   function select(id, push) {
-    const target = document.getElementById(id) || document.querySelector('.in-section');
+    const target = (id && document.getElementById(id)) || document.querySelector('.in-section');
     if (!target) return;
-    selected = target.id;
-    document.querySelectorAll('[data-node]').forEach((el) => {
-      el.classList.toggle('in-off', !(el === target || el.contains(target) || target.contains(el)));
+    const section = target.closest('.in-section');
+    document.querySelectorAll('.in-section').forEach((s) => s.classList.toggle('in-off', s !== section));
+    document.querySelectorAll('.in-tab').forEach((t) => {
+      const on = t.dataset.tab === section.id;
+      t.classList.toggle('active', on);
+      if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+      if (on) t.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
-    document.querySelectorAll('#in-tree li.active, #in-tree li.trail').forEach((li) => li.classList.remove('active', 'trail'));
-    const li = document.querySelector(`#in-tree li[data-for="${selected}"]`);
-    const path = [];
-    if (li) {
-      li.classList.add('active', 'open');
-      for (let p = li; p; p = p.parentElement.closest('li')) {
-        p.classList.add('open');
-        if (p !== li) p.classList.add('trail');
-        path.unshift(p);
-      }
+    // The part of the section it belongs to; the section itself means all of them.
+    const cards = section.querySelector(':scope > .in-cards');
+    let top = target;
+    while (top !== section && top.parentElement !== cards) top = top.parentElement;
+    const part = top === section ? null : top;
+    [...cards.children].forEach((c) => c.classList.toggle('in-off', !!part && c !== part));
+    section.querySelectorAll('.in-pill').forEach((p) => p.classList.toggle('active', p.dataset.pill === (part ? part.id : '')));
+    if (push) history.replaceState(null, '', '#' + target.id);
+    if (target !== section && target !== part) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else {
+      const top = $('in-main').getBoundingClientRect().top + window.scrollY - $('in-bar').offsetHeight - 12;
+      if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
     }
-    $('in-crumbs').innerHTML = path.map((p, i) => {
-      const label = p.querySelector(':scope > .in-tree-row a').textContent.trim();
-      return i === path.length - 1 ? `<b>${esc(label)}</b>` : `<a href="#${p.dataset.for}">${esc(label)}</a>`;
-    }).join('<i class="bi bi-chevron-right"></i>');
-    if (push) history.replaceState(null, '', '#' + selected);
-    document.body.classList.remove('in-nav-open');
-    const top = $('in-main').getBoundingClientRect().top + window.scrollY - 70;
-    if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
   }
 
-  // Links in the tree, the breadcrumb and the banner choose a part instead of jumping down the page.
+  // Tabs, chips and links pick a part instead of jumping down the page.
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[href^="#"]');
     if (!a || !document.getElementById(a.getAttribute('href').slice(1))) return;
@@ -341,7 +318,7 @@
   });
   window.addEventListener('hashchange', () => { if (location.hash.length > 1) select(location.hash.slice(1), false); });
 
-  // ── Search: rows, cards, groups, sections and the tree follow ──
+  // ── Search: rows, cards, groups and sections follow; the tabs count the hits ──
 
   $('in-q').addEventListener('input', () => {
     const words = $('in-q').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -357,10 +334,13 @@
     });
     [...document.querySelectorAll('.in-group')].reverse().forEach((g) => { g.hidden = on && !g.querySelector('.in-card:not([hidden])'); });
     document.querySelectorAll('.in-section').forEach((s) => { s.hidden = on && !s.querySelector('.in-card:not([hidden])'); });
-    document.querySelectorAll('#in-tree li[data-for]').forEach((li) => {
-      const target = document.getElementById(li.dataset.for);
-      li.hidden = !!target && target.hidden;
-      if (on && !li.hidden && li.classList.contains('has-kids')) li.classList.add('open');
+    document.querySelectorAll('.in-tab').forEach((t) => {
+      const s = document.getElementById(t.dataset.tab);
+      const hits = on && s ? s.querySelectorAll('[data-search]:not([hidden])').length : 0;
+      const badge = t.querySelector('.in-tab-hits');
+      badge.hidden = !on;
+      badge.textContent = hits;
+      t.classList.toggle('in-tab--none', on && !hits);
     });
     const none = on && !document.querySelector('.in-section:not([hidden])');
     let empty = $('in-none');
@@ -373,11 +353,6 @@
       $('in-q').focus();
     }
   });
-
-  // ── Phones: the tree slides in ──
-
-  $('in-menu').addEventListener('click', () => document.body.classList.toggle('in-nav-open'));
-  $('in-backdrop').addEventListener('click', () => document.body.classList.remove('in-nav-open'));
 
   $('in-theme').addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';

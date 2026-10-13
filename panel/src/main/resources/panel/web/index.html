@@ -779,8 +779,7 @@
 					<h3 class="np-card-title"><i class="bi bi-hammer"></i> Anvil</h3>
 					<p class="np-card-intro">Works with normal game clients. Applies within a few seconds.</p>
 					<div class="np-form-grid">
-						<label class="np-form-row"><span>Never "Too Expensive!"<span class="pn-comment">Anything that would cost more costs the highest price below.</span></span><span class="np-switch"><input type="checkbox" name="anvil.noTooExpensive"><span></span></span></label>
-						<label class="np-form-row"><span>Highest price (levels)<span class="pn-comment">39 is the most the game shows.</span></span><input type="number" name="anvil.maxCost" min="1" max="39"></label>
+						<label class="np-form-row"><span>Never "Too Expensive!"<span class="pn-comment">Repairs and enchantments of 40 levels or more work too, at their full price. The game can't show more than 39, so the anvil shows 39 and the real price appears above the hotbar.</span></span><span class="np-switch"><input type="checkbox" name="anvil.noTooExpensive"><span></span></span></label>
 						<label class="np-form-row"><span>Cheap renaming<span class="pn-comment">Renaming alone costs the same, however often the item was worked on.</span></span><span class="np-switch"><input type="checkbox" name="anvil.cheapRename"><span></span></span></label>
 						<label class="np-form-row">Renaming costs (levels)<input type="number" name="anvil.renameCost" min="1" max="39"></label>
 					</div>
@@ -800,10 +799,22 @@
 						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
 						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
 						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
+						<label class="np-form-row"><span>Empty line around the player list<span class="pn-comment">Between the header, the players and the footer.</span></span><span class="np-switch"><input type="checkbox" name="tabList.gap"><span></span></span></label>
 					</div>
 					<p class="pn-hint">Use <code>§</code> colour codes, <code>\n</code> for a new line, and <code>{players}</code> <code>{max}</code> <code>{tps}</code> <code>{mspt}</code> <code>{ping}</code> <code>{time}</code> (the in-game clock).</p>
 					<label class="pn-field">Header<textarea name="tabList.header" rows="2" maxlength="500" spellcheck="false"></textarea></label>
 					<label class="pn-field">Footer<textarea name="tabList.footer" rows="2" maxlength="500" spellcheck="false"></textarea></label>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-globe2"></i> Dimension in the tab list</h3>
+					<p class="np-card-intro">Shows after each name which dimension the player is in, with the name and colour you pick. Teams stay as they are, and the AFK tag comes after it.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Show the dimension</b><span class="np-switch"><input type="checkbox" name="tabList.showDimension"><span></span></span></label>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-tw-dims">
+						<thead><tr><th>Dimension</th><th>Shown as</th><th>Colour</th><th>In the tab list</th></tr></thead>
+						<tbody id="pn-tw-dims"></tbody>
+					</table></div>
 				</section>
 				<div class="pn-sticky-save np-form-actions">
 					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
@@ -821,7 +832,9 @@
 						<label class="np-form-row"><b>Tree felling</b><span class="np-switch"><input type="checkbox" name="felling.enabled"><span></span></span></label>
 						<label class="np-form-row">How the tree falls<select name="felling.breakMode"><option value="instant">All at once</option><option value="shiftDown">One log per hit, from the top</option></select></label>
 						<label class="np-form-row">Sneaking<select name="felling.sneak"><option value="DISABLES">breaks just one log</option><option value="ENABLES">fells the tree (otherwise one log)</option><option value="IGNORED">makes no difference</option></select></label>
+						<label class="np-form-row"><span>The tree tips over and falls<span class="pn-comment">With "All at once": the tree topples away from the player and the drops land where it falls.</span></span><span class="np-switch"><input type="checkbox" name="felling.animation"><span></span></span></label>
 						<label class="np-form-row"><span>Stop before the axe breaks</span><span class="np-switch"><input type="checkbox" name="felling.preserveTool"><span></span></span></label>
+						<label class="np-form-row"><span>Axe wear per extra log<span class="pn-comment">1 = like chopping each log, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="felling.durability" min="0" max="10" step="0.05"></label>
 						<label class="np-form-row">Biggest tree (logs)<input type="number" name="felling.maxLogs" min="2" max="4096"></label>
 						<label class="np-form-row">Bigger trees<select name="felling.tooBig"><option value="skip">only lose the one log</option><option value="cutUpTo">fall up to the limit</option></select></label>
 						<label class="np-form-row"><span>Leaves needed at the top<span class="pn-comment">So log walls players built aren't felled.</span></span><input type="number" name="felling.minLeaves" min="0" max="64"></label>
@@ -850,6 +863,7 @@
 						<label class="np-form-row">Sneaking<select name="veins.sneak"><option value="DISABLES">mines just one block</option><option value="ENABLES">mines the vein (otherwise one block)</option><option value="IGNORED">makes no difference</option></select></label>
 						<label class="np-form-row">Biggest vein (blocks)<input type="number" name="veins.maxBlocks" min="2" max="1024"></label>
 						<label class="np-form-row"><span>Stop before the pickaxe breaks</span><span class="np-switch"><input type="checkbox" name="veins.preserveTool"><span></span></span></label>
+						<label class="np-form-row"><span>Pickaxe wear per extra block<span class="pn-comment">1 = like mining each block, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="veins.durability" min="0" max="10" step="0.05"></label>
 						<label class="np-form-row"><span>All drops where the first block was</span><span class="np-switch"><input type="checkbox" name="veins.dropsAtBreakPoint"><span></span></span></label>
 						<label class="np-form-row"><span>Also in creative mode</span><span class="np-switch"><input type="checkbox" name="veins.inCreative"><span></span></span></label>
 						<label class="np-form-row">Tools<input type="text" name="veins.tools"></label>
@@ -1101,7 +1115,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bell"></i> Events &amp; alerts</h3>
-					<p class="np-card-intro">Tick what gets posted, pick the channel, and change the wording. <code>{player}</code>, <code>{message}</code> and <code>{advancement}</code> are filled in; deaths and advancements follow the game rules showDeathMessages and announceAdvancements (Fabled Roots' own death messages count as deaths). Data pack messages are what data packs send to everyone with <code>/tellraw @a</code>, plus <code>/say</code>; the same text twice within a minute is skipped, and at most 20 go out per minute. Alerts also show in the panel's console; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
+					<p class="np-card-intro">Tick what gets posted, pick the channel, and change the wording. <code>{player}</code>, <code>{message}</code> and <code>{advancement}</code> are filled in; deaths and advancements follow the game rules showDeathMessages and announceAdvancements (Fabled Roots' own death messages count as deaths). "/tellraw @a and /say messages" are what data packs (or admins) send to everyone with <code>/tellraw @a</code>, plus <code>/say</code>; the same text twice within a minute is skipped, and at most 20 go out per minute. Alerts also show in the panel's console; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
 					<div id="pn-discord-events" class="pn-dc-events"></div>
 				</section>
 				<div class="pn-sticky-save">

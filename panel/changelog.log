@@ -1,3 +1,8 @@
+## 1.10.0
+- Public info page redesigned: a tab per section above the content (with the search next to it), chips for the parts of a section, no number badges in the banner; the search counts its hits per tab
+- Tweaks (needs mod 1.11.0): anvil without a cost limit (the highest price setting is gone), tool wear multiplier for tree felling and vein mining, the falling tree animation switch, an empty line around the tab list's player list, and each player's dimension in the tab list with a name and colour per dimension (all of the world's dimensions are listed)
+- Discord: the event "Data pack messages and /say" is now called "/tellraw @a and /say messages"
+
 ## 1.9.0
 - Tweaks in the sidebar (needs mod 1.10.0): Gameplay (anvil, nether portals in any shape, AFK tag, tab list header and footer), Trees & veins (tree felling and vein mining with all their options) and Market (settings, what's for sale with item icons, taking listings off, recent sales)
 - Item icons drawn by the panel from the game's own textures and the server's resource pack, custom models included (item_model, custom_model_data, the GUI view of a model)

@@ -122,17 +122,18 @@ Players protect their land themselves, like GriefPrevention, but with menus inst
 
 Things a data pack can't do, switched on in the panel (**Tweaks**, or `config/nicecontrolcenter-tweaks.json` / `-market.json`). Off by default, and normal game clients work.
 
-- **Anvil:** never "Too Expensive!" (costs above a limit, 39 by default, are lowered to it), and cheap renaming.
+- **Anvil:** never "Too Expensive!" (the full cost is charged; the anvil shows 39 and the real price appears above the hotbar), and cheap renaming.
 - **Nether portals in any shape:** any closed obsidian frame lights, up to a size limit.
 - **Tree felling** (like FallingTree): break one log with an axe and the whole tree falls.
-  - All at once, or one log per hit from the top.
+  - All at once (the tree tips over away from you, and the drops land where it falls), or one log per hit from the top.
   - Sneak to break just one log.
-  - The axe wears per log and stops before it breaks.
+  - The axe wears per log (a multiplier sets how much) and stops before it breaks.
   - Player-built log walls (no leaves around) stay.
   - Leaves fall within seconds; nether wart blocks and mangrove roots go with their trees.
 - **Vein mining:** the same for ores with a pickaxe.
 - **Felling and mining like a player:** both break every block as if the player mined it, so drops, enchantments, tool wear and land claims work as usual.
-- **AFK tag** in the tab list (scoreboard teams are left alone), and a tab list **header and footer**.
+- **AFK tag** in the tab list (scoreboard teams are left alone), each player's **dimension** after their name (name and colour per dimension), and a tab list **header and footer** with an empty line around the players.
+- Claim and market messages come with the chicken-egg "plop" of the Explorer's Eden data packs.
 - **Market** (`/market`): sell items for the server's currency, any amount and with all their components, and buy part or all of a listing, all in menus.
   - Earnings and unsold items wait in the market mailbox.
   - The panel shows the listings with item icons (custom models included) and can take a listing off.

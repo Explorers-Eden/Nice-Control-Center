@@ -7,11 +7,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundLevelEventPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -28,6 +32,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * Tree felling (like FallingTree) and vein mining: breaking one log of a tree with an axe breaks the
@@ -40,6 +45,8 @@ public final class Felling {
 	private static boolean busy;
 	/** Where drops go while felling (dropsAtBreakPoint), else null. Server thread. */
 	private static BlockPos dropPoint;
+	/** While a falling tree is prepared: its drops, spawned when it lands. */
+	private static List<ItemEntity> captured;
 
 	private record Decay(ServerLevel level, BlockPos pos, long due) {
 	}
@@ -60,6 +67,13 @@ public final class Felling {
 	/** For the drop mixin: move new items and XP here (or null). */
 	public static BlockPos dropPoint() {
 		return dropPoint;
+	}
+
+	/** For the drop mixin: true when the item is kept for a falling tree (and not spawned now). */
+	public static boolean capture(Entity entity) {
+		if (captured == null || !(entity instanceof ItemEntity item)) return false;
+		captured.add(item);
+		return true;
 	}
 
 	private static boolean active(ServerPlayer player, Tweaks.Sneak sneak, boolean inCreative) {
@@ -84,7 +98,7 @@ public final class Felling {
 		if (tree == null || tree.logs().isEmpty()) return true;
 		BlockPos top = tree.logs().stream().max(Comparator.<BlockPos>comparingInt(BlockPos::getY).thenComparingDouble(b -> b.distSqr(pos))).orElse(null);
 		if (top == null) return true;
-		breakAll(server, player, pos, List.of(top), fel.preserveTool, fel.dropsAtBreakPoint);
+		breakAll(server, player, pos, List.of(top), fel.preserveTool, fel.durability, fel.dropsAtBreakPoint, true);
 		player.connection.send(new ClientboundBlockUpdatePacket(server, pos));
 		if (tree.logs().size() == 1 && fel.fastLeafDecay) scheduleDecay(server, tree.leaves());
 		return false;
@@ -109,6 +123,7 @@ public final class Felling {
 		if (logs.size() > fel.maxLogs - 1) {
 			if (!"cutUpTo".equals(fel.tooBig)) {
 				player.sendOverlayMessage(Component.literal("This tree is too big to fell at once (more than " + fel.maxLogs + " logs).").withStyle(ChatFormatting.GRAY));
+				Plop.play(player);
 				return;
 			}
 			logs.sort(Comparator.comparingDouble(b -> b.distSqr(origin)));
@@ -116,18 +131,94 @@ public final class Felling {
 		}
 		// From the top down, so a worn-out axe leaves a stump rather than a floating crown.
 		logs.sort(Comparator.<BlockPos>comparingInt(BlockPos::getY).reversed().thenComparingDouble(b -> b.distSqr(origin)));
-		breakAll(level, player, origin, logs, fel.preserveTool, fel.dropsAtBreakPoint);
-		busy = true;
-		BlockPos before = dropPoint;
-		dropPoint = fel.dropsAtBreakPoint ? origin : null;
+		List<ItemEntity> drops = fel.animation ? new ArrayList<>() : null;
+		captured = drops;
+		List<TreeFall.Piece> pieces;
+		Set<BlockPos> fallen = new HashSet<>();
 		try {
-			if (fel.netherWarts) for (BlockPos w : tree.warts()) level.destroyBlock(w, true, player);
-			if (fel.mangroveRoots) for (BlockPos r : tree.roots()) level.destroyBlock(r, true, player);
+			pieces = breakAll(level, player, origin, logs, fel.preserveTool, fel.durability, fel.dropsAtBreakPoint, !fel.animation);
+			busy = true;
+			BlockPos before = dropPoint;
+			dropPoint = fel.dropsAtBreakPoint ? origin : null;
+			try {
+				if (fel.netherWarts) for (BlockPos w : tree.warts()) destroy(level, player, w, pieces);
+				if (fel.mangroveRoots) for (BlockPos r : tree.roots()) destroy(level, player, r, pieces);
+				// The crown falls with the tree: leaves no other log holds any more.
+				if (fel.animation) {
+					for (BlockPos leaf : looseLeaves(level, tree.leaves())) {
+						BlockState s = level.getBlockState(leaf);
+						for (ItemStack drop : Block.getDrops(s, level, leaf, null)) {
+							ItemEntity item = new ItemEntity(level, leaf.getX() + 0.5, leaf.getY() + 0.5, leaf.getZ() + 0.5, drop);
+							item.setDefaultPickUpDelay();
+							drops.add(item);
+						}
+						level.removeBlock(leaf, false);
+						pieces.add(new TreeFall.Piece(leaf, s));
+						fallen.add(leaf);
+					}
+				}
+			} finally {
+				busy = false;
+				dropPoint = before;
+			}
 		} finally {
-			busy = false;
-			dropPoint = before;
+			captured = null;
 		}
-		if (fel.fastLeafDecay) scheduleDecay(level, tree.leaves());
+		if (fel.animation) {
+			if (pieces.isEmpty()) drops.forEach(level::addFreshEntity);
+			else TreeFall.start(level, origin, player.position(), pieces, drops, fel.dropsAtBreakPoint);
+		}
+		if (fel.fastLeafDecay) {
+			Set<BlockPos> rest = new HashSet<>(tree.leaves());
+			rest.removeAll(fallen);
+			scheduleDecay(level, rest);
+		}
+	}
+
+	private static void destroy(ServerLevel level, ServerPlayer player, BlockPos pos, List<TreeFall.Piece> pieces) {
+		BlockState s = level.getBlockState(pos);
+		if (level.destroyBlock(pos, true, player)) pieces.add(new TreeFall.Piece(pos, s));
+	}
+
+	/** Natural leaves among these that no log keeps alive any more (vanilla's rule: none within 6 leaves). */
+	private static List<BlockPos> looseLeaves(ServerLevel level, Set<BlockPos> leaves) {
+		if (leaves.isEmpty()) return List.of();
+		int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+		for (BlockPos p : leaves) {
+			minX = Math.min(minX, p.getX());
+			minY = Math.min(minY, p.getY());
+			minZ = Math.min(minZ, p.getZ());
+			maxX = Math.max(maxX, p.getX());
+			maxY = Math.max(maxY, p.getY());
+			maxZ = Math.max(maxZ, p.getZ());
+		}
+		int r = LeavesBlock.DECAY_DISTANCE - 1;
+		// From every log still standing nearby, through leaves, up to 6 steps.
+		Set<BlockPos> held = new HashSet<>();
+		ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+		for (BlockPos p : BlockPos.betweenClosed(minX - r, minY - r, minZ - r, maxX + r, maxY + r, maxZ + r)) {
+			if (level.getBlockState(p).is(BlockTags.LOGS)) queue.add(p.immutable());
+		}
+		for (int depth = 0; depth < r && !queue.isEmpty(); depth++) {
+			int n = queue.size();
+			for (int i = 0; i < n; i++) {
+				BlockPos p = queue.poll();
+				for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+					BlockPos q = p.relative(d);
+					if (!held.contains(q) && level.getBlockState(q).getBlock() instanceof LeavesBlock) {
+						held.add(q);
+						queue.add(q);
+					}
+				}
+			}
+		}
+		List<BlockPos> out = new ArrayList<>();
+		for (BlockPos p : leaves) {
+			if (held.contains(p)) continue;
+			BlockState s = level.getBlockState(p);
+			if (TweaksControl.isLeaves(s) && !(s.hasProperty(LeavesBlock.PERSISTENT) && s.getValue(LeavesBlock.PERSISTENT))) out.add(p);
+		}
+		return out;
 	}
 
 	/** The logs of the tree around a broken log (without it), its wart blocks, roots and leaves; null when it isn't a tree. */
@@ -180,8 +271,8 @@ public final class Felling {
 		}
 		natural += warts.size();
 		if (natural < fel.minLeaves) return null;
-		// All leaves near the trunk, for the fast decay.
-		if (fel.fastLeafDecay) {
+		// All leaves near the trunk, for the fast decay and the falling crown.
+		if (fel.fastLeafDecay || fel.animation) {
 			for (BlockPos log : logs) {
 				int r = 2;
 				for (BlockPos n : BlockPos.betweenClosed(log.offset(-r, -r, -r), log.offset(r, r, r))) {
@@ -235,7 +326,7 @@ public final class Felling {
 		}
 		if (found.isEmpty()) return;
 		found.sort(Comparator.comparingDouble(b -> b.distSqr(origin)));
-		breakAll(level, player, origin, found, veins.preserveTool, veins.dropsAtBreakPoint);
+		breakAll(level, player, origin, found, veins.preserveTool, veins.durability, veins.dropsAtBreakPoint, true);
 	}
 
 	/** Iron ore and deepslate iron ore are one vein. */
@@ -244,27 +335,55 @@ public final class Felling {
 		return id.getNamespace() + ":" + id.getPath().replace("deepslate_", "");
 	}
 
-	/** Breaks the blocks as the player, stopping when the tool would break or is put away. */
-	private static void breakAll(ServerLevel level, ServerPlayer player, BlockPos origin, List<BlockPos> blocks, boolean preserveTool, boolean dropsAtOrigin) {
+	/**
+	 * Breaks the blocks as the player, stopping when the tool would break or is put away. The tool wears
+	 * wear times as fast as mining them one by one. particles: show the breaking to the player too
+	 * (the game leaves them out for whoever breaks the block). Returns the blocks broken.
+	 */
+	private static List<TreeFall.Piece> breakAll(ServerLevel level, ServerPlayer player, BlockPos origin, List<BlockPos> blocks, boolean preserveTool,
+			double wear, boolean dropsAtOrigin, boolean particles) {
+		List<TreeFall.Piece> broken = new ArrayList<>();
 		ItemStack tool = player.getMainHandItem();
 		busy = true;
 		BlockPos before = dropPoint;
 		dropPoint = dropsAtOrigin ? origin : null;
+		double owed = 0;
 		try {
 			for (BlockPos p : blocks) {
 				ItemStack now = player.getMainHandItem();
 				if (now != tool || now.isEmpty()) break;
 				if (preserveTool && now.isDamageableItem() && now.getMaxDamage() - now.getDamageValue() <= 1) {
 					player.sendOverlayMessage(Component.literal("Your tool is almost broken: the rest stays.").withStyle(ChatFormatting.GOLD));
+					Plop.play(player);
 					break;
 				}
-				if (level.getBlockState(p).isAir()) continue;
-				player.gameMode.destroyBlock(p);
+				BlockState state = level.getBlockState(p);
+				if (state.isAir()) continue;
+				int damage = now.getDamageValue();
+				if (!player.gameMode.destroyBlock(p)) continue;
+				broken.add(new TreeFall.Piece(p, state));
+				if (particles) player.connection.send(new ClientboundLevelEventPacket(2001, p, Block.getId(state), false));
+				if (wear != 1 && !now.isEmpty() && now.isDamageableItem()) {
+					// What the game took off (Unbreaking included), times the setting.
+					owed += (now.getDamageValue() - damage) * wear;
+					int take = (int) owed;
+					owed -= take;
+					int next = damage + take;
+					int max = now.getMaxDamage();
+					if (next >= max - 1 && preserveTool) next = max - 1;
+					if (next >= max) {
+						now.setDamageValue(max - 1);
+						now.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
+					} else {
+						now.setDamageValue(next);
+					}
+				}
 			}
 		} finally {
 			busy = false;
 			dropPoint = before;
 		}
+		return broken;
 	}
 
 	private static void scheduleDecay(ServerLevel level, Set<BlockPos> leaves) {

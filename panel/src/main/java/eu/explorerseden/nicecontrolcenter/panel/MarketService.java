@@ -52,6 +52,8 @@ final class MarketService {
 	private final DashboardProxy dashboard;
 	private final Audit audit;
 	private final ItemIcons icons;
+	/** The database copy was written since the panel started. */
+	private boolean written;
 	private volatile long syncedRev = -1;
 	private volatile String syncedWorld;
 	private volatile long fileModified = -1;
@@ -212,7 +214,8 @@ final class MarketService {
 				}
 			}
 		}
-		if (c.rev == syncedRev && java.util.Objects.equals(c.worldId, syncedWorld)) return;
+		// Once per start regardless, so new columns (icons) fill in after an update.
+		if (written && c.rev == syncedRev && java.util.Objects.equals(c.worldId, syncedWorld)) return;
 		try (Connection con = db.connection()) {
 			con.setAutoCommit(false);
 			try {
@@ -220,8 +223,8 @@ final class MarketService {
 					del.executeUpdate();
 				}
 				try (PreparedStatement ins = con.prepareStatement("""
-						INSERT INTO market_listings (id, seller_uuid, seller_name, item_id, item_name, item, lore, enchantments, amount, price, created_at, expires_at)
-						VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?, ?, ?)""")) {
+						INSERT INTO market_listings (id, seller_uuid, seller_name, item_id, item_name, item, lore, enchantments, amount, price, created_at, expires_at, icon)
+						VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?, ?, ?, ?)""")) {
 					for (Market.Listing l : c.listings) {
 						ins.setObject(1, UUID.fromString(l.id));
 						ins.setObject(2, UUID.fromString(l.seller));
@@ -235,6 +238,7 @@ final class MarketService {
 						ins.setInt(10, l.price);
 						ins.setTimestamp(11, new Timestamp(l.created));
 						ins.setTimestamp(12, new Timestamp(l.expires));
+						ins.setString(13, icons.iconFor(l.item.stack));
 						ins.addBatch();
 					}
 					ins.executeBatch();
@@ -258,15 +262,20 @@ final class MarketService {
 					ins.executeBatch();
 				}
 				try (PreparedStatement st = con.prepareStatement("""
-						INSERT INTO market_sync (id, world_id, rev, synced_at) VALUES (1, ?, ?, now())
-						ON CONFLICT (id) DO UPDATE SET world_id = EXCLUDED.world_id, rev = EXCLUDED.rev, synced_at = EXCLUDED.synced_at""")) {
+						INSERT INTO market_sync (id, world_id, rev, synced_at, currency, currency_icon) VALUES (1, ?, ?, now(), ?, ?)
+						ON CONFLICT (id) DO UPDATE SET world_id = EXCLUDED.world_id, rev = EXCLUDED.rev, synced_at = EXCLUDED.synced_at,
+							currency = EXCLUDED.currency, currency_icon = EXCLUDED.currency_icon""")) {
+					String currency = settings().currency;
 					st.setString(1, c.worldId);
 					st.setLong(2, c.rev);
+					st.setString(3, currency);
+					st.setString(4, icons.iconFor("{\"id\":\"" + currency + "\"}"));
 					st.executeUpdate();
 				}
 				con.commit();
 				syncedRev = c.rev;
 				syncedWorld = c.worldId;
+				written = true;
 			} catch (SQLException | RuntimeException e) {
 				con.rollback();
 				throw e;

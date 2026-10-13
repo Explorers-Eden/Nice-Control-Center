@@ -6,7 +6,7 @@ Keep the Crafty server untouched (only stopped) until everything runs, so you ca
 
 ## 1. Before the day
 
-- [ ] **Updates:** pushed and built: panel image (1.9.0 or newer), Nice Control Center mod (1.10.0 or newer), Merl (1.6.2 or newer). In Portainer, update the stack with **Re-pull image and redeploy**.
+- [ ] **Updates:** pushed and built: panel image (1.10.0 or newer), Nice Control Center mod (1.11.0 or newer), Merl (1.6.2 or newer). In Portainer, update the stack with **Re-pull image and redeploy**.
 - [ ] **Versions:** note the live server's Minecraft and Fabric version, its memory and Java flags, its port and its mod list. In the panel, put the same memory and flags under **Settings → Startup & Java** (Java 25).
 - [ ] **Discord links:** players linked through DiscordJustSync have to link again through the panel's bridge, because the old links aren't carried over. Tell them, or switch off "require a link" for the first days.
 - [ ] **Announce** the downtime (Discord, and in game).

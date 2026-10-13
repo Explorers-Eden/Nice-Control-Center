@@ -24,6 +24,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * The market while the server runs: the world file in memory, the settings from the panel, expiry, and
@@ -73,6 +74,7 @@ public final class MarketStore {
 				h.player.sendSystemMessage(Component.literal("You have " + (m.currency > 0 ? m.currency + " " + currencyName() : "")
 						+ (m.currency > 0 && !m.parcels.isEmpty() ? " and " : "") + (m.parcels.isEmpty() ? "" : "items")
 						+ " waiting in your market mailbox: /market").withStyle(ChatFormatting.GOLD));
+				Plop.play(h.player);
 			}
 		});
 	}

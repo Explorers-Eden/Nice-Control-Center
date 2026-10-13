@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * What the claim tool does. Right-click a block (or point at one up to 100 blocks away):
@@ -300,11 +301,13 @@ public final class ClaimTool {
 	/** A short message in the action bar. */
 	public static void bar(ServerPlayer player, String text, ChatFormatting color) {
 		player.sendOverlayMessage(Component.literal(text).withStyle(color));
+		Plop.play(player);
 		quietUntil.put(player.getUUID(), player.level().getServer().getTickCount() + 60);
 	}
 
 	/** A message in chat. */
 	public static void tell(ServerPlayer player, String text, ChatFormatting color) {
 		player.sendSystemMessage(Component.literal(text).withStyle(color));
+		Plop.play(player);
 	}
 }

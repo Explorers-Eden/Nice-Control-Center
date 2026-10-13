@@ -7,7 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Gameplay tweaks that need the server mod (a data pack can't do them), kept in
@@ -19,10 +21,8 @@ public final class Tweaks {
 	public static final String FILE = "nicecontrolcenter-tweaks.json";
 
 	public static final class Anvil {
-		/** Never "Too Expensive!": costs above maxCost are lowered to it. */
+		/** Never "Too Expensive!": the full cost is charged however high it is. */
 		public boolean noTooExpensive = false;
-		/** 39 is the most the game shows without "Too Expensive!". */
-		public int maxCost = 39;
 		/** Renaming alone (nothing in the second slot) costs renameCost levels. */
 		public boolean cheapRename = false;
 		public int renameCost = 1;
@@ -59,6 +59,10 @@ public final class Tweaks {
 		public Sneak sneak = Sneak.DISABLES;
 		/** Stop before the tool would break. */
 		public boolean preserveTool = true;
+		/** Tool wear for each extra log: 1 = like chopping it, 0.5 = half, 0 = none, 2 = double. */
+		public double durability = 1.0;
+		/** The tree tips over and falls before its logs drop (instant mode). */
+		public boolean animation = true;
 		public int maxLogs = 256;
 		/** Bigger trees: "skip" (only the one log breaks) or "cutUpTo" (the first maxLogs). */
 		public String tooBig = "skip";
@@ -87,6 +91,8 @@ public final class Tweaks {
 		public List<String> deniedBlocks = new ArrayList<>();
 		public Sneak sneak = Sneak.DISABLES;
 		public boolean preserveTool = true;
+		/** Tool wear for each extra block: 1 = like mining it, 0.5 = half, 0 = none, 2 = double. */
+		public double durability = 1.0;
 		public int maxBlocks = 64;
 		public boolean dropsAtBreakPoint = false;
 		public boolean inCreative = false;
@@ -105,6 +111,42 @@ public final class Tweaks {
 		/** § colour codes and {players} {max} {tps} {mspt} {ping} {time}; \n for a new line. */
 		public String header = "§6§lExplorer's Eden\n§7{players}/{max} players online";
 		public String footer = "§7TPS §a{tps} §8· §7Ping §a{ping} ms §8· §7{time}";
+		/** An empty line between the header/footer and the player list. */
+		public boolean gap = true;
+		/** Each player's dimension after their name. */
+		public boolean showDimension = false;
+		/** Name and colour (#rrggbb) per dimension id; dimensions not listed show their id's name in grey. */
+		public Map<String, Dimension> dimensions = defaultDimensions();
+	}
+
+	public static final class Dimension {
+		public String name = "";
+		public String color = "#AAAAAA";
+
+		public Dimension() {
+		}
+
+		public Dimension(String name, String color) {
+			this.name = name;
+			this.color = color;
+		}
+	}
+
+	private static Map<String, Dimension> defaultDimensions() {
+		Map<String, Dimension> m = new LinkedHashMap<>();
+		m.put("minecraft:overworld", new Dimension("Overworld", "#55FF55"));
+		m.put("minecraft:the_nether", new Dimension("Nether", "#FF5555"));
+		m.put("minecraft:the_end", new Dimension("The End", "#D88CFF"));
+		return m;
+	}
+
+	/** The name shown for a dimension: the configured one, else "the_nether" → "Nether". */
+	public static Dimension dimension(TabList t, String id) {
+		Dimension d = t.dimensions.get(id);
+		if (d != null && !d.name.isBlank()) return d;
+		String path = id.substring(id.indexOf(':') + 1).replaceFirst("^the_", "").replace('_', ' ');
+		String name = path.isEmpty() ? id : Character.toUpperCase(path.charAt(0)) + path.substring(1);
+		return new Dimension(name, d != null ? d.color : "#AAAAAA");
 	}
 
 	public static final class Settings {
@@ -138,6 +180,13 @@ public final class Tweaks {
 			if (afk.tag == null) afk.tag = "AFK";
 			if (tabList.header == null) tabList.header = "";
 			if (tabList.footer == null) tabList.footer = "";
+			if (tabList.dimensions == null) tabList.dimensions = defaultDimensions();
+			tabList.dimensions.values().removeIf(d -> d == null);
+			for (Dimension d : tabList.dimensions.values()) {
+				if (d.name == null) d.name = "";
+				d.name = d.name.strip();
+				if (d.color == null || !d.color.matches("#[0-9a-fA-F]{6}")) d.color = "#AAAAAA";
+			}
 			return this;
 		}
 	}
@@ -164,12 +213,13 @@ public final class Tweaks {
 	public static String validate(Settings s) {
 		if (s == null) return "No settings.";
 		s.fill();
-		if (s.anvil.maxCost < 1 || s.anvil.maxCost > 39) return "The highest anvil cost is 1 to 39 levels.";
 		if (s.anvil.renameCost < 1 || s.anvil.renameCost > 39) return "Renaming costs 1 to 39 levels.";
 		if (s.portals.maxBlocks < 6 || s.portals.maxBlocks > 4096) return "A portal holds 6 to 4096 blocks.";
 		if (s.felling.maxLogs < 2 || s.felling.maxLogs > 4096) return "Trees are 2 to 4096 logs.";
 		if (s.felling.minLeaves < 0 || s.felling.minLeaves > 64) return "Leaves needed are 0 to 64.";
 		if (s.felling.leafRadius < 1 || s.felling.leafRadius > 16) return "The leaf radius is 1 to 16 blocks.";
+		if (!(s.felling.durability >= 0 && s.felling.durability <= 10) || !(s.veins.durability >= 0 && s.veins.durability <= 10)) return "Tool wear is 0 to 10 times.";
+		for (Dimension d : s.tabList.dimensions.values()) if (d.name.length() > 32) return "Dimension names are up to 32 characters.";
 		if (s.veins.maxBlocks < 2 || s.veins.maxBlocks > 1024) return "Veins are 2 to 1024 blocks.";
 		if (s.afk.minutes < 1 || s.afk.minutes > 120) return "AFK after 1 to 120 minutes.";
 		if (s.afk.tag.length() > 16) return "The AFK tag is up to 16 characters.";

@@ -2393,7 +2393,7 @@
 
   // ── Discord ────────────────────────────────────────────────────────────
 
-  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', broadcast: 'Data pack messages and /say', start: 'Server online', stop: 'Server offline',
+  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', broadcast: '/tellraw @a and /say messages', start: 'Server online', stop: 'Server offline',
     maintenance: 'Maintenance on/off', crash: 'Crash', lag: 'Lag', lagOver: 'Lag over', taskFailed: 'Task failed', backupFailed: 'Backup failed',
     trimDone: 'Outer wilds reset', diskLow: 'Disk almost full', memory: 'Memory pressure', perf: 'Distances stepped down or up' };
   /** Extra placeholders some events have, shown under their name. */
@@ -4505,16 +4505,48 @@
     }
     twFill($('pn-tw-form'));
     twFill($('pn-tf-form'));
+    twDims();
     Dirty.reset('tweaks');
     Dirty.reset('felling');
+  }
+
+  /** The tab list's dimension names and colours: one row per dimension of the world. */
+  function twDims() {
+    const set = twData.settings.tabList.dimensions || {};
+    const pretty = (id) => { const p = id.replace(/^[^:]*:/, '').replace(/^the_/, '').replace(/_/g, ' '); return p.charAt(0).toUpperCase() + p.slice(1); };
+    const editable = can('settings.server');
+    $('pn-tw-dims').innerHTML = (twData.dimensions || []).map((d) => {
+      const v = set[d.id] || {};
+      const color = /^#[0-9a-fA-F]{6}$/.test(v.color || '') ? v.color : '#AAAAAA';
+      return `<tr data-dim="${esc(d.id)}"><td><code>${esc(d.id)}</code></td>
+        <td><input type="text" data-f="name" maxlength="32" value="${esc(v.name || '')}" placeholder="${esc(pretty(d.id))}" ${editable ? '' : 'disabled'}></td>
+        <td><input type="color" data-f="color" value="${esc(color)}" ${editable ? '' : 'disabled'}></td>
+        <td><span class="pn-tw-dim-preview">Steve <span data-f="preview" style="color:${esc(color)}">${esc(v.name || pretty(d.id))}</span></span></td></tr>`;
+    }).join('') || '<tr><td colspan="4">No dimensions found yet: start the server once.</td></tr>';
+    $('pn-tw-dims').querySelectorAll('tr[data-dim]').forEach((tr) => {
+      const upd = () => {
+        const pv = tr.querySelector('[data-f=preview]');
+        pv.textContent = tr.querySelector('[data-f=name]').value || tr.querySelector('[data-f=name]').placeholder;
+        pv.style.color = tr.querySelector('[data-f=color]').value;
+      };
+      tr.addEventListener('input', upd);
+    });
   }
 
   async function saveTweaks(e, msgId) {
     e.preventDefault();
     const next = JSON.parse(JSON.stringify(twData.settings));
+    if (e.target.id === 'pn-tw-form') {
+      const dims = {};
+      $('pn-tw-dims').querySelectorAll('tr[data-dim]').forEach((tr) => {
+        dims[tr.dataset.dim] = { name: tr.querySelector('[data-f=name]').value.trim(), color: tr.querySelector('[data-f=color]').value.toUpperCase() };
+      });
+      next.tabList.dimensions = dims;
+    }
     for (const el of e.target.elements) {
       if (!el.name || !el.name.includes('.')) continue;
       const before = twGet(twData.settings, el.name);
+      if (el.type === 'number' && el.step && el.step !== '1') { twSet(next, el.name, Number(el.value) || 0); continue; }
       let v = el.type === 'checkbox' ? el.checked : el.value;
       if (Array.isArray(before)) v = String(v).split(',').map((x) => x.trim()).filter(Boolean);
       else if (typeof before === 'number') v = Number(v) || 0;

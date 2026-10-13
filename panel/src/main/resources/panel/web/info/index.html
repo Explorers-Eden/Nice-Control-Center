@@ -28,24 +28,18 @@
 			<div class="in-motd" id="in-motd" hidden></div>
 			<div class="in-restart" id="in-restart" hidden></div>
 			<div class="in-intro" id="in-intro"></div>
-			<div class="in-stats" id="in-stats"></div>
 		</div>
 		<button type="button" class="in-theme" id="in-theme" aria-label="Switch light/dark"><i class="bi bi-circle-half"></i></button>
 	</header>
-	<div class="in-bar">
+	<div class="in-bar" id="in-bar">
 		<div class="in-bar-inner">
-			<button type="button" class="in-menu" id="in-menu" aria-label="Contents"><i class="bi bi-list-nested"></i><span>Contents</span></button>
-			<label class="in-search"><i class="bi bi-search"></i><input type="search" id="in-q" placeholder="Search all settings…" autocomplete="off"><kbd>/</kbd></label>
+			<nav class="in-tabs" id="in-tabs" aria-label="Sections"></nav>
+			<label class="in-search"><i class="bi bi-search"></i><input type="search" id="in-q" placeholder="Search everything…" autocomplete="off"><kbd>/</kbd></label>
 		</div>
 	</div>
 	<div class="in-layout">
-		<nav class="in-tree" id="in-tree" aria-label="Contents"></nav>
-		<div class="in-content">
-			<nav class="in-crumbs" id="in-crumbs" aria-label="You are here"></nav>
-			<main class="in-main" id="in-main"><p class="in-empty">Loading…</p></main>
-		</div>
+		<main class="in-main" id="in-main"><p class="in-empty">Loading…</p></main>
 	</div>
-	<div class="in-backdrop" id="in-backdrop"></div>
 	<footer class="in-foot"><span id="in-updated"></span> · Made with the Nice Control Center</footer>
 	<script src="info.js"></script>
 </body>

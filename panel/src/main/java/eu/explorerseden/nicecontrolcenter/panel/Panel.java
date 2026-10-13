@@ -328,7 +328,7 @@ public final class Panel {
 			info.register(routes);
 			claims.register(routes);
 			market.register(routes);
-			new TweaksRoutes(serverDir, server, audit).register(routes);
+			new TweaksRoutes(serverDir, server, audit, map).register(routes);
 			Commands commandList = new Commands(dataDir, server, dashboard, audit);
 			commandList.register(routes);
 			info.useCommands(commandList);

@@ -40,6 +40,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import eu.explorerseden.nicecontrolcenter.core.Plop;
 
 /**
  * The claim menus, as Minecraft dialogs (no client mod needed). Buttons send a custom action
@@ -192,7 +193,10 @@ public final class ClaimDialogs {
 		Claims.Settings s = ClaimStore.settings();
 		List<DialogBody> body = new ArrayList<>();
 		if (fresh) body.add(text("Your land is protected. Give it a name and a colour (shown on its border and the web map).", ChatFormatting.WHITE));
-		if (notice != null) body.add(text(notice, ChatFormatting.RED));
+		if (notice != null) {
+			body.add(text(notice, ChatFormatting.RED));
+			Plop.play(player);
+		}
 		List<SingleOptionInput.Entry> colors = new ArrayList<>();
 		boolean matched = false;
 		for (Map.Entry<String, String> e : s.colors.entrySet()) {
@@ -249,7 +253,10 @@ public final class ClaimDialogs {
 
 	private static void memberNew(ServerPlayer player, Claim c, String notice) {
 		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) body.add(text(notice, ChatFormatting.RED));
+		if (notice != null) {
+			body.add(text(notice, ChatFormatting.RED));
+			Plop.play(player);
+		}
 		List<SingleOptionInput.Entry> online = new ArrayList<>();
 		online.add(new SingleOptionInput.Entry("", Optional.of(Component.literal("— type a name below —")), true));
 		for (ServerPlayer p : player.level().getServer().getPlayerList().getPlayers()) {
@@ -318,7 +325,10 @@ public final class ClaimDialogs {
 		int affordable = have / s.shopPrice;
 		int left = ClaimStore.data().purchasesLeft(me, s);
 		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) body.add(text(notice, notice.startsWith("Bought") ? ChatFormatting.GREEN : ChatFormatting.RED));
+		if (notice != null) {
+			body.add(text(notice, notice.startsWith("Bought") ? ChatFormatting.GREEN : ChatFormatting.RED));
+			Plop.play(player);
+		}
 		body.add(text(itemName(s) + " buys " + s.shopBlocks + " claim blocks.", ChatFormatting.WHITE));
 		body.add(text("You have " + have + " · " + ClaimStore.data().available(me) + " claim blocks available"
 				+ (left == Integer.MAX_VALUE ? "" : " · you can buy " + left * s.shopBlocks + " more"), ChatFormatting.GRAY));

@@ -11,6 +11,8 @@ import io.javalin.config.RoutesConfig;
 import io.javalin.http.HttpStatus;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /** Settings → Tweaks: gameplay tweaks in config/nicecontrolcenter-tweaks.json, applied by the mod within seconds. */
@@ -18,11 +20,13 @@ final class TweaksRoutes {
 	private final Path serverDir;
 	private final Supervisor server;
 	private final Audit audit;
+	private final MapService map;
 
-	TweaksRoutes(Path serverDir, Supervisor server, Audit audit) {
+	TweaksRoutes(Path serverDir, Supervisor server, Audit audit, MapService map) {
 		this.serverDir = serverDir;
 		this.server = server;
 		this.audit = audit;
+		this.map = map;
 	}
 
 	Path file() {
@@ -30,8 +34,16 @@ final class TweaksRoutes {
 	}
 
 	void register(RoutesConfig routes) {
-		routes.get("/api/tweaks", guard(Permissions.SERVER_VIEW, (ctx, me) ->
-				json(ctx, Map.of("settings", Tweaks.read(file()), "defaults", new Tweaks.Settings().fill()))));
+		routes.get("/api/tweaks", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
+			Tweaks.Settings s = Tweaks.read(file());
+			// Every dimension of the world, plus ones only in the settings, for the tab list names.
+			List<Map<String, Object>> dims = new ArrayList<>();
+			for (MapService.Dim d : map.dimensions()) dims.add(Map.of("id", d.id(), "name", d.name()));
+			for (String id : s.tabList.dimensions.keySet()) {
+				if (dims.stream().noneMatch(d -> d.get("id").equals(id))) dims.add(Map.of("id", id, "name", id));
+			}
+			json(ctx, Map.of("settings", s, "defaults", new Tweaks.Settings().fill(), "dimensions", dims));
+		}));
 		routes.post("/api/tweaks", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Tweaks.Settings next;
 			try {
