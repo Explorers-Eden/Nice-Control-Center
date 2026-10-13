@@ -22,7 +22,7 @@ The **server-side settings** are in the server's `config` folder and would be ov
 - `nicecontrolcenter-maintenance.json`
 - `nicecontrolcenter-claims.json`: claim settings
 - `nicecontrolcenter-tweaks.json`: gameplay tweaks (Tweaks)
-- `nicecontrolcenter-market.json`: market settings (Tweaks → Market)
+- `nicecontrolcenter-market.json`: market settings (Market → Settings)
 - `nicecontrolcenter.json`: the mod's own config
 
 ## 3. Clean out the test server
@@ -48,7 +48,7 @@ The **server-side settings** are in the server's `config` folder and would be ov
    - SFTP to port 2022 works too, but is slow for a big world.
 3. [ ] Copy the `nicecontrolcenter-*.json` files from step 2 into the live `config` folder.
 4. [ ] **Server jar:** under **Settings → Startup & Java**, set the server jar to the live folder's Fabric launcher jar. Or use **Updates → Minecraft** to install Fabric for that version.
-5. [ ] **Mods:** check that the Nice Control Center mod matches the Minecraft version (the panel can keep it up to date for you). **Leave GOML in for now**, for the claim import in step 6. **Remove Discord: JustSync**: the panel's bridge replaces it, and both would post twice. **Remove FallingTree** if you use **Tweaks → Trees & veins**: both would fell trees.
+5. [ ] **Mods:** check that the Nice Control Center mod matches the Minecraft version (the panel can keep it up to date for you). **Leave GOML in for now**, for the claim import in step 6. **Remove Discord: JustSync**: the panel's bridge replaces it, and both would post twice. **Remove FallingTree** if you use tree felling (**Settings → Gameplay → Items & tools**): both would fell trees.
 6. [ ] **server.properties:**
    - `server-port=25565`: inside the container it's always 25565; the outside port is `MINECRAFT_PORT` in the stack.
    - `pause-when-empty-seconds`: as you like (the panel handles pausing).
@@ -70,7 +70,7 @@ The **server-side settings** are in the server's `config` folder and would be ov
    2. Claims → Settings → switch claims **on**.
    3. Look at a few imported claims on the map.
    4. Remove GOML at the next restart.
-5. [ ] **Tweaks:** switch on what you want under Tweaks (Gameplay, Trees & veins, Market). The market starts empty on the live world.
+5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and in Market. The market starts empty on the live world.
 6. [ ] **Discord:** the bridge posts "The server is online"; check that chat and joins go both ways.
 7. [ ] **Join yourself:** try `/claim`, `/market`, `/merl`, felling a tree, a death message, and that maintenance mode is **off**.
 8. [ ] Make a **backup** in the panel and check that it finishes.
@@ -79,7 +79,7 @@ The **server-side settings** are in the server's `config` folder and would be ov
 
 - [ ] **Website:** follow `PANEL-MIGRATION.md` in the website repo (new SFTP and database secrets; profiles read links and claims from the panel).
 - [ ] **A Realm Recrafted:** push the README update and the removal of the config conversion; delete that repo's SFTP secrets.
-- [ ] **Public pages:** switch on the public info page and the map under Settings → Public info / World → Map, if they aren't already.
+- [ ] **Public pages:** switch on the public info page and the map under Public pages → Info page / World → Map, if they aren't already.
 - [ ] **Crafty:** once all of this has run fine for a few days, retire the old Crafty server (keep its last backup).
 
 ## If something goes wrong

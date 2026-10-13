@@ -425,7 +425,7 @@ public final class Scheduler {
 			Thread.sleep(step.seconds * 1000L);
 			if (!server.running()) return null;
 		}
-		// "excess" uses the mob limits from Performance → Tuning; "excess:24" (older schedules) one limit for every kind.
+		// "excess" uses the mob limits from Settings → Tuning; "excess:24" (older schedules) one limit for every kind.
 		String query = items ? "kind=items" : step.text.startsWith("excess:") ? "kind=excess&perChunk=" + step.text.substring("excess:".length()) : "kind=excess";
 		String error = m.post("/api/cleanup/run?" + query, new JsonObject());
 		if (error == null) server.note("Task: " + (items ? "cleared dropped items and XP" : "removed mobs over their per-chunk limit"));

@@ -785,38 +785,6 @@
 					</div>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-circle"></i> Nether portals</h3>
-					<div class="np-form-grid">
-						<label class="np-form-row"><span>Portals in any shape<span class="pn-comment">Any closed frame lights: circles, arches, hearts… Rectangles work as always. The frame blocks are the same as for normal portals: obsidian, and on 26.3 everything in the block tag <code>minecraft:nether_portal_frame</code>.</span></span><span class="np-switch"><input type="checkbox" name="portals.anyShape"><span></span></span></label>
-						<label class="np-form-row"><span>Biggest portal (blocks inside)<span class="pn-comment">A vanilla 21 × 21 portal has 441.</span></span><input type="number" name="portals.maxBlocks" min="6" max="4096"></label>
-					</div>
-				</section>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-moon"></i> AFK and tab list</h3>
-					<p class="np-card-intro">The AFK tag goes next to the name in the tab list. Scoreboard teams (like Fabled Roots' race colours) stay as they are.</p>
-					<div class="np-form-grid">
-						<label class="np-form-row"><b>AFK tag</b><span class="np-switch"><input type="checkbox" name="afk.enabled"><span></span></span></label>
-						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
-						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
-						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
-						<label class="np-form-row"><span>Empty line around the player list<span class="pn-comment">Between the header, the players and the footer.</span></span><span class="np-switch"><input type="checkbox" name="tabList.gap"><span></span></span></label>
-					</div>
-					<p class="pn-hint">Use <code>§</code> colour codes, <code>\n</code> for a new line, and <code>{players}</code> <code>{max}</code> <code>{tps}</code> <code>{mspt}</code> <code>{ping}</code> <code>{time}</code> (the in-game clock).</p>
-					<label class="pn-field">Header<textarea name="tabList.header" rows="2" maxlength="500" spellcheck="false"></textarea></label>
-					<label class="pn-field">Footer<textarea name="tabList.footer" rows="2" maxlength="500" spellcheck="false"></textarea></label>
-				</section>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-globe2"></i> Dimension in the tab list</h3>
-					<p class="np-card-intro">Shows after each name which dimension the player is in, with the name and colour you pick. Teams stay as they are, and the AFK tag comes after it.</p>
-					<div class="np-form-grid">
-						<label class="np-form-row"><b>Show the dimension</b><span class="np-switch"><input type="checkbox" name="tabList.showDimension"><span></span></span></label>
-					</div>
-					<div class="np-table-wrap"><table class="np-table pn-tw-dims">
-						<thead><tr><th>Dimension</th><th>Shown as</th><th>Colour</th><th>In the tab list</th></tr></thead>
-						<tbody id="pn-tw-dims"></tbody>
-					</table></div>
-				</section>
-				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-book"></i> Grindstone to books</h3>
 					<p class="np-card-intro">An enchanted item and a book in the grindstone give an enchanted book with the item's enchantments; the item keeps only its curses. It costs levels: the price shows above the hotbar, and without enough levels the book can't be taken.</p>
 					<div class="np-form-grid">
@@ -832,7 +800,7 @@
 					<p class="np-card-intro">A spawner mined with a Silk Touch pickaxe drops as an item that keeps its mob, and normal players can place it again. Land claims apply as for any block.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Silk touch spawners</b><span class="np-switch"><input type="checkbox" name="spawners.silkTouch"><span></span></span></label>
-						<label class="np-form-row"><span>Pickaxe wear<span class="pn-comment">1 = like any block, 0.5 = half, 5 = five times.</span></span><input type="number" name="spawners.durability" min="0" max="10" step="0.05"></label>
+						<label class="np-form-row"><span>Pickaxe wear<span class="pn-comment">1 = like any block, 0.5 = half, 5 = five times.</span></span><input type="number" name="spawners.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row"><span>Also drop XP</span><span class="np-switch"><input type="checkbox" name="spawners.dropXp"><span></span></span></label>
 						<label class="np-form-row"><span>Never for these mobs<span class="pn-comment">Mob ids, separated by commas, e.g. minecraft:blaze.</span></span><input type="text" name="spawners.deniedMobs"></label>
 					</div>
@@ -844,25 +812,6 @@
 					</div>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-at"></i> @Mentions in chat</h3>
-					<p class="np-card-intro">Writing @Name in chat plays the chicken-egg plop for that player and shows who mentioned them; Discord messages relayed into the game count too.</p>
-					<div class="np-form-grid">
-						<label class="np-form-row"><b>@Mentions</b><span class="np-switch"><input type="checkbox" name="chat.mentions"><span></span></span></label>
-						<label class="np-form-row"><span>Colour the mention<span class="pn-comment">The game marks messages the server changed with a small grey sign next to them.</span></span><span class="np-switch"><input type="checkbox" name="chat.highlight"><span></span></span></label>
-						<label class="np-form-row">Colour<input type="color" name="chat.highlightColor"></label>
-						<label class="np-form-row"><span>Ping offline players on Discord<span class="pn-comment">A mention of a linked player who isn't in game becomes a Discord ping (with the Discord bridge on).</span></span><span class="np-switch"><input type="checkbox" name="chat.discordPing"><span></span></span></label>
-					</div>
-				</section>
-				<div class="pn-sticky-save np-form-actions">
-					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
-					<span class="np-form-msg" id="pn-tw-msg"></span>
-				</div>
-				</form>
-			</div>
-
-			<div class="np-tab-panel" data-tab="felling" hidden>
-				<form id="pn-tf-form" autocomplete="off" class="pn-stack">
-				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-tree"></i> Tree felling</h3>
 					<p class="np-card-intro">Chop one log and the whole tree comes down, like the FallingTree mod (remove that one when you switch this on). Every log is broken as if the player mined it: drops, enchantments, axe wear and land claims work as usual.</p>
 					<div class="np-form-grid">
@@ -871,7 +820,7 @@
 						<label class="np-form-row">Sneaking<select name="felling.sneak"><option value="DISABLES">breaks just one log</option><option value="ENABLES">fells the tree (otherwise one log)</option><option value="IGNORED">makes no difference</option></select></label>
 						<label class="np-form-row"><span>The tree tips over and falls<span class="pn-comment">With "All at once": the tree topples away from the player and the drops land where it falls.</span></span><span class="np-switch"><input type="checkbox" name="felling.animation"><span></span></span></label>
 						<label class="np-form-row"><span>Stop before the axe breaks</span><span class="np-switch"><input type="checkbox" name="felling.preserveTool"><span></span></span></label>
-						<label class="np-form-row"><span>Axe wear per extra log<span class="pn-comment">1 = like chopping each log, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="felling.durability" min="0" max="10" step="0.05"></label>
+						<label class="np-form-row"><span>Axe wear per extra log<span class="pn-comment">1 = like chopping each log, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="felling.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row">Biggest tree (logs)<input type="number" name="felling.maxLogs" min="2" max="4096"></label>
 						<label class="np-form-row">Bigger trees<select name="felling.tooBig"><option value="skip">only lose the one log</option><option value="cutUpTo">fall up to the limit</option></select></label>
 						<label class="np-form-row"><span>Leaves needed at the top<span class="pn-comment">So log walls players built aren't felled.</span></span><input type="number" name="felling.minLeaves" min="0" max="64"></label>
@@ -900,13 +849,29 @@
 						<label class="np-form-row">Sneaking<select name="veins.sneak"><option value="DISABLES">mines just one block</option><option value="ENABLES">mines the vein (otherwise one block)</option><option value="IGNORED">makes no difference</option></select></label>
 						<label class="np-form-row">Biggest vein (blocks)<input type="number" name="veins.maxBlocks" min="2" max="1024"></label>
 						<label class="np-form-row"><span>Stop before the pickaxe breaks</span><span class="np-switch"><input type="checkbox" name="veins.preserveTool"><span></span></span></label>
-						<label class="np-form-row"><span>Pickaxe wear per extra block<span class="pn-comment">1 = like mining each block, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="veins.durability" min="0" max="10" step="0.05"></label>
+						<label class="np-form-row"><span>Pickaxe wear per extra block<span class="pn-comment">1 = like mining each block, 0.5 = half, 0 = none, 2 = double.</span></span><input type="number" name="veins.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row"><span>All drops where the first block was</span><span class="np-switch"><input type="checkbox" name="veins.dropsAtBreakPoint"><span></span></span></label>
 						<label class="np-form-row"><span>Also in creative mode</span><span class="np-switch"><input type="checkbox" name="veins.inCreative"><span></span></span></label>
 						<label class="np-form-row">Tools<input type="text" name="veins.tools"></label>
 						<label class="np-form-row">Never these tools<input type="text" name="veins.deniedTools"></label>
 						<label class="np-form-row">Ores<input type="text" name="veins.blocks"></label>
 						<label class="np-form-row">Never these blocks<input type="text" name="veins.deniedBlocks"></label>
+					</div>
+				</section>
+				<div class="pn-sticky-save np-form-actions">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-tw-msg"></span>
+				</div>
+				</form>
+			</div>
+
+			<div class="np-tab-panel" data-tab="felling" hidden>
+				<form id="pn-tf-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-circle"></i> Nether portals</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Portals in any shape<span class="pn-comment">Any closed frame lights: circles, arches, hearts… Rectangles work as always. The frame blocks are the same as for normal portals: obsidian, and on 26.3 everything in the block tag <code>minecraft:nether_portal_frame</code>.</span></span><span class="np-switch"><input type="checkbox" name="portals.anyShape"><span></span></span></label>
+						<label class="np-form-row"><span>Biggest portal (blocks inside)<span class="pn-comment">A vanilla 21 × 21 portal has 441.</span></span><input type="number" name="portals.maxBlocks" min="6" max="4096"></label>
 					</div>
 				</section>
 				<section class="np-card">
@@ -938,6 +903,50 @@
 				<div class="pn-sticky-save np-form-actions">
 					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 					<span class="np-form-msg" id="pn-tf-msg"></span>
+				</div>
+				</form>
+			</div>
+
+			<div class="np-tab-panel" data-tab="chattweaks" hidden>
+				<form id="pn-tc-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-at"></i> @Mentions in chat</h3>
+					<p class="np-card-intro">Writing @Name in chat plays the chicken-egg plop for that player and shows who mentioned them; Discord messages relayed into the game count too.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>@Mentions</b><span class="np-switch"><input type="checkbox" name="chat.mentions"><span></span></span></label>
+						<label class="np-form-row"><span>Colour the mention<span class="pn-comment">The game marks messages the server changed with a small grey sign next to them.</span></span><span class="np-switch"><input type="checkbox" name="chat.highlight"><span></span></span></label>
+						<label class="np-form-row">Colour<input type="color" name="chat.highlightColor"></label>
+						<label class="np-form-row"><span>Ping offline players on Discord<span class="pn-comment">A mention of a linked player who isn't in game becomes a Discord ping (with the Discord bridge on).</span></span><span class="np-switch"><input type="checkbox" name="chat.discordPing"><span></span></span></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-moon"></i> AFK and tab list</h3>
+					<p class="np-card-intro">The AFK tag goes next to the name in the tab list. Scoreboard teams (like Fabled Roots' race colours) stay as they are.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>AFK tag</b><span class="np-switch"><input type="checkbox" name="afk.enabled"><span></span></span></label>
+						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
+						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
+						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
+						<label class="np-form-row"><span>Empty line around the player list<span class="pn-comment">Between the header, the players and the footer.</span></span><span class="np-switch"><input type="checkbox" name="tabList.gap"><span></span></span></label>
+					</div>
+					<p class="pn-hint">Use <code>§</code> colour codes, <code>\n</code> for a new line, and <code>{players}</code> <code>{max}</code> <code>{tps}</code> <code>{mspt}</code> <code>{ping}</code> <code>{time}</code> (the in-game clock).</p>
+					<label class="pn-field">Header<textarea name="tabList.header" rows="2" maxlength="500" spellcheck="false"></textarea></label>
+					<label class="pn-field">Footer<textarea name="tabList.footer" rows="2" maxlength="500" spellcheck="false"></textarea></label>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-globe2"></i> Dimension in the tab list</h3>
+					<p class="np-card-intro">Shows after each name which dimension the player is in, with the name and colour you pick. Teams stay as they are, and the AFK tag comes after it.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Show the dimension</b><span class="np-switch"><input type="checkbox" name="tabList.showDimension"><span></span></span></label>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-tw-dims">
+						<thead><tr><th>Dimension</th><th>Shown as</th><th>Colour</th><th>In the tab list</th></tr></thead>
+						<tbody id="pn-tw-dims"></tbody>
+					</table></div>
+				</section>
+				<div class="pn-sticky-save np-form-actions">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-tc-msg"></span>
 				</div>
 				</form>
 			</div>

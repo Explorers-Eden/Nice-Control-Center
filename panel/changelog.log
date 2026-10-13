@@ -1,3 +1,14 @@
+## 1.11.1
+- The sidebar is sorted by purpose:
+  - **Community:** Claims, Market (its own entry now) and Discord.
+  - **Settings:** Server (Game, Startup & Java, Server list), Gameplay, Tuning (moved from Performance), Packs & mods (data pack settings and mod configs) and Public pages (info page and appearance).
+  - **Server:** Schedule, Backups, Files, Updates.
+  - **Admin:** Users & roles, Audit log.
+  - Commands moved under Console.
+  - Old links still land on the right page.
+- Gameplay (formerly Tweaks) is split by topic: Items & tools, World & nature, Chat & tab list
+- Tool wear for tree felling, vein mining and silk touch spawners can be up to 100 times (was 10; needs mod 1.12.1)
+
 ## 1.11.0
 - Tweaks (needs mod 1.12.0): Gameplay gets the grindstone to books, silk touch spawners, Loyalty tridents from the void and @mentions in chat; Trees & veins is now Trees & nature, with saplings that plant themselves and bone meal on more plants (it warns when Performance's item despawn would remove saplings first)
 - Discord: with @mentions on, "@Name" of a linked player who isn't in game pings them on Discord

@@ -132,7 +132,7 @@ The panel draws a top-down map of the world from the region files, one pixel per
 
 ## Public info page
 
-Settings → Public info: a read-only page where players can look up the server's settings (in plain words, grouped), its game rules, data pack settings and the mod configs you tick. Passwords, tokens, keys and the RCON/management settings never show. Off until you switch it on.
+Public pages → Info page: a read-only page where players can look up the server's settings (in plain words, grouped), its game rules, data pack settings and the mod configs you tick. Passwords, tokens, keys and the RCON/management settings never show. Off until you switch it on.
 
 - It's at `/info/` on the panel's address, or on its own address: set `INFO_HOST` (e.g. `info.example.com`) and point that subdomain at port 8080. On that address only the info page is reachable.
 - It's built from the running server and kept, so it stays readable while the server is off.
@@ -161,17 +161,19 @@ Settings → Public info: a read-only page where players can look up the server'
   - `discord_links`: player_uuid, player_name, discord_id, discord_name, linked_at (the Discord bridge's account links, copied when they change).
 - **Permissions:** "See land claims" (Moderator and Viewer by default) and "Change claims…" (Moderator).
 
-## Tweaks and market
+## Gameplay and market
 
-**Tweaks** in the sidebar (needs mod 1.12.0). Everything is off until switched on.
+**Settings → Gameplay** in the sidebar (needs mod 1.12.0). Everything is off until switched on.
 
-- **Gameplay:** anvil (never "Too Expensive!", cheap renaming), nether portals in any shape, the AFK tag, the tab list header and footer, and each player's dimension in the tab list (name and colour per dimension).
-- **Gameplay** also has the grindstone to books, silk touch spawners, Loyalty tridents from the void and @mentions in chat.
-- **Trees & nature:** tree felling (like FallingTree, with the falling animation) and vein mining, with all their options, including how much the tool wears; saplings that plant themselves; bone meal on more plants. Remove the FallingTree mod when you use this.
-- **Market:**
-  - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
-  - **What's for sale:** with item icons; **Take off** sends a listing back to the seller's mailbox.
-  - **Recent sales.**
+- **Items & tools:** anvil (never "Too Expensive!", cheap renaming), grindstone to books, silk touch spawners, Loyalty tridents from the void, tree felling (like FallingTree, with the falling animation; remove the FallingTree mod when you use this) and vein mining, with how much the tool wears (up to 100 times).
+- **World & nature:** nether portals in any shape, saplings that plant themselves, bone meal on more plants.
+- **Chat & tab list:** @mentions, the AFK tag, the tab list header and footer, and each player's dimension in the tab list (name and colour per dimension).
+
+**Market** (under Community in the sidebar):
+
+- **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
+- **What's for sale:** with item icons; **Take off** sends a listing back to the seller's mailbox.
+- **Recent sales.**
 - **Item icons:**
   - The panel downloads the game's textures for the server's Minecraft version from Mojang once, plus the server resource pack (`resource-pack` in server.properties).
   - It draws icons from them, custom models included, into `/data/panel/assets` and `/data/panel/icons`.

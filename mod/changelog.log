@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.12.1
+- Tool wear multipliers for tree felling, vein mining and silk touch spawners go up to 100 (was 10)
+
 ## 1.12.0
 - New gameplay tweaks (all off until switched on in the panel, normal game clients work):
   - Grindstone to books: an enchanted item and a book give an enchanted book with the item's enchantments (curses stay on the item), for levels (per enchantment level, with a least and a most); the price shows above the hotbar

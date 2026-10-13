@@ -176,7 +176,7 @@ public final class Tweaks {
 		/** Mobs whose spawners never drop (ids). */
 		public List<String> deniedMobs = new ArrayList<>();
 		public boolean dropXp = false;
-		/** Tool wear for picking a spawner up: 1 = normal, 0.5 = half, 5 = five times. */
+		/** Tool wear for picking a spawner up: 1 = normal, 0.5 = half, 5 = five times (up to 100). */
 		public double durability = 1.0;
 	}
 
@@ -290,7 +290,7 @@ public final class Tweaks {
 		s.fill();
 		if (!(s.grindstone.levelsPerEnchantLevel >= 0 && s.grindstone.levelsPerEnchantLevel <= 10)) return "Grindstone levels per enchantment level are 0 to 10.";
 		if (s.grindstone.minLevels < 0 || s.grindstone.maxLevels > 100 || s.grindstone.minLevels > s.grindstone.maxLevels) return "Grindstone costs are 0 to 100 levels, the least not above the most.";
-		if (!(s.spawners.durability >= 0 && s.spawners.durability <= 10)) return "Tool wear is 0 to 10 times.";
+		if (!(s.spawners.durability >= 0 && s.spawners.durability <= 100)) return "Tool wear is 0 to 100 times.";
 		if (s.saplings.delaySeconds < 5 || s.saplings.delaySeconds > 600) return "Saplings plant themselves after 5 to 600 seconds.";
 		if (s.saplings.spacing < 0 || s.saplings.spacing > 8) return "Sapling spacing is 0 to 8 blocks.";
 		if (s.boneMeal.maxHeight < 2 || s.boneMeal.maxHeight > 16) return "Bone meal grows plants 2 to 16 blocks tall.";
@@ -300,7 +300,7 @@ public final class Tweaks {
 		if (s.felling.maxLogs < 2 || s.felling.maxLogs > 4096) return "Trees are 2 to 4096 logs.";
 		if (s.felling.minLeaves < 0 || s.felling.minLeaves > 64) return "Leaves needed are 0 to 64.";
 		if (s.felling.leafRadius < 1 || s.felling.leafRadius > 16) return "The leaf radius is 1 to 16 blocks.";
-		if (!(s.felling.durability >= 0 && s.felling.durability <= 10) || !(s.veins.durability >= 0 && s.veins.durability <= 10)) return "Tool wear is 0 to 10 times.";
+		if (!(s.felling.durability >= 0 && s.felling.durability <= 100) || !(s.veins.durability >= 0 && s.veins.durability <= 100)) return "Tool wear is 0 to 100 times.";
 		for (Dimension d : s.tabList.dimensions.values()) if (d.name.length() > 32) return "Dimension names are up to 32 characters.";
 		if (s.veins.maxBlocks < 2 || s.veins.maxBlocks > 1024) return "Veins are 2 to 1024 blocks.";
 		if (s.afk.minutes < 1 || s.afk.minutes > 120) return "AFK after 1 to 120 minutes.";

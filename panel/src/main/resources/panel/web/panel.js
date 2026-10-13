@@ -74,8 +74,7 @@
         { tab: 'mod:overview', label: 'Overview', perm: 'dashboard.view', desc: 'How the server is doing right now, and anything that needs your attention.' }] },
       { id: 'console', hue: '#9fb0c8', label: 'Console', icon: 'bi-terminal', subs: [
         { tab: 'server', label: 'Console', perm: 'console.read', desc: 'The server log as it happens. Type commands below it.' },
-        { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' }] },
-      { id: 'commands', hue: '#ffd166', label: 'Commands', icon: 'bi-slash-square', subs: [
+        { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' },
         { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server, by where it comes from: who may use it and what it does.' }] },
       { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
@@ -84,36 +83,48 @@
       { id: 'performance', hue: '#ffb35c', label: 'Performance', icon: 'bi-speedometer2', subs: [
         { tab: 'mod:performance', label: 'Live', perm: 'dashboard.view', desc: 'What takes the server\'s time right now, tick by tick.' },
         { tab: 'stats', label: 'History', perm: 'server.view', desc: 'TPS, players, memory and disk over days and weeks.' },
-        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' },
-        { tab: 'tuning', label: 'Tuning', perm: 'dashboard.view', desc: 'Make the server lighter: tick less where nobody is, cap what piles up, step down while it lags.' }] },
+        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' }] },
       { id: 'world', hue: '#4fd1c5', label: 'World', icon: 'bi-globe-americas', subs: [
         { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'Chunks, entities and the places that cost the most.' },
         { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'Decide which part of the world is permanent, pregenerate it, and reset the rest on a schedule.' },
         { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' }] },
+    ] },
+    { group: 'Community', items: [
       { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
         { tab: 'claims', label: 'Claims', perm: 'claims.view', desc: 'Land players have claimed: who owns it, who may do what, and where.' },
         { tab: 'claimblocks', label: 'Claim blocks', perm: 'claims.view', desc: 'How many claim blocks each player has earned, bought and used.' },
         { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks, the shop and the claim tool.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
+      { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
+        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold.' }] },
+      { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
+        { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
-    { group: 'Server', items: [
-      { id: 'settings', hue: '#a77bff', label: 'Settings', icon: 'bi-sliders', subs: [
+    { group: 'Settings', items: [
+      { id: 'settings', hue: '#a77bff', label: 'Server', icon: 'bi-sliders', subs: [
         { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'Game rules and server.properties.' },
         { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
-        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
-        { tab: 'info', label: 'Public info', perm: 'settings.server', desc: 'A public page where players can read up on the server\'s settings.' }] },
-      { id: 'tweaks', hue: '#c4a6ff', label: 'Tweaks', icon: 'bi-magic', subs: [
-        { tab: 'tweaks', label: 'Gameplay', perm: 'server.view', desc: 'Anvil, nether portals, the tab list, the grindstone, spawners, tridents and chat mentions: things vanilla does differently.' },
-        { tab: 'felling', label: 'Trees & nature', perm: 'server.view', desc: 'Fell whole trees and mine whole ore veins at once, saplings that plant themselves, and bone meal on more plants.' },
-        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold.' }] },
+        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' }] },
+      { id: 'gameplay', hue: '#c4a6ff', label: 'Gameplay', icon: 'bi-magic', subs: [
+        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, grindstone, spawners, tridents, tree felling and vein mining: things vanilla does differently.' },
+        { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Nether portals in any shape, saplings that plant themselves and bone meal on more plants.' },
+        { tab: 'chattweaks', label: 'Chat & tab list', perm: 'server.view', desc: '@Mentions in chat, the AFK tag, and the tab list\'s header, footer and dimensions.' }] },
+      { id: 'tuning', hue: '#ffb35c', label: 'Tuning', icon: 'bi-speedometer', subs: [
+        { tab: 'tuning', label: 'Tuning', perm: 'dashboard.view', desc: 'Make the server lighter: tick less where nobody is, cap what piles up, step down while it lags.' }] },
+      { id: 'packs', hue: '#f5c451', label: 'Packs & mods', icon: 'bi-boxes', subs: [
+        { tab: 'mod:packs', label: 'Data pack settings', perm: 'dashboard.view', desc: 'Options the data packs offer.' },
+        { tab: 'configs', label: 'Mod configs', permAny: 'files.config files.read', desc: 'The mods\' settings files, grouped by mod.' }] },
+      { id: 'public', hue: '#ff8fa3', label: 'Public pages', icon: 'bi-globe2', subs: [
+        { tab: 'info', label: 'Info page', perm: 'settings.server', desc: 'A public page where players can read up on the server\'s settings.' },
+        { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage settings.server', desc: 'Logos for the panel and the map, and the picture of the info page banner.' }] },
+    ] },
+    { group: 'Server', items: [
       { id: 'schedule', hue: '#ff8fc7', label: 'Schedule', icon: 'bi-calendar-check', subs: [
         { tab: 'schedule', label: 'Schedule', perm: 'server.view', desc: 'Things that happen on their own: restarts, backups, resets, messages.' }] },
       { id: 'backups', hue: '#62b6ff', label: 'Backups', icon: 'bi-archive', subs: [
         { tab: 'backups', label: 'Backups', perm: 'backup.view', desc: 'Copies of the world and server to go back to.' }] },
       { id: 'files', hue: '#f5c451', label: 'Files', icon: 'bi-folder2-open', subs: [
-        { tab: 'files', label: 'All files', perm: 'files.read', desc: 'Everything in the server folder.' },
-        { tab: 'configs', label: 'Mod configs', permAny: 'files.config files.read', desc: 'The mods\' settings files, grouped by mod.' },
-        { tab: 'mod:packs', label: 'Data pack settings', perm: 'dashboard.view', desc: 'Options the data packs offer.' }] },
+        { tab: 'files', label: 'All files', perm: 'files.read', desc: 'Everything in the server folder.' }] },
       { id: 'updates', hue: '#6ee7b7', label: 'Updates', icon: 'bi-cloud-arrow-down', subs: [
         { tab: 'versions', label: 'Minecraft', perm: 'server.view', desc: 'Move the server to another Minecraft version, with the mods to match.' },
         { tab: 'mod:updates', label: 'Mods', perm: 'dashboard.view', desc: 'Newer versions of the installed mods and the resource pack.' }] },
@@ -121,14 +132,16 @@
     { group: 'Admin', items: [
       { id: 'users', hue: '#c4a6ff', label: 'Users & roles', icon: 'bi-person-gear', subs: [
         { tab: 'users', label: 'Users & roles', perm: 'users.admin', desc: 'Who can log in to the panel and what they may do.' }] },
-      { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
-        { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
-      { id: 'appearance', hue: '#ff8fa3', label: 'Appearance', icon: 'bi-palette', subs: [
-        { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage settings.server', desc: 'Logos for the panel and the map, and the picture of the info page banner.' }] },
       { id: 'audit', hue: '#b6c8ff', label: 'Audit log', icon: 'bi-journal-text', subs: [
         { tab: 'audit', label: 'Audit log', perm: 'audit.view', desc: 'Every change made through the panel, and by whom.' }] },
     ] },
   ];
+  /** Links from before the sidebar was reorganised still land on the same page. */
+  const OLD_HASHES = {
+    'tweaks': 'tweaks', 'tweaks/gameplay': 'tweaks', 'tweaks/trees-veins': 'felling', 'tweaks/trees-nature': 'felling', 'tweaks/market': 'market',
+    'performance/tuning': 'tuning', 'settings/game': 'mod:server', 'settings/startup-java': 'java', 'settings/server-list': 'serverlist', 'settings/public-info': 'info',
+    'files/all-files': 'files', 'files/mod-configs': 'configs', 'files/data-pack-settings': 'mod:packs', 'appearance': 'appearance', 'commands': 'commands',
+  };
   /** Pages outside the sidebar (the user menu). */
   const EXTRA = { account: { tab: 'account', label: 'Account', desc: 'Your picture, theme, password and SSH keys for SFTP.' } };
   const ENTRY_OF = {};
@@ -192,7 +205,9 @@
   }
 
   function tabFromHash(hash) {
-    const [id, sub] = hash.replace(/^#/, '').split('/');
+    const key = hash.replace(/^#/, '').split(/[?]/)[0];
+    if (OLD_HASHES[key] && allowed(SUB_OF[OLD_HASHES[key]] || {})) return OLD_HASHES[key];
+    const [id, sub] = key.split('/');
     if (EXTRA[id]) return id;
     const entry = NAV.flatMap((g) => g.items).find((e) => e.id === id);
     if (!entry) return null;
@@ -355,7 +370,7 @@
     if (tab === 'claims') loadClaims();
     if (tab === 'claimblocks') loadClaimBlocks();
     if (tab === 'claimsettings') loadClaimSettings();
-    if (tab === 'tweaks' || tab === 'felling') loadTweaks();
+    if (tab === 'tweaks' || tab === 'felling' || tab === 'chattweaks') loadTweaks();
     if (tab === 'market') loadMarket();
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
@@ -1769,7 +1784,7 @@
     if (s.type === 'cleanup') {
       const caps = [8, 16, 24, 32, 48, 64];
       const cur = (s.text || 'items').startsWith('excess') ? s.text : 'items';
-      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option><option value="excess" ${cur === 'excess' ? 'selected' : ''}>remove mobs over their limit (Performance → Tuning)</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
+      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option><option value="excess" ${cur === 'excess' ? 'selected' : ''}>remove mobs over their limit (Settings → Tuning)</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
         <span>warn in chat</span><input type="number" data-f="seconds" min="0" max="600" value="${s.seconds ?? 30}"><span>seconds before (items only)</span>`;
     }
     if (s.type === 'maintenance') fields = `<select data-f="text"><option value="on" ${s.text !== 'off' ? 'selected' : ''}>switch on (staff only)</option><option value="off" ${s.text === 'off' ? 'selected' : ''}>switch off</option></select><span>(settings under Players → Maintenance)</span>`;
@@ -3003,7 +3018,7 @@
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(p);
     }
-    // Crashes, and how often dynamic distances stepped down (Performance → Tuning).
+    // Crashes, and how often dynamic distances stepped down (Settings → Tuning).
     const crashesOn = (from, to) => {
       const ms = (statsData ? statsData.markers : []).filter((m) => m.t >= from && m.t < to);
       return [ms.filter((m) => m.type === 'crash').length, ms.filter((m) => m.type === 'perf' && /^Lag/.test(m.text || '')).length];
@@ -3037,7 +3052,7 @@
       }).join('');
     }).join('');
     $('pn-stats-table').innerHTML = `<thead><tr><th>Day</th><th class="num">Online</th><th class="num">TPS</th><th class="num">MSPT</th><th class="num">Slowest tick</th>
-      <th class="num">Peak players</th><th class="num">Crashes</th><th class="num" title="How often dynamic distances stepped down (Performance → Tuning)">Lag steps</th><th class="num">Peak memory</th><th class="num">Free disk</th></tr></thead><tbody>${rows}</tbody>`;
+      <th class="num">Peak players</th><th class="num">Crashes</th><th class="num" title="How often dynamic distances stepped down (Settings → Tuning)">Lag steps</th><th class="num">Peak memory</th><th class="num">Free disk</th></tr></thead><tbody>${rows}</tbody>`;
   }
 
   $('pn-stats-table').addEventListener('click', (e) => {
@@ -3291,7 +3306,7 @@
     $('pn-setup').hidden = true;
   });
 
-  // ── Performance → Tuning ─────────────────────────────────────────────────
+  // ── Settings → Tuning ─────────────────────────────────────────────────
 
   let perfSettings = null;
 
@@ -3862,7 +3877,7 @@
     });
   });
 
-  // ── Settings → Public info ──────────────────────────────────────────────
+  // ── Public pages → Info page ──────────────────────────────────────────────
 
   let infoData = null;
   let infoFiles = [];
@@ -4593,14 +4608,17 @@
     } catch (e) {
       formMsg('pn-tw-msg', e.message, false);
       formMsg('pn-tf-msg', e.message, false);
+      formMsg('pn-tc-msg', e.message, false);
       return;
     }
     twFill($('pn-tw-form'));
     twFill($('pn-tf-form'));
+    twFill($('pn-tc-form'));
     twDims();
     twSaplingWarning();
     Dirty.reset('tweaks');
     Dirty.reset('felling');
+    Dirty.reset('chattweaks');
   }
 
   /** Performance → quick despawn removes saplings before they could plant themselves. */
@@ -4610,7 +4628,7 @@
     const hits = q.enabled && (q.items || []).some((i) => /sapling|propagule/.test(i));
     const warn = $('pn-sap-warn');
     warn.hidden = !(s.replant && hits && q.seconds <= s.delaySeconds);
-    warn.textContent = `Performance → item despawn removes saplings after ${q.seconds} seconds, before they plant themselves; set the delay below that or take saplings off that list.`;
+    warn.textContent = `Tuning → item despawn removes saplings after ${q.seconds} seconds, before they plant themselves; set the delay below that or take saplings off that list.`;
   }
 
   /** The tab list's dimension names and colours: one row per dimension of the world. */
@@ -4639,7 +4657,7 @@
   async function saveTweaks(e, msgId) {
     e.preventDefault();
     const next = JSON.parse(JSON.stringify(twData.settings));
-    if (e.target.id === 'pn-tw-form') {
+    if (e.target.contains($('pn-tw-dims'))) {
       const dims = {};
       $('pn-tw-dims').querySelectorAll('tr[data-dim]').forEach((tr) => {
         dims[tr.dataset.dim] = { name: tr.querySelector('[data-f=name]').value.trim(), color: tr.querySelector('[data-f=color]').value.toUpperCase() };
@@ -4666,8 +4684,9 @@
 
   $('pn-tw-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tw-msg'));
   $('pn-tf-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tf-msg'));
+  $('pn-tc-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tc-msg'));
 
-  // ── Tweaks → Market ────────────────────────────────────────────────────
+  // ── Community → Market ────────────────────────────────────────────────────
 
   let mkData = null;
   let mkSettings = null;
@@ -4750,6 +4769,7 @@
   Dirty.track('claimsettings', $('pn-cs-form'), { reload: loadClaimSettings });
   Dirty.track('tweaks', $('pn-tw-form'), { reload: loadTweaks });
   Dirty.track('felling', $('pn-tf-form'), { reload: loadTweaks });
+  Dirty.track('chattweaks', $('pn-tc-form'), { reload: loadTweaks });
   Dirty.track('market', $('pn-mk-form'), { reload: loadMarket });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });

@@ -624,7 +624,7 @@ public final class Discord implements Notifier {
 	private static final java.util.regex.Pattern MENTION = java.util.regex.Pattern.compile("@\u200b?((?:[A-Za-z0-9_]|\\\\_){3,32})");
 
 	/**
-	 * @mentions (Tweaks → Gameplay): "@Name" of a linked player who isn't in game becomes a Discord ping.
+	 * @mentions (Settings → Gameplay → Chat & tab list): "@Name" of a linked player who isn't in game becomes a Discord ping.
 	 * Returns the Discord ids to allow pinging; text[0] gets the pings written in.
 	 */
 	private List<String> pings(String[] text) {
