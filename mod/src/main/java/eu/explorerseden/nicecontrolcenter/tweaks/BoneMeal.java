@@ -5,6 +5,7 @@ import eu.explorerseden.nicecontrolcenter.Tweaks;
 import eu.explorerseden.nicecontrolcenter.claims.ClaimProtection;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
@@ -51,7 +52,12 @@ public final class BoneMeal {
 		BlockPos grown = grow(level, pos, state, s, level.getRandom());
 		if (grown == null) return InteractionResult.FAIL;
 		if (!player.hasInfiniteMaterials()) held.shrink(1);
+		// The sound (vanilla's event; its particles only show for blocks the game grows itself), and the
+		// green sparkles like vanilla: in the block that grew, or around it for plants that spread.
 		level.levelEvent(1505, grown, 15);
+		boolean spreads = state.is(Blocks.LILY_PAD) || state.is(BlockTags.SMALL_FLOWERS);
+		double r = spreads ? 1.2 : 0.3;
+		level.sendParticles(ParticleTypes.HAPPY_VILLAGER, grown.getX() + 0.5, grown.getY() + 0.5, grown.getZ() + 0.5, spreads ? 30 : 15, r, spreads ? 0.3 : 0.3, r, 0);
 		return InteractionResult.SUCCESS;
 	}
 

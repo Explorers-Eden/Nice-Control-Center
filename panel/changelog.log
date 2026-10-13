@@ -1,3 +1,6 @@
+## 1.11.3
+- Gameplay → Items & tools: silk touch spawners get a tool list and a switch for whether Silk Touch is needed (needs mod 1.12.2)
+
 ## 1.11.2
 - Public info page: the next restart sits above the server list message in the banner
 

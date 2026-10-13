@@ -61,6 +61,12 @@ public final class Mentions {
 		}
 	}
 
+	/** The text with its mentions coloured when that's switched on (for messages that aren't player chat). */
+	public static Component decorate(MinecraftServer server, Component message) {
+		Tweaks.Chat c = TweaksControl.settings().chat;
+		return c.mentions && c.highlight ? highlight(server, message, c.highlightColor) : message;
+	}
+
 	/** The message with each @Name of an online player coloured (plain text in, so only simple messages). */
 	private static Component highlight(MinecraftServer server, Component message, String color) {
 		String text = message.getString();

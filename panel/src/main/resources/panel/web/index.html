@@ -797,9 +797,11 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-box-seam"></i> Silk touch spawners</h3>
-					<p class="np-card-intro">A spawner mined with a Silk Touch pickaxe drops as an item that keeps its mob, and normal players can place it again. Land claims apply as for any block.</p>
+					<p class="np-card-intro">A spawner mined with one of the tools (with Silk Touch, unless switched off) drops as an item that keeps its mob, and normal players can place it again. Land claims apply as for any block.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Silk touch spawners</b><span class="np-switch"><input type="checkbox" name="spawners.silkTouch"><span></span></span></label>
+						<label class="np-form-row"><span>Only with Silk Touch<span class="pn-comment">Off: any of the tools below picks spawners up.</span></span><span class="np-switch"><input type="checkbox" name="spawners.requireSilkTouch"><span></span></span></label>
+						<label class="np-form-row"><span>Tools<span class="pn-comment">Ids or #tags, separated by commas.</span></span><input type="text" name="spawners.tools"></label>
 						<label class="np-form-row"><span>Pickaxe wear<span class="pn-comment">1 = like any block, 0.5 = half, 5 = five times.</span></span><input type="number" name="spawners.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row"><span>Also drop XP</span><span class="np-switch"><input type="checkbox" name="spawners.dropXp"><span></span></span></label>
 						<label class="np-form-row"><span>Never for these mobs<span class="pn-comment">Mob ids, separated by commas, e.g. minecraft:blaze.</span></span><input type="text" name="spawners.deniedMobs"></label>

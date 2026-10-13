@@ -97,7 +97,10 @@ public final class ServerFacts {
 				for (String mob : t.spawners.deniedMobs) mobs.add(humanize(mob.replaceFirst("^minecraft:", "")));
 				rows.add(line("Can't be picked up", String.join(", ", mobs), ""));
 			}
-			out.add(tweak("spawners", "Silk touch spawners", "bi-box-seam", "Mine a spawner with a Silk Touch pickaxe to take it with you; it keeps its mob when you place it again.", rows));
+			List<String> tools = new ArrayList<>();
+			for (String tl : t.spawners.tools) tools.add(humanize(tl.replaceFirst("^#?minecraft:", "")));
+			rows.add(0, line("With", String.join(", ", tools) + (t.spawners.requireSilkTouch ? " with Silk Touch" : ""), ""));
+			out.add(tweak("spawners", "Silk touch spawners", "bi-box-seam", "Mine a spawner with the right tool to take it with you; it keeps its mob when you place it again.", rows));
 		}
 		if (t.saplings.replant) {
 			out.add(tweak("saplings", "Saplings plant themselves", "bi-flower1", "Saplings lying on the ground plant themselves after " + t.saplings.delaySeconds + " seconds, if they can grow there"

@@ -31,7 +31,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Silk touch spawners: a spawner mined with Silk Touch drops as an item that keeps its mob and settings,
+ * Silk touch spawners: a spawner mined with one of the configured tools (with Silk Touch, unless that's
+ * switched off) drops as an item that keeps its mob and settings,
  * and places like that again for normal players (marked items only; other spawner data stays op-only).
  * The tool wears by the configured multiplier.
  */
@@ -64,8 +65,9 @@ public final class Spawners {
 		Tweaks.Spawners s = TweaksControl.settings().spawners;
 		if (!s.silkTouch || player.isCreative()) return;
 		ItemStack tool = player.getMainHandItem();
+		if (!TweaksControl.spawnerTool(tool)) return;
 		var silk = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH);
-		if (EnchantmentHelper.getItemEnchantmentLevel(silk, tool) <= 0) return;
+		if (s.requireSilkTouch && EnchantmentHelper.getItemEnchantmentLevel(silk, tool) <= 0) return;
 		CompoundTag data = be.saveWithoutMetadata(level.registryAccess());
 		String mob = data.getCompoundOrEmpty("SpawnData").getCompoundOrEmpty("entity").getStringOr("id", "");
 		if (!mob.isEmpty() && s.deniedMobs.contains(mob)) return;

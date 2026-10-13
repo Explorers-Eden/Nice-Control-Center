@@ -171,8 +171,11 @@ public final class Tweaks {
 	}
 
 	public static final class Spawners {
-		/** Spawners mined with Silk Touch drop as an item that keeps its mob. */
+		/** Spawners mined with one of the tools (and Silk Touch, unless switched off) drop as an item that keeps its mob. */
 		public boolean silkTouch = false;
+		public boolean requireSilkTouch = true;
+		/** Tools that may pick spawners up (ids or #tags). */
+		public List<String> tools = new ArrayList<>(List.of("#minecraft:pickaxes"));
 		/** Mobs whose spawners never drop (ids). */
 		public List<String> deniedMobs = new ArrayList<>();
 		public boolean dropXp = false;
@@ -238,6 +241,7 @@ public final class Tweaks {
 			if (tridents == null) tridents = new Tridents();
 			if (chat.highlightColor == null || !chat.highlightColor.matches("#[0-9a-fA-F]{6}")) chat.highlightColor = "#FFD166";
 			spawners.deniedMobs = ids(spawners.deniedMobs);
+			spawners.tools = ids(spawners.tools);
 			saplings.items = ids(saplings.items);
 			felling.tools = ids(felling.tools);
 			felling.deniedTools = ids(felling.deniedTools);
@@ -307,7 +311,7 @@ public final class Tweaks {
 		if (s.afk.tag.length() > 16) return "The AFK tag is up to 16 characters.";
 		if (s.tabList.header.length() > 500 || s.tabList.footer.length() > 500) return "Header and footer are up to 500 characters each.";
 		for (String id : s.spawners.deniedMobs) if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't a mob id.";
-		for (List<String> l : List.of(s.saplings.items, s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
+		for (List<String> l : List.of(s.spawners.tools, s.saplings.items, s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
 				s.veins.tools, s.veins.deniedTools, s.veins.blocks, s.veins.deniedBlocks)) {
 			for (String id : l) if (!id.matches("#?[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't an id or #tag.";
 		}

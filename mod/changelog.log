@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.12.2
+- @Mentions also work in messages sent from the panel's Chat tab: the mentioned player hears the plop, and the mention is coloured when that's switched on
+- Bone meal on more plants shows the green sparkles like vanilla bone meal (before, only the sound came)
+- Silk touch spawners: which tools may pick spawners up can be set (pickaxes by default), and Silk Touch can be made optional
+
 ## 1.12.1
 - Tool wear multipliers for tree felling, vein mining and silk touch spawners go up to 100 (was 10)
 

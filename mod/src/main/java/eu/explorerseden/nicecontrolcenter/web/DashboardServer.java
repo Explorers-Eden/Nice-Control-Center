@@ -298,16 +298,16 @@ public final class DashboardServer {
 				com.google.gson.JsonArray json = new com.google.gson.JsonArray();
 				json.add("");
 				json.addAll(config.adminPrefix(by));
-				com.google.gson.JsonObject body = new com.google.gson.JsonObject();
-				body.addProperty("text", text);
-				body.addProperty("color", "white");
-				json.add(body);
 				// Broadcast (not tellraw @a, which fails while nobody is online): logged, and in the Chat tab.
+				// @mentions in it work like in player chat (plop, and the colour when that's on).
 				String error = onServerThread(() -> {
 					var parsed = net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
 							minecraft.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), json);
 					if (parsed.result().isEmpty()) return "The message couldn't be built.";
-					minecraft.getPlayerList().broadcastSystemMessage(parsed.result().get(), false);
+					net.minecraft.network.chat.Component said = eu.explorerseden.nicecontrolcenter.tweaks.Mentions.decorate(minecraft,
+							net.minecraft.network.chat.Component.literal(text).withStyle(net.minecraft.ChatFormatting.WHITE));
+					minecraft.getPlayerList().broadcastSystemMessage(net.minecraft.network.chat.Component.empty().append(parsed.result().get()).append(said), false);
+					eu.explorerseden.nicecontrolcenter.tweaks.Mentions.notify(minecraft, text, by == null || by.isBlank() ? "An admin" : by, null);
 					return null;
 				});
 				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
