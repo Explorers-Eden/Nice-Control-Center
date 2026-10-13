@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.9.1
+- Claims: minecarts with chests or hoppers and chest boats can only be opened by members with the containers role (or with the claim's switch on); before, anyone could open them
+- The switch "open chests and use animals" is now "open chests and interact with entities": it always covered villagers, interaction entities and other mobs too
+
 ## 1.9.0
 - Land claims, like GriefPrevention but with menus: players claim land with the claim tool (two corners), and everything inside is protected from bedrock to the sky. Off until switched on in the panel; GOML keeps working alongside
 - Claim mode (/claim mode or the menu) hands out the claim tool, a marked golden hoe, and takes it away again. It can't be dropped, stored or kept; whatever was in the hand comes back

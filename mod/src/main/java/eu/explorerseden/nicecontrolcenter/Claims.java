@@ -200,7 +200,7 @@ public final class Claims {
 	/** What a member may do; each role includes the ones before it. */
 	public enum Role {
 		ACCESS("Visitor", "Doors, gates, buttons, levers, beds, trading"),
-		CONTAINERS("Containers", "Also chests, furnaces and other storage, animals and crops"),
+		CONTAINERS("Containers", "Also chests, furnaces and other storage, crops, and animals, villagers and other entities"),
 		BUILD("Builder", "Also placing and breaking blocks, buckets, item frames"),
 		MANAGE("Co-owner", "Also adding members, settings, resizing and subclaims"),
 		OWNER("Owner", "Everything");
@@ -234,7 +234,7 @@ public final class Claims {
 	public static final class Flags {
 		/** Doors, gates, buttons, levers, beds, trading. */
 		public boolean access = false;
-		/** Chests, furnaces and other storage, animals and crops. */
+		/** Chests, furnaces and other storage, crops, and animals, villagers and other entities (interaction entities too). */
 		public boolean containers = false;
 		/** Players may hurt each other (members too). */
 		public boolean pvp = false;
@@ -259,7 +259,7 @@ public final class Claims {
 		/** Flag names with a label, in dialog order. */
 		public static final String[][] LABELS = {
 				{ "access", "Everyone may use doors, buttons and levers" },
-				{ "containers", "Everyone may open chests and use animals" },
+				{ "containers", "Everyone may open chests and interact with entities" },
 				{ "pvp", "Players may fight here" },
 				{ "explosions", "Explosions break blocks" },
 				{ "fireSpread", "Fire spreads and burns blocks" },

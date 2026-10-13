@@ -4386,7 +4386,7 @@
     'shopMaxBlocks', 'visualSpacing', 'visualRange', 'visualSeconds'];
   const CS_TEXT = ['toolItem', 'shopItem', 'visualCorner', 'visualEdge', 'visualSubCorner', 'visualSubEdge', 'visualSelection'];
   const CS_BOOL = ['enabled', 'accrueWhileDisabled', 'onlyPermanentArea', 'shopEnabled'];
-  const CS_FLAGS = [['access', 'Use doors, buttons and levers'], ['containers', 'Open chests and use animals'], ['pvp', 'Fight (PvP)'],
+  const CS_FLAGS = [['access', 'Use doors, buttons and levers'], ['containers', 'Open chests and interact with entities'], ['pvp', 'Fight (PvP)'],
     ['explosions', 'Explosions break blocks'], ['fireSpread', 'Fire spreads'], ['mobGriefing', 'Mobs change blocks']];
 
   async function loadClaimSettings() {

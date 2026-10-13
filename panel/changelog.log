@@ -1,3 +1,6 @@
+## 1.8.2
+- Claims: the switch "open chests and use animals" is now "open chests and interact with entities" (villagers, interaction entities and other mobs, chest minecarts and boats)
+
 ## 1.8.1
 - Claim settings in cards (claims on/off, where players can claim, claim blocks, size and limits, new claims, the shop, claim tool and borders)
 - Dimensions to claim in are ticked from the world's dimensions, and the colours players can pick are ticked from the palette

@@ -106,7 +106,7 @@ Players protect their land themselves, like GriefPrevention, but with menus inst
 - **Claim blocks:** each claimed block costs one. Players start with some and earn more by playing (not while AFK). Admins can give bonus blocks, and with the shop on, players buy blocks for an item you choose.
 - **Where:** only in the dimensions you allow, and only inside the permanent area (the soft border) if one is set.
 - **The menu** (`/claim`) shows your claim blocks and claims. For a claim it offers:
-  - members with a role: Visitor (doors, buttons), Containers (also chests, animals), Builder (also building), Co-owner (also settings, resizing, subclaims);
+  - members with a role: Visitor (doors, buttons), Containers (also chests, animals, villagers and other entities), Builder (also building), Co-owner (also settings, resizing, subclaims);
   - what everyone else may do: doors, chests, PvP, explosions, fire spread, mob griefing;
   - a name and a colour;
   - subclaims (areas inside with their own members);

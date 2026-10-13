@@ -175,7 +175,8 @@ public final class ClaimProtection {
 		if (e instanceof AbstractVillager) return attack ? Role.CONTAINERS : Role.ACCESS;
 		if (e instanceof ArmorStand || e instanceof HangingEntity || e instanceof net.minecraft.world.entity.vehicle.VehicleEntity
 				|| e instanceof net.minecraft.world.entity.decoration.LeashFenceKnotEntity) {
-			// Getting into a boat or minecart is fine; breaking or changing it isn't.
+			// Getting into a boat or minecart is fine, opening one with a chest isn't; breaking or changing it isn't either.
+			if (!attack && e instanceof net.minecraft.world.entity.vehicle.ContainerEntity) return Role.CONTAINERS;
 			return !attack && e instanceof net.minecraft.world.entity.vehicle.VehicleEntity ? null : Role.BUILD;
 		}
 		return Role.CONTAINERS;
