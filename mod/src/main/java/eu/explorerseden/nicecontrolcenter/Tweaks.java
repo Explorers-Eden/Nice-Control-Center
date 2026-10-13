@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Gameplay tweaks that need the server mod (a data pack can't do them), kept in
  * config/nicecontrolcenter-tweaks.json: anvil limits, nether portals in any shape, tree felling and vein
- * mining, the AFK tag and the tab list. Written by the panel, read by the mod when the file changes;
+ * mining, the AFK tag and the tab list, chat mentions, the grindstone, spawners, saplings, bone meal and tridents. Written by the panel, read by the mod when the file changes;
  * Minecraft-free so both compile it. Everything is off until switched on, and vanilla clients work.
  */
 public final class Tweaks {
@@ -149,6 +149,66 @@ public final class Tweaks {
 		return new Dimension(name, d != null ? d.color : "#AAAAAA");
 	}
 
+	public static final class Chat {
+		/** "@Name" in chat plays the plop for that player and tells them who mentioned them. */
+		public boolean mentions = false;
+		/** The mention is coloured in the message (clients may mark such messages as changed by the server). */
+		public boolean highlight = true;
+		public String highlightColor = "#FFD166";
+		/** A mention of a linked player who isn't online pings them on Discord (panel's bridge). */
+		public boolean discordPing = true;
+	}
+
+	public static final class Grindstone {
+		/** A book in the grindstone's second slot takes the item's enchantments onto an enchanted book, for levels. */
+		public boolean booksEnabled = false;
+		/** Levels per enchantment level (Sharpness V + Unbreaking III = 8 × this), between min and max. */
+		public double levelsPerEnchantLevel = 1;
+		public int minLevels = 1;
+		public int maxLevels = 30;
+		/** Keep the item's anvil work penalty (off: it starts fresh, like vanilla grinding). */
+		public boolean keepRepairCost = false;
+	}
+
+	public static final class Spawners {
+		/** Spawners mined with Silk Touch drop as an item that keeps its mob. */
+		public boolean silkTouch = false;
+		/** Mobs whose spawners never drop (ids). */
+		public List<String> deniedMobs = new ArrayList<>();
+		public boolean dropXp = false;
+		/** Tool wear for picking a spawner up: 1 = normal, 0.5 = half, 5 = five times. */
+		public double durability = 1.0;
+	}
+
+	public static final class Saplings {
+		/** Saplings lying on the ground plant themselves after a while. */
+		public boolean replant = false;
+		public int delaySeconds = 20;
+		public List<String> items = new ArrayList<>(List.of("#minecraft:saplings", "minecraft:mangrove_propagule"));
+		/** No other sapling or log closer than this many blocks. */
+		public int spacing = 2;
+		/** Also inside land claims. */
+		public boolean inClaims = false;
+	}
+
+	public static final class BoneMeal {
+		public boolean sugarCane = false;
+		public boolean cactus = false;
+		public boolean netherWart = false;
+		public boolean lilyPads = false;
+		public boolean vines = false;
+		public boolean flowers = false;
+		/** How tall sugar cane and cactus may grow with bone meal. */
+		public int maxHeight = 3;
+		/** How far flowers spread. */
+		public int flowerRadius = 3;
+	}
+
+	public static final class Tridents {
+		/** A Loyalty trident thrown into the void comes back. */
+		public boolean voidReturn = false;
+	}
+
 	public static final class Settings {
 		public Anvil anvil = new Anvil();
 		public Portals portals = new Portals();
@@ -156,6 +216,12 @@ public final class Tweaks {
 		public Veins veins = new Veins();
 		public Afk afk = new Afk();
 		public TabList tabList = new TabList();
+		public Chat chat = new Chat();
+		public Grindstone grindstone = new Grindstone();
+		public Spawners spawners = new Spawners();
+		public Saplings saplings = new Saplings();
+		public BoneMeal boneMeal = new BoneMeal();
+		public Tridents tridents = new Tridents();
 
 		public Settings fill() {
 			if (anvil == null) anvil = new Anvil();
@@ -164,6 +230,15 @@ public final class Tweaks {
 			if (veins == null) veins = new Veins();
 			if (afk == null) afk = new Afk();
 			if (tabList == null) tabList = new TabList();
+			if (chat == null) chat = new Chat();
+			if (grindstone == null) grindstone = new Grindstone();
+			if (spawners == null) spawners = new Spawners();
+			if (saplings == null) saplings = new Saplings();
+			if (boneMeal == null) boneMeal = new BoneMeal();
+			if (tridents == null) tridents = new Tridents();
+			if (chat.highlightColor == null || !chat.highlightColor.matches("#[0-9a-fA-F]{6}")) chat.highlightColor = "#FFD166";
+			spawners.deniedMobs = ids(spawners.deniedMobs);
+			saplings.items = ids(saplings.items);
 			felling.tools = ids(felling.tools);
 			felling.deniedTools = ids(felling.deniedTools);
 			felling.logs = ids(felling.logs);
@@ -213,6 +288,13 @@ public final class Tweaks {
 	public static String validate(Settings s) {
 		if (s == null) return "No settings.";
 		s.fill();
+		if (!(s.grindstone.levelsPerEnchantLevel >= 0 && s.grindstone.levelsPerEnchantLevel <= 10)) return "Grindstone levels per enchantment level are 0 to 10.";
+		if (s.grindstone.minLevels < 0 || s.grindstone.maxLevels > 100 || s.grindstone.minLevels > s.grindstone.maxLevels) return "Grindstone costs are 0 to 100 levels, the least not above the most.";
+		if (!(s.spawners.durability >= 0 && s.spawners.durability <= 10)) return "Tool wear is 0 to 10 times.";
+		if (s.saplings.delaySeconds < 5 || s.saplings.delaySeconds > 600) return "Saplings plant themselves after 5 to 600 seconds.";
+		if (s.saplings.spacing < 0 || s.saplings.spacing > 8) return "Sapling spacing is 0 to 8 blocks.";
+		if (s.boneMeal.maxHeight < 2 || s.boneMeal.maxHeight > 16) return "Bone meal grows plants 2 to 16 blocks tall.";
+		if (s.boneMeal.flowerRadius < 1 || s.boneMeal.flowerRadius > 8) return "Flowers spread 1 to 8 blocks.";
 		if (s.anvil.renameCost < 1 || s.anvil.renameCost > 39) return "Renaming costs 1 to 39 levels.";
 		if (s.portals.maxBlocks < 6 || s.portals.maxBlocks > 4096) return "A portal holds 6 to 4096 blocks.";
 		if (s.felling.maxLogs < 2 || s.felling.maxLogs > 4096) return "Trees are 2 to 4096 logs.";
@@ -224,7 +306,8 @@ public final class Tweaks {
 		if (s.afk.minutes < 1 || s.afk.minutes > 120) return "AFK after 1 to 120 minutes.";
 		if (s.afk.tag.length() > 16) return "The AFK tag is up to 16 characters.";
 		if (s.tabList.header.length() > 500 || s.tabList.footer.length() > 500) return "Header and footer are up to 500 characters each.";
-		for (List<String> l : List.of(s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
+		for (String id : s.spawners.deniedMobs) if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't a mob id.";
+		for (List<String> l : List.of(s.saplings.items, s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
 				s.veins.tools, s.veins.deniedTools, s.veins.blocks, s.veins.deniedBlocks)) {
 			for (String id : l) if (!id.matches("#?[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't an id or #tag.";
 		}

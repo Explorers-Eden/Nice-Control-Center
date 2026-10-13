@@ -347,7 +347,7 @@ public final class Felling {
 		busy = true;
 		BlockPos before = dropPoint;
 		dropPoint = dropsAtOrigin ? origin : null;
-		double owed = 0;
+		ToolWear wearing = new ToolWear(wear, preserveTool);
 		try {
 			for (BlockPos p : blocks) {
 				ItemStack now = player.getMainHandItem();
@@ -363,21 +363,7 @@ public final class Felling {
 				if (!player.gameMode.destroyBlock(p)) continue;
 				broken.add(new TreeFall.Piece(p, state));
 				if (particles) player.connection.send(new ClientboundLevelEventPacket(2001, p, Block.getId(state), false));
-				if (wear != 1 && !now.isEmpty() && now.isDamageableItem()) {
-					// What the game took off (Unbreaking included), times the setting.
-					owed += (now.getDamageValue() - damage) * wear;
-					int take = (int) owed;
-					owed -= take;
-					int next = damage + take;
-					int max = now.getMaxDamage();
-					if (next >= max - 1 && preserveTool) next = max - 1;
-					if (next >= max) {
-						now.setDamageValue(max - 1);
-						now.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
-					} else {
-						now.setDamageValue(next);
-					}
-				}
+				wearing.apply(player, now, damage);
 			}
 		} finally {
 			busy = false;

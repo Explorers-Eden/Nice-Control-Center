@@ -163,10 +163,11 @@ Settings → Public info: a read-only page where players can look up the server'
 
 ## Tweaks and market
 
-**Tweaks** in the sidebar (needs mod 1.11.0). Everything is off until switched on.
+**Tweaks** in the sidebar (needs mod 1.12.0). Everything is off until switched on.
 
 - **Gameplay:** anvil (never "Too Expensive!", cheap renaming), nether portals in any shape, the AFK tag, the tab list header and footer, and each player's dimension in the tab list (name and colour per dimension).
-- **Trees & veins:** tree felling (like FallingTree, with the falling animation) and vein mining, with all their options, including how much the tool wears. Remove the FallingTree mod when you use this.
+- **Gameplay** also has the grindstone to books, silk touch spawners, Loyalty tridents from the void and @mentions in chat.
+- **Trees & nature:** tree felling (like FallingTree, with the falling animation) and vein mining, with all their options, including how much the tool wears; saplings that plant themselves; bone meal on more plants. Remove the FallingTree mod when you use this.
 - **Market:**
   - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
   - **What's for sale:** with item icons; **Take off** sends a listing back to the seller's mailbox.

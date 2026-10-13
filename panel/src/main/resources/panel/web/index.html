@@ -816,6 +816,43 @@
 						<tbody id="pn-tw-dims"></tbody>
 					</table></div>
 				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-book"></i> Grindstone to books</h3>
+					<p class="np-card-intro">An enchanted item and a book in the grindstone give an enchanted book with the item's enchantments; the item keeps only its curses. It costs levels: the price shows above the hotbar, and without enough levels the book can't be taken.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Grindstone to books</b><span class="np-switch"><input type="checkbox" name="grindstone.booksEnabled"><span></span></span></label>
+						<label class="np-form-row"><span>Levels per enchantment level<span class="pn-comment">Sharpness V + Unbreaking III are 8 enchantment levels.</span></span><input type="number" name="grindstone.levelsPerEnchantLevel" min="0" max="10" step="0.1"></label>
+						<label class="np-form-row">At least (levels)<input type="number" name="grindstone.minLevels" min="0" max="100"></label>
+						<label class="np-form-row">At most (levels)<input type="number" name="grindstone.maxLevels" min="0" max="100"></label>
+						<label class="np-form-row"><span>Keep the item's anvil penalty<span class="pn-comment">Off: the item starts fresh in the anvil, like vanilla grinding.</span></span><span class="np-switch"><input type="checkbox" name="grindstone.keepRepairCost"><span></span></span></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-box-seam"></i> Silk touch spawners</h3>
+					<p class="np-card-intro">A spawner mined with a Silk Touch pickaxe drops as an item that keeps its mob, and normal players can place it again. Land claims apply as for any block.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Silk touch spawners</b><span class="np-switch"><input type="checkbox" name="spawners.silkTouch"><span></span></span></label>
+						<label class="np-form-row"><span>Pickaxe wear<span class="pn-comment">1 = like any block, 0.5 = half, 5 = five times.</span></span><input type="number" name="spawners.durability" min="0" max="10" step="0.05"></label>
+						<label class="np-form-row"><span>Also drop XP</span><span class="np-switch"><input type="checkbox" name="spawners.dropXp"><span></span></span></label>
+						<label class="np-form-row"><span>Never for these mobs<span class="pn-comment">Mob ids, separated by commas, e.g. minecraft:blaze.</span></span><input type="text" name="spawners.deniedMobs"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-arrow-return-left"></i> Tridents</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Loyalty tridents come back from the void<span class="pn-comment">Thrown into the void (e.g. in the End), they return to their owner instead of being lost.</span></span><span class="np-switch"><input type="checkbox" name="tridents.voidReturn"><span></span></span></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-at"></i> @Mentions in chat</h3>
+					<p class="np-card-intro">Writing @Name in chat plays the chicken-egg plop for that player and shows who mentioned them; Discord messages relayed into the game count too.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>@Mentions</b><span class="np-switch"><input type="checkbox" name="chat.mentions"><span></span></span></label>
+						<label class="np-form-row"><span>Colour the mention<span class="pn-comment">The game marks messages the server changed with a small grey sign next to them.</span></span><span class="np-switch"><input type="checkbox" name="chat.highlight"><span></span></span></label>
+						<label class="np-form-row">Colour<input type="color" name="chat.highlightColor"></label>
+						<label class="np-form-row"><span>Ping offline players on Discord<span class="pn-comment">A mention of a linked player who isn't in game becomes a Discord ping (with the Discord bridge on).</span></span><span class="np-switch"><input type="checkbox" name="chat.discordPing"><span></span></span></label>
+					</div>
+				</section>
 				<div class="pn-sticky-save np-form-actions">
 					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 					<span class="np-form-msg" id="pn-tw-msg"></span>
@@ -870,6 +907,32 @@
 						<label class="np-form-row">Never these tools<input type="text" name="veins.deniedTools"></label>
 						<label class="np-form-row">Ores<input type="text" name="veins.blocks"></label>
 						<label class="np-form-row">Never these blocks<input type="text" name="veins.deniedBlocks"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-flower1"></i> Saplings plant themselves</h3>
+					<p class="np-card-intro">Saplings lying on the ground (from leaves, felling or players) plant themselves where they lie after a while, if they can grow there, so forests come back.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Saplings plant themselves</b><span class="np-switch"><input type="checkbox" name="saplings.replant"><span></span></span></label>
+						<label class="np-form-row">After … seconds<input type="number" name="saplings.delaySeconds" min="5" max="600"></label>
+						<label class="np-form-row"><span>Room around them (blocks)<span class="pn-comment">No other sapling or log closer than this.</span></span><input type="number" name="saplings.spacing" min="0" max="8"></label>
+						<label class="np-form-row"><span>Also on claimed land</span><span class="np-switch"><input type="checkbox" name="saplings.inClaims"><span></span></span></label>
+						<label class="np-form-row"><span>Which items<span class="pn-comment">Ids or #tags, separated by commas.</span></span><input type="text" name="saplings.items"></label>
+					</div>
+					<p class="pn-hint pn-warn" id="pn-sap-warn" hidden></p>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-stars"></i> Bone meal on more plants</h3>
+					<p class="np-card-intro">Bone meal also grows plants vanilla leaves alone. Land claims apply as for building.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Sugar cane<span class="pn-comment">One block taller.</span></span><span class="np-switch"><input type="checkbox" name="boneMeal.sugarCane"><span></span></span></label>
+						<label class="np-form-row"><span>Cactus<span class="pn-comment">One block taller.</span></span><span class="np-switch"><input type="checkbox" name="boneMeal.cactus"><span></span></span></label>
+						<label class="np-form-row">Up to … blocks tall<input type="number" name="boneMeal.maxHeight" min="2" max="16"></label>
+						<label class="np-form-row"><span>Nether wart<span class="pn-comment">One stage older.</span></span><span class="np-switch"><input type="checkbox" name="boneMeal.netherWart"><span></span></span></label>
+						<label class="np-form-row"><span>Lily pads<span class="pn-comment">A new one on water nearby.</span></span><span class="np-switch"><input type="checkbox" name="boneMeal.lilyPads"><span></span></span></label>
+						<label class="np-form-row"><span>Vines<span class="pn-comment">One block longer downwards.</span></span><span class="np-switch"><input type="checkbox" name="boneMeal.vines"><span></span></span></label>
+						<label class="np-form-row"><span>Small flowers<span class="pn-comment">A copy on free ground nearby (not wither roses).</span></span><span class="np-switch"><input type="checkbox" name="boneMeal.flowers"><span></span></span></label>
+						<label class="np-form-row">Flowers spread up to … blocks<input type="number" name="boneMeal.flowerRadius" min="1" max="8"></label>
 					</div>
 				</section>
 				<div class="pn-sticky-save np-form-actions">

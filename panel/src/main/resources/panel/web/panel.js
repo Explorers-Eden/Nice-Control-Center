@@ -103,8 +103,8 @@
         { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
         { tab: 'info', label: 'Public info', perm: 'settings.server', desc: 'A public page where players can read up on the server\'s settings.' }] },
       { id: 'tweaks', hue: '#c4a6ff', label: 'Tweaks', icon: 'bi-magic', subs: [
-        { tab: 'tweaks', label: 'Gameplay', perm: 'server.view', desc: 'Anvil, nether portals, the AFK tag and the tab list: things vanilla does differently.' },
-        { tab: 'felling', label: 'Trees & veins', perm: 'server.view', desc: 'Fell whole trees and mine whole ore veins at once.' },
+        { tab: 'tweaks', label: 'Gameplay', perm: 'server.view', desc: 'Anvil, nether portals, the tab list, the grindstone, spawners, tridents and chat mentions: things vanilla does differently.' },
+        { tab: 'felling', label: 'Trees & nature', perm: 'server.view', desc: 'Fell whole trees and mine whole ore veins at once, saplings that plant themselves, and bone meal on more plants.' },
         { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold.' }] },
       { id: 'schedule', hue: '#ff8fc7', label: 'Schedule', icon: 'bi-calendar-check', subs: [
         { tab: 'schedule', label: 'Schedule', perm: 'server.view', desc: 'Things that happen on their own: restarts, backups, resets, messages.' }] },
@@ -416,8 +416,8 @@
 
   /**
    * Picking the part of a picture for the info page banner: the picture in a banner-shaped frame
-   * (6:1, like the banner on a wide screen), moved by dragging and zoomed by the slider or the wheel.
-   * Resolves with a 2400 × 400 JPEG of that part, or null when cancelled.
+   * (7:1, like the banner on a wide screen), moved by dragging and zoomed by the slider or the wheel.
+   * Resolves with a 2450 × 350 JPEG of that part, or null when cancelled.
    */
   function cropBanner(file) {
     return new Promise((resolve) => {
@@ -490,8 +490,8 @@
       $('pn-crop-ok').onclick = () => {
         const { fw } = size();
         const out = document.createElement('canvas');
-        out.width = 2400;
-        out.height = 400;
+        out.width = 2450;
+        out.height = 350;
         const k = out.width / fw;
         const ctx = out.getContext('2d');
         ctx.imageSmoothingQuality = 'high';
@@ -4598,8 +4598,19 @@
     twFill($('pn-tw-form'));
     twFill($('pn-tf-form'));
     twDims();
+    twSaplingWarning();
     Dirty.reset('tweaks');
     Dirty.reset('felling');
+  }
+
+  /** Performance → quick despawn removes saplings before they could plant themselves. */
+  function twSaplingWarning() {
+    const q = twData.quickDespawn || {};
+    const s = twData.settings.saplings;
+    const hits = q.enabled && (q.items || []).some((i) => /sapling|propagule/.test(i));
+    const warn = $('pn-sap-warn');
+    warn.hidden = !(s.replant && hits && q.seconds <= s.delaySeconds);
+    warn.textContent = `Performance → item despawn removes saplings after ${q.seconds} seconds, before they plant themselves; set the delay below that or take saplings off that list.`;
   }
 
   /** The tab list's dimension names and colours: one row per dimension of the world. */

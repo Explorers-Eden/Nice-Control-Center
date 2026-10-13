@@ -134,6 +134,10 @@ Things a data pack can't do, switched on in the panel (**Tweaks**, or `config/ni
 - **Felling and mining like a player:** both break every block as if the player mined it, so drops, enchantments, tool wear and land claims work as usual.
 - **AFK tag** in the tab list (scoreboard teams are left alone), each player's **dimension** after their name (name and colour per dimension), and a tab list **header and footer** with an empty line around the players.
 - Claim and market messages come with the chicken-egg "plop" of the Explorer's Eden data packs.
+- **Grindstone to books:** an enchanted item and a book give an enchanted book with the item's enchantments, for levels.
+- **Silk touch spawners:** spawners mined with Silk Touch keep their mob, with a tool wear multiplier.
+- **Saplings plant themselves** after a set time; **bone meal** also grows sugar cane, cactus, nether wart, lily pads, vines and flowers.
+- **Loyalty tridents** come back from the void, and **@mentions** in chat plop for the mentioned player (and ping offline players on Discord through the panel).
 - **Market** (`/market`): sell items for the server's currency, any amount and with all their components, and buy part or all of a listing, all in menus.
   - Earnings and unsold items wait in the market mailbox.
   - The panel shows the listings with item icons (custom models included) and can take a listing off.

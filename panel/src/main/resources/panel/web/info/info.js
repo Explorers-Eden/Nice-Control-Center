@@ -122,7 +122,7 @@
         groups.get(p.group).push(p);
       }
       const ICONS = { Gameplay: 'bi-controller', World: 'bi-globe-americas', 'Players & access': 'bi-people', Network: 'bi-wifi', 'Resource pack': 'bi-palette', Performance: 'bi-speedometer2' };
-      sections.push({ id: 'server', title: 'Server settings', icon: 'bi-hdd-rack', hue: '#7b93ff', count: d.properties.length, statLabel: 'settings',
+      sections.push({ id: 'server', title: 'Server settings', tab: 'Server', icon: 'bi-hdd-rack', hue: '#7b93ff', count: d.properties.length, statLabel: 'settings',
         lead: 'How the server is set up: difficulty, the world, who can join and how far you can see.',
         children: [...groups].map(([g, list]) => ({ id: slug(g), title: g || 'Other', icon: ICONS[g] || 'bi-sliders',
           body: list.map((p) => row(p.label || humanize(p.key), value(p.value, p.key), p.description)).join('') })) });
@@ -167,7 +167,7 @@
     if (d.borders && d.borders.length) {
       const dim = (id) => titleCase(id.replace(/^minecraft:/, '').replace(/^the_/, '').replace(/_/g, ' '));
       const size = (b, r) => b.shape === 'circle' ? `${(r * 2).toLocaleString()} blocks across (radius ${r.toLocaleString()})` : `${(r * 2).toLocaleString()} × ${(r * 2).toLocaleString()} blocks`;
-      sections.push({ id: 'borders', title: 'World borders', statLabel: 'dimensions', icon: 'bi-bounding-box-circles', hue: '#5fd68a', count: d.borders.length,
+      sections.push({ id: 'borders', title: 'World borders', tab: 'Borders', statLabel: 'dimensions', icon: 'bi-bounding-box-circles', hue: '#5fd68a', count: d.borders.length,
         lead: 'How far each dimension goes, and the permanent area where your builds are always kept.',
         children: d.borders.map((b) => ({ id: slug(b.dim), title: dim(b.dim), icon: 'bi-globe-americas', sub: `around ${b.x}, ${b.z}`,
           body: (b.permanent > 0 ? row('Permanent area', value(size(b, b.permanent)), 'Builds here are kept. Land outside it may be reset to fresh terrain from time to time.') : '')
@@ -187,7 +187,7 @@
         + (c.maxClaims ? row('Claims per player', value(c.maxClaims)) : '')
         + (c.inactiveDays ? row('Inactive players', value(`Claims go after ${c.inactiveDays} days away`)) : '');
       const roles = c.roles.map((r) => row(r.label, '', r.description)).join('');
-      sections.push({ id: 'claims', title: 'Land claims', statLabel: 'member roles', icon: 'bi-shield-check', hue: '#f2b233', count: c.roles.length,
+      sections.push({ id: 'claims', title: 'Land claims', tab: 'Claims', statLabel: 'member roles', icon: 'bi-shield-check', hue: '#f2b233', count: c.roles.length,
         lead: 'Protect your builds: claimed land is yours, and only the people you add can change it.',
         children: [{ id: 'how', title: 'How to claim land', icon: 'bi-question-circle', body: how },
           { id: 'blocks', title: 'Claim blocks', icon: 'bi-grid-3x3', body: blocks },
@@ -214,19 +214,19 @@
           body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' }] });
     }
     if (d.tweaks && d.tweaks.length) {
-      sections.push({ id: 'tweaks', title: 'Gameplay tweaks', statLabel: 'tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,
+      sections.push({ id: 'tweaks', title: 'Gameplay tweaks', tab: 'Gameplay', statLabel: 'tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,
         lead: 'Things that work differently from vanilla here.',
         children: d.tweaks.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
           body: t.rows.map((r) => row(r.label, value(r.value), r.description)).join('') })) });
     }
     if (d.performance && d.performance.length) {
-      sections.push({ id: 'perf', title: 'Performance tweaks', statLabel: 'tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
+      sections.push({ id: 'perf', title: 'Performance tweaks', tab: 'Performance', statLabel: 'tweaks', icon: 'bi-speedometer2', hue: '#ff7b9c', count: d.performance.length,
         lead: 'What the server does to stay fast with many players and farms. Good to know before you build a big farm.',
         children: d.performance.map((t) => ({ id: slug(t.id), title: t.title, icon: t.icon, desc: t.description,
           body: t.rows.map((r) => row(r.label, value(r.value), r.description)).join('') })) });
     }
     if (d.configs && d.configs.length) {
-      sections.push({ id: 'configs', title: 'Mod settings', statLabel: 'files', icon: 'bi-puzzle', hue: '#a77bff', count: d.configs.length,
+      sections.push({ id: 'configs', title: 'Mod settings', tab: 'Mods', statLabel: 'files', icon: 'bi-puzzle', hue: '#a77bff', count: d.configs.length,
         lead: 'Settings of the server\'s mods.',
         children: d.configs.map((c) => {
           const rows = configRows(c.path, c.text);
@@ -286,7 +286,7 @@
     $('in-updated').textContent = d.updated ? `Last updated ${new Date(d.updated).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : '';
     const sections = buildSections(d);
     $('in-tabs').innerHTML = sections.map((s) => `<a class="in-tab" href="#${s.id}" data-tab="${s.id}" style="--hue:${s.hue}">
-        <i class="bi ${s.icon}"></i><span>${esc(s.title)}</span><small class="in-tab-hits" hidden></small></a>`).join('');
+        <i class="bi ${s.icon}"></i><span>${esc(s.tab || s.title)}</span><small class="in-tab-hits" hidden></small></a>`).join('');
     $('in-main').innerHTML = sections.map((s) => `<div class="in-section" id="${s.id}" data-node style="--hue:${s.hue}">
         <header class="in-section-head">
           <span class="in-icon big"><i class="bi ${s.icon}"></i></span>

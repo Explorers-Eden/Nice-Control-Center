@@ -1,4 +1,14 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.12.0
+- New gameplay tweaks (all off until switched on in the panel, normal game clients work):
+  - Grindstone to books: an enchanted item and a book give an enchanted book with the item's enchantments (curses stay on the item), for levels (per enchantment level, with a least and a most); the price shows above the hotbar
+  - Silk touch spawners: a spawner mined with Silk Touch drops as an item that keeps its mob and places again for normal players; mobs can be excluded, with a tool wear multiplier and optional XP
+  - Saplings plant themselves: saplings lying on the ground plant themselves after a set time where they can grow, keeping room around them and (optionally) off claimed land
+  - Bone meal on more plants: sugar cane, cactus (up to a set height), nether wart, lily pads, vines and small flowers
+  - Loyalty tridents come back from the void
+  - @Mentions in chat: the mentioned player hears the plop and sees who mentioned them (also from Discord); the mention can be coloured
+- Tree felling and vein mining share their tool wear code with spawners
+
 ## 1.11.2
 - Tab list header and footer update every second instead of every 5 seconds, so {time}, {tps} and {ping} keep up
 

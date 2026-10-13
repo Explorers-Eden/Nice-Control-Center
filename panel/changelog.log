@@ -1,3 +1,8 @@
+## 1.11.0
+- Tweaks (needs mod 1.12.0): Gameplay gets the grindstone to books, silk touch spawners, Loyalty tridents from the void and @mentions in chat; Trees & veins is now Trees & nature, with saplings that plant themselves and bone meal on more plants (it warns when Performance's item despawn would remove saplings first)
+- Discord: with @mentions on, "@Name" of a linked player who isn't in game pings them on Discord
+- Public info page: the new tweaks are explained there; the banner is lower (7:1, also in the crop frame), and the tabs have short names so they fit next to the search
+
 ## 1.10.5
 - Appearance: after choosing an info page banner picture, you pick the part to show in a banner-shaped frame (drag to move, slider or mouse wheel to zoom, with the page's dark fade as a preview); only that part is uploaded
 - Info page banner: the server list message and the next restart are matching badges side by side, the logo is bigger, and with a picture the banner keeps the shape of the crop frame (6:1) on wide screens

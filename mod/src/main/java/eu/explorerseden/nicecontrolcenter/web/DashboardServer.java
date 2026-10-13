@@ -363,6 +363,7 @@ public final class DashboardServer {
 							minecraft.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), parts).result().orElse(null);
 					if (formatted != null) minecraft.getPlayerList().broadcastSystemMessage(formatted, false);
 					else ChatLog.relay(minecraft, name, text);
+					eu.explorerseden.nicecontrolcenter.tweaks.Mentions.notify(minecraft, text, name, null);
 					return null;
 				});
 				sendJson(exchange, Map.of("ok", true));

@@ -24,7 +24,7 @@ import java.util.List;
  */
 public final class TweaksControl {
 	private static volatile Tweaks.Settings settings = new Tweaks.Settings().fill();
-	private static volatile Matchers matchers = new Matchers(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+	private static volatile Matchers matchers = new Matchers(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
 	private static long modified = -1;
 
 	/** A list of ids and #tags. */
@@ -35,7 +35,8 @@ public final class TweaksControl {
 	}
 
 	record Matchers(List<Match<Item>> fellTools, List<Match<Item>> fellDenied, List<Match<Block>> logs, List<Match<Block>> logsDenied,
-			List<Match<Block>> leaves, List<Match<Item>> veinTools, List<Match<Item>> veinDenied, List<Match<Block>> ores, List<Match<Block>> oresDenied) {
+			List<Match<Block>> leaves, List<Match<Item>> veinTools, List<Match<Item>> veinDenied, List<Match<Block>> ores, List<Match<Block>> oresDenied,
+			List<Match<Item>> saplings) {
 	}
 
 	private TweaksControl() {
@@ -62,6 +63,9 @@ public final class TweaksControl {
 			if (TreeFall.leftOver(e)) e.discard();
 		});
 		Felling.register();
+		Spawners.register();
+		BoneMeal.register();
+		Mentions.register();
 	}
 
 	/** Reads the file again if it changed (also called from the dashboard API, which works while the server is paused). */
@@ -79,7 +83,8 @@ public final class TweaksControl {
 		Tweaks.Settings next = Tweaks.read(f);
 		settings = next;
 		matchers = new Matchers(items(next.felling.tools), items(next.felling.deniedTools), blocks(next.felling.logs), blocks(next.felling.deniedLogs),
-				blocks(next.felling.leaves), items(next.veins.tools), items(next.veins.deniedTools), blocks(next.veins.blocks), blocks(next.veins.deniedBlocks));
+				blocks(next.felling.leaves), items(next.veins.tools), items(next.veins.deniedTools), blocks(next.veins.blocks), blocks(next.veins.deniedBlocks),
+				items(next.saplings.items));
 		if (!first) NiceControlCenter.LOGGER.info("Reloaded the gameplay tweaks");
 	}
 
@@ -140,6 +145,10 @@ public final class TweaksControl {
 	static boolean veinTool(ItemStack tool) {
 		Matchers m = matchers;
 		return item(m.veinTools(), tool) && !item(m.veinDenied(), tool);
+	}
+
+	static boolean isReplantable(ItemStack stack) {
+		return item(matchers.saplings(), stack);
 	}
 
 	static boolean isOre(BlockState state) {

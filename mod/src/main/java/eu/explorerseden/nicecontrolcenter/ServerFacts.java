@@ -82,6 +82,48 @@ public final class ServerFacts {
 					List.of(line("Sneaking", sneak(t.veins.sneak, "the whole vein", "the one ore"), ""),
 							line("Pickaxe wear", wear(t.veins.durability, "block"), t.veins.preserveTool ? "It stops before your pickaxe would break." : ""))));
 		}
+		if (t.grindstone.booksEnabled) {
+			String per = t.grindstone.levelsPerEnchantLevel == 1 ? "one level per enchantment level"
+					: java.math.BigDecimal.valueOf(t.grindstone.levelsPerEnchantLevel).stripTrailingZeros().toPlainString() + " levels per enchantment level";
+			out.add(tweak("grindstone", "Grindstone to books", "bi-book", "Put an enchanted item and a book into a grindstone: the enchantments move onto an enchanted book and the item keeps only its curses.",
+					List.of(line("Costs", per, "At least " + t.grindstone.minLevels + ", at most " + t.grindstone.maxLevels + " levels. The price appears above your hotbar."))));
+		}
+		if (t.spawners.silkTouch) {
+			List<Map<String, String>> rows = new ArrayList<>();
+			double m = t.spawners.durability;
+			rows.add(line("Pickaxe wear", m <= 0 ? "none" : m == 1 ? "like mining any block" : java.math.BigDecimal.valueOf(m).stripTrailingZeros().toPlainString() + " × the normal wear", ""));
+			if (!t.spawners.deniedMobs.isEmpty()) {
+				List<String> mobs = new ArrayList<>();
+				for (String mob : t.spawners.deniedMobs) mobs.add(humanize(mob.replaceFirst("^minecraft:", "")));
+				rows.add(line("Can't be picked up", String.join(", ", mobs), ""));
+			}
+			out.add(tweak("spawners", "Silk touch spawners", "bi-box-seam", "Mine a spawner with a Silk Touch pickaxe to take it with you; it keeps its mob when you place it again.", rows));
+		}
+		if (t.saplings.replant) {
+			out.add(tweak("saplings", "Saplings plant themselves", "bi-flower1", "Saplings lying on the ground plant themselves after " + t.saplings.delaySeconds + " seconds, if they can grow there"
+					+ (t.saplings.inClaims ? "" : " and it isn't claimed land") + ".", List.of()));
+		}
+		{
+			Tweaks.BoneMeal b = t.boneMeal;
+			List<String> grows = new ArrayList<>();
+			if (b.sugarCane) grows.add("sugar cane");
+			if (b.cactus) grows.add("cactus");
+			if (b.netherWart) grows.add("nether wart");
+			if (b.lilyPads) grows.add("lily pads");
+			if (b.vines) grows.add("vines");
+			if (b.flowers) grows.add("small flowers");
+			if (!grows.isEmpty()) {
+				out.add(tweak("bonemeal", "More bone meal", "bi-stars", "Bone meal also works on " + String.join(", ", grows) + ".",
+						b.sugarCane || b.cactus ? List.of(line("Sugar cane and cactus", "up to " + b.maxHeight + " blocks tall", "")) : List.of()));
+			}
+		}
+		if (t.tridents.voidReturn) {
+			out.add(tweak("tridents", "Tridents come back from the void", "bi-arrow-return-left", "A Loyalty trident thrown into the void comes back to you instead of being lost.", List.of()));
+		}
+		if (t.chat.mentions) {
+			out.add(tweak("mentions", "@Mentions", "bi-at", "Write @Name in chat and that player hears a little plop and sees who mentioned them"
+					+ (t.chat.discordPing ? "; players who aren't online get pinged on Discord if they linked their account." : "."), List.of()));
+		}
 		if (t.afk.enabled) {
 			out.add(tweak("afk", "AFK", "bi-moon", "Players who haven't moved for " + t.afk.minutes + " minutes get \"" + t.afk.tag + "\" next to their name in the tab list.", List.of()));
 		}

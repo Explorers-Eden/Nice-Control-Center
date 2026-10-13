@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -505,6 +506,10 @@ public final class Discord implements Notifier {
 		if (e.has("players")) players = Math.max(0, e.get("players").getAsInt());
 		if (e.has("maxPlayers")) maxPlayers = e.get("maxPlayers").getAsInt();
 		String name = e.has("name") ? e.get("name").getAsString() : "";
+		// Who's online, for @mentions (offline players get pinged on Discord).
+		if (type.equals("join") && !name.isEmpty()) online.add(name.toLowerCase(java.util.Locale.ROOT));
+		if (type.equals("leave")) online.remove(name.toLowerCase(java.util.Locale.ROOT));
+		if (type.equals("start") || type.equals("stop")) online.clear();
 		if (type.equals("chat")) {
 			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null, name, e.has("text") ? e.get("text").getAsString() : "");
 			return;
@@ -614,21 +619,58 @@ public final class Discord implements Notifier {
 		channel.sendMessage(text).setAllowedMentions(List.of()).queue(ok -> { }, err -> status = "Can't post in the channel: " + err.getMessage());
 	}
 
+	/** Players online in game (lower case), from join and leave events. */
+	private final Set<String> online = java.util.concurrent.ConcurrentHashMap.newKeySet();
+	private static final java.util.regex.Pattern MENTION = java.util.regex.Pattern.compile("@\u200b?((?:[A-Za-z0-9_]|\\\\_){3,32})");
+
+	/**
+	 * @mentions (Tweaks → Gameplay): "@Name" of a linked player who isn't in game becomes a Discord ping.
+	 * Returns the Discord ids to allow pinging; text[0] gets the pings written in.
+	 */
+	private List<String> pings(String[] text) {
+		if (!text[0].contains("@")) return List.of();
+		eu.explorerseden.nicecontrolcenter.Tweaks.Chat c = eu.explorerseden.nicecontrolcenter.Tweaks
+				.read(server.serverDir().resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Tweaks.FILE)).chat;
+		if (!c.mentions || !c.discordPing) return List.of();
+		List<String> ids = new ArrayList<>();
+		java.util.regex.Matcher m = MENTION.matcher(text[0]);
+		StringBuilder out = new StringBuilder();
+		while (m.find()) {
+			String who = m.group(1).replace("\\_", "_").toLowerCase(java.util.Locale.ROOT);
+			Link link = online.contains(who) ? null : links.stream().filter(l -> l.name() != null && l.name().equalsIgnoreCase(who)).findFirst().orElse(null);
+			if (link == null) continue;
+			m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement("<@" + link.discordId() + ">"));
+			if (!ids.contains(link.discordId())) ids.add(link.discordId());
+		}
+		m.appendTail(out);
+		text[0] = out.toString();
+		return ids;
+	}
+
 	/** Game → Discord through a webhook, so each message shows the player's name and head. */
 	private void chat(String uuid, String name, String text) {
 		TextChannel channel = channel();
 		if (channel == null || text.isBlank()) return;
 		String url = webhook(channel);
 		if (url == null) {
-			channel.sendMessage("**" + escape(name) + "**: " + escape(text)).setAllowedMentions(List.of()).queue();
+			String[] plain = { escape(text) };
+			List<String> ids = pings(plain);
+			channel.sendMessage("**" + escape(name) + "**: " + plain[0]).setAllowedMentions(List.of())
+					.mentionUsers(ids.toArray(String[]::new)).queue();
 			return;
 		}
+		String[] content = { text };
+		List<String> ids = pings(content);
+		text = content[0];
 		JsonObject body = new JsonObject();
 		body.addProperty("content", text.length() > 1900 ? text.substring(0, 1900) + "…" : text);
 		body.addProperty("username", name);
 		if (uuid != null) body.addProperty("avatar_url", "https://mc-heads.net/avatar/" + uuid + "/64");
 		JsonObject allowed = new JsonObject();
 		allowed.add("parse", new JsonArray());
+		JsonArray users = new JsonArray();
+		ids.forEach(users::add);
+		allowed.add("users", users);
 		body.add("allowed_mentions", allowed);
 		http.sendAsync(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).header("Content-Type", "application/json")
 				.POST(HttpRequest.BodyPublishers.ofString(body.toString())).build(), HttpResponse.BodyHandlers.discarding());

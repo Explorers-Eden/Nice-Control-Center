@@ -42,7 +42,10 @@ final class TweaksRoutes {
 			for (String id : s.tabList.dimensions.keySet()) {
 				if (dims.stream().noneMatch(d -> d.get("id").equals(id))) dims.add(Map.of("id", id, "name", id));
 			}
-			json(ctx, Map.of("settings", s, "defaults", new Tweaks.Settings().fill(), "dimensions", dims));
+			// Performance → quick despawn, so the saplings card can warn when saplings vanish before they plant.
+			var despawn = eu.explorerseden.nicecontrolcenter.Performance.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Performance.FILE)).despawn;
+			Map<String, Object> quick = Map.of("enabled", despawn.enabled, "seconds", despawn.itemSeconds, "items", despawn.items);
+			json(ctx, Map.of("settings", s, "defaults", new Tweaks.Settings().fill(), "dimensions", dims, "quickDespawn", quick));
 		}));
 		routes.post("/api/tweaks", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Tweaks.Settings next;
