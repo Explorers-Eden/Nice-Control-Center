@@ -160,7 +160,10 @@ public final class PetDialogs {
 		notice(player, body, notice);
 		body.add(text("Particles that rise off your pet: " + now.label + ".", ChatFormatting.GRAY));
 		List<ActionButton> buttons = new ArrayList<>();
-		for (Pets.Trail t : Pets.Trail.values()) buttons.add(button((t == now ? "● " : "") + t.label, null, "trail", args("how", t.name())));
+		for (Pets.Trail t : Pets.Trail.values()) {
+			if (!PetFollowers.available(t)) continue;
+			buttons.add(button((t == now ? "● " : "") + t.label, t == Pets.Trail.RANDOM ? "A different one every time you teleport, die or take your pet out" : null, "trail", args("how", t.name())));
+		}
 		menu(player, "Pets · Particles", body, buttons, button("Back", null, "home", args()));
 	}
 

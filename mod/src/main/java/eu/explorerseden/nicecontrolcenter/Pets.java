@@ -49,7 +49,7 @@ public final class Pets {
 		ORBIT("Orbit", "Circles around your head"),
 		HALO("Halo", "Spins in a small ring above your head"),
 		SPIRAL("Spiral", "Winds up and down around you"),
-		FIGURE_EIGHT("Figure eight", "Loops a figure eight around you"),
+		FIGURE_EIGHT("Figure Eight", "Loops a figure eight around you"),
 		WANDER("Wander", "Drifts around you on its own"),
 		SPIN("Spin", "Spins on the spot above your head"),
 		WOBBLE("Wobble", "Floats next to you, wobbling its head"),
@@ -58,7 +58,8 @@ public final class Pets {
 		PENDULUM("Pendulum", "Swings from side to side behind your head"),
 		ZIGZAG("Zigzag", "Zips left and right behind you"),
 		SATELLITE("Satellite", "Circles you over and under on a tilted ring"),
-		DART("Dart", "Darts to a new spot around you every few seconds");
+		DART("Dart", "Darts to a new spot around you every few seconds"),
+		RANDOM("Random", "A different one every time you teleport, die or take your pet out");
 
 		public final String label;
 		public final String description;
@@ -77,28 +78,34 @@ public final class Pets {
 	/** The trail a pet can leave (the mod turns these into the game's particles). */
 	public enum Trail {
 		OFF("Off", 0),
-		SPARKLES("Wisps", 4),
-		HEARTS("Hearts", 18),
-		NOTES("Notes", 14),
-		FLAMES("Flames", 5),
-		SOUL_FLAMES("Soul flames", 5),
-		SNOW("Snow", 5),
-		GLOW("Glow", 6),
-		PETALS("Cherry petals", 6),
-		MAGIC("Magic", 3),
-		SPARKS("Sparks", 6),
-		FIREFLIES("Fireflies", 10),
-		FIREWORKS("Fireworks", 5),
-		TOTEM("Totem", 4),
-		SOULS("Souls", 8),
-		PORTAL("Portal", 2),
-		NAUTILUS("Nautilus", 3),
-		SPORES("Spores", 5),
-		ASH("Ash", 4),
-		HONEY("Honey drips", 12),
-		PALE_LEAVES("Pale leaves", 7),
-		CRITS("Crits", 5),
-		HAPPY("Happy", 6);
+		SPARKLES("Wisps", 10),
+		HEARTS("Hearts", 30),
+		NOTES("Notes", 24),
+		FLAMES("Flames", 10),
+		SOUL_FLAMES("Soul Flames", 10),
+		SNOW("Snow", 10),
+		GLOW("Glow", 12),
+		PETALS("Cherry Petals", 12),
+		MAGIC("Magic", 6),
+		FIREFLIES("Fireflies", 20),
+		FIREWORKS("Fireworks", 12),
+		TOTEM("Totem", 10),
+		SOULS("Souls", 16),
+		PORTAL("Portal", 6),
+		NAUTILUS("Nautilus", 6),
+		SPORES("Spores", 12),
+		ASH("Ash", 8),
+		PALE_LEAVES("Pale Leaves", 14),
+		HAPPY("Happy", 14),
+		AUTUMN_LEAVES("Autumn Leaves", 8),
+		LUSH_LEAVES("Lush Leaves", 8),
+		WITCH("Witch", 10),
+		OMINOUS("Ominous", 8),
+		RAID_OMEN("Raid Omen", 10),
+		// Big and slow to fade: only now and then.
+		CAMPFIRE_SMOKE("Campfire Smoke", 70),
+		NOXIOUS_GAS("Noxious Gas", 50),
+		RANDOM("Random", 0);
 
 		public final String label;
 		/** One particle every this many ticks. */
@@ -107,6 +114,11 @@ public final class Pets {
 		Trail(String label, int every) {
 			this.label = label;
 			this.every = every;
+		}
+
+		/** Trails a Random pick can land on. */
+		public boolean real() {
+			return this != OFF && this != RANDOM;
 		}
 
 		public static Trail of(String name) {

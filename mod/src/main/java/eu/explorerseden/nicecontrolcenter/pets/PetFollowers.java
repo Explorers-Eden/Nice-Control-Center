@@ -7,6 +7,8 @@ import eu.explorerseden.nicecontrolcenter.Pets;
 import eu.explorerseden.nicecontrolcenter.mixin.DisplayAccessor;
 import eu.explorerseden.nicecontrolcenter.mixin.ItemDisplayAccessor;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.ColorParticleOption;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -21,7 +23,9 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
@@ -42,6 +46,8 @@ final class PetFollowers {
 	/** Ticks the client takes to glide to a new position, and how far ahead of the player (in ticks of their movement) the pet is put to make up for it. */
 	private static final int GLIDE = 2;
 	private static final double LEAD = 2;
+	/** How fast the moves play: the animation clock runs at this share of game time. */
+	private static final double PACE = 0.6;
 
 	private static final class Follower {
 		Display.ItemDisplay display;
@@ -51,6 +57,16 @@ final class PetFollowers {
 		Vec3 pos;
 		Vec3 offset;
 		Vec3 lastPlayer;
+		/**
+		 * The player as the pet follows them: their movement comes in uneven steps (none one tick, double the
+		 * next, as their game sends it), so the pet follows an evened-out copy instead of every jolt.
+		 */
+		Vec3 anchor;
+		Vec3 speed = Vec3.ZERO;
+		/** What Random landed on, rolled again after every teleport, death or taking the pet out. */
+		Pets.Behavior rolledMove;
+		Pets.Trail rolledTrail;
+		net.minecraft.world.level.Level level;
 		/** So pets of players standing together don't move in step. */
 		final int phase;
 		/** After a head that couldn't be made, the next try waits until then (game time). */
@@ -94,18 +110,30 @@ final class PetFollowers {
 			}
 			String texture = PetStore.texture(owned);
 			double size = PetStore.settings().size;
-			Pets.Behavior behavior = Pets.Behavior.of(owner.behavior);
 			if (f == null) {
 				f = new Follower(player.getRandom().nextInt(1000));
 				followers.put(player.getUUID(), f);
+				roll(f, player);
 			}
 			long t = time + f.phase;
 			Vec3 base = player.position();
 			// The player's movement this tick (none after a teleport).
 			Vec3 moved = f.lastPlayer == null ? Vec3.ZERO : base.subtract(f.lastPlayer);
-			if (moved.lengthSqr() > 9) moved = Vec3.ZERO;
 			f.lastPlayer = base;
-			Target goal = target(player, behavior, t, f);
+			if (moved.lengthSqr() > 9 || f.anchor == null || f.level != player.level()) {
+				// A teleport (or the start): no smoothing across it, and Random picks again.
+				if (f.anchor != null) roll(f, player);
+				f.level = player.level();
+				f.anchor = base;
+				f.speed = Vec3.ZERO;
+			} else {
+				f.speed = f.speed.scale(0.7).add(moved.scale(0.3));
+				f.anchor = f.anchor.add(f.speed);
+				f.anchor = f.anchor.add(base.subtract(f.anchor).scale(0.3));
+			}
+			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
+			Pets.Behavior behavior = chosen == Pets.Behavior.RANDOM ? f.rolledMove : chosen;
+			Target goal = target(player, behavior, t * PACE, f);
 			Vec3 want = base.add(goal.offset);
 			boolean fresh = f.display == null || f.display.isRemoved() || f.display.level() != player.level() || !texture.equals(f.texture) || size != f.size
 					|| f.pos == null || f.pos.distanceToSqr(want) > JUMP * JUMP;
@@ -129,11 +157,12 @@ final class PetFollowers {
 				// Moves with the player one to one; only its spot around them is eased. A little ahead, because
 				// clients show it a moment late.
 				f.offset = f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow));
-				f.pos = base.add(f.offset).add(moved.scale(LEAD));
+				f.pos = f.anchor.add(f.offset).add(f.speed.scale(LEAD));
 			}
 			f.display.setPos(f.pos);
 			f.display.setYRot(goal.yaw + FACE);
-			trail(player, owner, f, t, size);
+			Pets.Trail trail = Pets.Trail.of(owner.trail);
+			trail(player, trail == Pets.Trail.RANDOM ? f.rolledTrail : trail, f, t, size);
 		}
 	}
 
@@ -157,7 +186,7 @@ final class PetFollowers {
 		return (float) Math.toDegrees(Math.atan2(-(b.x - a.x), b.z - a.z));
 	}
 
-	private static Target target(ServerPlayer player, Pets.Behavior behavior, long t, Follower f) {
+	private static Target target(ServerPlayer player, Pets.Behavior behavior, double t, Follower f) {
 		double h = player.getBbHeight();
 		float look = player.getYRot();
 		double yaw = Math.toRadians(look);
@@ -172,7 +201,8 @@ final class PetFollowers {
 		}
 		Local l = new Local(fx, fz, rx, rz);
 		return switch (behavior) {
-			case FLOAT -> new Target(l.at(0.75, h * 0.85 + 0.12 * Math.sin(t * 0.08), -0.25), look, 0.35);
+			// Random is rolled into a real move before this; Float just in case.
+			case FLOAT, RANDOM -> new Target(l.at(0.75, h * 0.85 + 0.12 * Math.sin(t * 0.08), -0.25), look, 0.35);
 			case SHOULDER -> new Target(l.at(0.5, h * 0.83 + 0.2, -0.05), look, 0.7);
 			case FOLLOW -> new Target(l.at(0, h * 0.7 + 0.1 * Math.sin(t * 0.06), -1.4), look, 0.15);
 			case PEEK -> {
@@ -181,7 +211,7 @@ final class PetFollowers {
 			}
 			case BOUNCE -> new Target(l.at(0.85, h * 0.4 + 0.7 * Math.abs(Math.sin(t * 0.14)), 0), look, 0.5);
 			case ORBIT -> path(t, 0.6, s -> new Vec3(Math.cos(s * 0.1) * 1.1, h + 0.3 + 0.1 * Math.sin(s * 0.2), Math.sin(s * 0.1) * 1.1));
-			case HALO -> path(t, 0.7, s -> new Vec3(Math.cos(s * 0.22) * 0.45, h + 0.55, Math.sin(s * 0.22) * 0.45));
+			case HALO -> path(t, 0.7, s -> new Vec3(Math.cos(s * 0.08) * 0.45, h + 0.55, Math.sin(s * 0.08) * 0.45));
 			case SPIRAL -> path(t, 0.6, s -> new Vec3(Math.cos(s * 0.12), h * 0.15 + (0.5 + 0.5 * Math.sin(s * 0.035)) * h, Math.sin(s * 0.12)));
 			case FIGURE_EIGHT -> path(t, 0.6, s -> l.at(Math.sin(s * 0.07) * 1.3, h * 0.75 + 0.1 * Math.sin(s * 0.14), Math.sin(s * 0.14) * 0.6));
 			case WANDER -> path(t, 0.25, s -> new Vec3(Math.sin(s * 0.031) * 1.1 + Math.sin(s * 0.017 + 1) * 0.5, h * 0.8 + Math.sin(s * 0.05) * 0.25,
@@ -204,7 +234,7 @@ final class PetFollowers {
 			case SATELLITE -> path(t, 0.6, s -> l.at(Math.cos(s * 0.09) * 1.1, h * 0.6 + Math.sin(s * 0.09) * 0.85, Math.sin(s * 0.09) * 0.35));
 			case DART -> {
 				// A new random spot around the player every 2.5 seconds, reached quickly.
-				long hop = t / 50;
+				long hop = (long) (t / 50);
 				double a = frac(Math.sin(hop * 12.9898) * 43758.5453) * Math.PI * 2;
 				double up = frac(Math.sin(hop * 78.233) * 12543.123);
 				Vec3 spot = new Vec3(Math.cos(a) * 1.2, h * (0.45 + 0.6 * up), Math.sin(a) * 1.2);
@@ -231,48 +261,57 @@ final class PetFollowers {
 	}
 
 	/** A pet on a path around the player, looking the way it flies. */
-	private static Target path(long t, double follow, java.util.function.LongFunction<Vec3> at) {
+	private static Target path(double t, double follow, java.util.function.DoubleFunction<Vec3> at) {
 		Vec3 now = at.apply(t);
 		return new Target(now, heading(now, at.apply(t + 1)), follow);
 	}
 
 	/** The pet's particle trail, if its owner picked one (and the panel allows them). */
-	private static void trail(ServerPlayer player, Pets.Owner owner, Follower f, long t, double size) {
-		if (!PetStore.settings().particles) return;
-		Pets.Trail trail = Pets.Trail.of(owner.trail);
-		if (trail == Pets.Trail.OFF || t % trail.every != 0) return;
-		ServerLevel level = player.level();
+	/** New picks for Random (only real moves and trails this server has). */
+	private static void roll(Follower f, ServerPlayer player) {
 		var r = player.getRandom();
-		// The head is half a block (times the size) around f.pos; particles start just outside it.
-		double half = 0.25 * size;
-		double x = f.pos.x, y = f.pos.y, z = f.pos.z;
-		double sx = (r.nextDouble() - 0.5) * 2 * half, sz = (r.nextDouble() - 0.5) * 2 * half;
-		double drift = (r.nextDouble() - 0.5) * 0.15;
-		switch (trail) {
-			// For notes the speed is the colour.
-			case NOTES -> level.sendParticles(ParticleTypes.NOTE, x + sx * 0.5, y + half + 0.2, z + sz * 0.5, 0, r.nextDouble(), 0, 0, 1);
-			case HEARTS -> level.sendParticles(ParticleTypes.HEART, x + sx * 0.5, y + half + 0.2, z + sz * 0.5, 1, 0, 0, 0, 0);
-			// Rising off the top of the head; count 0 makes the three numbers the direction, the last one the speed.
-			case SPARKLES -> level.sendParticles(ParticleTypes.END_ROD, x + sx, y + half + 0.05, z + sz, 0, drift, 1, drift, 0.06);
-			case FLAMES, SOUL_FLAMES -> level.sendParticles(particle(trail), x + sx, y + half + 0.03, z + sz, 0, drift, 1, drift, 0.03);
-			// These fall on their own: from under the head.
-			case FIREWORKS, SOULS -> level.sendParticles(particle(trail), x + sx, y + half + 0.05, z + sz, 0, drift, 1, drift, trail == Pets.Trail.FIREWORKS ? 0.08 : 0.03);
-			// Totem confetti is thrown up and falls back down.
-			case TOTEM -> level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, x + sx, y + half + 0.05, z + sz, 0, drift * 2, 1, drift * 2, 0.25);
-			case SNOW, PETALS, PALE_LEAVES, HONEY -> level.sendParticles(particle(trail), x + sx, y - half - 0.05, z + sz, 0, drift, -1, drift, 0.02);
-			// Enchanting letters, portal and nautilus particles fly from the given offset into the spot: from above, into the head.
-			case MAGIC, PORTAL, NAUTILUS -> level.sendParticles(particle(trail), x, y, z, 0, (r.nextDouble() - 0.5) * 1.2, 0.6 + r.nextDouble() * 0.5, (r.nextDouble() - 0.5) * 1.2, 1);
-			// Floating around the head (crits fly out of it).
-			default -> {
-				double a = r.nextDouble() * Math.PI * 2;
-				double out = half + 0.12;
-				level.sendParticles(particle(trail), x + Math.cos(a) * out, y + (r.nextDouble() - 0.3) * half * 2, z + Math.sin(a) * out, 0, Math.cos(a), 0.6, Math.sin(a),
-						trail == Pets.Trail.CRITS ? 0.2 : 0.025);
-			}
-		}
+		List<Pets.Behavior> moves = new ArrayList<>(List.of(Pets.Behavior.values()));
+		moves.remove(Pets.Behavior.RANDOM);
+		moves.remove(f.rolledMove);
+		f.rolledMove = moves.get(r.nextInt(moves.size()));
+		List<Pets.Trail> trails = new ArrayList<>();
+		for (Pets.Trail t : Pets.Trail.values()) if (t.real() && available(t) && t != f.rolledTrail) trails.add(t);
+		f.rolledTrail = trails.isEmpty() ? Pets.Trail.OFF : trails.get(r.nextInt(trails.size()));
 	}
 
-	private static SimpleParticleType particle(Pets.Trail trail) {
+	/** Whether this game version has the trail's particle (Noxious Gas only came in 26.2). */
+	static boolean available(Pets.Trail trail) {
+		return !trail.real() || particle(trail) != null;
+	}
+
+	private static void trail(ServerPlayer player, Pets.Trail trail, Follower f, long t, double size) {
+		if (!PetStore.settings().particles || trail == null || !trail.real() || t % trail.every != 0) return;
+		ParticleOptions type = particle(trail);
+		if (type == null) return;
+		ServerLevel level = player.level();
+		// Somewhere around the head, not inside it, and with no push of their own: they float where they appear.
+		double spread = 0.2 + 0.25 * size;
+		if (trail == Pets.Trail.NOTES) {
+			// A note's colour comes in the first of the three numbers, so it's placed by hand.
+			var r = player.getRandom();
+			level.sendParticles(ParticleTypes.NOTE, f.pos.x + (r.nextDouble() - 0.5) * 2 * spread, f.pos.y + r.nextDouble() * spread, f.pos.z + (r.nextDouble() - 0.5) * 2 * spread,
+					0, r.nextDouble(), 0, 0, 1);
+			return;
+		}
+		var r = player.getRandom();
+		if (trail == Pets.Trail.AUTUMN_LEAVES || trail == Pets.Trail.LUSH_LEAVES) {
+			int[] colours = trail == Pets.Trail.AUTUMN_LEAVES ? AUTUMN : LUSH;
+			type = ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, 0xFF000000 | colours[r.nextInt(colours.length)]);
+		}
+		level.sendParticles(type, f.pos.x, f.pos.y, f.pos.z, 1, spread, spread, spread, 0);
+	}
+
+	/** Red, orange and yellow leaves; and lush greens. */
+	private static final int[] AUTUMN = {0xC0392B, 0xD35400, 0xE67E22, 0xF39C12, 0xF1C40F, 0xA93226};
+	private static final int[] LUSH = {0x4CAF50, 0x66BB33, 0x7CCF3A, 0x3E9E3E, 0x8BD448};
+
+	/** The game's particle for a trail, or null when this version doesn't have it. */
+	private static ParticleOptions particle(Pets.Trail trail) {
 		return switch (trail) {
 			case SPARKLES -> ParticleTypes.END_ROD;
 			case FLAMES -> ParticleTypes.SMALL_FLAME;
@@ -281,22 +320,27 @@ final class PetFollowers {
 			case GLOW -> ParticleTypes.GLOW;
 			case PETALS -> ParticleTypes.CHERRY_LEAVES;
 			case MAGIC -> ParticleTypes.ENCHANT;
-			case SPARKS -> ParticleTypes.ELECTRIC_SPARK;
 			case FIREFLIES -> ParticleTypes.FIREFLY;
 			case FIREWORKS -> ParticleTypes.FIREWORK;
 			case TOTEM -> ParticleTypes.TOTEM_OF_UNDYING;
 			case SOULS -> ParticleTypes.SCULK_SOUL;
-			case PORTAL -> ParticleTypes.PORTAL;
+			case PORTAL -> ParticleTypes.REVERSE_PORTAL;
 			case NAUTILUS -> ParticleTypes.NAUTILUS;
 			case SPORES -> ParticleTypes.SPORE_BLOSSOM_AIR;
 			case ASH -> ParticleTypes.WHITE_ASH;
-			case HONEY -> ParticleTypes.DRIPPING_HONEY;
 			case PALE_LEAVES -> ParticleTypes.PALE_OAK_LEAVES;
-			case CRITS -> ParticleTypes.ENCHANTED_HIT;
 			case HAPPY -> ParticleTypes.HAPPY_VILLAGER;
 			case HEARTS -> ParticleTypes.HEART;
 			case NOTES -> ParticleTypes.NOTE;
-			case OFF -> ParticleTypes.END_ROD;
+			case WITCH -> ParticleTypes.WITCH;
+			case OMINOUS -> ParticleTypes.OMINOUS_SPAWNING;
+			case RAID_OMEN -> ParticleTypes.RAID_OMEN;
+			case CAMPFIRE_SMOKE -> ParticleTypes.CAMPFIRE_COSY_SMOKE;
+			// Coloured when sent; a placeholder colour here.
+			case AUTUMN_LEAVES, LUSH_LEAVES -> ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, 0xFFFFFFFF);
+			// By name: 26.1 doesn't have it.
+			case NOXIOUS_GAS -> BuiltInRegistries.PARTICLE_TYPE.getValue(Identifier.withDefaultNamespace("noxious_gas")) instanceof SimpleParticleType p ? p : null;
+			case OFF, RANDOM -> null;
 		};
 	}
 

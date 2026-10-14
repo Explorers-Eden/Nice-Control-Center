@@ -184,10 +184,16 @@ public final class Tweaks {
 	}
 
 	public static final class Saplings {
+		static final List<String> GROUND = List.of("#minecraft:substrate_overworld", "minecraft:clay");
 		/** Saplings lying on the ground plant themselves after a while. */
 		public boolean replant = false;
 		public int delaySeconds = 20;
 		public List<String> items = new ArrayList<>(List.of("#minecraft:saplings", "minecraft:mangrove_propagule"));
+		/**
+		 * The blocks they may grow on (ids or #tags); empty is wherever the sapling itself can grow. By default the
+		 * game's natural ground (dirt, grass, podzol, mycelium, moss, mud) and clay for mangroves, not farmland.
+		 */
+		public List<String> ground = new ArrayList<>(GROUND);
 		/** No other sapling or log closer than this many blocks. */
 		public int spacing = 2;
 		/** Also inside land claims. */
@@ -243,6 +249,8 @@ public final class Tweaks {
 			spawners.deniedMobs = ids(spawners.deniedMobs);
 			spawners.tools = ids(spawners.tools);
 			saplings.items = ids(saplings.items);
+			if (saplings.ground == null) saplings.ground = new ArrayList<>(Saplings.GROUND);
+			saplings.ground = ids(saplings.ground);
 			felling.tools = ids(felling.tools);
 			felling.deniedTools = ids(felling.deniedTools);
 			felling.logs = ids(felling.logs);
@@ -311,7 +319,7 @@ public final class Tweaks {
 		if (s.afk.tag.length() > 16) return "The AFK tag is up to 16 characters.";
 		if (s.tabList.header.length() > 500 || s.tabList.footer.length() > 500) return "Header and footer are up to 500 characters each.";
 		for (String id : s.spawners.deniedMobs) if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't a mob id.";
-		for (List<String> l : List.of(s.spawners.tools, s.saplings.items, s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
+		for (List<String> l : List.of(s.spawners.tools, s.saplings.items, s.saplings.ground, s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
 				s.veins.tools, s.veins.deniedTools, s.veins.blocks, s.veins.deniedBlocks)) {
 			for (String id : l) if (!id.matches("#?[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't an id or #tag.";
 		}

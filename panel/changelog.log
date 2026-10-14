@@ -1,3 +1,7 @@
+## 1.12.7
+- Gameplay → World & nature → Saplings: "Only on these blocks" (natural ground by default, not farmland) (needs mod 1.13.8)
+- GO-LIVE.md: wipe everything (container, volumes, the panel's tables) and set up fresh
+
 ## 1.12.6
 - Market → Pets: a pet whose sale has ended can be edited (name, head, price) without picking a new day
 - Head pictures: the public address only serves the faces of the shop's pets (before, anyone could make the panel fetch and keep any skin); the preview while adding a pet needs a sign-in

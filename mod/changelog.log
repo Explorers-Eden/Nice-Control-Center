@@ -1,4 +1,16 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.8
+- Saplings planting themselves work more reliably: also on mud, soul soil, paths and other blocks an item sinks into a little, and when the sapling lies on the edge of a block
+- Saplings only plant themselves on natural ground (dirt, grass, podzol, mycelium, moss, mud and clay for mangroves), not on farmland; the list can be changed in the panel
+- Pets no longer zip back and forth when you run or fly: they follow an evened-out copy of your movement
+- Pet particles appear around the head and float where they appear (no push of their own), and much less often
+- Honey drips (each drop played a dripping sound), Crits and Sparks are gone from the particle choices; pets that had them have no particles now
+- Portal uses the purple particles that drift up from a crying obsidian or respawn anchor (reverse portal)
+- New pet particles: Autumn Leaves (red, orange and yellow), Lush Leaves (green), Witch, Ominous, Raid Omen, Campfire Smoke and Noxious Gas (26.2 and newer); the smoke and gas only now and then, since they're big and slow to fade
+- Random, for moves and for particles: a new pick every time you teleport, die or take your pet out
+- Names of more than one word start each word with a capital (Figure Eight, Soul Flames, Cherry Petals, Pale Leaves)
+- All pet moves play slower (about 60% of their old speed), Halo even more (about a fifth)
+
 ## 1.13.7
 - Own link commands are added a moment after the server starts (and after /reload), once every mod has its commands; a link never takes over, or later removes, another mod's command of the same name
 - /pets on and off can't fail when the pet that was out is gone

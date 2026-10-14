@@ -24,7 +24,7 @@ import java.util.List;
  */
 public final class TweaksControl {
 	private static volatile Tweaks.Settings settings = new Tweaks.Settings().fill();
-	private static volatile Matchers matchers = new Matchers(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+	private static volatile Matchers matchers = new Matchers(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
 	private static long modified = -1;
 
 	/** A list of ids and #tags. */
@@ -36,7 +36,7 @@ public final class TweaksControl {
 
 	record Matchers(List<Match<Item>> fellTools, List<Match<Item>> fellDenied, List<Match<Block>> logs, List<Match<Block>> logsDenied,
 			List<Match<Block>> leaves, List<Match<Item>> veinTools, List<Match<Item>> veinDenied, List<Match<Block>> ores, List<Match<Block>> oresDenied,
-			List<Match<Item>> saplings, List<Match<Item>> spawnerTools) {
+			List<Match<Item>> saplings, List<Match<Block>> saplingGround, List<Match<Item>> spawnerTools) {
 	}
 
 	private TweaksControl() {
@@ -85,7 +85,7 @@ public final class TweaksControl {
 		settings = next;
 		matchers = new Matchers(items(next.felling.tools), items(next.felling.deniedTools), blocks(next.felling.logs), blocks(next.felling.deniedLogs),
 				blocks(next.felling.leaves), items(next.veins.tools), items(next.veins.deniedTools), blocks(next.veins.blocks), blocks(next.veins.deniedBlocks),
-				items(next.saplings.items), items(next.spawners.tools));
+				items(next.saplings.items), blocks(next.saplings.ground), items(next.spawners.tools));
 		if (!first) NiceControlCenter.LOGGER.info("Reloaded the gameplay tweaks");
 	}
 
@@ -154,6 +154,11 @@ public final class TweaksControl {
 
 	static boolean isReplantable(ItemStack stack) {
 		return item(matchers.saplings(), stack);
+	}
+
+	/** Whether a sapling may plant itself on this block (any block when the list is empty). */
+	static boolean saplingGround(BlockState state) {
+		return matchers.saplingGround().isEmpty() || block(matchers.saplingGround(), state);
 	}
 
 	static boolean isOre(BlockState state) {

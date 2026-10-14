@@ -32,16 +32,14 @@ public final class Saplings {
 		if (!s.replant || entity.getAge() < s.delaySeconds * 20) return;
 		ItemStack stack = entity.getItem();
 		if (stack.isEmpty() || !(stack.getItem() instanceof BlockItem item) || !TweaksControl.isReplantable(stack)) return;
-		BlockPos pos = entity.blockPosition();
-		BlockState here = level.getBlockState(pos);
-		if (!here.isAir() && !here.canBeReplaced()) return;
-		if (!here.getFluidState().isEmpty()) return;
 		BlockState plant = item.getBlock().defaultBlockState();
-		if (!plant.canSurvive(level, pos)) return;
+		BlockPos pos = spot(level, entity, plant);
+		if (pos == null) return;
 		if (!s.inClaims && ClaimStore.claimAt(level, pos) != null) return;
 		int r = s.spacing;
 		if (r > 0) {
 			for (BlockPos p : BlockPos.betweenClosed(pos.offset(-r, -1, -r), pos.offset(r, 1, r))) {
+				if (p.equals(pos)) continue;
 				BlockState other = level.getBlockState(p);
 				if (other.is(SAPLINGS) || other.is(BlockTags.LOGS) || other.is(plant.getBlock())) return;
 			}
@@ -50,5 +48,32 @@ public final class Saplings {
 		level.playSound(null, pos, plant.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 0.8f, 1f);
 		stack.shrink(1);
 		entity.setItem(stack);
+	}
+
+	/**
+	 * Where the sapling can take root: the block it lies in. A little above its feet, because on mud, soul soil
+	 * or a path it lies a bit inside the block below; and also under the corners of the item, because one
+	 * lying on the edge of a block has air under its middle. Null when there's no good spot.
+	 */
+	private static BlockPos spot(ServerLevel level, ItemEntity entity, BlockState plant) {
+		double x = entity.getX(), y = entity.getY() + 0.2, z = entity.getZ();
+		double w = entity.getBbWidth() / 2;
+		BlockPos tried = null;
+		for (double[] d : new double[][] {{0, 0}, {-w, -w}, {w, -w}, {-w, w}, {w, w}}) {
+			BlockPos pos = BlockPos.containing(x + d[0], y, z + d[1]);
+			if (pos.equals(tried)) continue;
+			if (fits(level, pos, plant)) return pos;
+			tried = pos;
+		}
+		return null;
+	}
+
+	private static boolean fits(ServerLevel level, BlockPos pos, BlockState plant) {
+		BlockState here = level.getBlockState(pos);
+		if (!here.isAir() && !here.canBeReplaced()) return false;
+		if (!here.getFluidState().isEmpty()) return false;
+		// Only on the ground set in the panel (not farmland by default), and where the sapling itself can grow.
+		if (!TweaksControl.saplingGround(level.getBlockState(pos.below()))) return false;
+		return plant.canSurvive(level, pos);
 	}
 }

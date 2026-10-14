@@ -268,7 +268,7 @@ public final class PetStore {
 		out.put("trail", Pets.Trail.of(o == null ? null : o.trail).name());
 		out.put("particles", settings.particles);
 		List<Map<String, Object>> trails = new java.util.ArrayList<>();
-		for (Pets.Trail t : Pets.Trail.values()) trails.add(Map.of("id", t.name(), "label", t.label));
+		for (Pets.Trail t : Pets.Trail.values()) if (PetFollowers.available(t)) trails.add(Map.of("id", t.name(), "label", t.label));
 		out.put("trails", trails);
 		List<Map<String, Object>> all = new java.util.ArrayList<>();
 		for (Pets.Pet p : settings.pets) all.add(Map.of("id", p.id, "name", p.name, "retired", p.retired));
