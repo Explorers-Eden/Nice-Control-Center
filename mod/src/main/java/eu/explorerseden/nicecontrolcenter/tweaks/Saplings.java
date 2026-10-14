@@ -22,6 +22,11 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class Saplings {
 	/** By id: not every version has it as a constant. */
 	private static final TagKey<Block> SAPLINGS = TagKey.create(Registries.BLOCK, Identifier.withDefaultNamespace("saplings"));
+	/** What a growing tree may take the place of: grass, ferns, flowers, bushes, leaf litter… */
+	private static final TagKey<Block> REPLACEABLE_BY_TREES = TagKey.create(Registries.BLOCK, Identifier.withDefaultNamespace("replaceable_by_trees"));
+	/** The chance was rolled for this item (it stays with the item, also over a restart), and it lost. */
+	private static final String ROLLED = "nicecontrolcenter_sapling_rolled";
+	private static final String SKIP = "nicecontrolcenter_sapling_skip";
 	private Saplings() {
 	}
 
@@ -32,6 +37,12 @@ public final class Saplings {
 		if (!s.replant || entity.getAge() < s.delaySeconds * 20) return;
 		ItemStack stack = entity.getItem();
 		if (stack.isEmpty() || !(stack.getItem() instanceof BlockItem item) || !TweaksControl.isReplantable(stack)) return;
+		if (entity.entityTags().contains(SKIP)) return;
+		// The chance is decided once per sapling (or stack lying together), not again every second.
+		if (s.chance < 100 && entity.addTag(ROLLED) && entity.getRandom().nextInt(100) >= s.chance) {
+			entity.addTag(SKIP);
+			return;
+		}
 		BlockState plant = item.getBlock().defaultBlockState();
 		BlockPos pos = spot(level, entity, plant);
 		if (pos == null) return;
@@ -52,8 +63,8 @@ public final class Saplings {
 
 	/**
 	 * Where the sapling can take root: the block it lies in. A little above its feet, because on mud, soul soil
-	 * or a path it lies a bit inside the block below; and also under the corners of the item, because one
-	 * lying on the edge of a block has air under its middle. Null when there's no good spot.
+	 * or a path it lies a bit inside the block below; also under the corners of the item, because one lying on
+	 * the edge of a block has air under its middle; and else a block next to it. Null when there's no good spot.
 	 */
 	private static BlockPos spot(ServerLevel level, ItemEntity entity, BlockState plant) {
 		double x = entity.getX(), y = entity.getY() + 0.2, z = entity.getZ();
@@ -65,13 +76,20 @@ public final class Saplings {
 			if (fits(level, pos, plant)) return pos;
 			tried = pos;
 		}
+		// Taken (a flower, a slab…): one block over, on the same ground, will do.
+		BlockPos at = BlockPos.containing(x, y, z);
+		for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}}) {
+			BlockPos pos = at.offset(d[0], 0, d[1]);
+			if (fits(level, pos, plant)) return pos;
+		}
 		return null;
 	}
 
 	private static boolean fits(ServerLevel level, BlockPos pos, BlockState plant) {
 		BlockState here = level.getBlockState(pos);
-		if (!here.isAir() && !here.canBeReplaced()) return false;
-		if (!here.getFluidState().isEmpty()) return false;
+		// Free, or a plant a tree would grow over (grass, ferns, flowers, bushes, leaf litter), but not leaves.
+		boolean free = here.isAir() || here.canBeReplaced() || here.is(REPLACEABLE_BY_TREES) && !here.is(BlockTags.LEAVES);
+		if (!free || !here.getFluidState().isEmpty()) return false;
 		// Only on the ground set in the panel (not farmland by default), and where the sapling itself can grow.
 		if (!TweaksControl.saplingGround(level.getBlockState(pos.below()))) return false;
 		return plant.canSurvive(level, pos);

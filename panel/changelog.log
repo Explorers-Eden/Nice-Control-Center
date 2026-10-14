@@ -1,3 +1,6 @@
+## 1.12.8
+- Gameplay → World & nature → Saplings: "Chance to plant (%)"; the ground list is described like the item list (needs mod 1.13.9)
+
 ## 1.12.7
 - Gameplay → World & nature → Saplings: "Only on these blocks" (natural ground by default, not farmland) (needs mod 1.13.8)
 - GO-LIVE.md: wipe everything (container, volumes, the panel's tables) and set up fresh

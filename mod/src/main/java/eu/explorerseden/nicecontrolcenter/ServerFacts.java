@@ -124,7 +124,8 @@ public final class ServerFacts {
 			out.add(tweak("spawners", "Silk touch spawners", "bi-box-seam", "Mine a spawner with the right tool to take it with you; it keeps its mob when you place it again.", rows));
 		}
 		if (t.saplings.replant) {
-			out.add(tweak("saplings", "Saplings plant themselves", "bi-flower1", "Saplings lying on the ground plant themselves after " + t.saplings.delaySeconds + " seconds, if they can grow there"
+			out.add(tweak("saplings", "Saplings plant themselves", "bi-flower1", (t.saplings.chance >= 100 ? "Saplings" : t.saplings.chance + "% of saplings")
+					+ " lying on the ground plant themselves after " + t.saplings.delaySeconds + " seconds, if they can grow there"
 					+ (t.saplings.inClaims ? "" : " and it isn't claimed land") + ".", List.of()));
 		}
 		{

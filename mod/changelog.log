@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.9
+- Pets ride along with their owner in every player's game, so they stay right with you at any speed (no more dragging behind and flinging forward) and move smoothly; their moves and turns glide in between. Lazy still waits in place and catches up on its own
+- Saplings planting themselves aren't stopped by plants any more: they take the place of grass, ferns, flowers, bushes, leaf litter and the like (what a growing tree would grow over), and when their spot is taken (a slab, a block) they take root right next to it
+- Saplings: a chance (in percent) that a sapling plants itself at all, decided once per sapling
+
 ## 1.13.8
 - Saplings planting themselves work more reliably: also on mud, soul soil, paths and other blocks an item sinks into a little, and when the sapling lies on the edge of a block
 - Saplings only plant themselves on natural ground (dirt, grass, podzol, mycelium, moss, mud and clay for mangroves), not on farmland; the list can be changed in the panel

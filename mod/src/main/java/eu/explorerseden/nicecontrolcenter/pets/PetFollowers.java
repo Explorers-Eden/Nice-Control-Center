@@ -7,7 +7,10 @@ import eu.explorerseden.nicecontrolcenter.Pets;
 import eu.explorerseden.nicecontrolcenter.mixin.DisplayAccessor;
 import eu.explorerseden.nicecontrolcenter.mixin.ItemDisplayAccessor;
 import net.minecraft.core.particles.ParticleTypes;
+import io.netty.buffer.Unpooled;
 import net.minecraft.core.particles.ColorParticleOption;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -43,9 +46,8 @@ final class PetFollowers {
 	/** A head item on a display faces the other way than an entity with the same yaw. */
 	private static final float FACE = 180;
 
-	/** Ticks the client takes to glide to a new position, and how far ahead of the player (in ticks of their movement) the pet is put to make up for it. */
+	/** Ticks the clients take to glide to a new spot or turn (riding pets), and to a new place (Lazy). */
 	private static final int GLIDE = 2;
-	private static final double LEAD = 2;
 	/** How fast the moves play: the animation clock runs at this share of game time. */
 	private static final double PACE = 0.6;
 
@@ -53,20 +55,18 @@ final class PetFollowers {
 		Display.ItemDisplay display;
 		String texture;
 		double size;
-		/** Where it is (for Lazy) and where it sits around the player (everything else). */
+		/** Where the pet is, and where it sits around the player (from their feet). */
 		Vec3 pos;
 		Vec3 offset;
 		Vec3 lastPlayer;
-		/**
-		 * The player as the pet follows them: their movement comes in uneven steps (none one tick, double the
-		 * next, as their game sends it), so the pet follows an evened-out copy instead of every jolt.
-		 */
-		Vec3 anchor;
-		Vec3 speed = Vec3.ZERO;
 		/** What Random landed on, rolled again after every teleport, death or taking the pet out. */
 		Pets.Behavior rolledMove;
 		Pets.Trail rolledTrail;
 		net.minecraft.world.level.Level level;
+		/** Clients were told it rides the player, and when that was last sent; when it was spawned. */
+		boolean riding;
+		long ridingSent;
+		long spawned;
 		/** So pets of players standing together don't move in step. */
 		final int phase;
 		/** After a head that couldn't be made, the next try waits until then (game time). */
@@ -84,6 +84,12 @@ final class PetFollowers {
 	private PetFollowers() {
 	}
 
+	/*
+	 * How a pet follows: clients are told that the head rides its owner (the server itself can't make anything
+	 * ride a player), so every client keeps it on the player each frame, smooth and never behind. Its spot
+	 * around the player and the way it looks are its transformation, which clients glide between. Lazy stays
+	 * put in the world, so that one doesn't ride and moves on its own.
+	 */
 	static void tick(MinecraftServer server) {
 		boolean on = PetStore.enabled();
 		Iterator<Map.Entry<UUID, Follower>> it = followers.entrySet().iterator();
@@ -91,7 +97,7 @@ final class PetFollowers {
 			Map.Entry<UUID, Follower> e = it.next();
 			ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
 			if (!on || p == null) {
-				if (e.getValue().display != null) e.getValue().display.discard();
+				discard(e.getValue(), p);
 				it.remove();
 			}
 		}
@@ -103,7 +109,7 @@ final class PetFollowers {
 			Follower f = followers.get(player.getUUID());
 			if (owned == null || owner == null) {
 				if (f != null) {
-					if (f.display != null) f.display.discard();
+					discard(f, player);
 					followers.remove(player.getUUID());
 				}
 				continue;
@@ -117,20 +123,14 @@ final class PetFollowers {
 			}
 			long t = time + f.phase;
 			Vec3 base = player.position();
-			// The player's movement this tick (none after a teleport).
+			double h = player.getBbHeight();
+			// Where clients put a passenger of the player: on top of them.
+			Vec3 seat = base.add(0, h, 0);
+			// A teleport (or another dimension): Random picks again.
 			Vec3 moved = f.lastPlayer == null ? Vec3.ZERO : base.subtract(f.lastPlayer);
+			if (f.lastPlayer != null && (moved.lengthSqr() > 9 || f.level != player.level())) roll(f, player);
 			f.lastPlayer = base;
-			if (moved.lengthSqr() > 9 || f.anchor == null || f.level != player.level()) {
-				// A teleport (or the start): no smoothing across it, and Random picks again.
-				if (f.anchor != null) roll(f, player);
-				f.level = player.level();
-				f.anchor = base;
-				f.speed = Vec3.ZERO;
-			} else {
-				f.speed = f.speed.scale(0.7).add(moved.scale(0.3));
-				f.anchor = f.anchor.add(f.speed);
-				f.anchor = f.anchor.add(base.subtract(f.anchor).scale(0.3));
-			}
+			f.level = player.level();
 			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
 			Pets.Behavior behavior = chosen == Pets.Behavior.RANDOM ? f.rolledMove : chosen;
 			Target goal = target(player, behavior, t * PACE, f);
@@ -139,31 +139,75 @@ final class PetFollowers {
 					|| f.pos == null || f.pos.distanceToSqr(want) > JUMP * JUMP;
 			if (fresh) {
 				if (time < f.retryAt) continue;
-				if (f.display != null) f.display.discard();
-				f.display = spawn(player.level(), want, goal.yaw + FACE, texture, size);
+				discard(f, player);
+				f.offset = goal.offset;
+				f.pos = want;
+				f.display = spawn(player.level(), goal.stay ? want : seat, texture, size);
 				f.texture = texture;
 				f.size = size;
-				f.pos = want;
-				f.offset = goal.offset;
+				f.spawned = time;
 				// Tried again in a minute (it would warn every tick otherwise).
-				if (f.display == null) f.retryAt = time + 1200;
+				if (f.display == null) {
+					f.retryAt = time + 1200;
+					continue;
+				}
+				pose(f, goal.stay ? Vec3.ZERO : goal.offset.subtract(0, h, 0), goal.yaw, size, 0);
 				continue;
 			}
 			if (goal.stay) {
 				// Lazy: a spot in the world, not around the player.
+				if (f.riding) ride(f, player, false, time);
 				f.pos = f.pos.add(want.subtract(f.pos).scale(goal.follow));
 				f.offset = f.pos.subtract(base);
+				f.display.setPos(f.pos);
+				pose(f, Vec3.ZERO, goal.yaw, size, GLIDE);
 			} else {
-				// Moves with the player one to one; only its spot around them is eased. A little ahead, because
-				// clients show it a moment late.
 				f.offset = f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow));
-				f.pos = f.anchor.add(f.offset).add(f.speed.scale(LEAD));
+				f.pos = base.add(f.offset);
+				// Told again now and then, for players who only just came near (and more often right after spawning).
+				if (!f.riding || time - f.ridingSent >= (time - f.spawned < 40 ? 5 : 20)) ride(f, player, true, time);
+				// The entity itself stays on the seat, for the server's tracking and for clients not told yet.
+				if (f.display.position().distanceToSqr(seat) > 0.09) f.display.setPos(seat);
+				pose(f, f.offset.subtract(0, h, 0), goal.yaw, size, GLIDE);
 			}
-			f.display.setPos(f.pos);
-			f.display.setYRot(goal.yaw + FACE);
 			Pets.Trail trail = Pets.Trail.of(owner.trail);
 			trail(player, trail == Pets.Trail.RANDOM ? f.rolledTrail : trail, f, t, size);
 		}
+	}
+
+	/** The head's spot (from where the entity is) and the way it looks, which clients glide to in ticks. */
+	private static void pose(Follower f, Vec3 at, float yaw, double size, int ticks) {
+		float s = (float) size;
+		// A head item is drawn below the display's spot; lift it so the spot is its middle.
+		Vector3f move = new Vector3f((float) at.x, (float) at.y + 0.25f * s, (float) at.z);
+		// The same turn a display with this yaw gets (the entity's own yaw stays 0).
+		Quaternionf turn = new Quaternionf().rotationY((float) Math.toRadians(-(yaw + FACE)));
+		DisplayAccessor d = (DisplayAccessor) f.display;
+		d.nicecontrolcenter$setTransformation(new Transformation(move, turn, new Vector3f(s, s, s), new Quaternionf()));
+		d.nicecontrolcenter$setInterpolationDuration(ticks);
+		d.nicecontrolcenter$setInterpolationDelay(0);
+	}
+
+	/** Tells the owner and everyone who sees them that the head rides the owner (or no longer does). */
+	private static void ride(Follower f, ServerPlayer player, boolean on, long time) {
+		FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+		buf.writeVarInt(player.getId());
+		// Players never have real passengers, so this list is all of them.
+		buf.writeVarIntArray(on ? new int[] {f.display.getId()} : new int[0]);
+		ClientboundSetPassengersPacket packet = ClientboundSetPassengersPacket.STREAM_CODEC.decode(buf);
+		buf.release();
+		player.level().getChunkSource().sendToTrackingPlayersAndSelf(player, packet);
+		f.riding = on;
+		f.ridingSent = time;
+	}
+
+	/** Removes the head (and tells clients it no longer rides the player). */
+	private static void discard(Follower f, ServerPlayer player) {
+		if (f.display == null) return;
+		if (f.riding && player != null) ride(f, player, false, 0);
+		f.riding = false;
+		f.display.discard();
+		f.display = null;
 	}
 
 	/** Pets hide while their owner can't be seen. */
@@ -344,19 +388,16 @@ final class PetFollowers {
 		};
 	}
 
-	private static Display.ItemDisplay spawn(ServerLevel level, Vec3 pos, float yaw, String texture, double size) {
+	private static Display.ItemDisplay spawn(ServerLevel level, Vec3 pos, String texture, double size) {
 		ItemStack head = head(level.getServer(), texture);
 		if (head.isEmpty()) return null;
 		@SuppressWarnings("unchecked")
 		EntityType<Display.ItemDisplay> type = (EntityType<Display.ItemDisplay>) BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("item_display"));
 		Display.ItemDisplay d = new Display.ItemDisplay(type, level);
 		d.setPos(pos);
-		d.setYRot(yaw);
 		d.addTag(TAG);
 		((ItemDisplayAccessor) d).nicecontrolcenter$setItemStack(head);
 		float s = (float) size;
-		// A head item is drawn below the display's spot; lift it so the spot is its middle.
-		((DisplayAccessor) d).nicecontrolcenter$setTransformation(new Transformation(new Vector3f(0, 0.25f * s, 0), new Quaternionf(), new Vector3f(s, s, s), new Quaternionf()));
 		((DisplayAccessor) d).nicecontrolcenter$setMoveDuration(GLIDE);
 		((DisplayAccessor) d).nicecontrolcenter$setShadowRadius(0.2f * s);
 		((DisplayAccessor) d).nicecontrolcenter$setShadowStrength(0.6f);
@@ -392,11 +433,11 @@ final class PetFollowers {
 
 	static void remove(UUID player) {
 		Follower f = followers.remove(player);
-		if (f != null && f.display != null) f.display.discard();
+		if (f != null) discard(f, null);
 	}
 
 	static void removeAll() {
-		for (Follower f : followers.values()) if (f.display != null) f.display.discard();
+		for (Follower f : followers.values()) discard(f, null);
 		followers.clear();
 	}
 

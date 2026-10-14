@@ -188,6 +188,8 @@ public final class Tweaks {
 		/** Saplings lying on the ground plant themselves after a while. */
 		public boolean replant = false;
 		public int delaySeconds = 20;
+		/** The chance (in percent) that a sapling plants itself at all; decided once per sapling. */
+		public int chance = 100;
 		public List<String> items = new ArrayList<>(List.of("#minecraft:saplings", "minecraft:mangrove_propagule"));
 		/**
 		 * The blocks they may grow on (ids or #tags); empty is wherever the sapling itself can grow. By default the
@@ -305,6 +307,7 @@ public final class Tweaks {
 		if (!(s.spawners.durability >= 0 && s.spawners.durability <= 100)) return "Tool wear is 0 to 100 times.";
 		if (s.saplings.delaySeconds < 5 || s.saplings.delaySeconds > 600) return "Saplings plant themselves after 5 to 600 seconds.";
 		if (s.saplings.spacing < 0 || s.saplings.spacing > 8) return "Sapling spacing is 0 to 8 blocks.";
+		if (s.saplings.chance < 1 || s.saplings.chance > 100) return "The chance for saplings is 1 to 100 percent.";
 		if (s.boneMeal.maxHeight < 2 || s.boneMeal.maxHeight > 16) return "Bone meal grows plants 2 to 16 blocks tall.";
 		if (s.boneMeal.flowerRadius < 1 || s.boneMeal.flowerRadius > 8) return "Flowers spread 1 to 8 blocks.";
 		if (s.anvil.renameCost < 1 || s.anvil.renameCost > 39) return "Renaming costs 1 to 39 levels.";
