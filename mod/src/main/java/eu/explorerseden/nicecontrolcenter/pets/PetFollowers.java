@@ -53,6 +53,8 @@ final class PetFollowers {
 		Vec3 lastPlayer;
 		/** So pets of players standing together don't move in step. */
 		final int phase;
+		/** After a head that couldn't be made, the next try waits until then (game time). */
+		long retryAt;
 
 		Follower(int phase) {
 			this.phase = phase;
@@ -108,13 +110,15 @@ final class PetFollowers {
 			boolean fresh = f.display == null || f.display.isRemoved() || f.display.level() != player.level() || !texture.equals(f.texture) || size != f.size
 					|| f.pos == null || f.pos.distanceToSqr(want) > JUMP * JUMP;
 			if (fresh) {
+				if (time < f.retryAt) continue;
 				if (f.display != null) f.display.discard();
 				f.display = spawn(player.level(), want, goal.yaw + FACE, texture, size);
 				f.texture = texture;
 				f.size = size;
 				f.pos = want;
 				f.offset = goal.offset;
-				if (f.display == null) followers.remove(player.getUUID());
+				// Tried again in a minute (it would warn every tick otherwise).
+				if (f.display == null) f.retryAt = time + 1200;
 				continue;
 			}
 			if (goal.stay) {

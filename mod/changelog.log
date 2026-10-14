@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.7
+- Own link commands are added a moment after the server starts (and after /reload), once every mod has its commands; a link never takes over, or later removes, another mod's command of the same name
+- /pets on and off can't fail when the pet that was out is gone
+- The pet numbers for the panel are copied before they're sent, so a purchase at that moment can't break the answer
+- A pet whose head can't be made is tried again once a minute instead of every tick (which filled the log)
+
 ## 1.13.6
 - Own link commands from the panel, like /website, /discord or /vote, with more names (aliases): each answers with a clickable link. They're added and removed while the server runs (players' command lists update right away); a name another command already uses is skipped
 - /website is one of these now instead of a fixed command (a website set before becomes the /website link), and /info's text before the link and link text can be set

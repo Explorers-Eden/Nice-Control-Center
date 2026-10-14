@@ -6,7 +6,7 @@ Keep the Crafty server untouched (only stopped) until everything runs, so you ca
 
 ## 1. Before the day
 
-- [ ] **Updates:** pushed and built: panel image (1.10.0 or newer), Nice Control Center mod (1.11.0 or newer), Merl (1.6.2 or newer). In Portainer, update the stack with **Re-pull image and redeploy**.
+- [ ] **Updates:** pushed and built: panel image (1.12.6 or newer), Nice Control Center mod (1.13.7 or newer), Merl (1.6.2 or newer). In Portainer, update the stack with **Re-pull image and redeploy**.
 - [ ] **Versions:** note the live server's Minecraft and Fabric version, its memory and Java flags, its port and its mod list. In the panel, put the same memory and flags under **Settings → Startup & Java** (Java 25).
 - [ ] **Discord links:** players linked through DiscordJustSync have to link again through the panel's bridge, because the old links aren't carried over. Tell them, or switch off "require a link" for the first days.
 - [ ] **Announce** the downtime (Discord, and in game).
@@ -26,6 +26,10 @@ The **server-side settings** are in the server's `config` folder and would be ov
 - `nicecontrolcenter-pets.json`: pets and the pet shop (Market → Pets)
 - `nicecontrolcenter.json`: the mod's own config
 
+Not needed: `nicecontrolcenter-links.json` (/info and your link commands) is written by the panel from its own settings every time it starts.
+
+What players own stays with the world, not the config: market listings and mailboxes (`nicecontrolcenter-market.json`) and who owns which pet (`nicecontrolcenter-pets.json`) are in the world folder. The test world's ones go with it, which is what you want.
+
 ## 3. Clean out the test server
 
 1. [ ] Stop the test server in the panel.
@@ -34,11 +38,13 @@ The **server-side settings** are in the server's `config` folder and would be ov
 4. [ ] Test data in the panel to clear:
    - **Map:** empty the volume `nicecontrolcenter-map`, so the test world's tiles go. The live world renders from scratch, which takes a while for a big world.
    - **Stats history:** `/data/panel/stats` (optional).
-   - **Claims in the database:** run the SQL below in the panel's database. The test world's claims would otherwise stay until the first copy from the live world.
+   - **Claims and market in the database:** run the SQL below in the panel's database. The test world's claims and listings would otherwise stay until the first copy from the live world.
 
      ```sql
      TRUNCATE claims, claim_members, claim_players, claim_sync;
+     TRUNCATE market_listings, market_sales, market_sync;
      ```
+   - **Pets:** in Market → Pets, delete test pets you don't want to sell. Pets under "No longer sold" go away by themselves once the test world is gone.
 
 ## 4. Move the live server in
 
@@ -59,7 +65,7 @@ The **server-side settings** are in the server's `config` folder and would be ov
 
 - [ ] Players connect on `MINECRAFT_PORT` from the stack. Crafty publishes 25500–25600 on the same host, so stop Crafty's server (or the whole Crafty stack) before the panel takes the same port.
 - [ ] If the port players use changes, update the DNS record (and the SRV record, if you have one).
-- [ ] Traefik: the panel's domain, plus `MAP_HOST` and `INFO_HOST` if you use them, point at the panel. The website's SFTP access uses port 2022 (`SFTP_PORT`), which must be open.
+- [ ] Traefik: the panel's domain, plus `MAP_HOST` and `INFO_HOST` if you use them, point at the panel. Set `PANEL_PUBLIC_URL` (or `INFO_HOST`) in the stack too: `/info` in the game links there. The website's SFTP access uses port 2022 (`SFTP_PORT`), which must be open.
 
 ## 6. First start
 
@@ -71,15 +77,17 @@ The **server-side settings** are in the server's `config` folder and would be ov
    2. Claims → Settings → switch claims **on**.
    3. Look at a few imported claims on the map.
    4. Remove GOML at the next restart.
-5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and in Market (also Pets there). The market starts empty on the live world; pets are set up in the panel, so they carry over.
-6. [ ] **Discord:** the bridge posts "The server is online"; check that chat and joins go both ways.
-7. [ ] **Join yourself:** try `/claim`, `/market`, `/pets`, `/merl`, felling a tree, a death message, and that maintenance mode is **off**.
-8. [ ] Make a **backup** in the panel and check that it finishes.
+5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and in Market (also Pets there). The market starts empty on the live world; the pet shop is set up in the panel, so it carries over, and nobody owns a pet yet.
+6. [ ] **Links:** under Public pages → Info page → Links in the game, check the address for `/info` and your link commands (like `/website` and `/discord`). The server log says when a link's name is already taken by another command.
+7. [ ] **Discord:** the bridge posts "The server is online"; check that chat and joins go both ways.
+8. [ ] **Join yourself:** try `/claim`, `/market`, `/merl`, felling a tree, a death message, and that maintenance mode is **off**. For pets: give yourself one with `/pets grant <you> <pet>`, take it out with `/pets on`, and try a few moves and particles in `/pets`. Click the links from `/info` and your link commands.
+9. [ ] Make a **backup** in the panel and check that it finishes.
 
 ## 7. Afterwards
 
 - [ ] **Website:** follow `PANEL-MIGRATION.md` in the website repo (new SFTP and database secrets; profiles read links and claims from the panel).
-- [ ] **A Realm Recrafted:** push the README update and the removal of the config conversion; delete that repo's SFTP secrets.
+- [ ] **A Realm Recrafted:** push the README update (Market, Pets, Land Claims) and the removal of the config conversion; delete that repo's SFTP secrets.
+- [ ] **Permissions:** with a permissions mod, `nicecontrolcenter.pets.admin` allows `/pets grant` and `/pets revoke` (operators level 2 without one); `nicecontrolcenter.pets.use`, `nicecontrolcenter.market.use` and `nicecontrolcenter.links.use` are for everyone by default.
 - [ ] **Public pages:** switch on the public info page and the map under Public pages → Info page / World → Map, if they aren't already.
 - [ ] **Crafty:** once all of this has run fine for a few days, retire the old Crafty server (keep its last backup).
 

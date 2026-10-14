@@ -3938,7 +3938,7 @@
     return [...$('pn-links').querySelectorAll('.pn-link-row')].map((row) => {
       const v = (k) => row.querySelector(`[data-k="${k}"]`).value.trim();
       return { command: v('command'), aliases: v('aliases').split(',').map((a) => a.trim()).filter(Boolean), text: v('text'), label: v('label'), url: v('url') };
-    }).filter((l) => l.command || l.url);
+    }).filter((l) => l.command || l.url || l.text || l.label || l.aliases.length);
   }
 
   $('pn-links-add').addEventListener('click', () => {
@@ -4900,7 +4900,7 @@
     const face = $('pn-pt-face');
     try {
       const res = await api('api/pets/texture', { texture: e.target.value });
-      face.src = 'info/heads/' + res.head;
+      face.src = 'api/pets/head/' + res.head;
       face.hidden = false;
       formMsg('pn-pt-edit-msg', '', true);
     } catch (err) {
@@ -4916,7 +4916,10 @@
       saleEnds: f.always.checked || !f.saleEnd.value ? 0 : new Date(f.saleEnd.value + 'T23:59:59').getTime(), stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
     const before = ptData.settings.pets.find((p) => p.id === ptEditing);
     if (before && before.retired) Object.assign(pet, { price: before.price, saleEnds: before.saleEnds, stock: before.stock, forSale: false, retired: true });
-    if (!f.always.checked && !(before && before.retired) && (!f.saleEnd.value || pet.saleEnds < Date.now())) return formMsg('pn-pt-edit-msg', 'Pick a day from today on, or switch on Always on sale.', false);
+    // A day in the past only matters when it was just picked (an ended sale can stay as it is).
+    const sameDay = before && before.saleEnds && pet.saleEnds && ptDay(before.saleEnds) === f.saleEnd.value;
+    if (sameDay) pet.saleEnds = before.saleEnds;
+    if (!f.always.checked && !(before && before.retired) && !sameDay && (!f.saleEnd.value || pet.saleEnds < Date.now())) return formMsg('pn-pt-edit-msg', 'Pick a day from today on, or switch on Always on sale.', false);
     if (!f.unlimited.checked && pet.stock < 1) return formMsg('pn-pt-edit-msg', 'Type how many can be sold, or switch on No limit.', false);
     const pets = ptData.settings.pets.map((p) => (p.id === ptEditing ? pet : p));
     if (!ptEditing) pets.push(pet);

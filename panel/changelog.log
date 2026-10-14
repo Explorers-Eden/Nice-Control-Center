@@ -1,3 +1,10 @@
+## 1.12.6
+- Market → Pets: a pet whose sale has ended can be edited (name, head, price) without picking a new day
+- Head pictures: the public address only serves the faces of the shop's pets (before, anyone could make the panel fetch and keep any skin); the preview while adding a pet needs a sign-in
+- The public info page reads the pet numbers at most every 30 seconds instead of asking the mod on every visit
+- Links in the game: a half-filled link row gives an error on Save instead of quietly disappearing
+- GO-LIVE.md: pets, link commands, the market tables to clear and the permissions
+
 ## 1.12.5
 - Public pages → Info page → Links in the game: add your own link commands (command, more names, text before the link, link text, address); they apply within a few seconds without a restart. The website is one of them now (the one set before moves into the list as /website), and /info's text before the link and link text can be set (needs mod 1.13.6)
 

@@ -134,12 +134,13 @@ public final class PetStore {
 		if (o == null || o.pets.isEmpty()) {
 			msg = Component.literal("You don't have a pet yet: get one with /pets").withStyle(ChatFormatting.RED);
 		} else if (on) {
-			Pets.Owned out = o.active != null ? o.owned(o.active) : o.takeOut();
+			Pets.Owned out = o.active != null && o.owned(o.active) != null ? o.owned(o.active) : o.takeOut();
 			msg = Component.literal(name(out) + " is out").withStyle(ChatFormatting.GREEN);
 		} else if (o.active == null) {
 			msg = Component.literal("Your pet is already put away").withStyle(ChatFormatting.GRAY);
 		} else {
-			String n = name(o.owned(o.active));
+			Pets.Owned was = o.owned(o.active);
+			String n = was == null ? "Your pet" : name(was);
 			o.putAway();
 			msg = Component.literal(n + " is put away").withStyle(ChatFormatting.YELLOW);
 		}
@@ -236,11 +237,12 @@ public final class PetStore {
 	public static Map<String, Object> state() {
 		reloadSettings();
 		Map<String, Object> out = new LinkedHashMap<>();
-		out.put("sold", data.sold);
+		// Copies: the answer is turned into JSON on another thread.
+		out.put("sold", new LinkedHashMap<>(data.sold));
 		Map<String, Integer> owners = new LinkedHashMap<>();
 		for (Pets.Owner o : data.owners.values()) for (Pets.Owned p : o.pets) owners.merge(p.pet, 1, Integer::sum);
 		out.put("owners", owners);
-		out.put("purchases", data.purchases);
+		out.put("purchases", new java.util.ArrayList<>(data.purchases));
 		return out;
 	}
 

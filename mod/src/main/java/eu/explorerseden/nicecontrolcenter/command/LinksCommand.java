@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.permissions.PermissionLevel;
 
+import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.CommandNode;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import net.minecraft.server.MinecraftServer;
@@ -24,6 +25,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,17 +38,20 @@ import java.util.Set;
  */
 public final class LinksCommand {
 	public static final String PERMISSION_USE = "nicecontrolcenter.links.use";
-	/** Own link commands registered in the current dispatcher. */
-	private static final Set<String> registered = new HashSet<>();
+	/** Own link commands registered in the current dispatcher, with what they run (to tell them from other mods'). */
+	private static final Map<String, Command<CommandSourceStack>> registered = new HashMap<>();
 	private static long modified = -1;
+	/** A new dispatcher waits for the own links until the next check, after every mod has added its commands. */
+	private static boolean pending;
 
 	private LinksCommand() {
 	}
 
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-		// A new dispatcher (server start or /reload): nothing of ours is in it yet.
+		// A new dispatcher (server start or /reload): nothing of ours is in it yet. The own links come a moment
+		// later, so a name another mod registers after us is seen as taken.
 		registered.clear();
-		addCustom(dispatcher, links().custom);
+		pending = true;
 		dispatcher.register(Commands.literal("info")
 				.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
 				.executes(ctx -> {
@@ -66,18 +71,19 @@ public final class LinksCommand {
 		} catch (IOException e) {
 			return;
 		}
-		if (now == modified) return;
-		boolean first = modified < 0;
+		if (now == modified && !pending) return;
 		modified = now;
-		if (first) return;
+		pending = false;
 		CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
 		List<Links.Custom> custom = links().custom;
 		Set<String> wanted = new HashSet<>();
 		for (Links.Custom c : custom) wanted.addAll(c.names());
 		boolean changed = false;
-		for (String name : new ArrayList<>(registered)) {
+		for (String name : new ArrayList<>(registered.keySet())) {
 			if (wanted.contains(name)) continue;
-			remove(dispatcher.getRoot(), name);
+			// Only if it's still ours (another mod may have added to the same name).
+			CommandNode<CommandSourceStack> node = dispatcher.getRoot().getChild(name);
+			if (node != null && node.getCommand() == registered.get(name)) remove(dispatcher.getRoot(), name);
 			registered.remove(name);
 			changed = true;
 		}
@@ -91,15 +97,16 @@ public final class LinksCommand {
 	private static void addCustom(CommandDispatcher<CommandSourceStack> dispatcher, List<Links.Custom> custom) {
 		for (Links.Custom c : custom) {
 			for (String name : c.names()) {
-				if (registered.contains(name)) continue;
+				if (registered.containsKey(name)) continue;
 				if (dispatcher.getRoot().getChild(name) != null) {
 					NiceControlCenter.LOGGER.warn("The link command /{} isn't added: another command has that name", name);
 					continue;
 				}
+				Command<CommandSourceStack> run = ctx -> custom(ctx.getSource(), name);
 				dispatcher.register(Commands.literal(name)
 						.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
-						.executes(ctx -> custom(ctx.getSource(), name)));
-				registered.add(name);
+						.executes(run));
+				registered.put(name, run);
 			}
 		}
 	}

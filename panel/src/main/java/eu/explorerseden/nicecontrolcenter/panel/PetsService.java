@@ -45,6 +45,9 @@ final class PetsService {
 	private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NORMAL).build();
 	/** Skins that couldn't be fetched, and when (tried again after a while). */
 	private final Map<String, Long> failed = new ConcurrentHashMap<>();
+	/** The last pet numbers for the public page, so visitors don't each ask the mod. */
+	private volatile Map<String, Object> publicState;
+	private volatile long publicStateAt;
 
 	PetsService(Path serverDir, Path dataDir, Supervisor server, DashboardProxy dashboard, Audit audit) {
 		this.serverDir = serverDir;
@@ -99,7 +102,11 @@ final class PetsService {
 	List<Map<String, Object>> publicView() {
 		Pets.Settings s = settings();
 		if (!s.enabled) return null;
-		Map<String, Object> sold = (Map<String, Object>) state().getOrDefault("sold", Map.of());
+		if (publicState == null || System.currentTimeMillis() - publicStateAt > 30_000) {
+			publicState = state();
+			publicStateAt = System.currentTimeMillis();
+		}
+		Map<String, Object> sold = (Map<String, Object>) publicState.getOrDefault("sold", Map.of());
 		List<Map<String, Object>> out = new ArrayList<>();
 		for (Pets.Pet p : s.pets) {
 			if (!p.onSale()) continue;
@@ -125,6 +132,7 @@ final class PetsService {
 		if (Files.exists(f)) return f;
 		Long when = failed.get(hash);
 		if (when != null && System.currentTimeMillis() - when < 600_000) return null;
+		if (failed.size() > 500) failed.clear();
 		try {
 			HttpResponse<byte[]> res = http.send(HttpRequest.newBuilder(URI.create("https://textures.minecraft.net/texture/" + hash)).timeout(Duration.ofSeconds(10)).build(),
 					HttpResponse.BodyHandlers.ofByteArray());
@@ -210,9 +218,20 @@ final class PetsService {
 			}
 			json(ctx, Map.of("texture", t, "head", Pets.skinHash(t)));
 		}));
-		// Faces: public, for the info page.
-		routes.get("/info/heads/{hash}", ctx -> {
+		// Any face, for the preview while adding a pet (signed in only).
+		routes.get("/api/pets/head/{hash}", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Path f = head(ctx.pathParam("hash").replaceFirst("\\.png$", ""));
+			if (f == null) {
+				ctx.status(HttpStatus.NOT_FOUND);
+				return;
+			}
+			ctx.contentType("image/png").header("Cache-Control", "private, max-age=604800").result(Files.readAllBytes(f));
+		}));
+		// Faces of the shop's pets: public, for the info page (only those, so nobody can make the panel fetch others).
+		routes.get("/info/heads/{hash}", ctx -> {
+			String hash = ctx.pathParam("hash").replaceFirst("\\.png$", "");
+			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture)));
+			Path f = known ? head(hash) : null;
 			if (f == null) {
 				ctx.status(HttpStatus.NOT_FOUND);
 				return;
