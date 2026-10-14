@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.5
+- /pets grant <player> <pet> and /pets revoke <player> <pet> for operators: pet names are suggested while typing, offline players work too (permission nicecontrolcenter.pets.admin)
+- /info and /website for everyone: a clickable link to the server's info page and website, both set in the panel (permission nicecontrolcenter.links.use)
+
 ## 1.13.4
 - Pet particles start outside the head instead of inside it: wisps and flames rise off the top, snow and cherry petals fall from below, magic letters fly into the head, glow, sparks and fireflies float around it
 - Bubbles are gone from the particle choices (they barely showed); pets that had them have no particles now

@@ -54,6 +54,7 @@ public class NiceControlCenter implements ModInitializer {
 		ErrorWatcher.ignore(config.error_ignore);
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> ControlCenterCommand.register(dispatcher));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> eu.explorerseden.nicecontrolcenter.command.LinksCommand.register(dispatcher));
 
 		ServerLifecycleEvents.SERVER_STARTED.register(NiceControlCenter::start);
 		// Under the panel: Discord linking at login, chat and game events for the Discord bridge.

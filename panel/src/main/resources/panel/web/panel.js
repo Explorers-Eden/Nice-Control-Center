@@ -3893,6 +3893,10 @@
     for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders', 'tweaks', 'market']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
+    f.website.value = s.website || '';
+    f.infoAddress.value = s.infoAddress || '';
+    f.infoAddress.placeholder = infoData.autoAddress || 'https://info.example.com';
+    $('pn-info-auto').textContent = infoData.autoAddress ? `Empty: ${infoData.autoAddress}` : 'Set this, INFO_HOST or PANEL_PUBLIC_URL, or /info has no link';
     // While it's off, the button opens an admin preview here (the public address shows "switched off").
     const url = !s.enabled ? new URL('info/?preview=1', location.href).href : infoData.host ? `https://${infoData.host}/` : new URL('info/', location.href).href;
     $('pn-info-open').href = url;
@@ -3932,6 +3936,7 @@
       claims: f.claims.checked, borders: f.borders.checked, tweaks: f.tweaks.checked, market: f.market.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
+      website: f.website.value.trim(), infoAddress: f.infoAddress.value.trim(),
     };
     try {
       await api('api/info', body);

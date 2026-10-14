@@ -31,6 +31,7 @@ sourceSets {
 			include "eu/explorerseden/nicecontrolcenter/Tweaks.java"
 			include "eu/explorerseden/nicecontrolcenter/Market.java"
 			include "eu/explorerseden/nicecontrolcenter/Pets.java"
+			include "eu/explorerseden/nicecontrolcenter/Links.java"
 			include "eu/explorerseden/nicecontrolcenter/core/SystemMetrics.java"
 		}
 	}

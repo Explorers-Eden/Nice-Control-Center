@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import eu.explorerseden.nicecontrolcenter.Json;
+import eu.explorerseden.nicecontrolcenter.Links;
 import eu.explorerseden.nicecontrolcenter.Performance;
 import io.javalin.http.HttpStatus;
 import io.javalin.router.JavalinDefaultRoutingApi;
@@ -54,6 +55,36 @@ final class InfoPage {
 		public List<String> hiddenProperties = new ArrayList<>();
 		/** Config files (paths under config/) shown on the page. */
 		public List<String> configs = new ArrayList<>();
+		/** The page's address for /info in the game; empty works it out (INFO_HOST or PANEL_PUBLIC_URL). */
+		public String infoAddress = "";
+		/** The server's website for /website in the game. */
+		public String website = "";
+	}
+
+	/** The info page's address players get with /info, or empty. */
+	String publicAddress() {
+		Settings s = settings;
+		return s.infoAddress != null && !s.infoAddress.isBlank() ? s.infoAddress : autoAddress();
+	}
+
+	/** The address worked out from INFO_HOST or PANEL_PUBLIC_URL, or empty. */
+	String autoAddress() {
+		if (!host.isEmpty()) return "https://" + host + "/";
+		String panel = Panel.env("PANEL_PUBLIC_URL", "").strip().replaceFirst("/+$", "");
+		return panel.isEmpty() ? "" : panel + "/info/";
+	}
+
+	/** The links for /info and /website, in the server's config folder for the mod. */
+	void writeLinks() {
+		Links.Settings l = new Links.Settings();
+		l.info = publicAddress();
+		l.infoOn = settings.enabled;
+		l.website = settings.website == null ? "" : settings.website;
+		try {
+			Links.write(serverDir.resolve("config").resolve(Links.FILE), l);
+		} catch (IOException e) {
+			System.err.println("Couldn't write " + Links.FILE + ": " + e);
+		}
 	}
 
 	/** Plain names for server.properties, so the page reads without knowing the keys. */
@@ -148,6 +179,7 @@ final class InfoPage {
 		this.audit = audit;
 		this.host = Panel.env("INFO_HOST", "").toLowerCase();
 		this.settings = readSettings();
+		writeLinks();
 	}
 
 	private Settings readSettings() {
@@ -157,6 +189,8 @@ final class InfoPage {
 				if (s != null) {
 					if (s.hiddenProperties == null) s.hiddenProperties = new ArrayList<>();
 					if (s.configs == null) s.configs = new ArrayList<>();
+					if (s.infoAddress == null) s.infoAddress = "";
+					if (s.website == null) s.website = "";
 					return s;
 				}
 			}
@@ -409,6 +443,7 @@ final class InfoPage {
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("settings", settings);
 			out.put("host", host);
+			out.put("autoAddress", autoAddress());
 			JsonObject src = fromMod();
 			List<String> keys = new ArrayList<>();
 			if (src.has("properties")) {
@@ -434,6 +469,14 @@ final class InfoPage {
 			if (next.intro == null) next.intro = "";
 			if (next.hiddenProperties == null) next.hiddenProperties = new ArrayList<>();
 			if (next.configs == null) next.configs = new ArrayList<>();
+			String website = Links.url(next.website);
+			String address = Links.url(next.infoAddress);
+			if (website == null || address == null) {
+				error(ctx, HttpStatus.BAD_REQUEST, "The website and the info page address must be web addresses, like https://example.com.");
+				return;
+			}
+			next.website = website;
+			next.infoAddress = address;
 			Path config = serverDir.resolve("config").normalize();
 			for (String rel : next.configs) {
 				if (!serverDir.resolve(rel).normalize().startsWith(config)) {
@@ -443,6 +486,7 @@ final class InfoPage {
 			}
 			Files.writeString(settingsFile, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(next));
 			settings = next;
+			writeLinks();
 			audit.log(me.name(), "info.settings", (next.enabled ? "on" : "off") + ", " + next.configs.size() + " config files", clientIp(ctx));
 			json(ctx, Map.of("ok", true));
 		}));

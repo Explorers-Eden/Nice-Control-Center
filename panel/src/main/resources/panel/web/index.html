@@ -1092,6 +1092,14 @@
 					<label class="pn-field">Text on top (blank lines start a new paragraph)<textarea name="intro" rows="4" maxlength="4000"></textarea></label>
 				</section>
 				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> Links in the game</h3>
+					<p class="np-card-intro">Every player can type <code>/info</code> for a clickable link to this page and <code>/website</code> for your website.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Website for /website<small class="pn-comment">Empty: /website says there's none</small></span><input type="text" name="website" maxlength="300" placeholder="https://example.com"></label>
+						<label class="np-form-row"><span>Address for /info<small class="pn-comment" id="pn-info-auto">Empty: worked out by the panel</small></span><input type="text" name="infoAddress" maxlength="300"></label>
+					</div>
+				</section>
+				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-check"></i> What's on it</h3>
 					<div class="np-form-grid">
 						<label class="np-form-row">Server settings<span class="np-switch"><input type="checkbox" name="properties"><span></span></span></label>

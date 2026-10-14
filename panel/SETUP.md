@@ -190,6 +190,8 @@ Public pages → Info page: a read-only page where players can look up the serve
 - **Players → Players:** a player's card shows their pets; give one (free, for good), take it out or put it away, change how it moves, or take it away.
 - **Recent pet purchases**, and per pet how many were sold and how many players have it.
 
+**Links in the game** (Public pages → Info page): players type `/info` for a clickable link to the info page and `/website` for your website. Set the website there. The info page's address comes from `INFO_HOST` or `PANEL_PUBLIC_URL` unless you type one; `/info` says there's no page while it's switched off.
+
 ## World: pregenerate and trim
 
 The **World** tab works on one area: dimension, center, radius, square or circle. It can be filled in from the world border or centered on spawn.

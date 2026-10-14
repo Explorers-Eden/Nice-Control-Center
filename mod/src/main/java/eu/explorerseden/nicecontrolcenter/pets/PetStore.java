@@ -29,6 +29,8 @@ import java.util.UUID;
  */
 public final class PetStore {
 	public static final String PERMISSION_USE = "nicecontrolcenter.pets.use";
+	/** /pets grant and /pets revoke (operators by default). */
+	public static final String PERMISSION_ADMIN = "nicecontrolcenter.pets.admin";
 	private static Pets.Data data = new Pets.Data().fill();
 	private static Pets.Settings settings = new Pets.Settings().fill();
 	private static long settingsModified = -1;
@@ -75,7 +77,47 @@ public final class PetStore {
 					return 1;
 				})
 				.then(Commands.literal("on").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), true)))
-				.then(Commands.literal("off").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), false))));
+				.then(Commands.literal("off").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), false)))
+				.then(Commands.literal("grant").requires(Permissions.require(PERMISSION_ADMIN, PermissionLevel.GAMEMASTERS))
+						.then(Commands.argument("player", net.minecraft.commands.arguments.GameProfileArgument.gameProfile())
+								.then(Commands.argument("pet", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+										.suggests((ctx, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(petNames(), b))
+										.executes(ctx -> grant(ctx, true)))))
+				.then(Commands.literal("revoke").requires(Permissions.require(PERMISSION_ADMIN, PermissionLevel.GAMEMASTERS))
+						.then(Commands.argument("player", net.minecraft.commands.arguments.GameProfileArgument.gameProfile())
+								.then(Commands.argument("pet", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+										.suggests((ctx, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(petNames(), b))
+										.executes(ctx -> grant(ctx, false))))));
+	}
+
+	private static List<String> petNames() {
+		reloadSettings();
+		return settings.pets.stream().map(p -> p.name).toList();
+	}
+
+	/** /pets grant|revoke &lt;player&gt; &lt;pet&gt;: the pet by name (or id), for one or more players. */
+	private static int grant(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx, boolean give)
+			throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+		CommandSourceStack source = ctx.getSource();
+		reloadSettings();
+		String wanted = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "pet").strip();
+		Pets.Pet pet = settings.pets.stream().filter(p -> p.name.equalsIgnoreCase(wanted)).findFirst().orElse(settings.pet(wanted));
+		if (pet == null) {
+			source.sendFailure(Component.literal("There's no pet called \"" + wanted + "\"."));
+			return 0;
+		}
+		int done = 0;
+		for (net.minecraft.server.players.NameAndId who : net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(ctx, "player")) {
+			String error = adminAction(source.getServer(), who.id().toString(), who.name(), give ? "give" : "take", pet.id, null, source.getTextName());
+			if (error != null) {
+				source.sendFailure(Component.literal(who.name() + (give ? " has " + pet.name + " already." : " doesn't have " + pet.name + ".")));
+				continue;
+			}
+			done++;
+			String name = who.name();
+			source.sendSuccess(() -> Component.literal((give ? "Gave " + pet.name + " to " : "Took " + pet.name + " away from ") + name + "."), true);
+		}
+		return done;
 	}
 
 	private static int off(ServerPlayer player) {
