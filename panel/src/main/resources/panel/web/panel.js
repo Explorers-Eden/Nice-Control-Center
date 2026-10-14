@@ -4861,6 +4861,7 @@
     ptEditing = pet ? pet.id : null;
     const f = $('pn-pt-edit');
     f.name.value = pet ? pet.name : '';
+    f.description.value = pet ? pet.description || '' : '';
     f.texture.value = pet ? pet.texture : '';
     f.price.value = pet ? pet.price : '';
     f.always.checked = pet ? !pet.saleEnds : true;
@@ -4912,7 +4913,7 @@
   $('pn-pt-edit').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
-    const pet = { id: ptEditing || undefined, name: f.name.value.trim(), texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
+    const pet = { id: ptEditing || undefined, name: f.name.value.trim(), description: f.description.value.trim(), texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
       saleEnds: f.always.checked || !f.saleEnd.value ? 0 : new Date(f.saleEnd.value + 'T23:59:59').getTime(), stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
     const before = ptData.settings.pets.find((p) => p.id === ptEditing);
     if (before && before.retired) Object.assign(pet, { price: before.price, saleEnds: before.saleEnds, stock: before.stock, forSale: false, retired: true });

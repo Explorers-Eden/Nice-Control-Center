@@ -194,9 +194,9 @@
           { id: 'rules', title: 'Rules', icon: 'bi-rulers', body: rules },
           { id: 'roles', title: 'Member roles', icon: 'bi-people', sub: 'what members may do', body: roles }] });
     }
-    const petTiles = (cur, coin) => (d.pets || []).map((p) => `<div class="in-tile" data-search="${esc(p.name.toLowerCase())} pet">
+    const petTiles = (cur, coin) => (d.pets || []).map((p) => `<div class="in-tile" data-search="${esc((p.name + ' ' + (p.description || '')).toLowerCase())} pet">
           <span class="in-slot">${p.head ? `<img class="in-head" src="heads/${esc(p.head)}" alt="" loading="lazy">` : '<i class="bi bi-emoji-smile"></i>'}</span>
-          <span class="in-tile__text"><b>${esc(p.name)}</b>
+          <span class="in-tile__text"><b>${esc(p.name)}</b>${p.description ? `<small class="in-tile__extra">${esc(p.description)}</small>` : ''}
             <span class="in-tile__price">${p.price ? `${coin}${Number(p.price).toLocaleString()} <small>${esc(p.price === 1 ? cur : cur + 's')}</small>` : 'Free'}</span>
             ${p.until || p.left > 0 ? `<small class="in-tile__seller"><i class="bi bi-clock"></i> ${[p.until ? 'on sale until ' + new Date(p.until).toLocaleDateString([], { dateStyle: 'medium' }) : '', p.left > 0 ? Number(p.left).toLocaleString() + ' left' : ''].filter(Boolean).join(' · ')}</small>` : ''}</span></div>`).join('');
     const petChild = (cur, coin = '') => ({ id: 'pets', title: 'Pets', icon: 'bi-emoji-smile', sub: 'floating heads that follow you, only for looks', wide: true,

@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.11
+- Pets can have a description (set in the panel): shown on the pet's page in the shop and under each pet in /pets
+
 ## 1.13.10
 - Market: if your inventory changes while the sell menu is open (something used up or picked up), listing asks you to pick the item again instead of listing a different item at your price
 - Claims: flint and steel, spawn eggs, item frames and the like can't put things inside someone else's claim from just outside its edge

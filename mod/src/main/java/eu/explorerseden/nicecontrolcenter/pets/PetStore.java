@@ -222,6 +222,12 @@ public final class PetStore {
 	}
 
 	/** The head to show: the shop's current one if the pet is still there, else the copy from when it was bought. */
+	/** The pet's description from the shop (also while retired); empty when it has none. */
+	static String description(Pets.Owned owned) {
+		Pets.Pet p = settings.pet(owned.pet);
+		return p == null ? "" : p.description;
+	}
+
 	static String texture(Pets.Owned owned) {
 		Pets.Pet p = settings.pet(owned.pet);
 		return p != null ? p.texture : owned.texture;

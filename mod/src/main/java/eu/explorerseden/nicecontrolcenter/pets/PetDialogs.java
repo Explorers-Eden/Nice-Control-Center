@@ -127,7 +127,7 @@ public final class PetDialogs {
 				MutableComponent desc = Component.empty()
 						.append(Component.literal(PetStore.name(o)).withStyle(ChatFormatting.WHITE))
 						.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
-						.append(Component.literal("\n").withStyle(ChatFormatting.GRAY))
+						.append(Component.literal("\n" + (PetStore.description(o).isEmpty() ? "" : PetStore.description(o) + "\n")).withStyle(ChatFormatting.GRAY))
 						.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
 								: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
 				body.add(headRow(player, PetStore.texture(o), desc));
@@ -210,7 +210,7 @@ public final class PetDialogs {
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
 		body.add(headRow(player, pet.texture, Component.literal(pet.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
-				.append(Component.literal("\nA floating head that follows you").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+				.append(Component.literal("\n" + (pet.description.isEmpty() ? "A floating head that follows you" : pet.description)).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 		// The facts in one line: label grey, value bright.
 		MutableComponent facts = Component.empty()
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(pet.price == 0 ? "Free" : amount(pet.price)).withStyle(ChatFormatting.GOLD));

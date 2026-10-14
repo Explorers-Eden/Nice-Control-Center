@@ -1,3 +1,6 @@
+## 1.12.10
+- Market → Pets: an optional description per pet (up to 200 characters), shown to players in the pet menus and on the info page's pet tiles (needs mod 1.13.11)
+
 ## 1.12.9
 - World trim and outer wilds reset: chunks the border runs through are kept whole, so the outer few blocks of the permanent area (and claims reaching its edge) are never reset
 - SFTP: copying on the server (the copy-file extension) follows the same rules as uploads (read-only accounts, the running world) and goes to the audit log; links are refused there too

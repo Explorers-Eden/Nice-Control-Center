@@ -114,6 +114,7 @@ final class PetsService {
 			if (left == 0) continue;
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("name", p.name);
+			if (!p.description.isEmpty()) m.put("description", p.description);
 			m.put("price", p.price);
 			if (p.saleEnds != 0) m.put("until", p.saleEnds);
 			m.put("left", left);

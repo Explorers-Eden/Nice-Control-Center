@@ -131,6 +131,8 @@ public final class Pets {
 	public static final class Pet {
 		public String id;
 		public String name;
+		/** Shown to players in the pet menus and on the info page; empty for none. */
+		public String description = "";
 		/** The head's skin: the base64 "textures" value (like on a player head). */
 		public String texture;
 		/** In the market's currency; 0 is free. */
@@ -172,6 +174,7 @@ public final class Pets {
 			for (Pet p : pets) {
 				if (p.id == null || p.id.isBlank()) p.id = UUID.randomUUID().toString().substring(0, 8);
 				if (p.name != null) p.name = p.name.strip();
+				p.description = p.description == null ? "" : p.description.replaceAll("\\s+", " ").strip();
 				String t = texture(p.texture);
 				if (t != null) p.texture = t;
 			}
@@ -193,6 +196,7 @@ public final class Pets {
 		for (Pet p : s.pets) {
 			if (!p.id.matches("[A-Za-z0-9_-]{1,40}") || !ids.add(p.id)) return "A pet has a bad or doubled id.";
 			if (p.name == null || p.name.isEmpty() || p.name.length() > 32) return "Every pet needs a name of 1 to 32 characters.";
+			if (p.description.length() > 200) return "The description of " + p.name + " is up to 200 characters.";
 			if (texture(p.texture) == null) return "The head texture of " + p.name + " isn't a skin value (base64 from a head generator) or a textures.minecraft.net link.";
 			if (p.price < 0 || p.price > 10_000_000) return "The price of " + p.name + " is 0 to 10,000,000.";
 			if (p.saleEnds < 0 || p.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "The sale of " + p.name + " ends within ten years, or never.";
