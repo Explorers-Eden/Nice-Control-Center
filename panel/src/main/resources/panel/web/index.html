@@ -1093,11 +1093,16 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> Links in the game</h3>
-					<p class="np-card-intro">Every player can type <code>/info</code> for a clickable link to this page and <code>/website</code> for your website.</p>
+					<p class="np-card-intro">Every player can type <code>/info</code> for a clickable link to this page, and the link commands you add below (like <code>/website</code> or <code>/discord</code>).</p>
 					<div class="np-form-grid">
-						<label class="np-form-row"><span>Website for /website<small class="pn-comment">Empty: /website says there's none</small></span><input type="text" name="website" maxlength="300" placeholder="https://example.com"></label>
 						<label class="np-form-row"><span>Address for /info<small class="pn-comment" id="pn-info-auto">Empty: worked out by the panel</small></span><input type="text" name="infoAddress" maxlength="300"></label>
+						<label class="np-form-row">/info: text before the link<input type="text" name="infoText" maxlength="200" placeholder="Everything about how this server works:"></label>
+						<label class="np-form-row">/info: link text<input type="text" name="infoLabel" maxlength="80" placeholder="Server info"></label>
 					</div>
+					<h4 class="pn-pt-subhead">Own link commands</h4>
+					<p class="pn-hint">Like <code>/website</code>, <code>/discord</code> or <code>/vote</code>: each gets a command (and more names if you like) for every player, with a clickable link. Changes apply within a few seconds, no restart needed. A name another command already uses is skipped.</p>
+					<div class="pn-links" id="pn-links"></div>
+					<button type="button" class="np-btn small" id="pn-links-add"><i class="bi bi-plus-lg"></i> Add a link</button>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-check"></i> What's on it</h3>

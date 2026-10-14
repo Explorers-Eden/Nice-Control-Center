@@ -786,3 +786,9 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-pt-pair input[type=number] { width: 110px; }
 .pn-pt-pair input[type=date] { width: 150px; }
 .pn-pt-pair input:disabled { opacity: .4; }
+
+.pn-links { display: grid; gap: 8px; margin: 8px 0 10px; }
+.pn-link-row { display: grid; grid-template-columns: 1fr 1fr 1.4fr 1fr 1.6fr auto; gap: 8px; align-items: end; padding: 10px; border-radius: 10px; background: rgba(var(--ink),.04); }
+.pn-link-row .pn-field { margin: 0; font-size: var(--fs-sm); }
+.pn-link-row input { width: 100%; box-sizing: border-box; }
+@media (max-width: 900px) { .pn-link-row { grid-template-columns: 1fr 1fr; } }

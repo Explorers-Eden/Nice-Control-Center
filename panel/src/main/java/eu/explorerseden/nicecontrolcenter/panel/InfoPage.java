@@ -57,8 +57,13 @@ final class InfoPage {
 		public List<String> configs = new ArrayList<>();
 		/** The page's address for /info in the game; empty works it out (INFO_HOST or PANEL_PUBLIC_URL). */
 		public String infoAddress = "";
-		/** The server's website for /website in the game. */
-		public String website = "";
+		/** Before 1.12.5 the website had its own field; it's moved into {@link #links} as /website when read. */
+		public String website;
+		/** What /info says before the link, and the link's text. */
+		public String infoText = "Everything about how this server works:";
+		public String infoLabel = "Server info";
+		/** Own link commands for the game (like /website or /discord). */
+		public List<Links.Custom> links = new ArrayList<>();
 	}
 
 	/** The info page's address players get with /info, or empty. */
@@ -74,12 +79,14 @@ final class InfoPage {
 		return panel.isEmpty() ? "" : panel + "/info/";
 	}
 
-	/** The links for /info and /website, in the server's config folder for the mod. */
+	/** The links for /info and the own link commands, in the server's config folder for the mod. */
 	void writeLinks() {
 		Links.Settings l = new Links.Settings();
 		l.info = publicAddress();
 		l.infoOn = settings.enabled;
-		l.website = settings.website == null ? "" : settings.website;
+		l.infoText = settings.infoText == null ? "" : settings.infoText;
+		l.infoLabel = settings.infoLabel == null || settings.infoLabel.isBlank() ? "Server info" : settings.infoLabel;
+		l.custom = settings.links == null ? new ArrayList<>() : settings.links;
 		try {
 			Links.write(serverDir.resolve("config").resolve(Links.FILE), l);
 		} catch (IOException e) {
@@ -190,7 +197,17 @@ final class InfoPage {
 					if (s.hiddenProperties == null) s.hiddenProperties = new ArrayList<>();
 					if (s.configs == null) s.configs = new ArrayList<>();
 					if (s.infoAddress == null) s.infoAddress = "";
-					if (s.website == null) s.website = "";
+					if (s.links == null) s.links = new ArrayList<>();
+					if (s.infoText == null) s.infoText = "";
+					if (s.infoLabel == null || s.infoLabel.isBlank()) s.infoLabel = "Server info";
+					if (s.website != null && !s.website.isBlank() && s.links.stream().noneMatch(l -> l.names().contains("website"))) {
+						Links.Custom w = new Links.Custom();
+						w.command = "website";
+						w.text = "Our website:";
+						w.url = s.website;
+						s.links.add(0, w);
+					}
+					s.website = null;
 					return s;
 				}
 			}
@@ -469,14 +486,25 @@ final class InfoPage {
 			if (next.intro == null) next.intro = "";
 			if (next.hiddenProperties == null) next.hiddenProperties = new ArrayList<>();
 			if (next.configs == null) next.configs = new ArrayList<>();
-			String website = Links.url(next.website);
 			String address = Links.url(next.infoAddress);
-			if (website == null || address == null) {
-				error(ctx, HttpStatus.BAD_REQUEST, "The website and the info page address must be web addresses, like https://example.com.");
+			if (address == null) {
+				error(ctx, HttpStatus.BAD_REQUEST, "The info page address must be a web address, like https://info.example.com.");
 				return;
 			}
-			next.website = website;
 			next.infoAddress = address;
+			next.website = null;
+			next.infoText = next.infoText == null ? "" : next.infoText.strip();
+			next.infoLabel = next.infoLabel == null || next.infoLabel.isBlank() ? "Server info" : next.infoLabel.strip();
+			if (next.infoText.length() > 200 || next.infoLabel.length() > 80) {
+				error(ctx, HttpStatus.BAD_REQUEST, "The /info texts are too long.");
+				return;
+			}
+			if (next.links == null) next.links = new ArrayList<>();
+			String linkProblem = Links.validate(next.links);
+			if (linkProblem != null) {
+				error(ctx, HttpStatus.BAD_REQUEST, linkProblem);
+				return;
+			}
 			Path config = serverDir.resolve("config").normalize();
 			for (String rel : next.configs) {
 				if (!serverDir.resolve(rel).normalize().startsWith(config)) {

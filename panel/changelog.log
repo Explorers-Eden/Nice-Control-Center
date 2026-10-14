@@ -1,3 +1,6 @@
+## 1.12.5
+- Public pages → Info page → Links in the game: add your own link commands (command, more names, text before the link, link text, address); they apply within a few seconds without a restart. The website is one of them now (the one set before moves into the list as /website), and /info's text before the link and link text can be set (needs mod 1.13.6)
+
 ## 1.12.4
 - Public pages → Info page: "Links in the game" sets the website for /website and, if needed, the address /info gives (otherwise from INFO_HOST or PANEL_PUBLIC_URL) (needs mod 1.13.5)
 

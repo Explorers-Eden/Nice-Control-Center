@@ -80,7 +80,8 @@ The main command is `/nicecontrolcenter`, short `/ncc`. `[minutes]` is optional 
 | `/market` | **For all players (while the market is open):** the market menu. See [Gameplay tweaks and market](#gameplay-tweaks-and-market) |
 | `/pets` | **For all players (while pets are on):** your pets and the pet shop. `/pets on` / `/pets off` take your pet out or put it away |
 | `/pets grant <player> <pet>` / `/pets revoke <player> <pet>` | **Operators:** give a pet to a player or take it away (pet names are suggested; works for offline players too) |
-| `/info` / `/website` | **For all players:** a clickable link to the server's info page / website (set in the panel under Public pages → Info page) |
+| `/info` | **For all players:** a clickable link to the server's info page (its texts are set in the panel under Public pages → Info page) |
+| Own link commands | **For all players:** commands like `/website` or `/discord` with aliases, each with a clickable link, set in the panel (Public pages → Info page → Links in the game); added and removed while the server runs |
 
 ## Permissions
 
@@ -101,7 +102,7 @@ With LuckPerms or another Fabric permissions mod you can give parts to other pla
 | `nicecontrolcenter.market.use` | `/market` (everyone by default) |
 | `nicecontrolcenter.pets.use` | `/pets` (everyone by default) |
 | `nicecontrolcenter.pets.admin` | `/pets grant` and `/pets revoke` (operators level 2 by default) |
-| `nicecontrolcenter.links.use` | `/info` and `/website` (everyone by default) |
+| `nicecontrolcenter.links.use` | `/info` and the own link commands (everyone by default) |
 | `nicecontrolcenter.command.*` / `nicecontrolcenter.*` | Everything |
 
 Note: the dashboard itself has no per-player permissions. Anyone with a valid link can use all of it, within the limits you set in the config (`web_console_commands`, `web_player_actions`, …).

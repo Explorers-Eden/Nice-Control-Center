@@ -3893,8 +3893,10 @@
     for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders', 'tweaks', 'market']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
-    f.website.value = s.website || '';
+    f.infoText.value = s.infoText || '';
+    f.infoLabel.value = s.infoLabel || '';
     f.infoAddress.value = s.infoAddress || '';
+    renderLinks(s.links || []);
     f.infoAddress.placeholder = infoData.autoAddress || 'https://info.example.com';
     $('pn-info-auto').textContent = infoData.autoAddress ? `Empty: ${infoData.autoAddress}` : 'Set this, INFO_HOST or PANEL_PUBLIC_URL, or /info has no link';
     // While it's off, the button opens an admin preview here (the public address shows "switched off").
@@ -3920,6 +3922,36 @@
       || '<p class="pn-hint">No config files found.</p>';
   }
 
+  // Own link commands: one row each, read back when saving.
+  function renderLinks(links) {
+    $('pn-links').innerHTML = links.map((l) => `<div class="pn-link-row">
+      <label class="pn-field">Command<input type="text" data-k="command" value="${esc(l.command)}" placeholder="discord" maxlength="32"></label>
+      <label class="pn-field">More names<input type="text" data-k="aliases" value="${esc((l.aliases || []).join(', '))}" placeholder="dc, chat"></label>
+      <label class="pn-field">Text before the link<input type="text" data-k="text" value="${esc(l.text)}" placeholder="Join our Discord:" maxlength="200"></label>
+      <label class="pn-field">Link text<input type="text" data-k="label" value="${esc(l.label)}" placeholder="the address" maxlength="80"></label>
+      <label class="pn-field">Address<input type="text" data-k="url" value="${esc(l.url)}" placeholder="https://discord.gg/…" maxlength="300"></label>
+      <button type="button" class="np-btn small danger" data-link-remove title="Remove this link"><i class="bi bi-trash"></i></button>
+    </div>`).join('') || '<p class="pn-hint">No own links yet.</p>';
+  }
+
+  function readLinks() {
+    return [...$('pn-links').querySelectorAll('.pn-link-row')].map((row) => {
+      const v = (k) => row.querySelector(`[data-k="${k}"]`).value.trim();
+      return { command: v('command'), aliases: v('aliases').split(',').map((a) => a.trim()).filter(Boolean), text: v('text'), label: v('label'), url: v('url') };
+    }).filter((l) => l.command || l.url);
+  }
+
+  $('pn-links-add').addEventListener('click', () => {
+    renderLinks([...readLinks(), { command: '', aliases: [], text: '', label: '', url: '' }]);
+    $('pn-links').querySelector('.pn-link-row:last-child [data-k="command"]').focus();
+  });
+  $('pn-links').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-link-remove]');
+    if (!b) return;
+    b.closest('.pn-link-row').remove();
+    if (!$('pn-links').querySelector('.pn-link-row')) renderLinks([]);
+  });
+
   $('pn-info-filter').addEventListener('input', renderInfoFiles);
   $('pn-info-filter').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
   $('pn-info-configs').addEventListener('change', (e) => {
@@ -3936,7 +3968,8 @@
       claims: f.claims.checked, borders: f.borders.checked, tweaks: f.tweaks.checked, market: f.market.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
-      website: f.website.value.trim(), infoAddress: f.infoAddress.value.trim(),
+      infoAddress: f.infoAddress.value.trim(), infoText: f.infoText.value.trim(), infoLabel: f.infoLabel.value.trim(),
+      links: readLinks(),
     };
     try {
       await api('api/info', body);

@@ -55,6 +55,7 @@ public class NiceControlCenter implements ModInitializer {
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> ControlCenterCommand.register(dispatcher));
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> eu.explorerseden.nicecontrolcenter.command.LinksCommand.register(dispatcher));
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.command.LinksCommand::tick);
 
 		ServerLifecycleEvents.SERVER_STARTED.register(NiceControlCenter::start);
 		// Under the panel: Discord linking at login, chat and game events for the Discord bridge.

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.6
+- Own link commands from the panel, like /website, /discord or /vote, with more names (aliases): each answers with a clickable link. They're added and removed while the server runs (players' command lists update right away); a name another command already uses is skipped
+- /website is one of these now instead of a fixed command (a website set before becomes the /website link), and /info's text before the link and link text can be set
+
 ## 1.13.5
 - /pets grant <player> <pet> and /pets revoke <player> <pet> for operators: pet names are suggested while typing, offline players work too (permission nicecontrolcenter.pets.admin)
 - /info and /website for everyone: a clickable link to the server's info page and website, both set in the panel (permission nicecontrolcenter.links.use)
