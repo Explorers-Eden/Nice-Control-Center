@@ -6,7 +6,7 @@ Keep the Crafty server untouched (only stopped) until everything runs, so you ca
 
 ## 1. Before the day
 
-- [ ] **Updates:** pushed and built: panel image (1.12.8 or newer), Nice Control Center mod (1.13.9 or newer), Merl (1.6.2 or newer).
+- [ ] **Updates:** pushed and built: panel image (1.12.9 or newer), Nice Control Center mod (1.13.10 or newer), Merl (1.6.2 or newer).
 - [ ] **Live server:** note its Minecraft and Fabric version, its memory and Java flags, its port and its mod list.
 - [ ] **Discord links:** players linked through DiscordJustSync have to link again through the panel's bridge, because the old links aren't carried over. Tell them, or switch off "require a link" for the first days.
 - [ ] **Announce** the downtime (Discord, and in game).

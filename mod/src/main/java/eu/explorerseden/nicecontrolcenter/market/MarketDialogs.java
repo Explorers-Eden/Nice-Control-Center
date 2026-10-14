@@ -253,6 +253,13 @@ public final class MarketDialogs {
 		return kinds;
 	}
 
+	/** Which items the sell menu listed, in order: "slot" is a position in that list, which changes with the inventory. */
+	private static String signature(List<ItemStack> kinds) {
+		int h = 1;
+		for (ItemStack k : kinds) h = 31 * h + ItemStack.hashItemAndComponents(k);
+		return Integer.toHexString(h);
+	}
+
 	private static void sell(ServerPlayer player, String notice) {
 		List<ItemStack> kinds = kinds(player);
 		List<DialogBody> body = new ArrayList<>();
@@ -276,7 +283,7 @@ public final class MarketDialogs {
 				new Input("slot", new SingleOptionInput(250, entries, Component.literal("Item"), true)),
 				new Input("amount", new TextInput(120, Component.literal("How many"), true, "", 9, Optional.empty())),
 				new Input("price", new TextInput(120, Component.literal("Price each"), true, "", 9, Optional.empty())));
-		menu(player, "Market · Sell", body, inputs, List.of(button("List it", null, "list", args())), back("home", args()));
+		menu(player, "Market · Sell", body, inputs, List.of(button("List it", null, "list", args("kinds", signature(kinds)))), back("home", args()));
 	}
 
 	private static void mine(ServerPlayer player) {
@@ -417,6 +424,11 @@ public final class MarketDialogs {
 		int slot = num(in, "slot");
 		if (slot < 0 || slot >= kinds.size()) {
 			sell(player, "Pick an item.");
+			return;
+		}
+		// The inventory changed while the menu was open (something used up or picked up): the same slot is another item now.
+		if (!signature(kinds).equals(str(in, "kinds"))) {
+			sell(player, "Your inventory changed: pick the item again.");
 			return;
 		}
 		ItemStack like = kinds.get(slot);

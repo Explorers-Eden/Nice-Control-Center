@@ -28,10 +28,17 @@ import java.util.stream.Stream;
  */
 public final class Trimmer {
 	public record Area(String dimension, int x, int z, int radius, boolean circle, int keepVisitedMinutes) {
+		/**
+		 * Whether any part of the chunk lies inside (by block edges, like claims and the permanent area): a chunk
+		 * the border runs through is kept whole, so nothing inside the area is ever reset.
+		 */
 		boolean insideChunk(int cx, int cz) {
-			double dx = cx * 16 + 8 - x;
-			double dz = cz * 16 + 8 - z;
-			return circle ? dx * dx + dz * dz <= (double) radius * radius : Math.abs(dx) <= radius && Math.abs(dz) <= radius;
+			long x0 = cx * 16L, z0 = cz * 16L;
+			if (!circle) return x0 < (long) x + radius && x0 + 16 > (long) x - radius && z0 < (long) z + radius && z0 + 16 > (long) z - radius;
+			// The chunk's closest point to the centre.
+			double dx = Math.max(x0, Math.min(x, x0 + 16)) - x;
+			double dz = Math.max(z0, Math.min(z, z0 + 16)) - z;
+			return dx * dx + dz * dz < (double) radius * radius;
 		}
 	}
 

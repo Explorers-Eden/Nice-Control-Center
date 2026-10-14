@@ -178,6 +178,8 @@ public final class Felling {
 	}
 
 	private static void destroy(ServerLevel level, ServerPlayer player, BlockPos pos, List<TreeFall.Piece> pieces) {
+		// Not broken through the game's mining, so the claim rules are checked here.
+		if (!eu.explorerseden.nicecontrolcenter.claims.ClaimProtection.allowed(player, level, pos, eu.explorerseden.nicecontrolcenter.Claims.Role.BUILD)) return;
 		BlockState s = level.getBlockState(pos);
 		if (level.destroyBlock(pos, true, player)) pieces.add(new TreeFall.Piece(pos, s));
 	}

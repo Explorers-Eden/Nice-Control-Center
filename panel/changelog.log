@@ -1,3 +1,9 @@
+## 1.12.9
+- World trim and outer wilds reset: chunks the border runs through are kept whole, so the outer few blocks of the permanent area (and claims reaching its edge) are never reset
+- SFTP: copying on the server (the copy-file extension) follows the same rules as uploads (read-only accounts, the running world) and goes to the audit log; links are refused there too
+- Failed-login tracking forgets addresses that stopped trying
+- Claims → GOML import: the description says other owners become builders (needs mod 1.13.10)
+
 ## 1.12.8
 - Gameplay → World & nature → Saplings: "Chance to plant (%)"; the ground list is described like the item list (needs mod 1.13.9)
 

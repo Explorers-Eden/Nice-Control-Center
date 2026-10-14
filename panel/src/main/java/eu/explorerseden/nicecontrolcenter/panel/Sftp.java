@@ -11,7 +11,9 @@ import org.apache.sshd.server.session.ServerSession;
 import org.apache.sshd.sftp.server.FileHandle;
 import org.apache.sshd.sftp.server.Handle;
 import org.apache.sshd.sftp.server.SftpEventListener;
+import org.apache.sshd.sftp.server.SftpFileSystemAccessor;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
+import org.apache.sshd.sftp.server.SftpSubsystemProxy;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -61,8 +63,25 @@ final class Sftp {
 		sshd.setUserAuthFactories(List.of(org.apache.sshd.server.auth.password.UserAuthPasswordFactory.INSTANCE,
 				org.apache.sshd.server.auth.pubkey.UserAuthPublicKeyFactory.INSTANCE));
 		sshd.setFileSystemFactory(new VirtualFileSystemFactory(files.root()));
-		SftpSubsystemFactory sftp = new SftpSubsystemFactory.Builder().build();
-		sftp.addSftpEventListener(new Guard());
+		Guard guard = new Guard();
+		// The copy-file extension copies on the server without any event, so it's checked here.
+		SftpFileSystemAccessor accessor = new SftpFileSystemAccessor() {
+			@Override
+			public void copyFile(SftpSubsystemProxy subsystem, Path src, Path dst, Collection<CopyOption> opts) throws IOException {
+				ServerSession session = subsystem.getServerSession();
+				guard.checkWrite(session, dst);
+				SftpFileSystemAccessor.super.copyFile(subsystem, src, dst, opts);
+				Auth.Session user = guard.user(session);
+				audit.log(user == null ? null : user.name(), "sftp.copy", guard.rel(src) + " → " + guard.rel(dst), ip(session));
+			}
+
+			@Override
+			public void createLink(SftpSubsystemProxy subsystem, Path link, Path existing, boolean symLink) throws IOException {
+				throw new AccessDeniedException(link.toString(), null, "links aren't allowed");
+			}
+		};
+		SftpSubsystemFactory sftp = new SftpSubsystemFactory.Builder().withFileSystemAccessor(accessor).build();
+		sftp.addSftpEventListener(guard);
 		sshd.setSubsystemFactories(List.of(sftp));
 		sshd.start();
 		System.out.println("SFTP listening on port " + port);

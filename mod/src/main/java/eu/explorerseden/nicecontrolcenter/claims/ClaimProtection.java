@@ -99,6 +99,7 @@ public final class ClaimProtection {
 		ItemStack held = player.getItemInHand(hand);
 		Role needed;
 		BlockPos target = pos;
+		BlockPos front = null;
 		boolean usesBlock = !player.isSecondaryUseActive() || held.isEmpty();
 		Role blockRole = usesBlock ? blockRole(state, level.getBlockEntity(pos)) : null;
 		if (blockRole != null) {
@@ -108,12 +109,21 @@ public final class ClaimProtection {
 		} else {
 			// Placing or using an item on the block: counts where it lands.
 			needed = Role.BUILD;
-			if (held.getItem() instanceof BlockItem && !state.canBeReplaced()) target = pos.relative(hit.getDirection());
+			if (held.getItem() instanceof BlockItem && !state.canBeReplaced()) {
+				target = pos.relative(hit.getDirection());
+			} else {
+				// Flint and steel, spawn eggs, frames and the like also put something on the block in front: from
+				// outside a claim's edge, that's inside it.
+				BlockPos beside = pos.relative(hit.getDirection());
+				Claim there = ClaimStore.claimAt(level, beside);
+				if (there != null && there != ClaimStore.claimAt(level, pos)) front = beside;
+			}
 		}
-		if (allowed(player, level, target, needed) && (target == pos || allowed(player, level, pos, needed == Role.BUILD ? Role.ACCESS : needed))) {
+		if (allowed(player, level, target, needed) && (target == pos || allowed(player, level, pos, needed == Role.BUILD ? Role.ACCESS : needed))
+				&& (front == null || allowed(player, level, front, Role.BUILD))) {
 			return InteractionResult.PASS;
 		}
-		resync(player, level, pos, target);
+		resync(player, level, pos, front == null ? target : front);
 		return InteractionResult.FAIL;
 	}
 

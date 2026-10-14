@@ -133,6 +133,11 @@ public final class Auth {
 	private LoginResult failed(String ip) {
 		synchronized (fails) {
 			fails.computeIfAbsent(ip, k -> new ArrayDeque<>()).addLast(System.currentTimeMillis());
+			// Now and then, drop addresses that stopped trying.
+			if (fails.size() > 1000) {
+				long cutoff = System.currentTimeMillis() - FAIL_WINDOW_MS;
+				fails.values().removeIf(d -> d.isEmpty() || d.peekLast() < cutoff);
+			}
 		}
 		return new LoginResult(null, null, "Wrong name or password");
 	}
@@ -149,6 +154,8 @@ public final class Auth {
 			if (recent == null) return false;
 			long cutoff = System.currentTimeMillis() - FAIL_WINDOW_MS;
 			while (!recent.isEmpty() && recent.peekFirst() < cutoff) recent.removeFirst();
+			// Addresses whose failures are all old are forgotten, so the map doesn't keep every address that ever tried.
+			if (recent.isEmpty()) fails.remove(ip);
 			return recent.size() >= MAX_FAILS;
 		}
 	}

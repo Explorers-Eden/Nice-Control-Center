@@ -310,7 +310,6 @@ final class PetFollowers {
 		return new Target(now, heading(now, at.apply(t + 1)), follow);
 	}
 
-	/** The pet's particle trail, if its owner picked one (and the panel allows them). */
 	/** New picks for Random (only real moves and trails this server has). */
 	private static void roll(Follower f, ServerPlayer player) {
 		var r = player.getRandom();
@@ -328,6 +327,7 @@ final class PetFollowers {
 		return !trail.real() || particle(trail) != null;
 	}
 
+	/** The pet's particle trail, if its owner picked one (and the panel allows them). */
 	private static void trail(ServerPlayer player, Pets.Trail trail, Follower f, long t, double size) {
 		if (!PetStore.settings().particles || trail == null || !trail.real() || t % trail.every != 0) return;
 		ParticleOptions type = particle(trail);

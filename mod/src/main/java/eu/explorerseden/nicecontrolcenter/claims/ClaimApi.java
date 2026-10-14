@@ -122,14 +122,15 @@ public final class ClaimApi {
 			String owner = g.owners.isEmpty() ? null : g.owners.get(0).toString();
 			m.put("owner", owner == null ? "Server" : name(server, g.owners.get(0)));
 			List<String> members = new ArrayList<>();
-			for (int i = 1; i < g.owners.size(); i++) members.add(name(server, g.owners.get(i)) + " (co-owner)");
+			// Everyone but the first owner (also GOML's other owners) becomes a builder; the owner can make co-owners later.
+			for (int i = 1; i < g.owners.size(); i++) members.add(name(server, g.owners.get(i)));
 			for (UUID t : g.trusted) if (!g.owners.contains(t)) members.add(name(server, t));
 			m.put("members", members);
 			String problem = data.check(g.dim, box, null, owner, null, settings, true);
 			if (problem == null && run) {
 				Claims.Data.Result r = data.create(owner, owner == null ? null : name(server, g.owners.get(0)), g.dim, box, null, settings, true, now);
 				if (r.ok()) {
-					for (int i = 1; i < g.owners.size(); i++) data.setMember(r.claim, g.owners.get(i).toString(), name(server, g.owners.get(i)), Claims.Role.MANAGE, now);
+					for (int i = 1; i < g.owners.size(); i++) data.setMember(r.claim, g.owners.get(i).toString(), name(server, g.owners.get(i)), Claims.Role.BUILD, now);
 					for (UUID t : g.trusted) if (!g.owners.contains(t)) data.setMember(r.claim, t.toString(), name(server, t), Claims.Role.BUILD, now);
 					if (owner != null) {
 						// The land is theirs already: blocks for it so nobody starts in debt.

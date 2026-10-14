@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.10
+- Market: if your inventory changes while the sell menu is open (something used up or picked up), listing asks you to pick the item again instead of listing a different item at your price
+- Claims: flint and steel, spawn eggs, item frames and the like can't put things inside someone else's claim from just outside its edge
+- Tree felling no longer breaks nether wart blocks or mangrove roots inside a claim you can't build in
+- GOML import: GOML's other owners become builders like trusted players (the owner can make co-owners later)
+
 ## 1.13.9
 - Pets ride along with their owner in every player's game, so they stay right with you at any speed (no more dragging behind and flinging forward) and move smoothly; their moves and turns glide in between. Lazy still waits in place and catches up on its own
 - Saplings planting themselves aren't stopped by plants any more: they take the place of grass, ferns, flowers, bushes, leaf litter and the like (what a growing tree would grow over), and when their spot is taken (a slab, a block) they take root right next to it
