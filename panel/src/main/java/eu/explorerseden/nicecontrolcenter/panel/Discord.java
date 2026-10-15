@@ -56,6 +56,10 @@ public final class Discord implements Notifier {
 		public String alertChannelId = "";
 		/** Where players post their linking code (removed at once, answered privately); empty = direct messages only. */
 		public String linkChannelId = "";
+		/** Discord role every linked player gets; empty = none. */
+		public String linkedRoleId = "";
+		/** Fabled Roots race (lower case) → Discord role, given on top of the linked role; the bot swaps it when the race changes. */
+		public Map<String, String> raceRoles = new LinkedHashMap<>();
 		/** Per event: "chat" or "alerts". Events not listed use their default (warnings to alerts, the rest to chat). */
 		public Map<String, String> eventChannels = new LinkedHashMap<>();
 		public boolean requireLink = true;
@@ -82,6 +86,13 @@ public final class Discord implements Notifier {
 			d.templates.forEach(templates::putIfAbsent);
 			if (alertChannelId == null) alertChannelId = "";
 			if (linkChannelId == null) linkChannelId = "";
+			if (linkedRoleId == null) linkedRoleId = "";
+			linkedRoleId = linkedRoleId.strip();
+			Map<String, String> roles = new LinkedHashMap<>();
+			if (raceRoles != null) raceRoles.forEach((race, id) -> {
+				if (race != null && id != null && !id.isBlank()) roles.put(race.strip().toLowerCase(Locale.ROOT), id.strip());
+			});
+			raceRoles = roles;
 			if (kickMessage == null || kickMessage.isBlank()) kickMessage = d.kickMessage;
 			// Messages from before the link channel (the default, or an edited one) tell players to DM the bot: {where} names the link channel instead.
 			kickMessage = OLD_WHERE.matcher(kickMessage).replaceAll("Post this code {where}:");
@@ -220,6 +231,100 @@ public final class Discord implements Notifier {
 	private void linksChanged() {
 		linksDirty = true;
 		timer.execute(this::copyLinks);
+		timer.execute(this::syncRoles);
+	}
+
+	// ── Roles for linked players ───────────────────────────────────────────
+
+	/** Each player's Fabled Roots race (lower case, "" for none), as the mod last reported it; unknown players aren't in it. */
+	private final Map<String, String> races = new ConcurrentHashMap<>();
+	/** discordId → the managed roles last given, so unchanged players aren't looked up again. */
+	private final Map<String, Set<String>> appliedRoles = new ConcurrentHashMap<>();
+	/** Discord accounts that were unlinked: their managed roles go. */
+	private final Set<String> unlinkedRoles = ConcurrentHashMap.newKeySet();
+
+	/** Races from the mod's player list (online and offline players, from their Fabled Roots tags). */
+	private void refreshRaces() {
+		DashboardProxy mod = dashboard;
+		if (mod == null || !server.running()) return;
+		JsonObject answer = mod.get("/api/players");
+		if (answer == null || !answer.has("players") || !answer.get("players").isJsonArray()) return;
+		for (com.google.gson.JsonElement e : answer.getAsJsonArray("players")) {
+			if (!e.isJsonObject() || !e.getAsJsonObject().has("uuid")) continue;
+			JsonObject p = e.getAsJsonObject();
+			races.put(p.get("uuid").getAsString(), p.has("race") && !p.get("race").isJsonNull() ? p.get("race").getAsString().toLowerCase(Locale.ROOT) : "");
+		}
+	}
+
+	/** Gives linked players the linked role and their race's role, and takes away the ones that no longer fit. */
+	private final Object rolesLock = new Object();
+
+	private void syncRoles() {
+		synchronized (rolesLock) {
+			syncRolesNow();
+		}
+	}
+
+	private void syncRolesNow() {
+		Settings s = settings;
+		JDA bot = jda;
+		if (!s.enabled || bot == null || bot.getStatus() != JDA.Status.CONNECTED) return;
+		Set<String> raceRoleIds = new java.util.HashSet<>(s.raceRoles.values());
+		if (s.linkedRoleId.isEmpty() && raceRoleIds.isEmpty()) return;
+		Guild guild = bot.getGuildById(s.guildId);
+		if (guild == null) return;
+		if (!raceRoleIds.isEmpty()) refreshRaces();
+		Map<String, Set<String>> wanted = new LinkedHashMap<>();
+		Map<String, Boolean> raceKnown = new LinkedHashMap<>();
+		for (Link l : links()) {
+			Set<String> roles = wanted.computeIfAbsent(l.discordId(), k -> new java.util.HashSet<>());
+			if (!s.linkedRoleId.isEmpty()) roles.add(s.linkedRoleId);
+			String race = races.get(l.uuid());
+			if (race != null) {
+				raceKnown.put(l.discordId(), true);
+				if (s.raceRoles.containsKey(race)) roles.add(s.raceRoles.get(race));
+			} else {
+				raceKnown.putIfAbsent(l.discordId(), false);
+			}
+		}
+		for (String gone : unlinkedRoles) {
+			if (!wanted.containsKey(gone)) {
+				wanted.put(gone, Set.of());
+				raceKnown.put(gone, true);
+			}
+		}
+		unlinkedRoles.clear();
+		for (Map.Entry<String, Set<String>> w : wanted.entrySet()) {
+			String id = w.getKey();
+			if (w.getValue().equals(appliedRoles.get(id))) continue;
+			// Without a known race (server off since the panel started), race roles are left as they are.
+			Set<String> managed = new java.util.HashSet<>();
+			if (!s.linkedRoleId.isEmpty()) managed.add(s.linkedRoleId);
+			if (Boolean.TRUE.equals(raceKnown.get(id))) managed.addAll(raceRoleIds);
+			applyRoles(guild, id, w.getValue(), managed);
+		}
+	}
+
+	private void applyRoles(Guild guild, String discordId, Set<String> wanted, Set<String> managed) {
+		guild.retrieveMemberById(discordId).queue(member -> {
+			boolean ok = true;
+			for (String roleId : managed) {
+				net.dv8tion.jda.api.entities.Role role = guild.getRoleById(roleId);
+				if (role == null || !guild.getSelfMember().canInteract(role)) {
+					ok = false;
+					continue;
+				}
+				boolean has = member.getRoles().contains(role);
+				if (wanted.contains(roleId) && !has) guild.addRoleToMember(member, role).reason("Linked Minecraft account").queue(x -> { }, err -> appliedRoles.remove(discordId));
+				else if (!wanted.contains(roleId) && has) guild.removeRoleFromMember(member, role).reason("Linked Minecraft account").queue(x -> { }, err -> appliedRoles.remove(discordId));
+			}
+			// Roles it can't give are tried again next time (the Discord page says why).
+			if (ok) appliedRoles.put(discordId, Set.copyOf(wanted));
+			else appliedRoles.remove(discordId);
+		}, err -> {
+			// Not on the Discord server (anymore).
+			appliedRoles.remove(discordId);
+		});
 	}
 
 	void useDashboard(DashboardProxy dashboard) {
@@ -231,6 +336,14 @@ public final class Discord implements Notifier {
 		// Server start/stop/crash and the bot's status follow the supervisor.
 		timer.scheduleAtFixedRate(this::watch, 3, 5, TimeUnit.SECONDS);
 		timer.scheduleWithFixedDelay(this::copyLinks, 20, 30, TimeUnit.SECONDS);
+		// Races change in game: roles follow every 5 minutes.
+		timer.scheduleWithFixedDelay(() -> {
+			try {
+				syncRoles();
+			} catch (RuntimeException e) {
+				System.err.println("Could not update the Discord roles: " + e.getMessage());
+			}
+		}, 60, 300, TimeUnit.SECONDS);
 	}
 
 	// ── Settings and links ─────────────────────────────────────────────────
@@ -268,6 +381,10 @@ public final class Discord implements Notifier {
 		next.addDefaults();
 		if (next.nameFormat != null && !next.nameFormat.isBlank() && !next.nameFormat.contains("{player}")) return "The name on Discord needs {player}.";
 		if (next.nameFormat != null && next.nameFormat.length() > 60) return "The name on Discord is 60 characters at most.";
+		if (!next.linkedRoleId.isEmpty() && !next.linkedRoleId.matches("\\d{5,25}")) return "The role for linked players is a long number (right-click the role → Copy Role ID), or empty.";
+		for (Map.Entry<String, String> r : next.raceRoles.entrySet()) {
+			if (!r.getValue().matches("\\d{5,25}")) return "The role for " + r.getKey() + " is a long number (right-click the role → Copy Role ID), or empty.";
+		}
 		String formatProblem = GameFormat.check(next.gameFormat);
 		if (formatProblem != null) return formatProblem;
 		write(settingsFile, Json.GSON.toJson(next));
@@ -275,6 +392,9 @@ public final class Discord implements Notifier {
 		settings = next;
 		webhookUrl = null;
 		webhookRetryAt = 0;
+		// Roles are checked again for everyone with the new settings.
+		appliedRoles.clear();
+		timer.execute(this::syncRoles);
 		if (reconnect || jda == null) connect();
 		else lastPresence = "";
 		return null;
@@ -285,6 +405,7 @@ public final class Discord implements Notifier {
 	}
 
 	public synchronized boolean unlink(String uuid) throws IOException {
+		links.stream().filter(l -> l.uuid().equals(uuid)).forEach(l -> unlinkedRoles.add(l.discordId()));
 		boolean removed = links.removeIf(l -> l.uuid().equals(uuid));
 		if (removed) {
 			write(linksFile, Json.GSON.toJson(links));
@@ -380,7 +501,8 @@ public final class Discord implements Notifier {
 	}
 
 	private static final net.dv8tion.jda.api.Permission[] NEEDED = { net.dv8tion.jda.api.Permission.VIEW_CHANNEL, net.dv8tion.jda.api.Permission.MESSAGE_SEND,
-			net.dv8tion.jda.api.Permission.MESSAGE_HISTORY, net.dv8tion.jda.api.Permission.MANAGE_WEBHOOKS, net.dv8tion.jda.api.Permission.MESSAGE_MANAGE };
+			net.dv8tion.jda.api.Permission.MESSAGE_HISTORY, net.dv8tion.jda.api.Permission.MANAGE_WEBHOOKS, net.dv8tion.jda.api.Permission.MESSAGE_MANAGE,
+			net.dv8tion.jda.api.Permission.MANAGE_ROLES };
 
 	/** The link that adds the bot to a Discord server with every permission it needs; null while it isn't connected. */
 	public String inviteUrl() {
@@ -399,6 +521,15 @@ public final class Discord implements Notifier {
 		problems(out, guild, s.channelId, "chat channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[3]);
 		if (!s.alertChannelId.isBlank()) problems(out, guild, s.alertChannelId, "alerts channel", NEEDED[0], NEEDED[1]);
 		if (!s.linkChannelId.isBlank()) problems(out, guild, s.linkChannelId, "link channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[4]);
+		Map<String, String> roles = new LinkedHashMap<>();
+		if (!s.linkedRoleId.isEmpty()) roles.put(s.linkedRoleId, "linked players");
+		s.raceRoles.forEach((race, id) -> roles.putIfAbsent(id, race.substring(0, 1).toUpperCase(Locale.ROOT) + race.substring(1)));
+		if (!roles.isEmpty() && !guild.getSelfMember().hasPermission(net.dv8tion.jda.api.Permission.MANAGE_ROLES)) out.add("The bot needs Manage Roles to give linked players their roles.");
+		roles.forEach((id, what) -> {
+			net.dv8tion.jda.api.entities.Role role = guild.getRoleById(id);
+			if (role == null) out.add("The role for " + what + " (" + id + ") isn't on that server.");
+			else if (!guild.getSelfMember().canInteract(role)) out.add("The bot can't give @" + role.getName() + " (" + what + "): drag the bot's own role above it in Server Settings → Roles.");
+		});
 		return out;
 	}
 
@@ -592,6 +723,7 @@ public final class Discord implements Notifier {
 		if (type.equals("leave")) online.remove(name.toLowerCase(java.util.Locale.ROOT));
 		if (type.equals("start") || type.equals("stop")) online.clear();
 		if (type.equals("chat")) {
+			if (e.has("uuid")) races.put(e.get("uuid").getAsString(), e.has("race") ? e.get("race").getAsString().toLowerCase(Locale.ROOT) : "");
 			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null,
 					chatName(name, e.has("race") ? e.get("race").getAsString() : ""), e.has("text") ? e.get("text").getAsString() : "");
 			return;

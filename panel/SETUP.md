@@ -115,7 +115,7 @@ The **Discord** tab connects a bot. It does four things:
 
 **Setting up the bot** (the tab has the same steps):
 1. On [discord.com/developers](https://discord.com/developers/applications): **New Application** → **Bot** → **Reset Token** and copy the token. Switch on **Message Content Intent**.
-2. **OAuth2** → **URL Generator**: scope `bot`, permissions *View Channels*, *Send Messages*, *Read Message History*, *Manage Webhooks*, *Manage Messages* (for the link channel). Open the link and add the bot to your server.
+2. **OAuth2** → **URL Generator**: scope `bot`, permissions *View Channels*, *Send Messages*, *Read Message History*, *Manage Webhooks*, *Manage Messages* (for the link channel), *Manage Roles* (for roles of linked players; the bot's role must be above them). Open the link and add the bot to your server.
 3. In Discord, turn on **Developer Mode**, then copy the server ID and the chat channel's ID (and a link channel's, if you want one; empty = codes by direct message only).
 4. Paste the token and the IDs in the panel, switch the bridge on and save. The token can also come from `DISCORD_TOKEN`.
 

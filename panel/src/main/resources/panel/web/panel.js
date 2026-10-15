@@ -2512,6 +2512,8 @@
     ['Alerts', ['crash', 'lag', 'lagOver', 'taskFailed', 'backupFailed', 'trimDone', 'diskLow', 'memory', 'perf']],
   ];
   let discordData = null;
+  /** Fabled Roots' races (its fabled_roots.<race> tags), for a Discord role each. */
+  const FR_RACES = ['aetherian', 'dunesworn', 'endling', 'frostborne', 'moonshroud', 'netherian', 'oakhearted', 'orebringer', 'palehearted', 'turtlekin'];
 
   async function loadDiscord() {
     try {
@@ -2534,6 +2536,8 @@
     form.kickMessage.value = s.kickMessage || '';
     form.gameFormat.value = s.gameFormat || '';
     form.nameFormat.value = s.nameFormat || '';
+    form.linkedRoleId.value = s.linkedRoleId || '';
+    $('pn-dc-race-roles').innerHTML = FR_RACES.map((r) => `<label class="np-form-row">${r[0].toUpperCase() + r.slice(1)}<input type="text" data-race="${r}" inputmode="numeric" placeholder="role ID" value="${esc((s.raceRoles || {})[r] || '')}"></label>`).join('');
     previewGameFormat();
     // One grid: event · channel · message, so every column lines up.
     $('pn-discord-events').innerHTML = EVENT_GROUPS.map(([title, keys]) => `<h5 class="pn-dc-group">${title}</h5>
@@ -2628,6 +2632,8 @@
       notMemberMessage: discordData.settings.notMemberMessage,
       chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
       gameFormat: form.gameFormat.value, nameFormat: form.nameFormat.value.trim(),
+      linkedRoleId: form.linkedRoleId.value.trim(),
+      raceRoles: Object.fromEntries([...$('pn-dc-race-roles').querySelectorAll('[data-race]')].map((i) => [i.dataset.race, i.value.trim()]).filter(([, v]) => v)),
     };
     try {
       await api('api/discord/settings', body);

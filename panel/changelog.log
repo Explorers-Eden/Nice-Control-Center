@@ -1,3 +1,6 @@
+## 1.12.22
+- Discord: roles for linked players: one role for everyone linked, plus a role per Fabled Roots race (read from the race tag every 5 minutes), swapped when the race changes and taken away on unlink. The bot needs Manage Roles and its role above those roles; the page says when it can't give one
+
 ## 1.12.21
 - Discord: messages admins send from the Chat tab (or with say in the console) go to Discord too, as "Admin ┃ <account>" like in game
 - Discord: player names on Discord show their Fabled Roots race, "[Oakhearted] Name" (Player names on Discord: {player} and {race}; needs mod 1.13.21)
