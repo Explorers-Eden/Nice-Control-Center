@@ -187,7 +187,8 @@
         c.onlyPermanentArea ? 'Only inside the permanent area (see World borders).' : '')
         + row('Smallest claim', value(`${c.minWidth} blocks wide, ${c.minArea.toLocaleString()} blocks in all`))
         + (c.maxClaims ? row('Claims per player', value(c.maxClaims)) : '')
-        + (c.inactiveDays ? row('Inactive players', value(`Claims go after ${c.inactiveDays} days away`)) : '');
+        + (c.inactiveDays ? row('Inactive players', value(`Claims go after ${c.inactiveDays} days away`),
+          'A claim with a co-owner who still plays goes to the first of them instead; the old owner stays on as co-owner.') : '');
       const roles = c.roles.map((r) => row(r.label, '', r.description)).join('');
       sections.push({ id: 'claims', title: 'Land claims', tab: 'Claims', statLabel: 'member roles', icon: 'bi-shield-check', hue: '#f2b233', count: c.roles.length,
         lead: 'Protect your builds: claimed land is yours, and only the people you add can change it.',

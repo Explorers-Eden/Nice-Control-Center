@@ -148,7 +148,7 @@ Public pages → Info page: a read-only page where players can look up the serve
   - how players earn claim blocks (selling them is on the Market page);
   - where they may claim (dimensions; only inside the permanent area from World → Borders, on by default);
   - smallest size and the most claims per player;
-  - removing the claims of players who've been away a long time;
+  - what happens to the claims of players who've been away a long time (they go to the first co-owner who still plays, else they're removed);
   - the claim tool and the border blocks;
   - the colours in the menu.
 - **GOML import:** with the server running and GOML installed, **Check** lists GOML's claims and **Import** turns them into claims here. Same square area; the first owner owns it, other owners become co-owners and trusted players builders, and owners get claim blocks for the land. GOML's claims stay as they are.

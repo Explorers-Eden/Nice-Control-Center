@@ -198,7 +198,8 @@ public final class ServerFacts {
 				s.onlyPermanentArea ? "Only inside the permanent area." : ""));
 		rows.add(line("Smallest claim", s.minWidth + " blocks wide, " + s.minArea + " blocks in all", ""));
 		if (s.maxClaims > 0) rows.add(line("Claims per player", String.valueOf(s.maxClaims), ""));
-		if (s.inactiveDays > 0) rows.add(line("Inactive players", "claims go after " + s.inactiveDays + " days away", ""));
+		if (s.inactiveDays > 0) rows.add(line("Inactive players", "claims go after " + s.inactiveDays + " days away",
+				"A claim with a co-owner who still plays goes to the first of them instead; the old owner stays on as co-owner."));
 		if (market.enabled) {
 			List<String> offers = new ArrayList<>();
 			for (Market.ClaimOffer o : market.claimBlocks) {

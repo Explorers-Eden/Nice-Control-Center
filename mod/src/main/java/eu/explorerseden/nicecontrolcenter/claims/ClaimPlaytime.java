@@ -56,21 +56,51 @@ public final class ClaimPlaytime {
 		if (any) ClaimStore.touched();
 	}
 
-	/** Removes the claims of players away longer than inactiveDays. */
+	/**
+	 * Claims of players away longer than inactiveDays go to their first co-owner who's still around (the
+	 * old owner stays on as co-owner); claims without one are removed.
+	 */
 	public static void expire() {
 		Claims.Settings s = ClaimStore.settings();
 		if (!s.enabled || s.inactiveDays <= 0) return;
 		Claims.Data data = ClaimStore.data();
-		long cutoff = System.currentTimeMillis() - s.inactiveDays * 86_400_000L;
+		long now = System.currentTimeMillis();
+		long cutoff = now - s.inactiveDays * 86_400_000L;
 		List<Claim> gone = new ArrayList<>();
-		for (Claim c : data.claims.values()) {
-			if (c.parent != null || c.owner == null) continue;
-			Claims.PlayerBlocks p = data.player(c.owner);
-			if (p != null && p.lastSeen > 0 && p.lastSeen < cutoff) gone.add(c);
+		int passed = 0;
+		for (Claim c : List.copyOf(data.claims.values())) {
+			if (c.parent != null || c.owner == null || !away(data, c.owner, cutoff)) continue;
+			// Co-owners in the order they were added, who played within the time (one away too wouldn't keep it long).
+			String heir = null;
+			for (var m : c.members.entrySet()) {
+				Claims.PlayerBlocks p = data.player(m.getKey());
+				if (m.getValue().role == Claims.Role.MANAGE && p != null && p.lastSeen >= cutoff) {
+					heir = m.getKey();
+					break;
+				}
+			}
+			if (heir == null) {
+				gone.add(c);
+				continue;
+			}
+			String oldOwner = c.owner;
+			String oldName = c.ownerName;
+			String heirName = c.members.get(heir).name != null ? c.members.get(heir).name : data.player(heir).name;
+			// Like an admin hand-over: the claim doesn't need the new owner's claim blocks.
+			data.transfer(c, heir, heirName, s, true, now);
+			data.setMember(c, oldOwner, oldName, Claims.Role.MANAGE, now);
+			passed++;
+			NiceControlCenter.LOGGER.info("Claim {} of {} (away more than {} days) went to its co-owner {}", c.displayName(), oldName, s.inactiveDays, heirName);
 		}
-		if (gone.isEmpty()) return;
 		gone.forEach(data::delete);
+		if (gone.isEmpty() && passed == 0) return;
 		ClaimStore.changed();
-		NiceControlCenter.LOGGER.info("Removed {} claims of players away more than {} days", gone.size(), s.inactiveDays);
+		if (!gone.isEmpty()) NiceControlCenter.LOGGER.info("Removed {} claims of players away more than {} days", gone.size(), s.inactiveDays);
+	}
+
+	/** Has this player been away longer than the cutoff (players never seen don't count as away)? */
+	private static boolean away(Claims.Data data, String uuid, long cutoff) {
+		Claims.PlayerBlocks p = data.player(uuid);
+		return p != null && p.lastSeen > 0 && p.lastSeen < cutoff;
 	}
 }
