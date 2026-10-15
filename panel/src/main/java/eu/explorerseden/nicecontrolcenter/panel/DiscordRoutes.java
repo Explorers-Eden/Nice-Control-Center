@@ -70,6 +70,7 @@ final class DiscordRoutes {
 			out.put("status", discord.status());
 			out.put("problems", discord.problems());
 			out.put("inviteUrl", discord.inviteUrl());
+			out.put("topicPreview", discord.topicText());
 			out.put("links", discord.links());
 			json(ctx, out);
 		}));

@@ -663,6 +663,17 @@ public final class DashboardServer {
 					return Map.of("ok", true);
 				}));
 			}
+			// For the panel's Discord channel topic: who's on, and the Nice Actions Time/Date HUD as plain text when it's there.
+			case "/api/topic" -> sendJson(exchange, onServerThread(() -> {
+				Map<String, Object> topic = new LinkedHashMap<>();
+				topic.put("players", minecraft.getPlayerCount());
+				topic.put("max", minecraft.getMaxPlayers());
+				topic.put("names", minecraft.getPlayerList().getPlayers().stream().map(p -> p.getGameProfile().name())
+						.sorted(String.CASE_INSENSITIVE_ORDER).toList());
+				net.minecraft.server.bossevents.CustomBossEvent hud = minecraft.getCustomBossEvents().get(net.minecraft.resources.Identifier.parse("eden:time_hud"));
+				if (hud != null) topic.put("hud", hud.getName().getString().strip());
+				return topic;
+			}));
 			case "/api/pets/state" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.pets.PetStore::state));
 			case "/api/claims/goml" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, false)));
 			case "/api/claims/goml/import" -> {

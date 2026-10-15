@@ -60,6 +60,13 @@ public final class Discord implements Notifier {
 		public String linkedRoleId = "";
 		/** Fabled Roots race (lower case) → Discord role, given on top of the linked role; the bot swaps it when the race changes. */
 		public Map<String, String> raceRoles = new LinkedHashMap<>();
+		/** Keep a channel's topic up to date with who's online and the in-game date (Nice Actions' Time/Date HUD). */
+		public boolean topicOn = false;
+		/** Whose topic; empty = the chat channel. */
+		public String topicChannelId = "";
+		/** {players}, {max}, {names} and {hud} (the Nice Actions Time/Date HUD; left out with its separator without it). */
+		public String topicFormat = "🟢 {players}/{max} online ┃ {hud}";
+		public String topicOffline = "🔴 The server is offline";
 		/** Per event: "chat" or "alerts". Events not listed use their default (warnings to alerts, the rest to chat). */
 		public Map<String, String> eventChannels = new LinkedHashMap<>();
 		public boolean requireLink = true;
@@ -87,6 +94,10 @@ public final class Discord implements Notifier {
 			if (alertChannelId == null) alertChannelId = "";
 			if (linkChannelId == null) linkChannelId = "";
 			if (linkedRoleId == null) linkedRoleId = "";
+			if (topicChannelId == null) topicChannelId = "";
+			topicChannelId = topicChannelId.strip();
+			if (topicFormat == null || topicFormat.isBlank()) topicFormat = d.topicFormat;
+			if (topicOffline == null) topicOffline = d.topicOffline;
 			linkedRoleId = linkedRoleId.strip();
 			Map<String, String> roles = new LinkedHashMap<>();
 			if (raceRoles != null) raceRoles.forEach((race, id) -> {
@@ -235,6 +246,67 @@ public final class Discord implements Notifier {
 		timer.execute(this::syncRoles);
 	}
 
+	// ── Channel topic ──────────────────────────────────────────────────────
+
+	/** The topic last set (null = not known, set it again), and when. */
+	private volatile String lastTopic;
+	private volatile long lastTopicAt;
+
+	private TextChannel topicChannel() {
+		JDA bot = jda;
+		if (bot == null || bot.getStatus() != JDA.Status.CONNECTED) return null;
+		return bot.getTextChannelById(settings.topicChannelId.isBlank() ? settings.channelId : settings.topicChannelId);
+	}
+
+	/** The topic from the format: players online and the in-game date, or the offline text. */
+	String topicText() {
+		Settings s = settings;
+		if (!server.running()) return s.topicOffline.strip();
+		int count = players;
+		int max = maxPlayers;
+		String names = "";
+		String hud = "";
+		DashboardProxy mod = dashboard;
+		JsonObject t = mod == null ? null : mod.get("/api/topic");
+		if (t != null) {
+			if (t.has("players")) count = t.get("players").getAsInt();
+			if (t.has("max")) max = t.get("max").getAsInt();
+			if (t.has("names")) {
+				List<String> list = new ArrayList<>();
+				t.getAsJsonArray("names").forEach(n -> list.add(n.getAsString()));
+				names = list.isEmpty() ? "nobody" : String.join(", ", list);
+			}
+			if (t.has("hud")) hud = t.get("hud").getAsString().replaceAll("\\s+", " ").strip();
+		}
+		String text = s.topicFormat.replace("{players}", String.valueOf(count)).replace("{max}", max > 0 ? String.valueOf(max) : "?")
+				.replace("{names}", names);
+		// Without Nice Actions (or its HUD), {hud} goes with the separator in front of it.
+		text = hud.isEmpty() ? text.replaceAll("\\s*[┃|•·\\-:]?\\s*\\{hud}", "") : text.replace("{hud}", hud);
+		text = text.strip();
+		return text.length() > 1024 ? text.substring(0, 1024) : text;
+	}
+
+	private void updateTopic() {
+		Settings s = settings;
+		if (!s.enabled || !s.topicOn) return;
+		TextChannel channel = topicChannel();
+		if (channel == null) return;
+		long now = System.currentTimeMillis();
+		if (lastTopic != null && now - lastTopicAt < 5 * 60_000) return;
+		String text = topicText();
+		if (text.equals(lastTopic)) return;
+		if (text.equals(channel.getTopic())) {
+			lastTopic = text;
+			return;
+		}
+		lastTopic = text;
+		lastTopicAt = now;
+		channel.getManager().setTopic(text).queue(ok -> { }, err -> {
+			lastTopic = null;
+			status = "Can't change the channel topic (needs Manage Channels): " + err.getMessage();
+		});
+	}
+
 	// ── Roles for linked players ───────────────────────────────────────────
 
 	/** Each player's Fabled Roots race (lower case, "" for none), as the mod last reported it; unknown players aren't in it. */
@@ -337,6 +409,14 @@ public final class Discord implements Notifier {
 		// Server start/stop/crash and the bot's status follow the supervisor.
 		timer.scheduleAtFixedRate(this::watch, 3, 5, TimeUnit.SECONDS);
 		timer.scheduleWithFixedDelay(this::copyLinks, 20, 30, TimeUnit.SECONDS);
+		// Discord allows two topic changes per 10 minutes: checked every minute, changed at most every 5.
+		timer.scheduleWithFixedDelay(() -> {
+			try {
+				updateTopic();
+			} catch (RuntimeException e) {
+				System.err.println("Could not update the Discord channel topic: " + e.getMessage());
+			}
+		}, 30, 60, TimeUnit.SECONDS);
 		// Races change in game: roles follow every 5 minutes.
 		timer.scheduleWithFixedDelay(() -> {
 			try {
@@ -386,6 +466,8 @@ public final class Discord implements Notifier {
 		for (Map.Entry<String, String> r : next.raceRoles.entrySet()) {
 			if (!r.getValue().matches("\\d{5,25}")) return "The role for " + r.getKey() + " is a long number (right-click the role → Copy Role ID), or empty.";
 		}
+		if (!next.topicChannelId.isEmpty() && !next.topicChannelId.matches("\\d{5,25}")) return "The topic channel ID is a long number, or empty for the chat channel.";
+		if (next.topicFormat.length() > 900 || next.topicOffline.length() > 900) return "The channel topic is 900 characters at most.";
 		String formatProblem = GameFormat.check(next.gameFormat);
 		if (formatProblem != null) return formatProblem;
 		write(settingsFile, Json.GSON.toJson(next));
@@ -396,6 +478,7 @@ public final class Discord implements Notifier {
 		// Roles are checked again for everyone with the new settings.
 		appliedRoles.clear();
 		timer.execute(this::syncRoles);
+		lastTopic = null;
 		if (reconnect || jda == null) connect();
 		else lastPresence = "";
 		return null;
@@ -503,7 +586,7 @@ public final class Discord implements Notifier {
 
 	private static final net.dv8tion.jda.api.Permission[] NEEDED = { net.dv8tion.jda.api.Permission.VIEW_CHANNEL, net.dv8tion.jda.api.Permission.MESSAGE_SEND,
 			net.dv8tion.jda.api.Permission.MESSAGE_HISTORY, net.dv8tion.jda.api.Permission.MANAGE_WEBHOOKS, net.dv8tion.jda.api.Permission.MESSAGE_MANAGE,
-			net.dv8tion.jda.api.Permission.MANAGE_ROLES };
+			net.dv8tion.jda.api.Permission.MANAGE_ROLES, net.dv8tion.jda.api.Permission.MANAGE_CHANNEL };
 
 	/** The link that adds the bot to a Discord server with every permission it needs; null while it isn't connected. */
 	public String inviteUrl() {
@@ -522,6 +605,10 @@ public final class Discord implements Notifier {
 		problems(out, guild, s.channelId, "chat channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[3]);
 		if (!s.alertChannelId.isBlank()) problems(out, guild, s.alertChannelId, "alerts channel", NEEDED[0], NEEDED[1]);
 		if (!s.linkChannelId.isBlank()) problems(out, guild, s.linkChannelId, "link channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[4]);
+		if (s.topicOn) {
+			String topicId = s.topicChannelId.isBlank() ? s.channelId : s.topicChannelId;
+			problems(out, guild, topicId, "topic channel", NEEDED[0], NEEDED[6]);
+		}
 		Map<String, String> roles = new LinkedHashMap<>();
 		if (!s.linkedRoleId.isEmpty()) roles.put(s.linkedRoleId, "linked players");
 		s.raceRoles.forEach((race, id) -> roles.putIfAbsent(id, race.substring(0, 1).toUpperCase(Locale.ROOT) + race.substring(1)));

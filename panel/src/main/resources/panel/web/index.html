@@ -1286,7 +1286,7 @@
 						<ol>
 							<li>On <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">discord.com/developers</a>: <b>New Application</b> → <b>Bot</b> → <b>Reset Token</b> and copy the token (or set it as <code>DISCORD_TOKEN</code> in the container).</li>
 							<li>On the same page, switch on <b>Message Content Intent</b>.</li>
-							<li><b>OAuth2</b> → <b>URL Generator</b>: scope <code>bot</code>; permissions <i>View Channels</i>, <i>Send Messages</i>, <i>Read Message History</i>, <i>Manage Webhooks</i>, <i>Manage Messages</i> (to remove codes posted in the link channel), <i>Manage Roles</i> (for roles of linked players). Open the link and add the bot to your server.</li>
+							<li><b>OAuth2</b> → <b>URL Generator</b>: scope <code>bot</code>; permissions <i>View Channels</i>, <i>Send Messages</i>, <i>Read Message History</i>, <i>Manage Webhooks</i>, <i>Manage Messages</i> (to remove codes posted in the link channel), <i>Manage Roles</i> (for roles of linked players), <i>Manage Channels</i> (for the channel topic). Open the link and add the bot to your server.</li>
 							<li>In Discord: <b>Settings</b> → <b>Advanced</b> → <b>Developer Mode</b>. Right-click your server → <b>Copy Server ID</b>, right-click a channel → <b>Copy Channel ID</b>.</li>
 						</ol>
 					</details>
@@ -1303,6 +1303,18 @@
 					<div class="pn-motd-preview" id="pn-dc-format-preview"></div>
 					<label class="pn-field"><span>Player names on Discord <small class="pn-hint"><code>{player}</code> and <code>{race}</code> (the Fabled Roots race; left out, with its separator, for players without one)</small></span>
 						<input type="text" name="nameFormat" maxlength="60" spellcheck="false" placeholder="{race} ┃ {player}"></label>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-card-heading"></i> Channel topic</h3>
+					<p class="np-card-intro">Keeps a channel's topic up to date with who's online and, with Nice Actions installed, its Time/Date HUD (in-game time, date and weekday). Discord allows only two topic changes per 10 minutes, so it changes at most every 5 minutes. The bot needs <i>Manage Channels</i> there.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Update the channel topic</b><span class="np-switch"><input type="checkbox" name="topicOn"><span></span></span></label>
+						<label class="np-form-row"><span>Channel ID<span class="pn-comment">Empty = the chat channel</span></span><input type="text" name="topicChannelId" inputmode="numeric"></label>
+					</div>
+					<label class="pn-field"><span>Topic while the server runs <small class="pn-hint"><code>{players}</code>, <code>{max}</code>, <code>{names}</code> (who's online) and <code>{hud}</code> (the Nice Actions Time/Date HUD; left out, with its separator, without it)</small></span>
+						<input type="text" name="topicFormat" maxlength="900" spellcheck="false"></label>
+					<label class="pn-field">Topic while it's offline<input type="text" name="topicOffline" maxlength="900"></label>
+					<p class="pn-hint" id="pn-dc-topic-preview"></p>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-person-lock"></i> Account linking</h3>

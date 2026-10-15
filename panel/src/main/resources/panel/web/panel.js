@@ -2524,7 +2524,11 @@
     }
     const s = discordData.settings;
     const form = $('pn-discord-form');
-    for (const key of ['enabled', 'requireLink', 'requireMember', 'opsBypass', 'chatToDiscord', 'chatToGame', 'presence']) form[key].checked = !!s[key];
+    for (const key of ['enabled', 'requireLink', 'requireMember', 'opsBypass', 'chatToDiscord', 'chatToGame', 'presence', 'topicOn']) form[key].checked = !!s[key];
+    form.topicChannelId.value = s.topicChannelId || '';
+    form.topicFormat.value = s.topicFormat || '';
+    form.topicOffline.value = s.topicOffline || '';
+    $('pn-dc-topic-preview').textContent = discordData.topicPreview ? 'Right now: ' + discordData.topicPreview : '';
     form.token.value = '';
     form.token.placeholder = s.token ? 'saved (paste a new one to replace it)' : 'paste the bot token';
     // A token from the container settings (DISCORD_TOKEN) can't be changed here, so there's no field for it.
@@ -2633,6 +2637,7 @@
       chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
       gameFormat: form.gameFormat.value, nameFormat: form.nameFormat.value.trim(),
       linkedRoleId: form.linkedRoleId.value.trim(),
+      topicOn: form.topicOn.checked, topicChannelId: form.topicChannelId.value.trim(), topicFormat: form.topicFormat.value.trim(), topicOffline: form.topicOffline.value.trim(),
       raceRoles: Object.fromEntries([...$('pn-dc-race-roles').querySelectorAll('[data-race]')].map((i) => [i.dataset.race, i.value.trim()]).filter(([, v]) => v)),
     };
     try {

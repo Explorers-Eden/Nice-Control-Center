@@ -1,3 +1,6 @@
+## 1.12.25
+- Discord: Channel topic: keeps a channel's topic (the chat channel or another) up to date with players online ({players}, {max}, {names}) and, with Nice Actions, its Time/Date HUD ({hud}); offline text while the server is off. Changes at most every 5 minutes (Discord allows two per 10). The bot needs Manage Channels (needs mod 1.13.22 for names and the HUD)
+
 ## 1.12.24
 - Discord: admin messages from the panel (Chat tab, say) show the bot's picture instead of none
 
