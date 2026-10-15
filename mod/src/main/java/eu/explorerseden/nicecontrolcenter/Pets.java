@@ -135,6 +135,8 @@ public final class Pets {
 		public String description = "";
 		/** The head's skin: the base64 "textures" value (like on a player head). */
 		public String texture;
+		/** Head size (1 = half a block, like a player head); 0 until {@link Settings#fill()} sets it (files from before it was per pet). */
+		public double size;
 		/** In the market's currency; 0 is free. */
 		public int price;
 		/** The shop sells it until then (epoch ms); 0 is always. Bought pets stay with their players for good. */
@@ -160,10 +162,13 @@ public final class Pets {
 		}
 	}
 
+	/** A new pet's head size. */
+	public static final double DEFAULT_SIZE = 0.8;
+
 	public static final class Settings {
 		public boolean enabled = false;
-		/** Head size (1 = half a block, like a player head). */
-		public double size = 0.8;
+		/** Before 1.13.12 one head size for every pet; now only what older pets start with (see {@link Pet#size}). */
+		public double size = DEFAULT_SIZE;
 		/** Players may give their pet a particle trail. */
 		public boolean particles = true;
 		public List<Pet> pets = new ArrayList<>();
@@ -174,6 +179,7 @@ public final class Pets {
 			for (Pet p : pets) {
 				if (p.id == null || p.id.isBlank()) p.id = UUID.randomUUID().toString().substring(0, 8);
 				if (p.name != null) p.name = p.name.strip();
+				if (!(p.size > 0)) p.size = size >= 0.3 && size <= 2 ? size : DEFAULT_SIZE;
 				p.description = p.description == null ? "" : p.description.replaceAll("\\s+", " ").strip();
 				String t = texture(p.texture);
 				if (t != null) p.texture = t;
@@ -196,6 +202,7 @@ public final class Pets {
 		for (Pet p : s.pets) {
 			if (!p.id.matches("[A-Za-z0-9_-]{1,40}") || !ids.add(p.id)) return "A pet has a bad or doubled id.";
 			if (p.name == null || p.name.isEmpty() || p.name.length() > 32) return "Every pet needs a name of 1 to 32 characters.";
+			if (!(p.size >= 0.3 && p.size <= 2)) return "The head size of " + p.name + " is 0.3 to 2.";
 			if (p.description.length() > 200) return "The description of " + p.name + " is up to 200 characters.";
 			if (texture(p.texture) == null) return "The head texture of " + p.name + " isn't a skin value (base64 from a head generator) or a textures.minecraft.net link.";
 			if (p.price < 0 || p.price > 10_000_000) return "The price of " + p.name + " is 0 to 10,000,000.";

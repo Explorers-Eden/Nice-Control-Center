@@ -988,7 +988,6 @@
 					<p class="np-card-intro">Pets are floating player heads that follow their owner, only for looks (no effects), and everyone nearby sees them. Players buy them in the pet shop (<code>/pets</code>, or Pets in <code>/market</code>) with the market's currency and keep them for good, then pick how theirs moves and, if you allow it, a particle trail. Pets taken out of the shop stay with the players who have them, and changes to a pet's name or head reach them too.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Pets on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
-						<label class="np-form-row"><span>Head size<small class="pn-comment">1 is a normal player head (half a block)</small></span><input type="number" name="size" min="0.3" max="2" step="0.1"></label>
 						<label class="np-form-row"><span>Particle trails<small class="pn-comment">Players may pick particles that rise off their pet</small></span><span class="np-switch"><input type="checkbox" name="particles"><span></span></span></label>
 					</div>
 					<div class="np-form-actions">
@@ -1014,6 +1013,9 @@
 							<label class="np-form-row pn-pt-sale"><span>Always on sale<small class="pn-comment">Off: the shop sells it until the end of this day. Bought pets stay with their players for good either way</small></span><span class="pn-pt-pair"><input type="date" name="saleEnd"><span class="np-switch"><input type="checkbox" name="always"><span></span></span></span></label>
 							<label class="np-form-row pn-pt-sale"><span>No limit on how many<small class="pn-comment">Off: only this many can be sold in all</small></span><span class="pn-pt-pair"><input type="number" name="stock" min="1" max="1000000" placeholder="amount"><span class="np-switch"><input type="checkbox" name="unlimited"><span></span></span></span></label>
 							<label class="np-form-row pn-pt-sale">For sale<span class="np-switch"><input type="checkbox" name="forSale"><span></span></span></label>
+						</div>
+						<div class="np-form-grid">
+							<label class="np-form-row"><span>Head size<small class="pn-comment">1 is a normal player head (half a block); 0.8 is the usual</small></span><input type="number" name="size" min="0.3" max="2" step="0.1" required></label>
 						</div>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary" id="pn-pt-add"><i class="bi bi-plus-lg"></i> Add pet</button>

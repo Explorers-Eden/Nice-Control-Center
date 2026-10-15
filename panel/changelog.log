@@ -1,3 +1,6 @@
+## 1.12.11
+- Market → Pets: head size per pet in the pet editor (0.3 to 2, 0.8 for new pets) instead of one size for all; existing pets keep the old size (needs mod 1.13.12)
+
 ## 1.12.10
 - Market → Pets: an optional description per pet (up to 200 characters), shown to players in the pet menus and on the info page's pet tiles (needs mod 1.13.11)
 

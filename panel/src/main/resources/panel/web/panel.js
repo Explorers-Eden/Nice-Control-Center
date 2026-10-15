@@ -4811,7 +4811,6 @@
     const s = ptData.settings;
     const f = $('pn-pt-form');
     f.enabled.checked = s.enabled;
-    f.size.value = s.size;
     f.particles.checked = s.particles;
     const edit = can('settings.server');
     f.querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
@@ -4862,6 +4861,7 @@
     const f = $('pn-pt-edit');
     f.name.value = pet ? pet.name : '';
     f.description.value = pet ? pet.description || '' : '';
+    f.size.value = pet && pet.size ? pet.size : 0.8;
     f.texture.value = pet ? pet.texture : '';
     f.price.value = pet ? pet.price : '';
     f.always.checked = pet ? !pet.saleEnds : true;
@@ -4913,7 +4913,7 @@
   $('pn-pt-edit').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
-    const pet = { id: ptEditing || undefined, name: f.name.value.trim(), description: f.description.value.trim(), texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
+    const pet = { id: ptEditing || undefined, name: f.name.value.trim(), description: f.description.value.trim(), size: Number(f.size.value) || 0.8, texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
       saleEnds: f.always.checked || !f.saleEnd.value ? 0 : new Date(f.saleEnd.value + 'T23:59:59').getTime(), stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
     const before = ptData.settings.pets.find((p) => p.id === ptEditing);
     if (before && before.retired) Object.assign(pet, { price: before.price, saleEnds: before.saleEnds, stock: before.stock, forSale: false, retired: true });
@@ -4969,7 +4969,7 @@
     const enabled = f.enabled.checked;
     if (enabled && !ptData.settings.enabled && !confirm('Switch pets on? Players can use /pets and the pet shop right away.')) return;
     try {
-      const res = await api('api/pets/settings', { enabled, size: Number(f.size.value) || 0.8, particles: f.particles.checked, pets: ptData.settings.pets });
+      const res = await api('api/pets/settings', { enabled, size: ptData.settings.size, particles: f.particles.checked, pets: ptData.settings.pets });
       formMsg('pn-pt-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
       loadPets();
     } catch (err) {

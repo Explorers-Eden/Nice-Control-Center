@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.12
+- Pets: each pet has its own head size (set in the panel); pets from before keep the size all pets had
+
 ## 1.13.11
 - Pets can have a description (set in the panel): shown on the pet's page in the shop and under each pet in /pets
 

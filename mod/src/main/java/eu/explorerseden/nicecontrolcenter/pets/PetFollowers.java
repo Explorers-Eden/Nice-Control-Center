@@ -115,7 +115,7 @@ final class PetFollowers {
 				continue;
 			}
 			String texture = PetStore.texture(owned);
-			double size = PetStore.settings().size;
+			double size = PetStore.size(owned);
 			if (f == null) {
 				f = new Follower(player.getRandom().nextInt(1000));
 				followers.put(player.getUUID(), f);

@@ -228,6 +228,12 @@ public final class PetStore {
 		return p == null ? "" : p.description;
 	}
 
+	/** The head size from the shop (also while retired). */
+	static double size(Pets.Owned owned) {
+		Pets.Pet p = settings.pet(owned.pet);
+		return p != null ? p.size : Pets.DEFAULT_SIZE;
+	}
+
 	static String texture(Pets.Owned owned) {
 		Pets.Pet p = settings.pet(owned.pet);
 		return p != null ? p.texture : owned.texture;
