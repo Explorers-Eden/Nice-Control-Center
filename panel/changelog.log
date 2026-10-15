@@ -1,3 +1,6 @@
+## 1.12.16
+- Claims → Settings and the info page: the old owner of a claim that went to a co-owner is no longer part of it (needs mod 1.13.20)
+
 ## 1.12.15
 - Claims → Settings and the info page explain that claims of players who are away go to the first active co-owner (needs mod 1.13.19)
 

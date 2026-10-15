@@ -58,7 +58,7 @@ public final class ClaimPlaytime {
 
 	/**
 	 * Claims of players away longer than inactiveDays go to their first co-owner who's still around (the
-	 * old owner stays on as co-owner); claims without one are removed.
+	 * old owner is no longer part of it); claims without one are removed.
 	 */
 	public static void expire() {
 		Claims.Settings s = ClaimStore.settings();
@@ -83,12 +83,10 @@ public final class ClaimPlaytime {
 				gone.add(c);
 				continue;
 			}
-			String oldOwner = c.owner;
 			String oldName = c.ownerName;
 			String heirName = c.members.get(heir).name != null ? c.members.get(heir).name : data.player(heir).name;
 			// Like an admin hand-over: the claim doesn't need the new owner's claim blocks.
 			data.transfer(c, heir, heirName, s, true, now);
-			data.setMember(c, oldOwner, oldName, Claims.Role.MANAGE, now);
 			passed++;
 			NiceControlCenter.LOGGER.info("Claim {} of {} (away more than {} days) went to its co-owner {}", c.displayName(), oldName, s.inactiveDays, heirName);
 		}
