@@ -107,6 +107,8 @@ public final class Discord implements Notifier {
 			if (kickMessage == null || kickMessage.isBlank()) kickMessage = d.kickMessage;
 			// Messages from before the link channel (the default, or an edited one) tell players to DM the bot: {where} names the link channel instead.
 			kickMessage = OLD_WHERE.matcher(kickMessage).replaceAll("Post this code {where}:");
+			if (KICK_WITHOUT_INVITE.equals(kickMessage)) kickMessage = d.kickMessage;
+			discordInvite = discordInvite == null ? "" : discordInvite.strip();
 			if (gameFormat == null || gameFormat.isBlank()) gameFormat = GameFormat.DEFAULT;
 			// "[{race}] {player}" was the first default; the line matches the admin and Discord prefixes in game.
 			if (nameFormat == null || nameFormat.isBlank() || !nameFormat.contains("{player}") || nameFormat.equals("[{race}] {player}")) nameFormat = d.nameFormat;
@@ -140,7 +142,11 @@ public final class Discord implements Notifier {
 			events.put("broadcast", false);
 			templates.put("broadcast", "📢 {message}");
 		}
-		public String kickMessage = "Link your Discord account to play on this server.\n\nPost this code {where}:\n\n{code}\n\nThe code works for 15 minutes.";
+		public String kickMessage = "Link your Discord account to play on this server.\n\nJoin our Discord: {invite}\nThen post this code {where}:\n\n{code}\n\nThe code works for 15 minutes.";
+		/** The default before {invite}; saved settings with it get the new one. */
+		private static final String KICK_WITHOUT_INVITE = "Link your Discord account to play on this server.\n\nPost this code {where}:\n\n{code}\n\nThe code works for 15 minutes.";
+		/** Shown to players who aren't linked yet; empty = an invite the bot makes for the link (or chat) channel. */
+		public String discordInvite = "";
 		/** "Send this code to {bot} as a direct message on Discord:" from messages before the link channel. */
 		private static final java.util.regex.Pattern OLD_WHERE = java.util.regex.Pattern.compile("(?i)send (?:this|the|your) code to \\S.*? as an? (?:direct message|DM)(?: on Discord)?:?");
 		public String notMemberMessage = "Your linked Discord account isn't on our Discord server anymore. Join it again to play.";
@@ -468,6 +474,7 @@ public final class Discord implements Notifier {
 		}
 		if (!next.topicChannelId.isEmpty() && !next.topicChannelId.matches("\\d{5,25}")) return "The topic channel ID is a long number, or empty for the chat channel.";
 		if (next.topicFormat.length() > 900 || next.topicOffline.length() > 900) return "The channel topic is 900 characters at most.";
+		if (!next.discordInvite.isEmpty() && !next.discordInvite.matches("(?i)(https?://)?(www\\.)?(discord\\.gg|discord(app)?\\.com/invite)/[A-Za-z0-9-]+/?")) return "The Discord invite looks like discord.gg/abc123 (or empty to let the bot make one).";
 		String formatProblem = GameFormat.check(next.gameFormat);
 		if (formatProblem != null) return formatProblem;
 		write(settingsFile, Json.GSON.toJson(next));
@@ -479,6 +486,8 @@ public final class Discord implements Notifier {
 		appliedRoles.clear();
 		timer.execute(this::syncRoles);
 		lastTopic = null;
+		autoInvite = null;
+		timer.execute(this::makeInvite);
 		if (reconnect || jda == null) connect();
 		else lastPresence = "";
 		return null;
@@ -539,6 +548,7 @@ public final class Discord implements Notifier {
 					bot.awaitReady();
 					status = "Connected as " + bot.getSelfUser().getName();
 					lastPresence = "";
+					makeInvite();
 					watch();
 				} catch (Exception e) {
 					status = "Couldn't connect: " + e.getMessage();
@@ -586,7 +596,7 @@ public final class Discord implements Notifier {
 
 	private static final net.dv8tion.jda.api.Permission[] NEEDED = { net.dv8tion.jda.api.Permission.VIEW_CHANNEL, net.dv8tion.jda.api.Permission.MESSAGE_SEND,
 			net.dv8tion.jda.api.Permission.MESSAGE_HISTORY, net.dv8tion.jda.api.Permission.MANAGE_WEBHOOKS, net.dv8tion.jda.api.Permission.MESSAGE_MANAGE,
-			net.dv8tion.jda.api.Permission.MANAGE_ROLES, net.dv8tion.jda.api.Permission.MANAGE_CHANNEL };
+			net.dv8tion.jda.api.Permission.MANAGE_ROLES, net.dv8tion.jda.api.Permission.MANAGE_CHANNEL, net.dv8tion.jda.api.Permission.CREATE_INSTANT_INVITE };
 
 	/** The link that adds the bot to a Discord server with every permission it needs; null while it isn't connected. */
 	public String inviteUrl() {
@@ -605,6 +615,12 @@ public final class Discord implements Notifier {
 		problems(out, guild, s.channelId, "chat channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[3]);
 		if (!s.alertChannelId.isBlank()) problems(out, guild, s.alertChannelId, "alerts channel", NEEDED[0], NEEDED[1]);
 		if (!s.linkChannelId.isBlank()) problems(out, guild, s.linkChannelId, "link channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[4]);
+		if (s.discordInvite.isBlank() && s.requireLink) {
+			String inviteId = !s.linkChannelId.isBlank() && guild.getTextChannelById(s.linkChannelId) != null ? s.linkChannelId : s.channelId;
+			TextChannel inviteChannel = guild.getTextChannelById(inviteId);
+			if (inviteChannel != null && !guild.getSelfMember().hasPermission(inviteChannel, NEEDED[7]))
+				out.add("The join screen has no Discord invite: give the bot Create Invite in #" + inviteChannel.getName() + ", or paste an invite link under Account linking.");
+		}
 		if (s.topicOn) {
 			String topicId = s.topicChannelId.isBlank() ? s.channelId : s.topicChannelId;
 			problems(out, guild, topicId, "topic channel", NEEDED[0], NEEDED[6]);
@@ -629,6 +645,37 @@ public final class Discord implements Notifier {
 		}
 		List<String> missing = java.util.Arrays.stream(needed).filter(p -> !guild.getSelfMember().hasPermission(channel, p)).map(net.dv8tion.jda.api.Permission::getName).toList();
 		if (!missing.isEmpty()) out.add("In #" + channel.getName() + " (" + what + ") the bot is missing: " + String.join(", ", missing) + ".");
+	}
+
+	/** The invite the bot made (for the link channel, or the chat channel), when none is set. */
+	private volatile String autoInvite;
+
+	/** A permanent invite; Discord hands back the same one each time instead of making new ones. */
+	private void makeInvite() {
+		if (!settings.discordInvite.isBlank()) return;
+		JDA bot = jda;
+		if (bot == null || bot.getStatus() != JDA.Status.CONNECTED) return;
+		TextChannel channel = settings.linkChannelId.isBlank() ? null : bot.getTextChannelById(settings.linkChannelId);
+		if (channel == null) channel = bot.getTextChannelById(settings.channelId);
+		if (channel == null) return;
+		channel.createInvite().setMaxAge(0).setMaxUses(0).setUnique(false).reason("Invite on the Minecraft join screen")
+				.queue(invite -> autoInvite = invite.getUrl(), err -> autoInvite = null);
+	}
+
+	/** The Discord invite for the join screen ("discord.gg/abc123"), or null when there's none. */
+	String invite() {
+		String set = settings.discordInvite.isBlank() ? autoInvite : settings.discordInvite;
+		return set == null || set.isBlank() ? null : set.replaceFirst("(?i)^https?://(www\\.)?", "").replaceFirst("/$", "");
+	}
+
+	/** The join screen for players who aren't linked: always with the invite (added at the end when the message has no {invite}). */
+	private String kickText(Settings s, String code, String name) {
+		String invite = invite();
+		String text = s.kickMessage;
+		if (invite == null) text = text.replaceAll("(?m)^[^\\n]*\\{invite}[^\\n]*\\n?", "");
+		else if (!text.contains("{invite}")) text = text.strip() + "\n\nOur Discord: {invite}";
+		return text.replace("{invite}", invite == null ? "" : invite).replace("{where}", where()).replace("{bot}", botName())
+				.replace("{code}", code).replace("{player}", name == null ? "" : name);
 	}
 
 	/** Where the join screen tells players to post their code: the link channel, or the bot's direct messages. */
@@ -786,7 +833,7 @@ public final class Discord implements Notifier {
 				code = sb.toString();
 				pending.put(code, new Pending(uuid, name, System.currentTimeMillis() + 15 * 60_000));
 			}
-			return new LoginAnswer(false, s.kickMessage.replace("{where}", where()).replace("{bot}", botName()).replace("{code}", code).replace("{player}", name == null ? "" : name));
+			return new LoginAnswer(false, kickText(s, code, name));
 		}
 		if (s.requireMember && !isMember(link.discordId(), false)) return new LoginAnswer(false, s.notMemberMessage);
 		if (name != null && !name.equals(link.name())) {

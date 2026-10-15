@@ -2541,6 +2541,7 @@
     form.gameFormat.value = s.gameFormat || '';
     form.nameFormat.value = s.nameFormat || '';
     form.linkedRoleId.value = s.linkedRoleId || '';
+    form.discordInvite.value = s.discordInvite || '';
     $('pn-dc-race-roles').innerHTML = FR_RACES.map((r) => `<label class="np-form-row">${r[0].toUpperCase() + r.slice(1)}<input type="text" data-race="${r}" inputmode="numeric" placeholder="role ID" value="${esc((s.raceRoles || {})[r] || '')}"></label>`).join('');
     previewGameFormat();
     // One grid: event · channel · message, so every column lines up.
@@ -2636,7 +2637,7 @@
       notMemberMessage: discordData.settings.notMemberMessage,
       chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
       gameFormat: form.gameFormat.value, nameFormat: form.nameFormat.value.trim(),
-      linkedRoleId: form.linkedRoleId.value.trim(),
+      linkedRoleId: form.linkedRoleId.value.trim(), discordInvite: form.discordInvite.value.trim(),
       topicOn: form.topicOn.checked, topicChannelId: form.topicChannelId.value.trim(), topicFormat: form.topicFormat.value.trim(), topicOffline: form.topicOffline.value.trim(),
       raceRoles: Object.fromEntries([...$('pn-dc-race-roles').querySelectorAll('[data-race]')].map((i) => [i.dataset.race, i.value.trim()]).filter(([, v]) => v)),
     };

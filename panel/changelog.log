@@ -1,3 +1,6 @@
+## 1.12.26
+- Discord: the join screen for players who aren't linked always shows an invite to your Discord ({invite}; added at the end of messages without it). Paste one under Account linking, or leave it empty and the bot makes a permanent invite for the link (or chat) channel (needs Create Invite). The default message now starts with "Join our Discord: …"
+
 ## 1.12.25
 - Discord: Channel topic: keeps a channel's topic (the chat channel or another) up to date with players online ({players}, {max}, {names}) and, with Nice Actions, its Time/Date HUD ({hud}); offline text while the server is off. Changes at most every 5 minutes (Discord allows two per 10). The bot needs Manage Channels (needs mod 1.13.22 for names and the HUD)
 

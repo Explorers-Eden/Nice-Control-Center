@@ -1286,7 +1286,7 @@
 						<ol>
 							<li>On <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">discord.com/developers</a>: <b>New Application</b> → <b>Bot</b> → <b>Reset Token</b> and copy the token (or set it as <code>DISCORD_TOKEN</code> in the container).</li>
 							<li>On the same page, switch on <b>Message Content Intent</b>.</li>
-							<li><b>OAuth2</b> → <b>URL Generator</b>: scope <code>bot</code>; permissions <i>View Channels</i>, <i>Send Messages</i>, <i>Read Message History</i>, <i>Manage Webhooks</i>, <i>Manage Messages</i> (to remove codes posted in the link channel), <i>Manage Roles</i> (for roles of linked players), <i>Manage Channels</i> (for the channel topic). Open the link and add the bot to your server.</li>
+							<li><b>OAuth2</b> → <b>URL Generator</b>: scope <code>bot</code>; permissions <i>View Channels</i>, <i>Send Messages</i>, <i>Read Message History</i>, <i>Manage Webhooks</i>, <i>Manage Messages</i> (to remove codes posted in the link channel), <i>Manage Roles</i> (for roles of linked players), <i>Manage Channels</i> (for the channel topic), <i>Create Invite</i> (for the invite on the join screen). Open the link and add the bot to your server.</li>
 							<li>In Discord: <b>Settings</b> → <b>Advanced</b> → <b>Developer Mode</b>. Right-click your server → <b>Copy Server ID</b>, right-click a channel → <b>Copy Channel ID</b>.</li>
 						</ol>
 					</details>
@@ -1324,13 +1324,16 @@
 						<label class="np-form-row">…and still be on the Discord server<span class="np-switch"><input type="checkbox" name="requireMember"><span></span></span></label>
 						<label class="np-form-row">Operators don't need a link<span class="np-switch"><input type="checkbox" name="opsBypass"><span></span></span></label>
 					</div>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Discord invite link<span class="pn-comment">Shown on the join screen; empty = the bot makes a permanent one for the link (or chat) channel</span></span><input type="text" name="discordInvite" placeholder="discord.gg/…" spellcheck="false"></label>
+					</div>
 					<h4 class="pn-dc-group">Roles for linked players</h4>
 					<p class="np-card-intro">The bot gives every linked player the role below, plus the role of their Fabled Roots race (from the race tag, checked every 5 minutes), and swaps or takes them away when the race changes or they unlink. Empty = no role. Right-click a role → <b>Copy Role ID</b>. The bot needs <i>Manage Roles</i>, and its own role must be above these roles.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row">Role for every linked player<input type="text" name="linkedRoleId" inputmode="numeric" placeholder="role ID"></label>
 					</div>
 					<div class="np-form-grid" id="pn-dc-race-roles"></div>
-					<label class="pn-field"><span>Message when someone isn't linked yet (<code>{code}</code>, <code>{where}</code> and <code>{bot}</code> are filled in; <code>{where}</code> is the link channel, or the bot's direct messages)</span><textarea name="kickMessage" rows="4"></textarea></label>
+					<label class="pn-field"><span>Message when someone isn't linked yet (<code>{code}</code>, <code>{invite}</code>, <code>{where}</code> and <code>{bot}</code> are filled in; <code>{where}</code> is the link channel, or the bot's direct messages; without <code>{invite}</code> the invite is added at the end)</span><textarea name="kickMessage" rows="4"></textarea></label>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bell"></i> Events &amp; alerts</h3>
