@@ -1,3 +1,6 @@
+## 1.12.17
+- Discord: a link channel, like DiscordJustSync: players post their code there, the bot removes the message right away and answers by direct message (a mention that disappears after 15 s when their DMs are closed); direct messages still work. The bot needs Manage Messages there. The join screen's message gets {where} (the link channel, or the bot's DMs)
+
 ## 1.12.16
 - Claims → Settings and the info page: the old owner of a claim that went to a co-owner is no longer part of it (needs mod 1.13.20)
 

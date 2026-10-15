@@ -102,7 +102,7 @@ Minecraft itself can't take a world back to an older version, so go back with Un
 The **Discord** tab connects a bot. It does four things:
 
 1. **Linking required to play:**
-   - Someone without a linked Discord account sees a code on the join screen. They send it to the bot as a direct message and can join right after.
+   - Someone without a linked Discord account sees a code on the join screen. They post it in the link channel (the bot removes the message at once and answers by direct message) or send it to the bot as a direct message, and can join right after.
    - Optionally they must also still be on your Discord server.
    - Operators and a list of names can skip it.
    - Players send `unlink` to the bot to remove their link; admins can unlink in the tab.
@@ -115,9 +115,9 @@ The **Discord** tab connects a bot. It does four things:
 
 **Setting up the bot** (the tab has the same steps):
 1. On [discord.com/developers](https://discord.com/developers/applications): **New Application** → **Bot** → **Reset Token** and copy the token. Switch on **Message Content Intent**.
-2. **OAuth2** → **URL Generator**: scope `bot`, permissions *View Channels*, *Send Messages*, *Read Message History*, *Manage Webhooks*. Open the link and add the bot to your server.
-3. In Discord, turn on **Developer Mode**, then copy the server ID and the chat channel's ID.
-4. Paste the token and both IDs in the panel, switch the bridge on and save. The token can also come from `DISCORD_TOKEN`.
+2. **OAuth2** → **URL Generator**: scope `bot`, permissions *View Channels*, *Send Messages*, *Read Message History*, *Manage Webhooks*, *Manage Messages* (for the link channel). Open the link and add the bot to your server.
+3. In Discord, turn on **Developer Mode**, then copy the server ID and the chat channel's ID (and a link channel's, if you want one; empty = codes by direct message only).
+4. Paste the token and the IDs in the panel, switch the bridge on and save. The token can also come from `DISCORD_TOKEN`.
 
 Links are kept in the panel volume, so the login check needs neither the database nor Discord. If the bot isn't connected, players are let in, so a Discord outage can't lock everyone out.
 

@@ -2529,6 +2529,7 @@
     form.guildId.value = s.guildId || '';
     form.channelId.value = s.channelId || '';
     form.alertChannelId.value = s.alertChannelId || '';
+    form.linkChannelId.value = s.linkChannelId || '';
     form.kickMessage.value = s.kickMessage || '';
     form.gameFormat.value = s.gameFormat || '';
     previewGameFormat();
@@ -2614,7 +2615,7 @@
       templates[row.dataset.event] = row.querySelector('input[type="text"]').value;
     });
     const body = {
-      enabled: form.enabled.checked, token: form.token.value.trim(), guildId: form.guildId.value.trim(), channelId: form.channelId.value.trim(), alertChannelId: form.alertChannelId.value.trim(),
+      enabled: form.enabled.checked, token: form.token.value.trim(), guildId: form.guildId.value.trim(), channelId: form.channelId.value.trim(), alertChannelId: form.alertChannelId.value.trim(), linkChannelId: form.linkChannelId.value.trim(),
       requireLink: form.requireLink.checked, requireMember: form.requireMember.checked, opsBypass: form.opsBypass.checked,
       bypass: [], kickMessage: form.kickMessage.value,
       notMemberMessage: discordData.settings.notMemberMessage,

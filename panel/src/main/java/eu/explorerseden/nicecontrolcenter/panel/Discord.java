@@ -42,8 +42,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Discord bridge with exactly four jobs: players must link a Discord account to play (a code sent to
- * the bot by direct message), chat is relayed both ways (chat only, never commands), game events are
+ * Discord bridge with exactly four jobs: players must link a Discord account to play (a code posted in
+ * the link channel, where the bot removes it and answers privately, or sent to the bot by direct message), chat is relayed both ways (chat only, never commands), game events are
  * posted, and the bot's status shows whether the server is up and how many play.
  */
 public final class Discord implements Notifier {
@@ -54,6 +54,8 @@ public final class Discord implements Notifier {
 		public String channelId = "";
 		/** Warnings (lag, crashes, failures, disk, memory) go here; empty = the chat channel. */
 		public String alertChannelId = "";
+		/** Where players post their linking code (removed at once, answered privately); empty = direct messages only. */
+		public String linkChannelId = "";
 		/** Per event: "chat" or "alerts". Events not listed use their default (warnings to alerts, the rest to chat). */
 		public Map<String, String> eventChannels = new LinkedHashMap<>();
 		public boolean requireLink = true;
@@ -77,6 +79,8 @@ public final class Discord implements Notifier {
 			d.events.forEach(events::putIfAbsent);
 			d.templates.forEach(templates::putIfAbsent);
 			if (alertChannelId == null) alertChannelId = "";
+			if (linkChannelId == null) linkChannelId = "";
+			if (OLD_KICK.equals(kickMessage)) kickMessage = d.kickMessage;
 			if (gameFormat == null || gameFormat.isBlank()) gameFormat = GameFormat.DEFAULT;
 			if (eventChannels == null) eventChannels = new LinkedHashMap<>();
 			eventChannels.keySet().retainAll(events.keySet());
@@ -108,7 +112,9 @@ public final class Discord implements Notifier {
 			events.put("broadcast", false);
 			templates.put("broadcast", "📢 {message}");
 		}
-		public String kickMessage = "Link your Discord account to play on this server.\n\nSend this code to {bot} as a direct message on Discord:\n\n{code}\n\nThe code works for 15 minutes.";
+		public String kickMessage = "Link your Discord account to play on this server.\n\nPost this code {where}:\n\n{code}\n\nThe code works for 15 minutes.";
+		/** The default before the link channel; saved settings with it get the new one. */
+		private static final String OLD_KICK = "Link your Discord account to play on this server.\n\nSend this code to {bot} as a direct message on Discord:\n\n{code}\n\nThe code works for 15 minutes.";
 		public String notMemberMessage = "Your linked Discord account isn't on our Discord server anymore. Join it again to play.";
 	}
 
@@ -252,6 +258,8 @@ public final class Discord implements Notifier {
 		next.bypass = next.bypass.stream().map(String::strip).filter(b -> !b.isEmpty()).map(b -> b.toLowerCase(Locale.ROOT)).distinct().toList();
 		if (next.alertChannelId != null) next.alertChannelId = next.alertChannelId.strip();
 		if (next.alertChannelId != null && !next.alertChannelId.isEmpty() && !next.alertChannelId.matches("\\d{5,25}")) return "The alerts channel ID is a long number, or empty for the chat channel.";
+		if (next.linkChannelId != null) next.linkChannelId = next.linkChannelId.strip();
+		if (next.linkChannelId != null && !next.linkChannelId.isEmpty() && !next.linkChannelId.matches("\\d{5,25}")) return "The link channel ID is a long number, or empty for direct messages only.";
 		next.addDefaults();
 		String formatProblem = GameFormat.check(next.gameFormat);
 		if (formatProblem != null) return formatProblem;
@@ -364,22 +372,55 @@ public final class Discord implements Notifier {
 		return bot != null && bot.getStatus() == JDA.Status.CONNECTED ? bot.getSelfUser().getName() : "our Discord bot";
 	}
 
+	/** Where the join screen tells players to post their code: the link channel, or the bot's direct messages. */
+	private String where() {
+		JDA bot = jda;
+		TextChannel link = bot == null || bot.getStatus() != JDA.Status.CONNECTED || settings.linkChannelId.isBlank() ? null : bot.getTextChannelById(settings.linkChannelId);
+		return link != null ? "in #" + link.getName() + " on our Discord server" : "to " + botName() + " as a direct message on Discord";
+	}
+
 	private final class Listener extends ListenerAdapter {
 		@Override
 		public void onMessageReceived(MessageReceivedEvent event) {
 			if (event.getAuthor().isBot() || event.isWebhookMessage()) return;
 			if (event.isFromType(ChannelType.PRIVATE)) {
-				direct(event.getMessage());
+				Message m = event.getMessage();
+				direct(m.getAuthor(), m.getContentRaw(), text -> m.getChannel().sendMessage(text).queue());
+			} else if (!settings.linkChannelId.isBlank() && event.getChannel().getId().equals(settings.linkChannelId)) {
+				linkChannel(event.getMessage());
 			} else if (event.getChannel().getId().equals(settings.channelId) && settings.chatToGame) {
 				toGame(event.getMessage());
 			}
 		}
 	}
 
-	/** Direct messages: a linking code, or "unlink". */
-	private void direct(Message message) {
+	/**
+	 * The link channel: every message is removed at once and answered privately, so codes stay secret. When it's
+	 * also the chat channel, only codes and "unlink" are taken; everything else is chat.
+	 */
+	private void linkChannel(Message message) {
+		boolean shared = settings.linkChannelId.equals(settings.channelId);
 		String text = message.getContentRaw().strip().toUpperCase(Locale.ROOT);
-		String userId = message.getAuthor().getId();
+		if (shared && !text.equals("UNLINK") && !pending.containsKey(text.replaceAll("[^A-Z0-9]", ""))) {
+			if (settings.chatToGame) toGame(message);
+			return;
+		}
+		message.delete().queue(ok -> { }, err -> status = "Can't remove messages in the link channel (needs Manage Messages): " + err.getMessage());
+		direct(message.getAuthor(), message.getContentRaw(), reply -> privately(message, reply));
+	}
+
+	/** A direct message; when the player's DMs are closed, a mention in the channel that removes itself after 15 s. */
+	private void privately(Message message, String text) {
+		message.getAuthor().openPrivateChannel().flatMap(dm -> dm.sendMessage(text)).queue(ok -> { }, err ->
+				message.getChannel().sendMessage(message.getAuthor().getAsMention() + " " + text).setAllowedMentions(List.of())
+						.mentionUsers(message.getAuthor().getId())
+						.queue(sent -> sent.delete().queueAfter(15, TimeUnit.SECONDS, null, gone -> { }), gone -> { }));
+	}
+
+	/** A linking code or "unlink", from a direct message or the link channel; {@code reply} answers privately. */
+	private void direct(net.dv8tion.jda.api.entities.User author, String raw, java.util.function.Consumer<String> reply) {
+		String text = raw.strip().toUpperCase(Locale.ROOT);
+		String userId = author.getId();
 		if (text.equals("UNLINK")) {
 			List<Link> mine = links.stream().filter(l -> l.discordId().equals(userId)).toList();
 			for (Link l : mine) {
@@ -388,29 +429,29 @@ public final class Discord implements Notifier {
 				} catch (IOException e) {
 					// Next time.
 				}
-				audit.log(message.getAuthor().getName(), "discord.unlink", l.name() + " (by the player)", null);
+				audit.log(author.getName(), "discord.unlink", l.name() + " (by the player)", null);
 			}
-			message.getChannel().sendMessage(mine.isEmpty() ? "No Minecraft account is linked to you." : "Unlinked " + String.join(", ", mine.stream().map(Link::name).toList()) + ".").queue();
+			reply.accept(mine.isEmpty() ? "No Minecraft account is linked to you." : "Unlinked " + String.join(", ", mine.stream().map(Link::name).toList()) + ".");
 			return;
 		}
 		Pending p = pending.get(text.replaceAll("[^A-Z0-9]", ""));
 		if (p == null || p.expires() < System.currentTimeMillis()) {
-			message.getChannel().sendMessage("Send me the code shown when you join the Minecraft server. (Send `unlink` to remove your link.)").queue();
+			reply.accept("Send me the code shown when you join the Minecraft server. (Send `unlink` to remove your link.)");
 			return;
 		}
 		if (settings.requireMember && !isMember(userId, true)) {
-			message.getChannel().sendMessage("Join our Discord server first, then send the code again.").queue();
+			reply.accept("Join our Discord server first, then send the code again.");
 			return;
 		}
 		pending.values().removeIf(x -> x.uuid().equals(p.uuid()));
 		try {
-			link(new Link(p.uuid(), p.name(), userId, message.getAuthor().getName(), System.currentTimeMillis()));
+			link(new Link(p.uuid(), p.name(), userId, author.getName(), System.currentTimeMillis()));
 		} catch (IOException e) {
-			message.getChannel().sendMessage("Something went wrong while saving; try again in a moment.").queue();
+			reply.accept("Something went wrong while saving; try again in a moment.");
 			return;
 		}
-		audit.log(message.getAuthor().getName(), "discord.link", p.name() + " ↔ " + message.getAuthor().getName(), null);
-		message.getChannel().sendMessage("Linked! **" + p.name() + "** can join the server now.").queue();
+		audit.log(author.getName(), "discord.link", p.name() + " ↔ " + author.getName(), null);
+		reply.accept("Linked! **" + p.name() + "** can join the server now.");
 	}
 
 	/** Discord → game as tellraw text; nothing is ever run as a command. */
@@ -486,7 +527,7 @@ public final class Discord implements Notifier {
 				code = sb.toString();
 				pending.put(code, new Pending(uuid, name, System.currentTimeMillis() + 15 * 60_000));
 			}
-			return new LoginAnswer(false, s.kickMessage.replace("{bot}", botName()).replace("{code}", code).replace("{player}", name == null ? "" : name));
+			return new LoginAnswer(false, s.kickMessage.replace("{where}", where()).replace("{bot}", botName()).replace("{code}", code).replace("{player}", name == null ? "" : name));
 		}
 		if (s.requireMember && !isMember(link.discordId(), false)) return new LoginAnswer(false, s.notMemberMessage);
 		if (name != null && !name.equals(link.name())) {
