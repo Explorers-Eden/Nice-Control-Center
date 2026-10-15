@@ -182,7 +182,9 @@ public final class PetDialogs {
 				.append(have ? Component.literal("  yours").withStyle(ChatFormatting.GREEN) : Component.empty())
 				.append(Component.literal("\n" + (pet.price == 0 ? "Free" : amount(pet.price))).withStyle(ChatFormatting.GOLD))
 				.append(Component.literal((saleLine(pet) != null ? " · until " + Pets.date(pet.saleEnds) : "") + (left > 0 ? " · " + left + " left" : "") + "  ").withStyle(ChatFormatting.GRAY))
-				.append(link("View", "See it and buy", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.GREEN));
+				// Like the market's listings: Buy, or View for one you already have.
+				.append(have ? link("View", "You have it already", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.AQUA)
+						: link("Buy", "See it and buy", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.GREEN));
 		return headRow(player, pet.texture, desc);
 	}
 

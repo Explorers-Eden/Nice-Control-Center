@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.18
+- Pets in the Server shop and the pet shop say [ Buy ] like the other listings, or [ View ] for a pet you already have
+
 ## 1.13.17
 - Market: the seller name of the Server shop's listings can be set in the panel (default "the server"); it shows on the listings and in the sales
 
