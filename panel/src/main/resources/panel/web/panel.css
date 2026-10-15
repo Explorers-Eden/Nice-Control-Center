@@ -649,6 +649,9 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 /* Discord: the bot's state as a pill. */
 .pn-dc-status { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 6px 12px; border-radius: 999px; background: var(--inset); border: 1px solid var(--card-border); font-size: var(--fs-sm); color: var(--muted); }
 .pn-dc-status:empty { display: none; }
+.pn-dc-problems { margin: 0 0 14px; font-weight: 400; }
+.pn-dc-problems ul { margin: 0 0 6px; padding-left: 18px; }
+.pn-dc-problems a { color: inherit; font-weight: 600; }
 .pn-dc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .pn-dc-status.good .pn-dc-dot { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
 .pn-dc-status.bad .pn-dc-dot { background: var(--poor); }

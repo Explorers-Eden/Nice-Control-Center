@@ -68,6 +68,8 @@ final class DiscordRoutes {
 			out.put("settings", settings);
 			out.put("tokenFromEnv", discord.tokenFromEnv());
 			out.put("status", discord.status());
+			out.put("problems", discord.problems());
+			out.put("inviteUrl", discord.inviteUrl());
 			out.put("links", discord.links());
 			json(ctx, out);
 		}));

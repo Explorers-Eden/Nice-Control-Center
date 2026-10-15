@@ -372,6 +372,39 @@ public final class Discord implements Notifier {
 		return bot != null && bot.getStatus() == JDA.Status.CONNECTED ? bot.getSelfUser().getName() : "our Discord bot";
 	}
 
+	private static final net.dv8tion.jda.api.Permission[] NEEDED = { net.dv8tion.jda.api.Permission.VIEW_CHANNEL, net.dv8tion.jda.api.Permission.MESSAGE_SEND,
+			net.dv8tion.jda.api.Permission.MESSAGE_HISTORY, net.dv8tion.jda.api.Permission.MANAGE_WEBHOOKS, net.dv8tion.jda.api.Permission.MESSAGE_MANAGE };
+
+	/** The link that adds the bot to a Discord server with every permission it needs; null while it isn't connected. */
+	public String inviteUrl() {
+		JDA bot = jda;
+		return bot == null || bot.getStatus() != JDA.Status.CONNECTED ? null : bot.getInviteUrl(NEEDED);
+	}
+
+	/** What keeps the bot from doing its job on the set server and channels, for the Discord page. */
+	public List<String> problems() {
+		JDA bot = jda;
+		Settings s = settings;
+		if (bot == null || bot.getStatus() != JDA.Status.CONNECTED) return List.of();
+		Guild guild = s.guildId.isBlank() ? null : bot.getGuildById(s.guildId);
+		if (guild == null) return List.of("The bot isn't on the Discord server " + s.guildId + ": add it with the invite link (or check the server ID). Until then it can't post, relay chat or take codes in the link channel.");
+		List<String> out = new ArrayList<>();
+		problems(out, guild, s.channelId, "chat channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[3]);
+		if (!s.alertChannelId.isBlank()) problems(out, guild, s.alertChannelId, "alerts channel", NEEDED[0], NEEDED[1]);
+		if (!s.linkChannelId.isBlank()) problems(out, guild, s.linkChannelId, "link channel", NEEDED[0], NEEDED[1], NEEDED[2], NEEDED[4]);
+		return out;
+	}
+
+	private static void problems(List<String> out, Guild guild, String id, String what, net.dv8tion.jda.api.Permission... needed) {
+		TextChannel channel = guild.getTextChannelById(id);
+		if (channel == null) {
+			out.add("The " + what + " (" + id + ") isn't a text channel on that server, or the bot can't see it.");
+			return;
+		}
+		List<String> missing = java.util.Arrays.stream(needed).filter(p -> !guild.getSelfMember().hasPermission(channel, p)).map(net.dv8tion.jda.api.Permission::getName).toList();
+		if (!missing.isEmpty()) out.add("In #" + channel.getName() + " (" + what + ") the bot is missing: " + String.join(", ", missing) + ".");
+	}
+
 	/** Where the join screen tells players to post their code: the link channel, or the bot's direct messages. */
 	private String where() {
 		JDA bot = jda;

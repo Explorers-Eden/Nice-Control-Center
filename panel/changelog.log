@@ -1,3 +1,6 @@
+## 1.12.19
+- Discord: the page says what keeps the bot from working (not on the Discord server, a channel it can't see, missing permissions such as Manage Messages in the link channel) and offers a link that adds the bot with every permission it needs
+
 ## 1.12.18
 - Fixed: the Discord page never showed its Save button (since 1.12.6 its linked-accounts list shared a function name with the info page's link commands, so loading the page stopped halfway)
 

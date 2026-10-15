@@ -2544,6 +2544,11 @@
     const ok = st.startsWith('Connected as');
     $('pn-discord-status').className = 'pn-dc-status ' + (ok ? 'good' : /^Couldn|^Can't/.test(st) ? 'bad' : 'off');
     $('pn-discord-status').innerHTML = `<span class="pn-dc-dot"></span>Bot: ${esc(st)}${discordData.tokenFromEnv ? ' · token from the container settings' : ''}`;
+    // Not on the server, channels it can't see, missing permissions; and the link that adds it with all of them.
+    const problems = discordData.problems || [];
+    $('pn-dc-problems').hidden = !problems.length;
+    $('pn-dc-problems').innerHTML = problems.length ? `<ul>${problems.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>`
+      + (discordData.inviteUrl ? `<a href="${esc(discordData.inviteUrl)}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Add the bot to your server (with every permission it needs)</a>` : '') : '';
     renderDiscordLinks();
     Dirty.reset('discord');
   }
