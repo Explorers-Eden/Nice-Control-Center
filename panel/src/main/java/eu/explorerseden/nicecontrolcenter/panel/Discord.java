@@ -919,7 +919,11 @@ public final class Discord implements Notifier {
 		JsonObject body = new JsonObject();
 		body.addProperty("content", text.length() > 1900 ? text.substring(0, 1900) + "…" : text);
 		body.addProperty("username", name);
-		if (uuid != null) body.addProperty("avatar_url", "https://mc-heads.net/avatar/" + uuid + "/64");
+		// The player's head; without a player (admins from the panel) the bot's own picture.
+		JDA bot = jda;
+		String avatar = uuid != null ? "https://mc-heads.net/avatar/" + uuid + "/64"
+				: bot != null && bot.getStatus() == JDA.Status.CONNECTED ? bot.getSelfUser().getEffectiveAvatarUrl() : null;
+		if (avatar != null) body.addProperty("avatar_url", avatar);
 		JsonObject allowed = new JsonObject();
 		allowed.add("parse", new JsonArray());
 		JsonArray users = new JsonArray();

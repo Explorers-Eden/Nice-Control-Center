@@ -1,3 +1,6 @@
+## 1.12.24
+- Discord: admin messages from the panel (Chat tab, say) show the bot's picture instead of none
+
 ## 1.12.23
 - Discord: player names default to "Oakhearted ┃ Name", with the same line as the admin and Discord messages in game (the old default "[{race}] {player}" switches over)
 
