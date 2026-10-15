@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.25
+- Gameplay tweak: dispensers place blocks in front of them instead of dropping them (also seeds on farmland, redstone dust, string). Items with their own dispenser action work as before, a sulfur cube in front still gets fed (26.3), droppers still drop, and nothing is placed into someone else's land claim. Shown on the info page
+
 ## 1.13.24
 - Server shop: claim block and command listings show their item model (set in the panel, like one from the server's resource pack) in /market
 

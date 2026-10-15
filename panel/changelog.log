@@ -1,3 +1,6 @@
+## 1.12.30
+- Gameplay → Items & tools: Dispensers place blocks (needs mod 1.13.25)
+
 ## 1.12.29
 - Server shop: claim block and command listings take an item model for their icon (like one from your resource pack, e.g. eden:coin) on top of the item; the info page and the panel draw it from the server's resource pack (needs mod 1.13.24 for the in-game menu)
 

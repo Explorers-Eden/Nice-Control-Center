@@ -109,7 +109,7 @@
         { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
         { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
       { id: 'gameplay', hue: '#c4a6ff', label: 'Gameplay', icon: 'bi-magic', subs: [
-        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, grindstone, spawners, tridents, tree felling and vein mining: things vanilla does differently.' },
+        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, grindstone, spawners, tridents, dispensers, tree felling and vein mining: things vanilla does differently.' },
         { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Nether portals in any shape, saplings that plant themselves and bone meal on more plants.' },
         { tab: 'chattweaks', label: 'Chat & tab list', perm: 'server.view', desc: '@Mentions in chat, the AFK tag, and the tab list\'s header, footer and dimensions.' }] },
       { id: 'tuning', hue: '#ffb35c', label: 'Tuning', icon: 'bi-speedometer', subs: [

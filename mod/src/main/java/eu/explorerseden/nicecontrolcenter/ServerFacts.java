@@ -154,6 +154,9 @@ public final class ServerFacts {
 		if (t.tridents.voidReturn) {
 			out.add(tweak("tridents", "Tridents come back from the void", "bi-arrow-return-left", "A Loyalty trident thrown into the void comes back to you instead of being lost.", List.of()));
 		}
+		if (t.dispensers.placeBlocks) {
+			out.add(tweak("dispensers", "Dispensers place blocks", "bi-box-arrow-right", "A dispenser places blocks in front of it instead of dropping them (droppers still drop).", List.of()));
+		}
 		if (t.chat.mentions) {
 			out.add(tweak("mentions", "@Mentions", "bi-at", "Write @Name in chat and that player hears a little plop and sees who mentioned them"
 					+ (t.chat.discordPing ? "; players who aren't online get pinged on Discord if they linked their account." : "."), List.of()));

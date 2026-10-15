@@ -18,6 +18,7 @@
 		"SpawnerPlaceMixin",
 		"ThrownTridentAccessor",
 		"TridentVoidMixin",
+		"DispenserPlaceMixin",
 		"AnvilTweakMixin",
 		"ArrowDespawnMixin",
 		"BlockUpdatesMixin",
