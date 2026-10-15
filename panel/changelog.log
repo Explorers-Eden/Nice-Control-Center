@@ -1,3 +1,8 @@
+## 1.12.21
+- Discord: messages admins send from the Chat tab (or with say in the console) go to Discord too, as "Admin ┃ <account>" like in game
+- Discord: player names on Discord show their Fabled Roots race, "[Oakhearted] Name" (Player names on Discord: {player} and {race}; needs mod 1.13.21)
+- Maintenance moved to Settings → Server
+
 ## 1.12.20
 - Discord: join-screen messages that still say "send this code to … as a direct message" (the old default, also when it was edited) now say "Post this code {where}:", so players are pointed to the link channel
 

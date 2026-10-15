@@ -431,6 +431,16 @@ public final class PlayerInspector {
 		return server.services().nameToIdCache().get(uuid).map(NameAndId::name);
 	}
 
+	/** The player's Fabled Roots race ("Oakhearted"), or null without one. */
+	public static String race(Iterable<String> tags) {
+		for (String tag : tags) {
+			if (tag.startsWith("fabled_roots.") && RACES.contains(tag.substring("fabled_roots.".length()))) {
+				return title(tag.substring("fabled_roots.".length()));
+			}
+		}
+		return null;
+	}
+
 	private static void raceAndClass(Iterable<String> tags, Map<String, Object> p) {
 		for (String tag : tags) {
 			if (!tag.startsWith("fabled_roots.")) {

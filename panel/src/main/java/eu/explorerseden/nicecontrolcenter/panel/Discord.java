@@ -67,6 +67,8 @@ public final class Discord implements Notifier {
 		public boolean chatToGame = true;
 		/** How Discord messages look in game (DiscordJustSync style tags, %user% and %msg%). */
 		public String gameFormat = GameFormat.DEFAULT;
+		/** The player's name on Discord for game chat: {player} and {race} (Fabled Roots; left out with its brackets when there's none). */
+		public String nameFormat = "[{race}] {player}";
 		public boolean presence = true;
 		public Map<String, Boolean> events = new LinkedHashMap<>(Map.of("join", true, "leave", true, "death", true, "advancement", true,
 				"start", true, "stop", true, "crash", true));
@@ -84,6 +86,7 @@ public final class Discord implements Notifier {
 			// Messages from before the link channel (the default, or an edited one) tell players to DM the bot: {where} names the link channel instead.
 			kickMessage = OLD_WHERE.matcher(kickMessage).replaceAll("Post this code {where}:");
 			if (gameFormat == null || gameFormat.isBlank()) gameFormat = GameFormat.DEFAULT;
+			if (nameFormat == null || nameFormat.isBlank() || !nameFormat.contains("{player}")) nameFormat = d.nameFormat;
 			if (eventChannels == null) eventChannels = new LinkedHashMap<>();
 			eventChannels.keySet().retainAll(events.keySet());
 			eventChannels.replaceAll((k, v) -> "alerts".equals(v) ? "alerts" : "chat");
@@ -263,6 +266,8 @@ public final class Discord implements Notifier {
 		if (next.linkChannelId != null) next.linkChannelId = next.linkChannelId.strip();
 		if (next.linkChannelId != null && !next.linkChannelId.isEmpty() && !next.linkChannelId.matches("\\d{5,25}")) return "The link channel ID is a long number, or empty for direct messages only.";
 		next.addDefaults();
+		if (next.nameFormat != null && !next.nameFormat.isBlank() && !next.nameFormat.contains("{player}")) return "The name on Discord needs {player}.";
+		if (next.nameFormat != null && next.nameFormat.length() > 60) return "The name on Discord is 60 characters at most.";
 		String formatProblem = GameFormat.check(next.gameFormat);
 		if (formatProblem != null) return formatProblem;
 		write(settingsFile, Json.GSON.toJson(next));
@@ -587,7 +592,8 @@ public final class Discord implements Notifier {
 		if (type.equals("leave")) online.remove(name.toLowerCase(java.util.Locale.ROOT));
 		if (type.equals("start") || type.equals("stop")) online.clear();
 		if (type.equals("chat")) {
-			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null, name, e.has("text") ? e.get("text").getAsString() : "");
+			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null,
+					chatName(name, e.has("race") ? e.get("race").getAsString() : ""), e.has("text") ? e.get("text").getAsString() : "");
 			return;
 		}
 		if (type.equals("lag") || type.equals("lagOver") || type.equals("perf")) {
@@ -721,6 +727,45 @@ public final class Discord implements Notifier {
 		m.appendTail(out);
 		text[0] = out.toString();
 		return ids;
+	}
+
+	/** "[Oakhearted] NiceRon" from the name format; without a race the {race} part goes, with its brackets. */
+	String chatName(String player, String race) {
+		String format = settings.nameFormat;
+		String out = race == null || race.isBlank()
+				? format.replaceAll("[\\[(<{]?\\{race}[\\])>}]?", "").replace("{player}", player)
+				: format.replace("{race}", race).replace("{player}", player);
+		out = out.replaceAll("\\s+", " ").strip().replaceAll("^[·•|┃\\-:]\\s*|\\s*[·•|┃\\-:]$", "").strip();
+		// Webhook names: at most 80 characters, and never empty.
+		return out.isEmpty() ? player : out.length() > 80 ? out.substring(0, 80) : out;
+	}
+
+	/** A message an admin sent to the game from the panel (Chat tab or "say"): to Discord like player chat, as "Admin ┃ <account>". */
+	public void adminChat(String user, String text) {
+		if (!settings.enabled || !settings.chatToDiscord) return;
+		String clean = text == null ? "" : text.replaceAll("[\\r\\n]+", " ").strip();
+		if (clean.isEmpty()) return;
+		timer.execute(() -> chat(null, adminLabel(user), clean));
+	}
+
+	/** The mod's message_prefix ("Admin ┃ {user}:") with the account filled in, without the colon. */
+	private String adminLabel(String user) {
+		String template = "Admin ┃ {user}:";
+		try {
+			Path config = server.serverDir().resolve("config").resolve("nicecontrolcenter.json");
+			if (Files.exists(config)) {
+				JsonObject o = com.google.gson.JsonParser.parseString(Files.readString(config)).getAsJsonObject();
+				if (o.has("message_prefix") && o.get("message_prefix").isJsonPrimitive() && !o.get("message_prefix").getAsString().isBlank()) {
+					template = o.get("message_prefix").getAsString().strip();
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			// The default.
+		}
+		String label = user == null || user.isBlank() ? template.replaceAll("\\s*[┃|•·\\-]?\\s*\\{user\\}", "") : template.replace("{user}", user.strip());
+		label = label.strip();
+		if (label.endsWith(":")) label = label.substring(0, label.length() - 1).strip();
+		return label.isEmpty() ? "Admin" : label;
 	}
 
 	/** Game → Discord through a webhook, so each message shows the player's name and head. */

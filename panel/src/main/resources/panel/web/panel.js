@@ -78,8 +78,7 @@
         { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server, by where it comes from: who may use it and what it does.' }] },
       { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
-        { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' },
-        { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
+        { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' }] },
       { id: 'performance', hue: '#ffb35c', label: 'Performance', icon: 'bi-speedometer2', subs: [
         { tab: 'mod:performance', label: 'Live', perm: 'dashboard.view', desc: 'What takes the server\'s time right now, tick by tick.' },
         { tab: 'stats', label: 'History', perm: 'server.view', desc: 'TPS, players, memory and disk over days and weeks.' },
@@ -105,7 +104,8 @@
       { id: 'settings', hue: '#a77bff', label: 'Server', icon: 'bi-sliders', subs: [
         { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'Game rules and server.properties.' },
         { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
-        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' }] },
+        { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
+        { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
       { id: 'gameplay', hue: '#c4a6ff', label: 'Gameplay', icon: 'bi-magic', subs: [
         { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, grindstone, spawners, tridents, tree felling and vein mining: things vanilla does differently.' },
         { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Nether portals in any shape, saplings that plant themselves and bone meal on more plants.' },
@@ -142,6 +142,7 @@
     'tweaks': 'tweaks', 'tweaks/gameplay': 'tweaks', 'tweaks/trees-veins': 'felling', 'tweaks/trees-nature': 'felling', 'tweaks/market': 'market',
     'performance/tuning': 'tuning', 'settings/game': 'mod:server', 'settings/startup-java': 'java', 'settings/server-list': 'serverlist', 'settings/public-info': 'info',
     'files/all-files': 'files', 'files/mod-configs': 'configs', 'files/data-pack-settings': 'mod:packs', 'appearance': 'appearance', 'commands': 'commands',
+    'players/maintenance': 'maintenance',
   };
   /** Pages outside the sidebar (the user menu). */
   const EXTRA = { account: { tab: 'account', label: 'Account', desc: 'Your picture, theme, password and SSH keys for SFTP.' } };
@@ -197,7 +198,7 @@
     renderBadges();
   }
 
-  /** "#players/maintenance" for a page, so links and reloads land on it. */
+  /** "#settings/maintenance" for a page, so links and reloads land on it. */
   function hashOf(tab) {
     const entry = ENTRY_OF[tab];
     if (!entry) return tab;
@@ -1788,7 +1789,7 @@
       fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option><option value="excess" ${cur === 'excess' ? 'selected' : ''}>remove mobs over their limit (Settings → Tuning)</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
         <span>warn in chat</span><input type="number" data-f="seconds" min="0" max="600" value="${s.seconds ?? 30}"><span>seconds before (items only)</span>`;
     }
-    if (s.type === 'maintenance') fields = `<select data-f="text"><option value="on" ${s.text !== 'off' ? 'selected' : ''}>switch on (staff only)</option><option value="off" ${s.text === 'off' ? 'selected' : ''}>switch off</option></select><span>(settings under Players → Maintenance)</span>`;
+    if (s.type === 'maintenance') fields = `<select data-f="text"><option value="on" ${s.text !== 'off' ? 'selected' : ''}>switch on (staff only)</option><option value="off" ${s.text === 'off' ? 'selected' : ''}>switch off</option></select><span>(settings under Settings → Server → Maintenance)</span>`;
     // Variables for chat texts: click one to put it into the message.
     const vars = ['say', 'restart', 'trim'].includes(s.type) ? `<div class="pn-vars">${(s.type === 'say' ? [] : [['{time}', 'time left']])
       .concat([['{player}', "reader's name"], ['{online}', 'everyone online'], ['{clock}', 'time now'], ['{date}', 'date'], ['&a', 'green'], ['&c', 'red'], ['&e', 'yellow'], ['&l', 'bold'], ['&r', 'reset']])
@@ -2532,6 +2533,7 @@
     form.linkChannelId.value = s.linkChannelId || '';
     form.kickMessage.value = s.kickMessage || '';
     form.gameFormat.value = s.gameFormat || '';
+    form.nameFormat.value = s.nameFormat || '';
     previewGameFormat();
     // One grid: event · channel · message, so every column lines up.
     $('pn-discord-events').innerHTML = EVENT_GROUPS.map(([title, keys]) => `<h5 class="pn-dc-group">${title}</h5>
@@ -2625,7 +2627,7 @@
       bypass: [], kickMessage: form.kickMessage.value,
       notMemberMessage: discordData.settings.notMemberMessage,
       chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
-      gameFormat: form.gameFormat.value,
+      gameFormat: form.gameFormat.value, nameFormat: form.nameFormat.value.trim(),
     };
     try {
       await api('api/discord/settings', body);
@@ -3623,7 +3625,7 @@
     }
   });
 
-  // ── Players → Maintenance ───────────────────────────────────────────────
+  // ── Settings → Maintenance ──────────────────────────────────────────────
 
   const MC_COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
     8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };

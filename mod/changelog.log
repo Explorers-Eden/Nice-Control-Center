@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.21
+- Chat sent to the panel carries the player's Fabled Roots race, for "[Oakhearted] Name" on Discord (panel 1.12.21)
+
 ## 1.13.20
 - Claims: when a claim of an absent owner goes to a co-owner, the old owner is no longer part of it (they stayed on as co-owner in 1.13.19)
 

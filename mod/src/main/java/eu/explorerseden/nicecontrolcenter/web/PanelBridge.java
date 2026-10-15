@@ -51,6 +51,9 @@ public final class PanelBridge {
 			event.addProperty("type", "chat");
 			event.addProperty("uuid", sender.getUUID().toString());
 			event.addProperty("name", sender.getGameProfile().name());
+			// Fabled Roots' race, for "[Oakhearted] Name" on Discord.
+			String race = eu.explorerseden.nicecontrolcenter.players.PlayerInspector.race(sender.entityTags());
+			if (race != null) event.addProperty("race", race);
 			event.addProperty("text", message.signedContent());
 			send(event);
 		});

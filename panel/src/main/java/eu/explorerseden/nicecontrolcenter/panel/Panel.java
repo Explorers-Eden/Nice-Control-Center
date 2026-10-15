@@ -63,6 +63,7 @@ public final class Panel {
 		MapRoutes mapRoutes = new MapRoutes(map, auth, audit);
 		Discord discord = new Discord(dataDir.resolve("discord.json"), dataDir.resolve("discord-links.json"), server, audit);
 		discord.useDashboard(dashboard);
+		dashboard.useDiscord(discord);
 		discord.useDb(db);
 		discord.start();
 		ZoneId zone = zone();
@@ -249,6 +250,7 @@ public final class Panel {
 					JsonObject msg = new JsonObject();
 					msg.addProperty("text", say.group(1));
 					if (dashboard.post("/api/chat/send", msg, me.name()) == null) {
+						discord.adminChat(me.name(), say.group(1));
 						audit.log(me.name(), "console.command", command.strip(), clientIp(ctx));
 						server.note("Said as " + me.name() + ": " + say.group(1));
 						result(ctx, null);

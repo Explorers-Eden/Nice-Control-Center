@@ -66,6 +66,13 @@ final class DashboardProxy {
 	private final Audit audit;
 	private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
+	/** Gets what admins say from the Chat tab, like player chat. */
+	private volatile Discord discord;
+
+	void useDiscord(Discord discord) {
+		this.discord = discord;
+	}
+
 	DashboardProxy(int port, Supervisor server, Audit audit) {
 		this.port = port;
 		this.server = server;
@@ -217,6 +224,17 @@ final class DashboardProxy {
 		response.headers().firstValue("Content-Disposition").ifPresent(v -> ctx.header("Content-Disposition", v));
 		ctx.header("Cache-Control", response.headers().firstValue("Cache-Control").orElse("no-store"));
 		ctx.result(response.body());
+		// A message from the Chat tab that reached the players goes to Discord too.
+		Discord d = discord;
+		if (d != null && path.equals("/api/chat/send") && response.statusCode() == 200
+				&& new String(response.body(), java.nio.charset.StandardCharsets.UTF_8).contains("\"ok\"")) {
+			try {
+				JsonObject sent = com.google.gson.JsonParser.parseString(ctx.body()).getAsJsonObject();
+				if (sent.has("text")) d.adminChat(me.name(), sent.get("text").getAsString());
+			} catch (RuntimeException e) {
+				// Not relayed.
+			}
+		}
 		return response.statusCode() < 400;
 	}
 
