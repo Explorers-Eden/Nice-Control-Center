@@ -138,20 +138,71 @@ final class MarketService {
 		return out;
 	}
 
-	/** The public view: listings without UUIDs, kept on disk so it shows while the server is off. */
+	/** What counts as a command change: ids and their commands (not names, prices or icons). */
+	private static Map<String, List<String>> commandsOf(Market.Settings s) {
+		Map<String, List<String>> out = new java.util.TreeMap<>();
+		for (Market.CommandOffer o : s.commandOffers) out.put(o.id, o.commands);
+		return out;
+	}
+
+	/**
+	 * The public view: player listings without UUIDs (kept on disk so they show while the server is off) and
+	 * what the server sells (from the settings).
+	 */
 	Map<String, Object> publicView() {
 		Market.Settings s = settings();
 		if (!s.enabled) return null;
+		Map<String, Object> view = null;
 		try {
 			if (Files.exists(cacheFile)) {
 				@SuppressWarnings("unchecked")
 				Map<String, Object> cached = Json.GSON.fromJson(Files.readString(cacheFile), Map.class);
-				return cached;
+				view = cached;
 			}
 		} catch (IOException | RuntimeException e) {
 			// Built again on the next sync.
 		}
-		return null;
+		List<Map<String, Object>> offers = serverOffers(s);
+		if (view == null && offers.isEmpty()) return null;
+		if (view == null) {
+			view = new LinkedHashMap<>();
+			view.put("currency", s.currency);
+			view.put("listings", List.of());
+		}
+		view.put("server", offers);
+		return view;
+	}
+
+	/** What the server sells right now, for the info page: claim blocks (while claims are on) and command listings. */
+	private List<Map<String, Object>> serverOffers(Market.Settings s) {
+		List<Map<String, Object>> out = new ArrayList<>();
+		if (eu.explorerseden.nicecontrolcenter.Claims.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Claims.FILE)).enabled) {
+			for (Market.ClaimOffer o : s.claimBlocks) {
+				if (!o.onSale()) continue;
+				Map<String, Object> m = new LinkedHashMap<>();
+				m.put("name", String.format(java.util.Locale.ROOT, "%,d claim blocks", o.blocks));
+				m.put("description", "For land claims: every claimed block costs one."
+						+ (s.claimBlocksMax > 0 ? String.format(java.util.Locale.ROOT, " Up to %,d per player in all.", s.claimBlocksMax) : ""));
+				m.put("price", o.price);
+				if (o.saleEnds != 0) m.put("until", o.saleEnds);
+				String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+				if (icon != null) m.put("icon", icon);
+				out.add(m);
+			}
+		}
+		for (Market.CommandOffer o : s.commandOffers) {
+			if (!o.onSale()) continue;
+			Map<String, Object> m = new LinkedHashMap<>();
+			m.put("name", o.name);
+			m.put("description", o.description);
+			m.put("price", o.price);
+			if (o.saleEnds != 0) m.put("until", o.saleEnds);
+			if (o.perPlayer > 0) m.put("perPlayer", o.perPlayer);
+			String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+			if (icon != null) m.put("icon", icon);
+			out.add(m);
+		}
+		return out;
 	}
 
 	private void writeCache(Changes c) {
@@ -250,7 +301,7 @@ final class MarketService {
 						ins.setObject(1, UUID.fromString(s.listing));
 						ins.setString(2, s.itemId);
 						ins.setString(3, s.itemName);
-						ins.setObject(4, UUID.fromString(s.seller));
+						ins.setObject(4, s.seller == null ? null : UUID.fromString(s.seller));
 						ins.setString(5, s.sellerName);
 						ins.setObject(6, UUID.fromString(s.buyer));
 						ins.setString(7, s.buyerName);
@@ -298,8 +349,22 @@ final class MarketService {
 			out.put("icons", icons.problem());
 			json(ctx, out);
 		}));
-		routes.get("/api/market/settings", guard(Permissions.SERVER_VIEW, (ctx, me) ->
-				json(ctx, Map.of("settings", settings(), "defaults", new Market.Settings().fill()))));
+		routes.get("/api/market/settings", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
+			Market.Settings s = settings();
+			// Icon previews for the claim block listings ("" when there's none).
+			List<String> claimIcons = new ArrayList<>();
+			for (Market.ClaimOffer o : s.claimBlocks) {
+				String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+				claimIcons.add(icon == null ? "" : icon);
+			}
+			List<String> commandIcons = new ArrayList<>();
+			for (Market.CommandOffer o : s.commandOffers) {
+				String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+				commandIcons.add(icon == null ? "" : icon);
+			}
+			json(ctx, Map.of("settings", s, "defaults", new Market.Settings().fill(), "claimIcons", claimIcons, "commandIcons", commandIcons,
+					"variables", Market.COMMAND_VARIABLES, "canCommands", me.can(Permissions.CONSOLE_WRITE)));
+		}));
 		routes.post("/api/market/settings", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Market.Settings next;
 			try {
@@ -312,8 +377,16 @@ final class MarketService {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);
 				return;
 			}
-			boolean was = settings().enabled;
+			Market.Settings before = settings();
+			// Command listings run as the console: changing them takes the right to run console commands.
+			boolean commandsChanged = !Json.GSON.toJson(commandsOf(before)).equals(Json.GSON.toJson(commandsOf(next)));
+			if (commandsChanged && !me.can(Permissions.CONSOLE_WRITE)) {
+				error(ctx, HttpStatus.FORBIDDEN, "Changing the commands of command listings needs the right to run console commands.");
+				return;
+			}
+			boolean was = before.enabled;
 			Market.write(settingsFile(), next);
+			if (commandsChanged) audit.log(me.name(), "market.commands", next.commandOffers.size() + " command listings", clientIp(ctx));
 			audit.log(me.name(), "market.settings", was != next.enabled ? (next.enabled ? "on" : "off") : "saved", clientIp(ctx));
 			json(ctx, Map.of("ok", true, "running", server.running()));
 		}));

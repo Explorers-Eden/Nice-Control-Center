@@ -93,10 +93,10 @@
       { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
         { tab: 'claims', label: 'Claims', perm: 'claims.view', desc: 'Land players have claimed: who owns it, who may do what, and where.' },
         { tab: 'claimblocks', label: 'Claim blocks', perm: 'claims.view', desc: 'How many claim blocks each player has earned, bought and used.' },
-        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks, the shop and the claim tool.' },
+        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks and the claim tool.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
-        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, what is for sale and what sold, and pets (/pets) with their shop.' }] },
+        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, claim blocks for sale, what is for sale and what sold, and pets (/pets) with their shop.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
@@ -4533,10 +4533,10 @@
   // ── Claims → Settings ──────────────────────────────────────────────────
 
   let csData = null;
-  const CS_NUM = ['startingBlocks', 'blocksPerHour', 'maxAccruedBlocks', 'afkMinutes', 'minWidth', 'minArea', 'maxClaims', 'inactiveDays', 'shopPrice', 'shopBlocks',
-    'shopMaxBlocks', 'visualSpacing', 'visualRange', 'visualSeconds'];
-  const CS_TEXT = ['toolItem', 'shopItem', 'visualCorner', 'visualEdge', 'visualSubCorner', 'visualSubEdge', 'visualSelection'];
-  const CS_BOOL = ['enabled', 'accrueWhileDisabled', 'onlyPermanentArea', 'shopEnabled'];
+  const CS_NUM = ['startingBlocks', 'blocksPerHour', 'maxAccruedBlocks', 'afkMinutes', 'minWidth', 'minArea', 'maxClaims', 'inactiveDays',
+    'visualSpacing', 'visualRange', 'visualSeconds'];
+  const CS_TEXT = ['toolItem', 'visualCorner', 'visualEdge', 'visualSubCorner', 'visualSubEdge', 'visualSelection'];
+  const CS_BOOL = ['enabled', 'accrueWhileDisabled', 'onlyPermanentArea'];
   const CS_FLAGS = [['access', 'Use doors, buttons and levers'], ['containers', 'Open chests and interact with entities'], ['pvp', 'Fight (PvP)'],
     ['explosions', 'Explosions break blocks'], ['fireSpread', 'Fire spreads'], ['mobGriefing', 'Mobs change blocks']];
 
@@ -4743,11 +4743,120 @@
     f.maxListings.value = s.maxListings;
     f.maxPrice.value = s.maxPrice;
     f.bannedItems.value = s.bannedItems.join(', ');
-    f.querySelectorAll('input, button').forEach((el) => { el.disabled = !can('settings.server'); });
+    f.claimBlocksMax.value = s.claimBlocksMax || 0;
+    $('pn-mk-claims').innerHTML = '';
+    s.claimBlocks.forEach((o, i) => mkClaimRow(o, (mkSettings.claimIcons || [])[i]));
+    mkClaimEmpty();
+    $('pn-mk-vars').innerHTML = 'Use ' + (mkSettings.variables || []).map((v) => `<code>${esc(v)}</code>`).join(' ') + ' for the buyer (name, UUID, block position, dimension); one command per line, without the slash.';
+    $('pn-mk-cmds').innerHTML = '';
+    s.commandOffers.forEach((o, i) => mkCmdRow(o, (mkSettings.commandIcons || [])[i]));
+    f.querySelectorAll('input, button, textarea').forEach((el) => { el.disabled = !can('settings.server'); });
+    if (!mkSettings.canCommands) {
+      f.querySelectorAll('#pn-mk-cmds textarea, #pn-mk-cmds [data-cmd-del]').forEach((el) => { el.disabled = true; });
+      $('pn-mk-cmd-add').disabled = true;
+    }
     $('pn-mk-intro').textContent = (mkData.enabled ? '' : 'The market is closed. ') + (mkData.running ? '' : 'The server is off: this is the last saved state. ')
       + (mkData.icons ? 'Icons: ' + mkData.icons : '');
     renderMarket();
     Dirty.reset('market');
+  }
+
+  /** A claim block listing row; data-ends keeps the exact end time while its day isn't changed. */
+  function mkClaimRow(o, icon) {
+    const t = $('pn-mk-claims');
+    if (!t.tHead) t.innerHTML = '<thead><tr><th>Blocks</th><th>Price</th><th>Icon (item id)</th><th>Sold until</th><th></th></tr></thead><tbody></tbody>';
+    const tr = document.createElement('tr');
+    tr.className = 'pn-mk-claim';
+    tr.dataset.ends = o.saleEnds || 0;
+    tr.dataset.id = o.id || '';
+    const ended = o.saleEnds && o.saleEnds < Date.now();
+    tr.innerHTML = `<td><input type="number" data-k="blocks" min="1" max="1000000" value="${Number(o.blocks) || 100}"></td>
+      <td><input type="number" data-k="price" min="1" max="10000000" value="${Number(o.price) || 1}"></td>
+      <td class="pn-mk-item">${icon ? `<img src="info/items/${esc(icon)}" alt="" width="24" height="24">` : ''}<input type="text" data-k="icon" placeholder="minecraft:grass_block" value="${esc(o.icon || '')}"></td>
+      <td><input type="date" data-k="ends" value="${o.saleEnds ? ptDay(o.saleEnds) : ''}">${ended ? ' <span class="pn-warn">ended</span>' : ''}</td>
+      <td><button type="button" class="np-btn small" data-claim-del title="Remove this listing"><i class="bi bi-trash"></i></button></td>`;
+    t.tBodies[0].append(tr);
+  }
+
+  function mkClaimEmpty() {
+    const t = $('pn-mk-claims');
+    if (!t.querySelector('.pn-mk-claim')) t.innerHTML = '<tbody><tr><td class="pn-hint">No claim blocks for sale.</td></tr></tbody>';
+  }
+
+  $('pn-mk-claim-add').addEventListener('click', () => {
+    if (!$('pn-mk-claims').querySelector('.pn-mk-claim')) $('pn-mk-claims').innerHTML = '';
+    mkClaimRow({ blocks: 100, price: 1, icon: 'minecraft:grass_block', saleEnds: 0 });
+  });
+  $('pn-mk-claims').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-claim-del]');
+    if (!b) return;
+    b.closest('tr').remove();
+    mkClaimEmpty();
+  });
+
+  /** The claim block listings from the rows, or an error text. */
+  function mkClaimOffers() {
+    const offers = [];
+    for (const tr of $('pn-mk-claims').querySelectorAll('.pn-mk-claim')) {
+      const v = (k) => tr.querySelector(`[data-k="${k}"]`).value.trim();
+      const before = Number(tr.dataset.ends) || 0;
+      const day = v('ends');
+      let saleEnds = 0;
+      if (day) {
+        saleEnds = before && ptDay(before) === day ? before : new Date(day + 'T23:59:59').getTime();
+        if (saleEnds !== before && saleEnds < Date.now()) return 'Pick an end from today on, or leave it empty.';
+      }
+      offers.push({ id: tr.dataset.id || undefined, blocks: Number(v('blocks')) || 0, price: Number(v('price')) || 0, icon: v('icon') || 'minecraft:grass_block', saleEnds });
+    }
+    return offers;
+  }
+
+  /** A command listing's editor; data-id and data-ends keep what isn't shown. */
+  function mkCmdRow(o, icon) {
+    const d = document.createElement('div');
+    d.className = 'pn-mk-cmd';
+    d.dataset.id = o.id || '';
+    d.dataset.ends = o.saleEnds || 0;
+    const ended = o.saleEnds && o.saleEnds < Date.now();
+    d.innerHTML = `<div class="np-form-grid">
+        <label class="np-form-row">Name<input type="text" data-k="name" maxlength="40" value="${esc(o.name || '')}" placeholder="Starter kit"></label>
+        <label class="np-form-row">Price (in the currency)<input type="number" data-k="price" min="1" max="10000000" value="${Number(o.price) || 1}"></label>
+        <label class="np-form-row">${icon ? `<span class="pn-mk-item"><img src="info/items/${esc(icon)}" alt="" width="24" height="24">Icon (item id)</span>` : 'Icon (item id)'}<input type="text" data-k="icon" value="${esc(o.icon || '')}" placeholder="minecraft:paper"></label>
+        <label class="np-form-row"><span>Sold until${ended ? ' <span class="pn-warn">ended</span>' : ''}<span class="pn-comment">Empty: until you remove it.</span></span><input type="date" data-k="ends" value="${o.saleEnds ? ptDay(o.saleEnds) : ''}"></label>
+        <label class="np-form-row"><span>Per player<span class="pn-comment">0: no limit.</span></span><input type="number" data-k="perPlayer" min="0" max="100000" value="${Number(o.perPlayer) || 0}"></label>
+        <label class="np-form-row">Description<input type="text" data-k="description" maxlength="200" value="${esc(o.description || '')}" placeholder="What the player gets"></label>
+      </div>
+      <label class="pn-field"><span>Commands (one per line)</span><textarea data-k="commands" spellcheck="false" placeholder="give {player} minecraft:bread 16">${esc((o.commands || []).join('\n'))}</textarea></label>
+      <div class="np-form-actions"><button type="button" class="np-btn small" data-cmd-del><i class="bi bi-trash"></i> Remove</button></div>`;
+    $('pn-mk-cmds').append(d);
+  }
+
+  $('pn-mk-cmd-add').addEventListener('click', () => mkCmdRow({ name: '', price: 1, icon: 'minecraft:paper', commands: [] }));
+  $('pn-mk-cmds').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cmd-del]');
+    if (b && confirm('Remove this command listing?')) b.closest('.pn-mk-cmd').remove();
+  });
+
+  /** The command listings from the editors, or an error text. */
+  function mkCmdOffers() {
+    const offers = [];
+    for (const d of $('pn-mk-cmds').querySelectorAll('.pn-mk-cmd')) {
+      const v = (k) => d.querySelector(`[data-k="${k}"]`).value.trim();
+      const before = Number(d.dataset.ends) || 0;
+      const day = v('ends');
+      let saleEnds = 0;
+      if (day) {
+        saleEnds = before && ptDay(before) === day ? before : new Date(day + 'T23:59:59').getTime();
+        if (saleEnds !== before && saleEnds < Date.now()) return 'Pick an end from today on, or leave it empty.';
+      }
+      const name = v('name');
+      const commands = v('commands').split('\n').map((c) => c.trim()).filter(Boolean);
+      if (!name) return 'Every command listing needs a name.';
+      if (!commands.length) return `${name} needs at least one command.`;
+      offers.push({ id: d.dataset.id || undefined, name, description: v('description'), icon: v('icon') || 'minecraft:paper', price: Number(v('price')) || 0,
+        perPlayer: Number(v('perPlayer')) || 0, saleEnds, commands });
+    }
+    return offers;
   }
 
   function renderMarket() {
@@ -4781,7 +4890,10 @@
     const f = e.target;
     const body = { enabled: f.enabled.checked, currency: f.currency.value.trim(), listingDays: Number(f.listingDays.value) || 7,
       maxListings: Number(f.maxListings.value) || 10, maxPrice: Number(f.maxPrice.value) || 100000,
-      bannedItems: f.bannedItems.value.split(',').map((x) => x.trim()).filter(Boolean) };
+      bannedItems: f.bannedItems.value.split(',').map((x) => x.trim()).filter(Boolean),
+      claimBlocksMax: Number(f.claimBlocksMax.value) || 0, claimBlocks: mkClaimOffers(), commandOffers: mkCmdOffers() };
+    if (typeof body.claimBlocks === 'string') return formMsg('pn-mk-msg', body.claimBlocks, false);
+    if (typeof body.commandOffers === 'string') return formMsg('pn-mk-msg', body.commandOffers, false);
     if (body.enabled && !mkSettings.settings.enabled && !confirm('Open the market? Players can sell and buy with /market right away.')) return;
     try {
       const res = await api('api/market/settings', body);

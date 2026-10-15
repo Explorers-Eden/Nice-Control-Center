@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.15
+- Market: a Server shop in /market, apart from the player listings (Browse is now "Player listings")
+  - Claim blocks are sold there instead of in their own shop in the claim menu ("Buy claim blocks" in /claim opens the Server shop): any number of listings, each with its own blocks, price, icon and optional end, paid in the market currency. The old claim shop settings are dropped; set the listings again in the panel
+  - Command listings: run console commands for the buyer ({player}, {uuid}, {x}, {y}, {z}, {dimension}), with a name, description, icon, price, optional end and per-player limit
+  - Server sales are kept with the market's sales (seller "the server")
+
 ## 1.13.14
 - With the Nice Actions data pack: its quick actions menu (G) gets buttons for Land Claims (/claim), Pets (/pets) and the Market (/market), for whichever of them is on when the server starts. The data pack itself isn't changed
 

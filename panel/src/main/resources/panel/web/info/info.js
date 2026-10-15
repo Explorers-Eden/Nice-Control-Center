@@ -179,8 +179,10 @@
       const blocks = row('Claim blocks for new players', value(c.startingBlocks.toLocaleString()), 'Each claimed block costs one claim block.')
         + row('Claim blocks per hour of play', value(c.blocksPerHour.toLocaleString()), c.afkMinutes ? `Not while you're AFK for more than ${c.afkMinutes} minutes.` : '')
         + row('Most claim blocks from playing', value(c.maxAccruedBlocks.toLocaleString()))
-        + (c.shop ? row('Buy claim blocks', value(`${c.shop.blocks.toLocaleString()} for ${c.shop.price} × ${titleCase(c.shop.item.replace(/^minecraft:/, '').replace(/_/g, ' '))}`),
-          'In the claim menu' + (c.shop.max ? `, up to ${c.shop.max.toLocaleString()} blocks in total.` : '.')) : '');
+        + (c.shop ? row('Buy claim blocks', value(c.shop.offers.map((o) => `${o.blocks.toLocaleString()} for ${o.price.toLocaleString()}`
+          + (o.until ? ` (until ${new Date(o.until).toLocaleDateString([], { dateStyle: 'medium' })})` : '')).join(', ')
+          + ` ${titleCase(c.shop.currency.replace(/^[^:]+:/, '').replace(/_/g, ' '))}s`),
+          'In the Server shop of /market (or the /claim menu)' + (c.shop.max ? `, up to ${c.shop.max.toLocaleString()} blocks in total.` : '.')) : '');
       const rules = row('Where', value(c.dimensions.map((x) => titleCase(x.replace(/^minecraft:/, '').replace(/^the_/, '').replace(/_/g, ' '))).join(', ') || 'Nowhere'),
         c.onlyPermanentArea ? 'Only inside the permanent area (see World borders).' : '')
         + row('Smallest claim', value(`${c.minWidth} blocks wide, ${c.minArea.toLocaleString()} blocks in all`))
@@ -220,10 +222,19 @@
             <span class="in-tile__price">${coin}${Number(l.price).toLocaleString()} <small>${esc(l.price === 1 ? cur : cur + 's')} each</small></span>
             <small class="in-tile__seller"><i class="bi bi-person"></i> ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>`;
       };
+      const offer = (o) => `<div class="in-tile" data-search="${esc([o.name, o.description].join(' ').toLowerCase())}">
+          <span class="in-slot">${o.icon ? `<img src="items/${esc(o.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}</span>
+          <span class="in-tile__text"><b>${esc(o.name)}</b>
+            ${o.description ? `<small class="in-tile__extra">${esc(o.description)}</small>` : ''}
+            <span class="in-tile__price">${coin}${Number(o.price).toLocaleString()} <small>${esc(o.price === 1 ? cur : cur + 's')}</small></span>
+            <small class="in-tile__seller"><i class="bi bi-shop-window"></i> the server${o.until ? ` · until ${esc(new Date(o.until).toLocaleDateString([], { dateStyle: 'medium' }))}` : ''}${o.perPlayer ? ` · up to ${o.perPlayer} each` : ''}</small></span></div>`;
       const list = m.listings || [];
-      sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length,
-        lead: `Everything players are selling right now. Type /market in game to buy or sell; everything is paid in ${cur}s.`,
-        children: [{ id: 'market-list', title: 'For sale now', icon: 'bi-bag', sub: `${list.length} listing${list.length === 1 ? '' : 's'}`, wide: true,
+      const server = m.server || [];
+      sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length + server.length,
+        lead: `What the server and players sell right now. Type /market in game to buy or sell; everything is paid in ${cur}s.`,
+        children: [...(server.length ? [{ id: 'market-server', title: 'From the server', icon: 'bi-shop-window', sub: `${server.length} listing${server.length === 1 ? '' : 's'} · Server shop in /market`, wide: true,
+          body: `<div class="in-tiles">${server.map(offer).join('')}</div>` }] : []),
+          { id: 'market-list', title: 'From players', icon: 'bi-bag', sub: `${list.length} listing${list.length === 1 ? '' : 's'}`, wide: true,
           body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' },
           ...(d.pets ? [petChild(cur, coin)] : [])] });
     }

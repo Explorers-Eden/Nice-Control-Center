@@ -678,7 +678,7 @@
 			<div class="np-tab-panel" data-tab="claimblocks" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-grid-3x3"></i> Claim blocks</h3>
-					<p class="np-card-intro">Every claimed block costs one claim block. Players earn them by playing (and can buy them, if the shop is on); give or take some with the bonus.</p>
+					<p class="np-card-intro">Every claimed block costs one claim block. Players earn them by playing (and can buy them in the market: Market → Claim blocks); give or take some with the bonus.</p>
 					<div class="pn-cl-tools"><input type="search" id="pn-cb-search" placeholder="Find a player" autocomplete="off"></div>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-cb-table"></table></div>
 					<span class="np-form-msg" id="pn-cb-msg"></span>
@@ -726,17 +726,6 @@
 					<h3 class="np-card-title"><i class="bi bi-palette"></i> New claims</h3>
 					<div class="pn-field"><span>What everyone else may do in a new claim <small class="pn-hint">(owners change it per claim)</small></span><div class="pn-cl-flags" id="pn-cs-flags"></div></div>
 					<div class="pn-field"><span>Colours players can pick</span><div class="pn-cl-flags pn-cs-colors" id="pn-cs-colors"></div></div>
-				</section>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-shop"></i> Claim block shop</h3>
-					<p class="np-card-intro">Players buy claim blocks in the <code>/claim</code> menu, paying with an item from their inventory.</p>
-					<div class="np-form-grid">
-						<label class="np-form-row"><b>Shop on</b><span class="np-switch"><input type="checkbox" name="shopEnabled"><span></span></span></label>
-						<label class="np-form-row">Paid with (item id)<input type="text" name="shopItem" placeholder="minecraft:diamond"></label>
-						<label class="np-form-row">Items per purchase<input type="number" name="shopPrice" min="1"></label>
-						<label class="np-form-row">Blocks per purchase<input type="number" name="shopBlocks" min="1"></label>
-						<label class="np-form-row"><span>Most blocks a player can buy<span class="pn-comment">0: no limit.</span></span><input type="number" name="shopMaxBlocks" min="0"></label>
-					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bounding-box-circles"></i> Claim tool and borders</h3>
@@ -957,7 +946,8 @@
 
 			<div class="np-tab-panel" data-tab="market" hidden>
 				<div class="pn-stack">
-				<form id="pn-mk-form" autocomplete="off" class="np-card">
+				<form id="pn-mk-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-shop"></i> Market</h3>
 					<p class="np-card-intro">Players type <code>/market</code> to sell items for the server's currency (any amount, more than a stack is fine) and to buy what others sell. Unsold items go back to the seller's mailbox after a while. Items keep everything (names, enchantments, custom models).</p>
 					<div class="np-form-grid">
@@ -968,10 +958,26 @@
 						<label class="np-form-row">Highest price per item<input type="number" name="maxPrice" min="1"></label>
 						<label class="np-form-row">Items that can't be sold (comma separated)<input type="text" name="bannedItems"></label>
 					</div>
-					<div class="np-form-actions">
-						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
-						<span class="np-form-msg" id="pn-mk-msg"></span>
+				</section>
+				<section class="np-card pn-mk-shop">
+					<h3 class="np-card-title"><i class="bi bi-shop-window"></i> Server shop</h3>
+					<p class="np-card-intro">What the server itself sells, in the Server shop of <code>/market</code> (apart from what players sell) and on the info page. Paid in the market's currency.</p>
+					<h4 class="pn-pt-subhead">Claim blocks</h4>
+					<p class="np-card-intro">Claim blocks the server sells while land claims are on: also behind "Buy claim blocks" in <code>/claim</code>. Remove every listing to stop selling them. The icon is only how a listing looks; leave the end empty to sell it until you remove it.</p>
+					<div class="np-table-wrap"><table class="np-table" id="pn-mk-claims"></table></div>
+					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-mk-claim-add"><i class="bi bi-plus-lg"></i> Add listing</button></div>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Most claim blocks a player can buy<span class="pn-comment">0: no limit. Counts everything they bought.</span></span><input type="number" name="claimBlocksMax" min="0"></label>
 					</div>
+					<h4 class="pn-pt-subhead">Commands</h4>
+					<p class="np-card-intro">Things the server sells by running commands from the console for the buyer, once per one bought (a kit, a title, a teleport, a rank). <span id="pn-mk-vars"></span> Changing the commands needs the right to run console commands.</p>
+					<div id="pn-mk-cmds" class="pn-stack"></div>
+					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-mk-cmd-add"><i class="bi bi-plus-lg"></i> Add command listing</button></div>
+				</section>
+				<div class="pn-sticky-save np-form-actions">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-mk-msg"></span>
+				</div>
 				</form>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bag"></i> For sale</h3>

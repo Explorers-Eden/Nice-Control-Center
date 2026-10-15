@@ -1,3 +1,9 @@
+## 1.12.12
+- Market: a Server shop card with claim block listings (blocks, price, icon, optional last day; most blocks per player) and command listings (name, description, icon, price, commands with player variables, optional last day, per-player limit); changing commands needs the Run console commands permission and is audited (needs mod 1.13.15)
+- Claims → Settings: the claim block shop moved to Market
+- Info page: the Market tab shows "From the server" apart from "From players"; claims list the claim block offers
+- Server sales (no seller) are copied to market_sales with an empty seller
+
 ## 1.12.11
 - Market → Pets: head size per pet in the pet editor (0.3 to 2, 0.8 for new pets) instead of one size for all; existing pets keep the old size (needs mod 1.13.12)
 

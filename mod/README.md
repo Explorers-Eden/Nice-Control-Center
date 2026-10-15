@@ -112,7 +112,7 @@ Note: the dashboard itself has no per-player permissions. Anyone with a valid li
 Players protect their land themselves, like GriefPrevention, but with menus instead of commands. **Off by default.** Switch it on in the panel (Claims → Settings) or in `config/nicecontrolcenter-claims.json`. GOML keeps working alongside, and the panel can import its claims.
 
 - **Claiming:** `/claim mode` (or the button in the `/claim` menu) gives the player the claim tool, a marked golden hoe. Right-click two opposite corners and everything between them is protected, from bedrock to the sky. Right-click a corner of your claim to pick it up, then right-click where it should go. Sneak + right-click opens the menu. Leaving claim mode takes the tool away again. The tool can't be dropped, stored or kept.
-- **Claim blocks:** each claimed block costs one. Players start with some and earn more by playing (not while AFK). Admins can give bonus blocks, and with the shop on, players buy blocks for an item you choose.
+- **Claim blocks:** each claimed block costs one. Players start with some and earn more by playing (not while AFK). Admins can give bonus blocks, and players can buy blocks in the market's Server shop (listings set in the panel under Market).
 - **Where:** only in the dimensions you allow, and only inside the permanent area (the soft border) if one is set.
 - **The menu** (`/claim`) shows your claim blocks and claims. For a claim it offers:
   - members with a role: Visitor (doors, buttons), Containers (also chests, animals, villagers and other entities), Builder (also building), Co-owner (also settings, resizing, subclaims);
@@ -147,6 +147,7 @@ Things a data pack can't do, switched on in the panel (**Tweaks**, or `config/ni
 - **Loyalty tridents** come back from the void, and **@mentions** in chat plop for the mentioned player (and ping offline players on Discord through the panel).
 - **Market** (`/market`): sell items for the server's currency, any amount and with all their components, and buy part or all of a listing, all in menus.
   - Earnings and unsold items wait in the market mailbox.
+  - **Server shop**, apart from what players sell: claim block listings (blocks, price, icon, optional end) and command listings that run console commands for the buyer (`{player}`, `{uuid}`, `{x}`, `{y}`, `{z}`, `{dimension}`), with a name, description, icon, price, optional end and per-player limit. Set in the panel under Market.
   - The panel shows the listings with item icons (custom models included) and can take a listing off.
   - The public info page lists what's for sale.
 - **Pets** (`/pets`, `config/nicecontrolcenter-pets.json`): floating player heads that follow their owner, only for looks, seen by everyone nearby.

@@ -21,9 +21,9 @@ public final class ServerFacts {
 	public static List<Map<String, Object>> all(Path configDir) {
 		List<Map<String, Object>> out = new ArrayList<>(performance(Performance.read(configDir.resolve(Performance.FILE))));
 		out.addAll(borders(Borders.read(configDir.resolve(Borders.FILE))));
-		out.addAll(claims(Claims.read(configDir.resolve(Claims.FILE))));
-		out.addAll(tweaks(Tweaks.read(configDir.resolve(Tweaks.FILE))));
 		Market.Settings market = Market.read(configDir.resolve(Market.FILE));
+		out.addAll(claims(Claims.read(configDir.resolve(Claims.FILE)), market));
+		out.addAll(tweaks(Tweaks.read(configDir.resolve(Tweaks.FILE))));
 		out.addAll(market(market));
 		out.addAll(pets(Pets.read(configDir.resolve(Pets.FILE)), market.currency));
 		return out;
@@ -58,6 +58,15 @@ public final class ServerFacts {
 						+ "Your earnings and unsold items wait in your market mailbox.",
 				List.of(line("Paid with", currency, ""), line("Listings last", m.listingDays + " days", "Then unsold items come back to your mailbox."),
 						line("Listings per player", String.valueOf(m.maxListings), ""))));
+		// What the server itself sells (Server shop in /market); claim blocks are listed with the claims.
+		List<Map<String, String>> rows = new ArrayList<>();
+		for (Market.CommandOffer o : m.commandOffers) {
+			if (!o.onSale()) continue;
+			String limits = (o.saleEnds != 0 ? "On sale until " + Pets.date(o.saleEnds) + ". " : "") + (o.perPlayer > 0 ? "Up to " + o.perPlayer + " per player." : "");
+			rows.add(line(o.name, o.price + " " + currency.toLowerCase(Locale.ROOT) + (o.price == 1 ? "" : "s"), (o.description + " " + limits).strip()));
+		}
+		if (!rows.isEmpty()) out.add(tweak("server_shop", "Server shop", "bi-bag-heart",
+				"Type /market and pick Server shop to buy these from the server.", rows));
 		return out;
 	}
 
@@ -176,7 +185,7 @@ public final class ServerFacts {
 	}
 
 	/** How claiming works here (nothing while claims are off). */
-	public static List<Map<String, Object>> claims(Claims.Settings s) {
+	public static List<Map<String, Object>> claims(Claims.Settings s, Market.Settings market) {
 		List<Map<String, Object>> out = new ArrayList<>();
 		if (!s.enabled) return out;
 		List<Map<String, String>> rows = new ArrayList<>();
@@ -190,8 +199,14 @@ public final class ServerFacts {
 		rows.add(line("Smallest claim", s.minWidth + " blocks wide, " + s.minArea + " blocks in all", ""));
 		if (s.maxClaims > 0) rows.add(line("Claims per player", String.valueOf(s.maxClaims), ""));
 		if (s.inactiveDays > 0) rows.add(line("Inactive players", "claims go after " + s.inactiveDays + " days away", ""));
-		if (s.shopEnabled) rows.add(line("Buy claim blocks", s.shopBlocks + " for " + s.shopPrice + " " + humanize(s.shopItem.replaceFirst("^minecraft:", "")),
-				"In the /claim menu" + (s.shopMaxBlocks > 0 ? ", up to " + s.shopMaxBlocks + " in total." : ".")));
+		if (market.enabled) {
+			List<String> offers = new ArrayList<>();
+			for (Market.ClaimOffer o : market.claimBlocks) {
+				if (o.onSale()) offers.add(o.blocks + " for " + o.price + (o.saleEnds != 0 ? " (until " + Pets.date(o.saleEnds) + ")" : ""));
+			}
+			if (!offers.isEmpty()) rows.add(line("Buy claim blocks", String.join(", ", offers) + " " + humanize(market.currency.replaceFirst("^[^:]+:", "")) + "s",
+					"In the /market (or the /claim menu)" + (market.claimBlocksMax > 0 ? ", up to " + market.claimBlocksMax + " in total." : ".")));
+		}
 		out.add(tweak("claims", "Land claims", "bi-shield-check",
 				"Type /claim mode to get the claim tool and right-click two opposite corners of your land: everything in between, from bedrock to the sky, is protected. "
 						+ "Right-click a corner to move it; sneak + right-click or /claim opens the claim menu, where you add members, choose what everyone else may do, "

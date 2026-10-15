@@ -76,18 +76,9 @@ public final class Claims {
 		public int inactiveDays = 0;
 		/** Players may only claim inside the permanent area (the soft border) where one is set. */
 		public boolean onlyPermanentArea = true;
-		/** Players can buy claim blocks in the claim menu. */
-		public boolean shopEnabled = false;
-		/** What they pay with, and how many of it buy {@link #shopBlocks} blocks. */
-		public String shopItem = "minecraft:diamond";
-		public int shopPrice = 1;
-		public int shopBlocks = 100;
-		/** Most blocks a player can buy in total; 0 = no limit. */
-		public int shopMaxBlocks = 0;
 
 		public Settings fill() {
 			toolItem = itemId(toolItem, "minecraft:golden_hoe");
-			shopItem = itemId(shopItem, "minecraft:diamond");
 			visualCorner = visualId(visualCorner, "minecraft:glowstone");
 			visualEdge = visualId(visualEdge, CLAIM_COLOR);
 			visualSubCorner = visualId(visualSubCorner, "minecraft:iron_block");
@@ -154,10 +145,6 @@ public final class Claims {
 			if (!v.equals(CLAIM_COLOR) && !v.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + v + "\" isn't a block id (or claim_color).";
 		}
 		if (s.inactiveDays < 0 || s.inactiveDays > 3650) return "Inactive days are 0 (never) to 3650.";
-		if (!s.shopItem.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "The shop item isn't an item id (like minecraft:diamond).";
-		if (s.shopPrice < 1 || s.shopPrice > 6400) return "The shop price is 1 to 6400 items.";
-		if (s.shopBlocks < 1 || s.shopBlocks > 1_000_000) return "Blocks per purchase are 1 to 1,000,000.";
-		if (s.shopMaxBlocks < 0 || s.shopMaxBlocks > 100_000_000) return "The most blocks to buy are 0 (no limit) to 100,000,000.";
 		for (String d : s.dimensions) if (!d.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + d + "\" isn't a dimension id.";
 		if (s.colors.size() > 32) return "At most 32 colours.";
 		for (Map.Entry<String, String> e : s.colors.entrySet()) {
@@ -395,7 +382,7 @@ public final class Claims {
 		public int accrued;
 		/** Blocks given or taken by admins. */
 		public int bonus;
-		/** Blocks bought in the claim shop. */
+		/** Blocks bought in the market. */
 		public int bought;
 		/** Minutes played while earning (not AFK). */
 		public long playMinutes;
@@ -553,18 +540,18 @@ public final class Claims {
 			touch(p);
 		}
 
-		/** How many purchases the player may still make in the shop (Integer.MAX_VALUE = no limit). */
-		public int purchasesLeft(String uuid, Settings s) {
-			if (s.shopMaxBlocks <= 0) return Integer.MAX_VALUE;
+		/** How many more blocks the player may buy in the market, with at most max in all (0 = no limit, then Integer.MAX_VALUE). */
+		public int blocksLeft(String uuid, int max) {
+			if (max <= 0) return Integer.MAX_VALUE;
 			PlayerBlocks p = players.get(uuid);
 			int bought = p == null ? 0 : p.bought;
-			return Math.max(0, (s.shopMaxBlocks - bought) / s.shopBlocks);
+			return Math.max(0, max - bought);
 		}
 
-		/** Adds bought blocks (the items are already taken). */
-		public void buy(String uuid, String name, int purchases, Settings s) {
+		/** Adds bought blocks (the currency is already taken). */
+		public void buy(String uuid, String name, int blocks, Settings s) {
 			PlayerBlocks p = ensurePlayer(uuid, name, s);
-			p.bought += purchases * s.shopBlocks;
+			p.bought += blocks;
 			touch(p);
 		}
 

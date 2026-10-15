@@ -518,7 +518,12 @@ final class ClaimService {
 		m.put("dimensions", s.dimensions);
 		m.put("onlyPermanentArea", s.onlyPermanentArea);
 		m.put("inactiveDays", s.inactiveDays);
-		if (s.shopEnabled) m.put("shop", Map.of("item", s.shopItem, "price", s.shopPrice, "blocks", s.shopBlocks, "max", s.shopMaxBlocks));
+		eu.explorerseden.nicecontrolcenter.Market.Settings market = eu.explorerseden.nicecontrolcenter.Market.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Market.FILE));
+		List<Map<String, Object>> offers = new ArrayList<>();
+		if (market.enabled) for (eu.explorerseden.nicecontrolcenter.Market.ClaimOffer o : market.claimBlocks) {
+			if (o.onSale()) offers.add(Map.of("blocks", o.blocks, "price", o.price, "until", o.saleEnds));
+		}
+		if (!offers.isEmpty()) m.put("shop", Map.of("currency", market.currency, "offers", offers, "max", market.claimBlocksMax));
 		m.put("roles", java.util.Arrays.stream(Claims.Role.values()).filter(r -> r != Claims.Role.OWNER)
 				.map(r -> Map.of("label", r.label, "description", r.description)).toList());
 		return m;

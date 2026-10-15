@@ -43,13 +43,92 @@ public final class Market {
 		public int maxPrice = 100_000;
 		/** Items that can't be listed (ids). */
 		public List<String> bannedItems = new ArrayList<>();
+		/** Claim blocks the server sells (while claims are on), on top of Browse; none = not sold. */
+		public List<ClaimOffer> claimBlocks = new ArrayList<>();
+		/** Most claim blocks a player can buy in total; 0 = no limit. */
+		public int claimBlocksMax = 0;
+		/** Things the server sells by running console commands for the buyer, on top of Browse. */
+		public List<CommandOffer> commandOffers = new ArrayList<>();
 
 		public Settings fill() {
 			if (currency == null || currency.isBlank()) currency = "minecraft:diamond";
 			currency = id(currency);
 			if (bannedItems == null) bannedItems = new ArrayList<>();
 			bannedItems = bannedItems.stream().filter(b -> b != null && !b.isBlank()).map(Market::id).distinct().toList();
+			if (claimBlocks == null) claimBlocks = new ArrayList<>();
+			claimBlocks = new ArrayList<>(claimBlocks.stream().filter(o -> o != null).toList());
+			for (ClaimOffer o : claimBlocks) {
+				o.icon = o.icon == null || o.icon.isBlank() ? "minecraft:grass_block" : id(o.icon);
+				o.id = uuidOr(o.id);
+			}
+			if (commandOffers == null) commandOffers = new ArrayList<>();
+			commandOffers = new ArrayList<>(commandOffers.stream().filter(o -> o != null).toList());
+			for (CommandOffer o : commandOffers) {
+				o.id = uuidOr(o.id);
+				o.icon = o.icon == null || o.icon.isBlank() ? "minecraft:paper" : id(o.icon);
+				o.name = o.name == null ? "" : o.name.strip();
+				o.description = o.description == null ? "" : o.description.strip().replaceAll("\\s+", " ");
+				if (o.commands == null) o.commands = new ArrayList<>();
+				o.commands = o.commands.stream().filter(c -> c != null && !c.isBlank()).map(c -> c.strip().replaceFirst("^/", "")).toList();
+			}
 			return this;
+		}
+
+		public CommandOffer commandOffer(String id) {
+			for (CommandOffer o : commandOffers) if (o.id.equals(id)) return o;
+			return null;
+		}
+
+		/** The claim block listing at this position, or null. */
+		public ClaimOffer claimOffer(int i) {
+			return i >= 0 && i < claimBlocks.size() ? claimBlocks.get(i) : null;
+		}
+	}
+
+	/** A claim block listing: {@link #blocks} blocks for {@link #price} in the currency. */
+	public static final class ClaimOffer {
+		/** For the sales list. */
+		public String id;
+		public int blocks = 100;
+		public int price = 1;
+		/** The listing's icon (an item id); only how it looks. */
+		public String icon = "minecraft:grass_block";
+		/** When the listing goes (epoch ms); 0 = always on sale. */
+		public long saleEnds;
+
+		public boolean onSale() {
+			return saleEnds == 0 || System.currentTimeMillis() < saleEnds;
+		}
+	}
+
+	/** Words in a listing's commands that are replaced for the buyer. */
+	public static final List<String> COMMAND_VARIABLES = List.of("{player}", "{uuid}", "{x}", "{y}", "{z}", "{dimension}");
+
+	/** A listing that runs console commands for the buyer (once per one bought), with {@link #COMMAND_VARIABLES} filled in. */
+	public static final class CommandOffer {
+		public String id;
+		public String name = "";
+		public String description = "";
+		/** The listing's icon (an item id); only how it looks. */
+		public String icon = "minecraft:paper";
+		public int price = 1;
+		public List<String> commands = new ArrayList<>();
+		/** When the listing goes (epoch ms); 0 = always on sale. */
+		public long saleEnds;
+		/** How many each player can buy in all; 0 = no limit. */
+		public int perPlayer;
+
+		public boolean onSale() {
+			return saleEnds == 0 || System.currentTimeMillis() < saleEnds;
+		}
+	}
+
+	/** The id if it's a UUID (sales are kept by listing UUID), else a new one. */
+	private static String uuidOr(String id) {
+		try {
+			return UUID.fromString(id).toString();
+		} catch (RuntimeException e) {
+			return UUID.randomUUID().toString();
 		}
 	}
 
@@ -66,6 +145,27 @@ public final class Market {
 		if (s.maxListings < 1 || s.maxListings > 200) return "Players can have 1 to 200 listings.";
 		if (s.maxPrice < 1 || s.maxPrice > 10_000_000) return "The highest price is 1 to 10,000,000.";
 		for (String b : s.bannedItems) if (!b.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + b + "\" isn't an item id.";
+		if (s.claimBlocks.size() > 20) return "At most 20 claim block listings.";
+		for (ClaimOffer o : s.claimBlocks) {
+			if (!o.icon.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + o.icon + "\" isn't an item id (like minecraft:grass_block).";
+			if (o.price < 1 || o.price > 10_000_000) return "Claim block prices are 1 to 10,000,000.";
+			if (o.blocks < 1 || o.blocks > 1_000_000) return "Claim block listings have 1 to 1,000,000 blocks.";
+			if (o.saleEnds < 0 || o.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "Claim block listings end within ten years, or never.";
+		}
+		if (s.claimBlocksMax < 0 || s.claimBlocksMax > 100_000_000) return "The most claim blocks to buy are 0 (no limit) to 100,000,000.";
+		if (s.commandOffers.size() > 50) return "At most 50 command listings.";
+		java.util.Set<String> ids = new java.util.HashSet<>();
+		for (CommandOffer o : s.commandOffers) {
+			if (!ids.add(o.id)) return "Two command listings have the same id.";
+			if (o.name.isEmpty() || o.name.length() > 40) return "Command listing names are 1 to 40 characters.";
+			if (o.description.length() > 200) return "The description of " + o.name + " is longer than 200 characters.";
+			if (!o.icon.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + o.icon + "\" isn't an item id (like minecraft:paper).";
+			if (o.price < 1 || o.price > 10_000_000) return "The price of " + o.name + " is 1 to 10,000,000.";
+			if (o.commands.isEmpty() || o.commands.size() > 20) return o.name + " needs 1 to 20 commands.";
+			for (String c : o.commands) if (c.length() > 2000 || c.contains("\n")) return "A command of " + o.name + " is too long.";
+			if (o.perPlayer < 0 || o.perPlayer > 100_000) return "How many of " + o.name + " a player can buy is 0 (no limit) to 100,000.";
+			if (o.saleEnds < 0 || o.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "Command listings end within ten years, or never.";
+		}
 		return null;
 	}
 
@@ -149,6 +249,8 @@ public final class Market {
 		public Map<String, Mailbox> mail = new LinkedHashMap<>();
 		public List<Sale> sales = new ArrayList<>();
 		public Map<String, Long> tombstones = new LinkedHashMap<>();
+		/** How many of each command listing (by id) each player (uuid) bought, for {@link CommandOffer#perPlayer}. */
+		public Map<String, Map<String, Integer>> serverBought = new LinkedHashMap<>();
 
 		public Data fill() {
 			if (worldId == null || worldId.isBlank()) worldId = UUID.randomUUID().toString();
@@ -156,6 +258,7 @@ public final class Market {
 			if (mail == null) mail = new LinkedHashMap<>();
 			if (sales == null) sales = new ArrayList<>();
 			if (tombstones == null) tombstones = new LinkedHashMap<>();
+			if (serverBought == null) serverBought = new LinkedHashMap<>();
 			listings.values().removeIf(l -> l == null || l.id == null || l.item == null || l.amount <= 0);
 			return this;
 		}
@@ -168,6 +271,34 @@ public final class Market {
 			Mailbox m = mail.computeIfAbsent(uuid, k -> new Mailbox());
 			if (name != null) m.name = name;
 			return m;
+		}
+
+		/** How many of this command listing the player bought. */
+		public int serverBought(String offer, String uuid) {
+			Map<String, Integer> m = serverBought.get(offer);
+			return m == null ? 0 : m.getOrDefault(uuid, 0);
+		}
+
+		/**
+		 * A purchase from the server (the currency is already taken): counted for the per-player limit when it's a
+		 * command listing, and kept in the sales list with no seller.
+		 */
+		public Sale serverSale(String offer, boolean command, String itemName, String itemId, String buyer, String buyerName, int amount, int total, long now) {
+			if (command) serverBought.computeIfAbsent(offer, k -> new LinkedHashMap<>()).merge(buyer, amount, Integer::sum);
+			Sale sale = new Sale();
+			sale.listing = offer;
+			sale.itemName = itemName;
+			sale.itemId = itemId;
+			sale.sellerName = "the server";
+			sale.buyer = buyer;
+			sale.buyerName = buyerName;
+			sale.amount = amount;
+			sale.total = total;
+			sale.time = now;
+			sale.rev = bump();
+			sales.add(sale);
+			while (sales.size() > SALES) sales.remove(0);
+			return sale;
 		}
 
 		public List<Listing> of(String seller) {

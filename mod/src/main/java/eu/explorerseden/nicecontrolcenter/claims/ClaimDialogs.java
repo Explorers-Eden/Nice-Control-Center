@@ -6,7 +6,6 @@ import eu.explorerseden.nicecontrolcenter.Claims.Role;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -29,10 +28,6 @@ import net.minecraft.server.dialog.input.SingleOptionInput;
 import net.minecraft.server.dialog.input.TextInput;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.NameAndId;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -142,7 +137,7 @@ public final class ClaimDialogs {
 		List<ActionButton> buttons = new ArrayList<>();
 		buttons.add(modeButton(player));
 		if (ClaimTool.hasSelection(player)) buttons.add(button("Cancel selection", null, "sel_cancel", args()));
-		if (s.shopEnabled) buttons.add(button("Buy claim blocks", "Pay with " + itemName(s) + "", "shop", args()));
+		if (eu.explorerseden.nicecontrolcenter.market.MarketDialogs.sellsClaimBlocks()) buttons.add(button("Buy claim blocks", "In the market", "shop", args()));
 		for (Claim c : mine.stream().limit(24).toList()) {
 			buttons.add(button(Component.literal(c.displayName()).withColor(c.color), dimName(c.dim) + ", " + c.box().width() + " × " + c.box().length()
 					+ " around " + (c.minX + c.maxX) / 2 + ", " + (c.minZ + c.maxZ) / 2, "main", args("claim", c.id)));
@@ -298,61 +293,6 @@ public final class ClaimDialogs {
 				button("Keep it", null, "main", args("claim", c.id))));
 	}
 
-	private static String itemName(Claims.Settings s) {
-		return s.shopPrice + " × " + shopItem(s).getName(new ItemStack(shopItem(s))).getString();
-	}
-
-	private static Item shopItem(Claims.Settings s) {
-		Item item = BuiltInRegistries.ITEM.getValue(Identifier.tryParse(s.shopItem));
-		return item == null ? Items.AIR : item;
-	}
-
-	private static int countItems(ServerPlayer player, Item item) {
-		Inventory inv = player.getInventory();
-		int n = 0;
-		for (int i = 0; i < inv.getContainerSize(); i++) {
-			ItemStack st = inv.getItem(i);
-			if (st.is(item) && !ClaimMode.isTool(st)) n += st.getCount();
-		}
-		return n;
-	}
-
-	private static void shop(ServerPlayer player, String notice) {
-		Claims.Settings s = ClaimStore.settings();
-		Item item = shopItem(s);
-		String me = player.getStringUUID();
-		int have = countItems(player, item);
-		int affordable = have / s.shopPrice;
-		int left = ClaimStore.data().purchasesLeft(me, s);
-		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) {
-			body.add(text(notice, notice.startsWith("Bought") ? ChatFormatting.GREEN : ChatFormatting.RED));
-			Plop.play(player);
-		}
-		body.add(text(itemName(s) + " buys " + s.shopBlocks + " claim blocks.", ChatFormatting.WHITE));
-		body.add(text("You have " + have + " · " + ClaimStore.data().available(me) + " claim blocks available"
-				+ (left == Integer.MAX_VALUE ? "" : " · you can buy " + left * s.shopBlocks + " more"), ChatFormatting.GRAY));
-		int max = Math.min(Math.min(affordable, left), 64);
-		List<ActionButton> buttons = new ArrayList<>();
-		List<Input> inputs = new ArrayList<>();
-		if (max > 0) {
-			List<SingleOptionInput.Entry> amounts = new ArrayList<>();
-			for (int n : new int[] { 1, 2, 5, 10, 20, 32, 64 }) {
-				if (n > max) break;
-				amounts.add(new SingleOptionInput.Entry(Integer.toString(n), Optional.of(Component.literal((n * s.shopBlocks) + " blocks for " + (n * s.shopPrice))), n == 1));
-			}
-			if (max > 1 && amounts.stream().noneMatch(e -> e.id().equals(Integer.toString(max)))) {
-				amounts.add(new SingleOptionInput.Entry(Integer.toString(max), Optional.of(Component.literal((max * s.shopBlocks) + " blocks for " + (max * s.shopPrice) + " (all)")), false));
-			}
-			inputs.add(new Input("amount", new SingleOptionInput(250, amounts, Component.literal("Buy"), true)));
-			buttons.add(button("Buy", null, "shop_buy", args()));
-		} else {
-			body.add(text(left == 0 ? "You've bought as many blocks as you can." : "You need " + itemName(s) + " to buy blocks.", ChatFormatting.YELLOW));
-		}
-		buttons.add(button("Back", null, "home", args()));
-		menu(player, Component.literal("Buy claim blocks"), body, inputs, buttons, null);
-	}
-
 	// ---------------------------------------------------------------- answers
 
 	private static String str(CompoundTag tag, String key) {
@@ -382,9 +322,8 @@ public final class ClaimDialogs {
 				home(player);
 			}
 			case "shop" -> {
-				if (ClaimStore.settings().shopEnabled) shop(player, null);
+				if (eu.explorerseden.nicecontrolcenter.market.MarketDialogs.sellsClaimBlocks()) eu.explorerseden.nicecontrolcenter.market.MarketDialogs.claimBlocks(player);
 			}
-			case "shop_buy" -> buy(player, in);
 			default -> {
 				Claim c = ClaimStore.byId(str(in, "claim"));
 				if (c == null) {
@@ -534,42 +473,5 @@ public final class ClaimDialogs {
 		if (role == null || role == Role.OWNER) return null;
 		if (role == Role.MANAGE && ClaimTool.role(player, c) != Role.OWNER) return null;
 		return role;
-	}
-
-	private static void buy(ServerPlayer player, CompoundTag in) {
-		Claims.Settings s = ClaimStore.settings();
-		if (!s.shopEnabled) return;
-		int n;
-		try {
-			n = Integer.parseInt(str(in, "amount"));
-		} catch (NumberFormatException e) {
-			shop(player, null);
-			return;
-		}
-		Item item = shopItem(s);
-		String me = player.getStringUUID();
-		if (n < 1 || n > 64 || item == Items.AIR) return;
-		if (n > ClaimStore.data().purchasesLeft(me, s)) {
-			shop(player, "You can't buy that many.");
-			return;
-		}
-		int cost = n * s.shopPrice;
-		if (countItems(player, item) < cost) {
-			shop(player, "You don't have enough " + itemName(s).replaceFirst("^\\d+ × ", "") + ".");
-			return;
-		}
-		Inventory inv = player.getInventory();
-		int left = cost;
-		for (int i = 0; i < inv.getContainerSize() && left > 0; i++) {
-			ItemStack st = inv.getItem(i);
-			if (!st.is(item) || ClaimMode.isTool(st)) continue;
-			int take = Math.min(left, st.getCount());
-			st.shrink(take);
-			left -= take;
-		}
-		player.inventoryMenu.sendAllDataToRemote();
-		ClaimStore.data().buy(me, player.getPlainTextName(), n, s);
-		ClaimStore.touched();
-		shop(player, "Bought " + n * s.shopBlocks + " claim blocks.");
 	}
 }

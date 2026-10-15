@@ -145,7 +145,7 @@ Public pages → Info page: a read-only page where players can look up the serve
 - **Claims:** every claim with its owner, place, size and members. Click one to change its name, colour, corners, owner, members and what everyone else may do, or to delete it. **Server claim** makes a claim that costs nobody claim blocks. While the server is off, changes go straight to the world file.
 - **Claim blocks:** what each player has earned, bought and used. Change the bonus to give or take blocks.
 - **Settings:**
-  - how players earn claim blocks and the claim shop;
+  - how players earn claim blocks (selling them is on the Market page);
   - where they may claim (dimensions; only inside the permanent area from World → Borders, on by default);
   - smallest size and the most claims per player;
   - removing the claims of players who've been away a long time;
@@ -172,6 +172,10 @@ Public pages → Info page: a read-only page where players can look up the serve
 **Market** (under Community in the sidebar):
 
 - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
+- **Server shop** (what the server sells, apart from player listings in `/market` and on the info page):
+  - **Claim blocks** (while claims are on): any number of listings, each with its blocks, price, icon and an optional last day, plus the most blocks a player can buy in all. No listings: not sold.
+  - **Commands:** listings with a name, description, icon, price, optional last day and per-player limit that run console commands for the buyer, once per one bought. `{player}`, `{uuid}`, `{x}`, `{y}`, `{z}` and `{dimension}` are filled in. Changing the commands needs the **Run console commands** permission and goes to the audit log.
+  - Server sales show under Recent sales with "the server" as seller.
 - **What's for sale:** with item icons; **Take off** sends a listing back to the seller's mailbox.
 - **Recent sales.**
 - **Item icons:**

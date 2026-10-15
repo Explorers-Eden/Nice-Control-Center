@@ -781,6 +781,12 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-pt-edit__grid > div { flex: 1; min-width: 0; }
 .pn-pt-edit__grid img { margin-top: 12px; }
 .pn-pt-subhead { margin: 18px 0 4px; }
+.pn-mk-shop .np-table input, .pn-mk-shop input[type=date] { font: inherit; font-size: var(--fs-sm); color: var(--text); background: rgba(var(--ink),.06);
+  border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 0 8px; height: 34px; box-sizing: border-box; width: 100%; min-width: 0; color-scheme: light dark; }
+.pn-mk-shop .np-table .pn-mk-item input { flex: 1; }
+.pn-mk-cmd { border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; }
+.pn-mk-cmd textarea { min-height: 4.5em; }
+.pn-mk-cmd .np-form-actions { justify-content: flex-end; margin-top: 6px; }
 .pn-pt-edit.pn-pt-edit--retired .pn-pt-sale { display: none; }
 .pn-pt-pair { display: inline-flex; align-items: center; gap: 10px; }
 .pn-pt-pair input[type=number] { width: 110px; }
