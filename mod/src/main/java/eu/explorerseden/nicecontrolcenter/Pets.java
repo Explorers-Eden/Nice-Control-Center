@@ -284,6 +284,8 @@ public final class Pets {
 		/** How their pet moves, and its particle trail (for whichever pet is out). */
 		public String behavior;
 		public String trail;
+		/** While a pet is out, show a random one of theirs instead (picked again after a teleport, death or taking it out). */
+		public boolean random;
 		/** The pet that was out last, for /pets on. */
 		public String last;
 

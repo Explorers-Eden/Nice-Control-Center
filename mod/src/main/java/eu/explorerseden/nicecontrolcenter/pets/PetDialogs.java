@@ -123,7 +123,8 @@ public final class PetDialogs {
 			body.add(text("You don't have a pet yet: a floating head that follows you around, just for looks. Get one in the pet shop.", ChatFormatting.GRAY));
 		} else {
 			for (Pets.Owned o : mine) {
-				boolean out = o.pet.equals(owner.active);
+				// With Random pet, the one showing right now.
+				boolean out = owner.active != null && (owner.random ? o.pet.equals(PetFollowers.shownPet(player.getUUID())) : o.pet.equals(owner.active));
 				MutableComponent desc = Component.empty()
 						.append(Component.literal(PetStore.name(o)).withStyle(ChatFormatting.WHITE))
 						.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
@@ -134,6 +135,10 @@ public final class PetDialogs {
 			}
 		}
 		List<ActionButton> buttons = new ArrayList<>();
+		if (mine.size() > 1) {
+			buttons.add(button("Random pet: " + (owner.random ? "on" : "off"), owner.random ? "Show the pet you take out instead"
+					: "A different one of your pets every time you teleport, die or take it out", "random", args()));
+		}
 		if (!mine.isEmpty()) {
 			buttons.add(button("Moves: " + Pets.Behavior.of(owner.behavior).label, "Pick how your pet moves", "moves", args()));
 			if (PetStore.settings().particles) buttons.add(button("Particles: " + Pets.Trail.of(owner.trail).label, "Pick a trail for your pet", "trails", args()));
@@ -277,8 +282,21 @@ public final class PetDialogs {
 					return;
 				}
 				owner.active = owned.pet;
+				// Picking one pet means that one, not a random one.
+				owner.random = false;
 				PetStore.changed();
 				home(player, "✔ " + PetStore.name(owned) + " is out.");
+			}
+			case "random" -> {
+				if (owner == null || owner.pets.size() < 2) {
+					home(player, null);
+					return;
+				}
+				owner.random = !owner.random;
+				// Takes a pet out if none is, so you see it right away.
+				if (owner.random && owner.active == null) owner.takeOut();
+				PetStore.changed();
+				home(player, owner.random ? "✔ Random pet: a different one of your pets every time you teleport, die or take it out." : "✔ Random pet is off.");
 			}
 			case "away" -> {
 				if (owner != null) owner.putAway();

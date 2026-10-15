@@ -62,6 +62,8 @@ final class PetFollowers {
 		/** What Random landed on, rolled again after every teleport, death or taking the pet out. */
 		Pets.Behavior rolledMove;
 		Pets.Trail rolledTrail;
+		/** The owned pet shown while the owner has Random pet on. */
+		String rolledPet;
 		net.minecraft.world.level.Level level;
 		/** Clients were told it rides the player, and when that was last sent; when it was spawned. */
 		boolean riding;
@@ -114,8 +116,6 @@ final class PetFollowers {
 				}
 				continue;
 			}
-			String texture = PetStore.texture(owned);
-			double size = PetStore.size(owned);
 			if (f == null) {
 				f = new Follower(player.getRandom().nextInt(1000));
 				followers.put(player.getUUID(), f);
@@ -131,6 +131,14 @@ final class PetFollowers {
 			if (f.lastPlayer != null && (moved.lengthSqr() > 9 || f.level != player.level())) roll(f, player);
 			f.lastPlayer = base;
 			f.level = player.level();
+			if (owner.random) {
+				// Picked again if the rolled one was taken away (or Random was just switched on).
+				if (f.rolledPet == null || owner.owned(f.rolledPet) == null) rollPet(f, owner, player);
+				Pets.Owned pick = f.rolledPet == null ? null : owner.owned(f.rolledPet);
+				if (pick != null) owned = pick;
+			}
+			String texture = PetStore.texture(owned);
+			double size = PetStore.size(owned);
 			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
 			Pets.Behavior behavior = chosen == Pets.Behavior.RANDOM ? f.rolledMove : chosen;
 			Target goal = target(player, behavior, t * PACE, f);
@@ -320,6 +328,21 @@ final class PetFollowers {
 		List<Pets.Trail> trails = new ArrayList<>();
 		for (Pets.Trail t : Pets.Trail.values()) if (t.real() && available(t) && t != f.rolledTrail) trails.add(t);
 		f.rolledTrail = trails.isEmpty() ? Pets.Trail.OFF : trails.get(r.nextInt(trails.size()));
+		Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
+		if (owner != null) rollPet(f, owner, player);
+	}
+
+	/** One of the owner's pets for Random pet, not the same one twice in a row when they have more. */
+	private static void rollPet(Follower f, Pets.Owner owner, ServerPlayer player) {
+		List<Pets.Owned> pets = new ArrayList<>(owner.pets);
+		if (pets.size() > 1) pets.removeIf(o -> o.pet.equals(f.rolledPet));
+		f.rolledPet = pets.isEmpty() ? null : pets.get(player.getRandom().nextInt(pets.size())).pet;
+	}
+
+	/** The pet shown for this player right now while Random pet is on, or null. */
+	static String shownPet(UUID player) {
+		Follower f = followers.get(player);
+		return f == null || f.display == null ? null : f.rolledPet;
 	}
 
 	/** Whether this game version has the trail's particle (Noxious Gas only came in 26.2). */
