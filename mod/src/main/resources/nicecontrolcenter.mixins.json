@@ -8,6 +8,7 @@
 	},
 	"mixins": [
 		"AnimalBreedingMixin",
+		"QuickActionsMixin",
 		"GrindstoneMenuAccessor",
 		"GrindstoneMenuMixin",
 		"GrindstoneResultMixin",

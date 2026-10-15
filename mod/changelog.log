@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.14
+- With the Nice Actions data pack: its quick actions menu (G) gets buttons for Land Claims (/claim), Pets (/pets) and the Market (/market), for whichever of them is on when the server starts. The data pack itself isn't changed
+
 ## 1.13.13
 - Pets: "Random pet" in /pets (for players with two or more pets): a different one of your pets every time you teleport, die or take it out, like Random moves and particles. Taking out one pet switches it off
 
