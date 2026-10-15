@@ -1,3 +1,6 @@
+## 1.12.14
+- Market → Server shop: "Seller name" for the server's listings, shown in game, in the sales and on the info page (needs mod 1.13.17)
+
 ## 1.12.13
 - Market is split into Player market (settings, player listings, player sales) and Server shop (claim blocks, commands, pets, and one list of everything bought from the server)
 - Claim block and command listings are edited like pets: a table, and an editor that opens with Add or Edit, with "Always on sale" (or a last day), "No limit per player" and "For sale" switches; pets' editor also opens only when needed

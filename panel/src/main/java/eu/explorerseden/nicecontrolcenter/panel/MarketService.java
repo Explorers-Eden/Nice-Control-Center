@@ -170,6 +170,7 @@ final class MarketService {
 			view.put("listings", List.of());
 		}
 		view.put("server", offers);
+		view.put("serverName", s.serverName);
 		return view;
 	}
 

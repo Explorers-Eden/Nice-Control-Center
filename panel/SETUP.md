@@ -172,7 +172,7 @@ Public pages → Info page: a read-only page where players can look up the serve
 **Market** (under Community in the sidebar), in two parts: **Player market** and **Server shop**.
 
 - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
-- **Server shop** (what the server sells, apart from player listings in `/market` and on the info page). Every listing has a price, "Always on sale" or a last day, and a "For sale" switch to pause it:
+- **Server shop** (what the server sells, apart from player listings in `/market` and on the info page), shown with a seller name you choose (default "the server"). Every listing has a price, "Always on sale" or a last day, and a "For sale" switch to pause it:
   - **Claim blocks** (while claims are on): blocks and icon per listing, plus the most blocks a player can buy in all. No listings: not sold.
   - **Commands:** name, description, icon, a per-player limit and console commands run for the buyer, once per one bought. `{player}`, `{uuid}`, `{x}`, `{y}`, `{z}` and `{dimension}` are filled in. Changing the commands needs the **Run console commands** permission and goes to the audit log.
   - **Pets** (see below).

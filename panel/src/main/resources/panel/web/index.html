@@ -977,9 +977,17 @@
 
 			<div class="np-tab-panel" data-tab="servershop" hidden>
 				<div class="pn-stack">
-				<section class="np-card" id="pn-ss-closed" hidden>
-					<p class="np-card-intro">The market is closed (Player market → Market open), so nothing here is sold right now.</p>
-				</section>
+				<form id="pn-ss-form" autocomplete="off" class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shop-window"></i> Server shop</h3>
+					<p class="np-card-intro">What the server itself sells, in the Server shop of <code>/market</code> (apart from what players sell) and on the info page, paid in the market's currency.<span id="pn-ss-closed" hidden> The market is closed (Player market → Market open), so nothing here is sold right now.</span></p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Seller name<small class="pn-comment">Shown as the seller of these listings in game, in the sales and on the info page</small></span><input type="text" name="serverName" maxlength="32" placeholder="the server"></label>
+					</div>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-ss-msg"></span>
+					</div>
+				</form>
 				<section class="np-card pn-mk-shop">
 					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Claim blocks</h3>
 					<p class="np-card-intro">Sold while land claims are on, also behind "Buy claim blocks" in <code>/claim</code>. No listings: claim blocks aren't sold. The icon is only how a listing looks.</p>

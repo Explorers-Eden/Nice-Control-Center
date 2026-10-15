@@ -227,7 +227,7 @@
           <span class="in-tile__text"><b>${esc(o.name)}</b>
             ${o.description ? `<small class="in-tile__extra">${esc(o.description)}</small>` : ''}
             <span class="in-tile__price">${coin}${Number(o.price).toLocaleString()} <small>${esc(o.price === 1 ? cur : cur + 's')}</small></span>
-            <small class="in-tile__seller"><i class="bi bi-shop-window"></i> the server${o.until ? ` · until ${esc(new Date(o.until).toLocaleDateString([], { dateStyle: 'medium' }))}` : ''}${o.perPlayer ? ` · up to ${o.perPlayer} each` : ''}</small></span></div>`;
+            <small class="in-tile__seller"><i class="bi bi-shop-window"></i> ${esc(m.serverName || 'the server')}${o.until ? ` · until ${esc(new Date(o.until).toLocaleDateString([], { dateStyle: 'medium' }))}` : ''}${o.perPlayer ? ` · up to ${o.perPlayer} each` : ''}</small></span></div>`;
       const list = m.listings || [];
       const server = m.server || [];
       const pets = d.pets || [];

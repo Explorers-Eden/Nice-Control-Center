@@ -4766,10 +4766,13 @@
     const cur = s.currency.replace(/^[^:]+:/, '').replace(/_/g, ' ');
     document.querySelectorAll('.pn-ss-cur').forEach((el) => { el.textContent = `In ${cur}s (the market's currency)`; });
     $('pn-ss-closed').hidden = s.enabled;
+    $('pn-ss-form').serverName.value = s.serverName || 'the server';
+    $('pn-ss-form').querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
     $('pn-mk-vars').innerHTML = 'Use ' + (mkSettings.variables || []).map((v) => `<code>${esc(v)}</code>`).join(' ') + ' for the buyer (name, UUID, block position, dimension).';
     renderMarket();
     renderServerShop();
     Dirty.reset('market');
+    Dirty.reset('servershop');
   }
 
   function renderMarket() {
@@ -4963,6 +4966,11 @@
   }
   $('pn-ss-claims').addEventListener('click', ssTableClick('claimBlocks', ssClaimOpen, 'pn-ss-claim-note', (o) => `the listing of ${Number(o.blocks).toLocaleString()} claim blocks`));
   $('pn-ss-cmds').addEventListener('click', ssTableClick('commandOffers', ssCmdOpen, 'pn-ss-cmd-note', (o) => o.name));
+
+  $('pn-ss-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (await mkSave({ serverName: e.target.serverName.value.trim() }, 'pn-ss-msg', 'Saved.')) Dirty.reset('servershop');
+  });
 
   $('pn-ss-max').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -5188,6 +5196,7 @@
   Dirty.track('felling', $('pn-tf-form'), { reload: loadTweaks });
   Dirty.track('chattweaks', $('pn-tc-form'), { reload: loadTweaks });
   Dirty.track('market', $('pn-mk-form'), { reload: loadMarket });
+  Dirty.track('servershop', $('pn-ss-form'), { reload: loadMarket });
   Dirty.track('pets', $('pn-pt-form'), { reload: loadPets });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });

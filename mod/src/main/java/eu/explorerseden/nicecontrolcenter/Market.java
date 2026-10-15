@@ -47,6 +47,8 @@ public final class Market {
 		public List<ClaimOffer> claimBlocks = new ArrayList<>();
 		/** Most claim blocks a player can buy in total; 0 = no limit. */
 		public int claimBlocksMax = 0;
+		/** The seller shown for the server shop's listings (in game, in the sales and on the info page). */
+		public String serverName = "the server";
 		/** Things the server sells by running console commands for the buyer, on top of Browse. */
 		public List<CommandOffer> commandOffers = new ArrayList<>();
 
@@ -55,6 +57,7 @@ public final class Market {
 			currency = id(currency);
 			if (bannedItems == null) bannedItems = new ArrayList<>();
 			bannedItems = bannedItems.stream().filter(b -> b != null && !b.isBlank()).map(Market::id).distinct().toList();
+			serverName = serverName == null || serverName.isBlank() ? "the server" : serverName.strip();
 			if (claimBlocks == null) claimBlocks = new ArrayList<>();
 			claimBlocks = new ArrayList<>(claimBlocks.stream().filter(o -> o != null).toList());
 			for (ClaimOffer o : claimBlocks) {
@@ -159,6 +162,7 @@ public final class Market {
 			if (o.saleEnds < 0 || o.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "Claim block listings end within ten years, or never.";
 		}
 		if (s.claimBlocksMax < 0 || s.claimBlocksMax > 100_000_000) return "The most claim blocks to buy are 0 (no limit) to 100,000,000.";
+		if (s.serverName.length() > 32) return "The server shop's seller name is at most 32 characters.";
 		if (s.commandOffers.size() > 50) return "At most 50 command listings.";
 		java.util.Set<String> ids = new java.util.HashSet<>();
 		for (CommandOffer o : s.commandOffers) {
@@ -289,13 +293,13 @@ public final class Market {
 		 * A purchase from the server (the currency is already taken): counted for the per-player limit when it's a
 		 * command listing, and kept in the sales list with no seller.
 		 */
-		public Sale serverSale(String offer, boolean command, String itemName, String itemId, String buyer, String buyerName, int amount, int total, long now) {
+		public Sale serverSale(String offer, boolean command, String itemName, String itemId, String sellerName, String buyer, String buyerName, int amount, int total, long now) {
 			if (command) serverBought.computeIfAbsent(offer, k -> new LinkedHashMap<>()).merge(buyer, amount, Integer::sum);
 			Sale sale = new Sale();
 			sale.listing = offer;
 			sale.itemName = itemName;
 			sale.itemId = itemId;
-			sale.sellerName = "the server";
+			sale.sellerName = sellerName;
 			sale.buyer = buyer;
 			sale.buyerName = buyerName;
 			sale.amount = amount;

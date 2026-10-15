@@ -337,7 +337,7 @@ public final class MarketDialogs {
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
 				.append(Component.literal("   You have ").withStyle(ChatFormatting.GRAY))
 				.append(Component.literal(String.format(Locale.ROOT, "%,d", ClaimStore.data().available(me))).withStyle(ChatFormatting.WHITE))
-				.append(Component.literal("   Seller ").withStyle(ChatFormatting.GRAY)).append(Component.literal("the server").withStyle(ChatFormatting.WHITE)), TEXT_WIDTH));
+				.append(Component.literal("   Seller ").withStyle(ChatFormatting.GRAY)).append(Component.literal(MarketStore.settings().serverName).withStyle(ChatFormatting.WHITE)), TEXT_WIDTH));
 		if (o.saleEnds != 0) body.add(text("On sale until " + Pets.date(o.saleEnds) + ".", ChatFormatting.GRAY));
 		int left = ClaimStore.data().blocksLeft(me, MarketStore.settings().claimBlocksMax);
 		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
@@ -390,7 +390,7 @@ public final class MarketDialogs {
 		}
 		ClaimStore.data().buy(me, player.getPlainTextName(), (int) blocks, ClaimStore.settings());
 		ClaimStore.touched();
-		MarketStore.data().serverSale(o.id, false, String.format(Locale.ROOT, "%,d claim blocks", o.blocks), o.icon, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
+		MarketStore.data().serverSale(o.id, false, String.format(Locale.ROOT, "%,d claim blocks", o.blocks), o.icon, MarketStore.settings().serverName, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
 		MarketStore.saveNow();
 		claimOffer(player, index, o, String.format(Locale.ROOT, "Bought %,d claim blocks for %s.", blocks, money((int) cost)));
 	}
@@ -409,7 +409,7 @@ public final class MarketDialogs {
 		int bought = MarketStore.data().serverBought(o.id, me);
 		MutableComponent facts = Component.empty()
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
-				.append(Component.literal("   Seller ").withStyle(ChatFormatting.GRAY)).append(Component.literal("the server").withStyle(ChatFormatting.WHITE));
+				.append(Component.literal("   Seller ").withStyle(ChatFormatting.GRAY)).append(Component.literal(MarketStore.settings().serverName).withStyle(ChatFormatting.WHITE));
 		if (o.perPlayer > 0) facts.append(Component.literal("   Bought ").withStyle(ChatFormatting.GRAY))
 				.append(Component.literal(bought + " of " + o.perPlayer).withStyle(ChatFormatting.WHITE));
 		body.add(new PlainMessage(facts, TEXT_WIDTH));
@@ -466,7 +466,7 @@ public final class MarketDialogs {
 			return;
 		}
 		// Counted before the commands run, so a command that reopens the menu sees it.
-		MarketStore.data().serverSale(o.id, true, o.name, o.icon, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
+		MarketStore.data().serverSale(o.id, true, o.name, o.icon, MarketStore.settings().serverName, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
 		MarketStore.saveNow();
 		runCommands(player, o, n);
 		if (player.isRemoved()) return;
