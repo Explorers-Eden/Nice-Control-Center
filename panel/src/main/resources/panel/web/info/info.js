@@ -230,13 +230,15 @@
             <small class="in-tile__seller"><i class="bi bi-shop-window"></i> the server${o.until ? ` · until ${esc(new Date(o.until).toLocaleDateString([], { dateStyle: 'medium' }))}` : ''}${o.perPlayer ? ` · up to ${o.perPlayer} each` : ''}</small></span></div>`;
       const list = m.listings || [];
       const server = m.server || [];
-      sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length + server.length,
+      const pets = d.pets || [];
+      const fromServer = server.length + pets.length;
+      sections.push({ id: 'market', title: 'Market', statLabel: 'items for sale', icon: 'bi-shop', hue: '#ffd166', count: list.length + fromServer,
         lead: `What the server and players sell right now. Type /market in game to buy or sell; everything is paid in ${cur}s.`,
-        children: [...(server.length ? [{ id: 'market-server', title: 'From the server', icon: 'bi-shop-window', sub: `${server.length} listing${server.length === 1 ? '' : 's'} · Server shop in /market`, wide: true,
-          body: `<div class="in-tiles">${server.map(offer).join('')}</div>` }] : []),
+        children: [...(fromServer ? [{ id: 'market-server', title: 'From the server', icon: 'bi-shop-window', sub: `${fromServer} listing${fromServer === 1 ? '' : 's'} · Server shop in /market`, wide: true,
+          desc: pets.length ? 'Pets are floating heads that follow you, only for looks: once bought they stay yours for good, and /pets lets you pick how yours moves and a particle trail.' : '',
+          body: `<div class="in-tiles">${server.map(offer).join('')}${pets.length ? petTiles(cur, coin) : ''}</div>` }] : []),
           { id: 'market-list', title: 'From players', icon: 'bi-bag', sub: `${list.length} listing${list.length === 1 ? '' : 's'}`, wide: true,
-          body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' },
-          ...(d.pets ? [petChild(cur, coin)] : [])] });
+          body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' }] });
     }
     if (d.tweaks && d.tweaks.length) {
       sections.push({ id: 'tweaks', title: 'Gameplay tweaks', tab: 'Gameplay', statLabel: 'tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,

@@ -43,7 +43,7 @@ public final class ServerFacts {
 		}
 		out.add(tweak("pets", "Pets", "bi-emoji-smile",
 				"Type /pets for a pet: a floating head that follows you around, only for looks, and everyone sees it. Pets are yours for good. "
-						+ "Pick how it moves (float, orbit, halo, spiral, wander and more) and, if allowed, a particle trail. Get pets in the pet shop (/pets or /market).",
+						+ "Pick how it moves (float, orbit, halo, spiral, wander and more) and, if allowed, a particle trail. Get pets in the pet shop (/pets) or the Server shop in /market.",
 				rows));
 		return out;
 	}

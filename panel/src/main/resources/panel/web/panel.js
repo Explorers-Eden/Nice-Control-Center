@@ -96,7 +96,8 @@
         { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks and the claim tool.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
-        { tab: 'market', label: 'Market', perm: 'server.view', desc: 'The player market (/market): settings, claim blocks for sale, what is for sale and what sold, and pets (/pets) with their shop.' }] },
+        { tab: 'market', label: 'Player market', perm: 'server.view', desc: 'The player market (/market): settings, what players sell and what sold.' },
+        { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'What the server sells in /market: claim blocks, command listings and pets, and what players bought.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
@@ -371,7 +372,7 @@
     if (tab === 'claimblocks') loadClaimBlocks();
     if (tab === 'claimsettings') loadClaimSettings();
     if (tab === 'tweaks' || tab === 'felling' || tab === 'chattweaks') loadTweaks();
-    if (tab === 'market') { loadMarket(); loadPets(); }
+    if (tab === 'market' || tab === 'servershop') { loadMarket(); loadPets(); }
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -4724,16 +4725,25 @@
   $('pn-tf-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tf-msg'));
   $('pn-tc-form').addEventListener('submit', (e) => saveTweaks(e, 'pn-tc-msg'));
 
-  // ── Community → Market ────────────────────────────────────────────────────
+  // ── Community → Market (player market and server shop) ──────────────────
 
+  /** When a listing (pet, claim blocks, command) is sold: always, until a day, or ended. */
+  const ptSale = (p) => !p.saleEnds ? 'always' : (p.saleEnds < Date.now() ? '<span class="pn-warn">ended</span> ' : 'until ') + esc(new Date(p.saleEnds).toLocaleDateString([], { dateStyle: 'medium' }));
+  /** The yyyy-mm-dd of a time, in local time (for the date field). */
+  const ptDay = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   let mkData = null;
   let mkSettings = null;
+  let ptData = null;
+  let ptEditing = null;
+  let ssClaimEditing = null;
+  let ssCmdEditing = null;
 
   async function loadMarket() {
     try {
       [mkData, mkSettings] = await Promise.all([api('api/market'), api('api/market/settings')]);
     } catch (e) {
-      return formMsg('pn-mk-msg', e.message, false);
+      formMsg('pn-mk-msg', e.message, false);
+      return formMsg('pn-ss-claim-msg', e.message, false);
     }
     const s = mkSettings.settings;
     const f = $('pn-mk-form');
@@ -4743,120 +4753,23 @@
     f.maxListings.value = s.maxListings;
     f.maxPrice.value = s.maxPrice;
     f.bannedItems.value = s.bannedItems.join(', ');
-    f.claimBlocksMax.value = s.claimBlocksMax || 0;
-    $('pn-mk-claims').innerHTML = '';
-    s.claimBlocks.forEach((o, i) => mkClaimRow(o, (mkSettings.claimIcons || [])[i]));
-    mkClaimEmpty();
-    $('pn-mk-vars').innerHTML = 'Use ' + (mkSettings.variables || []).map((v) => `<code>${esc(v)}</code>`).join(' ') + ' for the buyer (name, UUID, block position, dimension); one command per line, without the slash.';
-    $('pn-mk-cmds').innerHTML = '';
-    s.commandOffers.forEach((o, i) => mkCmdRow(o, (mkSettings.commandIcons || [])[i]));
-    f.querySelectorAll('input, button, textarea').forEach((el) => { el.disabled = !can('settings.server'); });
-    if (!mkSettings.canCommands) {
-      f.querySelectorAll('#pn-mk-cmds textarea, #pn-mk-cmds [data-cmd-del]').forEach((el) => { el.disabled = true; });
-      $('pn-mk-cmd-add').disabled = true;
-    }
+    const edit = can('settings.server');
+    f.querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
     $('pn-mk-intro').textContent = (mkData.enabled ? '' : 'The market is closed. ') + (mkData.running ? '' : 'The server is off: this is the last saved state. ')
       + (mkData.icons ? 'Icons: ' + mkData.icons : '');
+    $('pn-ss-max').claimBlocksMax.value = s.claimBlocksMax || 0;
+    $('pn-ss-max').querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-ss-claim-new').hidden = !edit;
+    $('pn-ss-cmd-new').hidden = !edit || !mkSettings.canCommands;
+    if (!edit) ssClaimOpen(null);
+    if (!edit || !mkSettings.canCommands) ssCmdOpen(null);
+    const cur = s.currency.replace(/^[^:]+:/, '').replace(/_/g, ' ');
+    document.querySelectorAll('.pn-ss-cur').forEach((el) => { el.textContent = `In ${cur}s (the market's currency)`; });
+    $('pn-ss-closed').hidden = s.enabled;
+    $('pn-mk-vars').innerHTML = 'Use ' + (mkSettings.variables || []).map((v) => `<code>${esc(v)}</code>`).join(' ') + ' for the buyer (name, UUID, block position, dimension).';
     renderMarket();
+    renderServerShop();
     Dirty.reset('market');
-  }
-
-  /** A claim block listing row; data-ends keeps the exact end time while its day isn't changed. */
-  function mkClaimRow(o, icon) {
-    const t = $('pn-mk-claims');
-    if (!t.tHead) t.innerHTML = '<thead><tr><th>Blocks</th><th>Price</th><th>Icon (item id)</th><th>Sold until</th><th></th></tr></thead><tbody></tbody>';
-    const tr = document.createElement('tr');
-    tr.className = 'pn-mk-claim';
-    tr.dataset.ends = o.saleEnds || 0;
-    tr.dataset.id = o.id || '';
-    const ended = o.saleEnds && o.saleEnds < Date.now();
-    tr.innerHTML = `<td><input type="number" data-k="blocks" min="1" max="1000000" value="${Number(o.blocks) || 100}"></td>
-      <td><input type="number" data-k="price" min="1" max="10000000" value="${Number(o.price) || 1}"></td>
-      <td class="pn-mk-item">${icon ? `<img src="info/items/${esc(icon)}" alt="" width="24" height="24">` : ''}<input type="text" data-k="icon" placeholder="minecraft:grass_block" value="${esc(o.icon || '')}"></td>
-      <td><input type="date" data-k="ends" value="${o.saleEnds ? ptDay(o.saleEnds) : ''}">${ended ? ' <span class="pn-warn">ended</span>' : ''}</td>
-      <td><button type="button" class="np-btn small" data-claim-del title="Remove this listing"><i class="bi bi-trash"></i></button></td>`;
-    t.tBodies[0].append(tr);
-  }
-
-  function mkClaimEmpty() {
-    const t = $('pn-mk-claims');
-    if (!t.querySelector('.pn-mk-claim')) t.innerHTML = '<tbody><tr><td class="pn-hint">No claim blocks for sale.</td></tr></tbody>';
-  }
-
-  $('pn-mk-claim-add').addEventListener('click', () => {
-    if (!$('pn-mk-claims').querySelector('.pn-mk-claim')) $('pn-mk-claims').innerHTML = '';
-    mkClaimRow({ blocks: 100, price: 1, icon: 'minecraft:grass_block', saleEnds: 0 });
-  });
-  $('pn-mk-claims').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-claim-del]');
-    if (!b) return;
-    b.closest('tr').remove();
-    mkClaimEmpty();
-  });
-
-  /** The claim block listings from the rows, or an error text. */
-  function mkClaimOffers() {
-    const offers = [];
-    for (const tr of $('pn-mk-claims').querySelectorAll('.pn-mk-claim')) {
-      const v = (k) => tr.querySelector(`[data-k="${k}"]`).value.trim();
-      const before = Number(tr.dataset.ends) || 0;
-      const day = v('ends');
-      let saleEnds = 0;
-      if (day) {
-        saleEnds = before && ptDay(before) === day ? before : new Date(day + 'T23:59:59').getTime();
-        if (saleEnds !== before && saleEnds < Date.now()) return 'Pick an end from today on, or leave it empty.';
-      }
-      offers.push({ id: tr.dataset.id || undefined, blocks: Number(v('blocks')) || 0, price: Number(v('price')) || 0, icon: v('icon') || 'minecraft:grass_block', saleEnds });
-    }
-    return offers;
-  }
-
-  /** A command listing's editor; data-id and data-ends keep what isn't shown. */
-  function mkCmdRow(o, icon) {
-    const d = document.createElement('div');
-    d.className = 'pn-mk-cmd';
-    d.dataset.id = o.id || '';
-    d.dataset.ends = o.saleEnds || 0;
-    const ended = o.saleEnds && o.saleEnds < Date.now();
-    d.innerHTML = `<div class="np-form-grid">
-        <label class="np-form-row">Name<input type="text" data-k="name" maxlength="40" value="${esc(o.name || '')}" placeholder="Starter kit"></label>
-        <label class="np-form-row">Price (in the currency)<input type="number" data-k="price" min="1" max="10000000" value="${Number(o.price) || 1}"></label>
-        <label class="np-form-row">${icon ? `<span class="pn-mk-item"><img src="info/items/${esc(icon)}" alt="" width="24" height="24">Icon (item id)</span>` : 'Icon (item id)'}<input type="text" data-k="icon" value="${esc(o.icon || '')}" placeholder="minecraft:paper"></label>
-        <label class="np-form-row"><span>Sold until${ended ? ' <span class="pn-warn">ended</span>' : ''}<span class="pn-comment">Empty: until you remove it.</span></span><input type="date" data-k="ends" value="${o.saleEnds ? ptDay(o.saleEnds) : ''}"></label>
-        <label class="np-form-row"><span>Per player<span class="pn-comment">0: no limit.</span></span><input type="number" data-k="perPlayer" min="0" max="100000" value="${Number(o.perPlayer) || 0}"></label>
-        <label class="np-form-row">Description<input type="text" data-k="description" maxlength="200" value="${esc(o.description || '')}" placeholder="What the player gets"></label>
-      </div>
-      <label class="pn-field"><span>Commands (one per line)</span><textarea data-k="commands" spellcheck="false" placeholder="give {player} minecraft:bread 16">${esc((o.commands || []).join('\n'))}</textarea></label>
-      <div class="np-form-actions"><button type="button" class="np-btn small" data-cmd-del><i class="bi bi-trash"></i> Remove</button></div>`;
-    $('pn-mk-cmds').append(d);
-  }
-
-  $('pn-mk-cmd-add').addEventListener('click', () => mkCmdRow({ name: '', price: 1, icon: 'minecraft:paper', commands: [] }));
-  $('pn-mk-cmds').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-cmd-del]');
-    if (b && confirm('Remove this command listing?')) b.closest('.pn-mk-cmd').remove();
-  });
-
-  /** The command listings from the editors, or an error text. */
-  function mkCmdOffers() {
-    const offers = [];
-    for (const d of $('pn-mk-cmds').querySelectorAll('.pn-mk-cmd')) {
-      const v = (k) => d.querySelector(`[data-k="${k}"]`).value.trim();
-      const before = Number(d.dataset.ends) || 0;
-      const day = v('ends');
-      let saleEnds = 0;
-      if (day) {
-        saleEnds = before && ptDay(before) === day ? before : new Date(day + 'T23:59:59').getTime();
-        if (saleEnds !== before && saleEnds < Date.now()) return 'Pick an end from today on, or leave it empty.';
-      }
-      const name = v('name');
-      const commands = v('commands').split('\n').map((c) => c.trim()).filter(Boolean);
-      if (!name) return 'Every command listing needs a name.';
-      if (!commands.length) return `${name} needs at least one command.`;
-      offers.push({ id: d.dataset.id || undefined, name, description: v('description'), icon: v('icon') || 'minecraft:paper', price: Number(v('price')) || 0,
-        perPlayer: Number(v('perPlayer')) || 0, saleEnds, commands });
-    }
-    return offers;
   }
 
   function renderMarket() {
@@ -4869,10 +4782,192 @@
       <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}</td><td>${esc(dateTime(l.expires))}</td>
       <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's mailbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
       : `<tbody><tr><td class="pn-hint">${mkData.listings.length ? 'Nothing matches.' : 'Nothing for sale.'}</td></tr></tbody>`;
-    $('pn-mk-sales').innerHTML = mkData.sales.length ? `<thead><tr><th>When</th><th>Item</th><th>Amount</th><th>Total</th><th>Seller</th><th>Buyer</th></tr></thead><tbody>${mkData.sales.map((s) => `
+    const sales = mkData.sales.filter((s) => s.seller);
+    $('pn-mk-sales').innerHTML = sales.length ? `<thead><tr><th>When</th><th>Item</th><th>Amount</th><th>Total</th><th>Seller</th><th>Buyer</th></tr></thead><tbody>${sales.map((s) => `
       <tr><td>${esc(dateTime(s.time))}</td><td>${esc(s.itemName)}</td><td>${s.amount}</td><td>${Number(s.total).toLocaleString()}</td><td>${esc(s.sellerName)}</td><td>${esc(s.buyerName)}</td></tr>`).join('')}</tbody>`
       : '<tbody><tr><td class="pn-hint">No sales yet.</td></tr></tbody>';
+    renderServerSales();
   }
+
+  /** Server shop purchases: claim blocks and commands (market sales without a seller) and pets, newest first. */
+  function renderServerSales() {
+    const rows = [...(mkData ? mkData.sales.filter((s) => !s.seller).map((s) => ({ time: s.time, what: s.amount > 1 ? `${s.amount} × ${s.itemName}` : s.itemName, who: s.buyerName, paid: s.total })) : []),
+      ...(ptData ? (ptData.state.purchases || []).map((b) => ({ time: b.time, what: 'Pet: ' + b.petName, who: b.buyerName, paid: b.price })) : [])]
+      .sort((a, b) => b.time - a.time).slice(0, 200);
+    $('pn-ss-sales').innerHTML = rows.length ? `<thead><tr><th>When</th><th>What</th><th>Player</th><th>Paid</th></tr></thead><tbody>${rows.map((r) => `
+      <tr><td>${esc(dateTime(r.time))}</td><td>${esc(r.what)}</td><td>${esc(r.who)}</td><td>${r.paid ? Number(r.paid).toLocaleString() : 'free'}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">Nothing bought from the server yet.</td></tr></tbody>';
+  }
+
+  const ssIcon = (hash) => (hash ? `<img src="info/items/${esc(hash)}" alt="" width="24" height="24">` : '<span class="pn-ss-noicon"></span>');
+  const ssActions = (i) => (can('settings.server') ? `<button type="button" class="np-btn small" data-edit="${i}"><i class="bi bi-pencil"></i> Edit</button>
+    <button type="button" class="np-btn small" data-delete="${i}" title="Delete this listing"><i class="bi bi-trash"></i></button>` : '');
+
+  function renderServerShop() {
+    const s = mkSettings.settings;
+    $('pn-ss-claims').innerHTML = s.claimBlocks.length ? `<thead><tr><th>Listing</th><th>Price</th><th>On sale</th><th>For sale</th><th></th></tr></thead><tbody>${s.claimBlocks.map((o, i) => `
+      <tr><td class="pn-mk-item">${ssIcon((mkSettings.claimIcons || [])[i])}<span>${Number(o.blocks).toLocaleString()} claim blocks</span></td>
+      <td>${Number(o.price).toLocaleString()}</td><td>${ptSale(o)}</td><td>${o.forSale === false ? 'no' : 'yes'}</td><td>${ssActions(i)}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No claim blocks for sale. Add a listing below.</td></tr></tbody>';
+    const cmdEdit = mkSettings.canCommands;
+    $('pn-ss-cmds').innerHTML = s.commandOffers.length ? `<thead><tr><th>Listing</th><th>Price</th><th>On sale</th><th>Per player</th><th>For sale</th><th></th></tr></thead><tbody>${s.commandOffers.map((o, i) => `
+      <tr><td class="pn-mk-item">${ssIcon((mkSettings.commandIcons || [])[i])}<span>${esc(o.name)}<small class="pn-hint">${esc(o.description || '')}</small></span></td>
+      <td>${Number(o.price).toLocaleString()}</td><td>${ptSale(o)}</td><td>${o.perPlayer ? Number(o.perPlayer).toLocaleString() : 'no limit'}</td><td>${o.forSale === false ? 'no' : 'yes'}</td>
+      <td>${cmdEdit ? ssActions(i) : ''}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No command listings. Add one below.</td></tr></tbody>';
+  }
+
+  /** Saves the market settings with some fields changed (the rest as loaded). */
+  async function mkSave(changes, msgId, done) {
+    try {
+      const res = await api('api/market/settings', { ...mkSettings.settings, ...changes });
+      await loadMarket();
+      formMsg(msgId, done + (res.running ? ' Applies within a few seconds.' : ''), true);
+      return true;
+    } catch (err) {
+      formMsg(msgId, err.message, false);
+      return false;
+    }
+  }
+
+  /** The "Always on sale" and "No limit" pairs: the field is only used while its switch is off. */
+  function ssPairs(f) {
+    f.saleEnd.disabled = f.always.checked;
+    if (f.unlimited) f.perPlayer.disabled = f.unlimited.checked;
+  }
+
+  /** The end of sale from an editor (keeps the old time while its day isn't changed), or an error text. */
+  function ssSaleEnds(f, before) {
+    if (f.always.checked) return 0;
+    if (!f.saleEnd.value) return 'Pick a day, or switch on Always on sale.';
+    if (before && before.saleEnds && ptDay(before.saleEnds) === f.saleEnd.value) return before.saleEnds;
+    const t = new Date(f.saleEnd.value + 'T23:59:59').getTime();
+    return t < Date.now() ? 'Pick a day from today on, or switch on Always on sale.' : t;
+  }
+
+  function ssIconPreview(f, hash) {
+    const img = f.querySelector('.pn-ss-icon');
+    img.hidden = !hash;
+    if (hash) img.src = 'info/items/' + hash;
+  }
+
+  function ssClaimOpen(i) {
+    ssClaimEditing = i;
+    const o = i === null ? null : mkSettings.settings.claimBlocks[i];
+    const f = $('pn-ss-claim-edit');
+    f.blocks.value = o ? o.blocks : 100;
+    f.price.value = o ? o.price : '';
+    f.icon.value = o ? o.icon : 'minecraft:grass_block';
+    f.always.checked = o ? !o.saleEnds : true;
+    f.saleEnd.value = ptDay(o && o.saleEnds ? o.saleEnds : Date.now() + 30 * 86400000);
+    f.forSale.checked = o ? o.forSale !== false : true;
+    $('pn-ss-claim-title').textContent = o ? `Edit ${Number(o.blocks).toLocaleString()} claim blocks` : 'Add a listing';
+    $('pn-ss-claim-add').innerHTML = o ? '<i class="bi bi-check2"></i> Save listing' : '<i class="bi bi-plus-lg"></i> Add listing';
+    f.hidden = !o;
+    ssIconPreview(f, o ? (mkSettings.claimIcons || [])[i] : null);
+    formMsg('pn-ss-claim-msg', '', true);
+    ssPairs(f);
+  }
+
+  function ssCmdOpen(i) {
+    ssCmdEditing = i;
+    const o = i === null ? null : mkSettings.settings.commandOffers[i];
+    const f = $('pn-ss-cmd-edit');
+    f.name.value = o ? o.name : '';
+    f.description.value = o ? o.description || '' : '';
+    f.commands.value = o ? o.commands.join('\n') : '';
+    f.price.value = o ? o.price : '';
+    f.icon.value = o ? o.icon : 'minecraft:paper';
+    f.always.checked = o ? !o.saleEnds : true;
+    f.saleEnd.value = ptDay(o && o.saleEnds ? o.saleEnds : Date.now() + 30 * 86400000);
+    f.unlimited.checked = o ? !o.perPlayer : true;
+    f.perPlayer.value = o && o.perPlayer ? o.perPlayer : 1;
+    f.forSale.checked = o ? o.forSale !== false : true;
+    $('pn-ss-cmd-title').textContent = o ? 'Edit ' + o.name : 'Add a listing';
+    $('pn-ss-cmd-add').innerHTML = o ? '<i class="bi bi-check2"></i> Save listing' : '<i class="bi bi-plus-lg"></i> Add listing';
+    f.hidden = !o;
+    ssIconPreview(f, o ? (mkSettings.commandIcons || [])[i] : null);
+    formMsg('pn-ss-cmd-msg', '', true);
+    ssPairs(f);
+  }
+
+  for (const id of ['pn-ss-claim-edit', 'pn-ss-cmd-edit']) {
+    const f = $(id);
+    f.always.addEventListener('change', () => ssPairs(f));
+    if (f.unlimited) f.unlimited.addEventListener('change', () => ssPairs(f));
+  }
+  $('pn-ss-claim-cancel').addEventListener('click', () => ssClaimOpen(null));
+  $('pn-ss-cmd-cancel').addEventListener('click', () => ssCmdOpen(null));
+  /** "Add …" opens an empty editor. */
+  function ssNew(open, formId, first) {
+    open(null);
+    const f = $(formId);
+    f.hidden = false;
+    f[first].focus();
+  }
+  $('pn-ss-claim-new').addEventListener('click', () => ssNew(ssClaimOpen, 'pn-ss-claim-edit', 'blocks'));
+  $('pn-ss-cmd-new').addEventListener('click', () => ssNew(ssCmdOpen, 'pn-ss-cmd-edit', 'name'));
+
+  $('pn-ss-claim-edit').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const list = mkSettings.settings.claimBlocks.slice();
+    const before = ssClaimEditing === null ? null : list[ssClaimEditing];
+    const saleEnds = ssSaleEnds(f, before);
+    if (typeof saleEnds === 'string') return formMsg('pn-ss-claim-msg', saleEnds, false);
+    const o = { id: before ? before.id : undefined, blocks: Number(f.blocks.value) || 0, price: Number(f.price.value) || 0,
+      icon: f.icon.value.trim() || 'minecraft:grass_block', saleEnds, forSale: f.forSale.checked };
+    if (before) list[ssClaimEditing] = o; else list.push(o);
+    if (await mkSave({ claimBlocks: list }, 'pn-ss-claim-msg', before ? 'Saved.' : 'Added.')) {
+      formMsg('pn-ss-claim-note', $('pn-ss-claim-msg').textContent, true);
+      ssClaimOpen(null);
+    }
+  });
+
+  $('pn-ss-cmd-edit').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const list = mkSettings.settings.commandOffers.slice();
+    const before = ssCmdEditing === null ? null : list[ssCmdEditing];
+    const saleEnds = ssSaleEnds(f, before);
+    if (typeof saleEnds === 'string') return formMsg('pn-ss-cmd-msg', saleEnds, false);
+    const commands = f.commands.value.split('\n').map((c) => c.trim()).filter(Boolean);
+    if (!commands.length) return formMsg('pn-ss-cmd-msg', 'Add at least one command.', false);
+    if (!f.unlimited.checked && !(Number(f.perPlayer.value) >= 1)) return formMsg('pn-ss-cmd-msg', 'Type how many each player can buy, or switch on No limit.', false);
+    const o = { id: before ? before.id : undefined, name: f.name.value.trim(), description: f.description.value.trim(), commands, price: Number(f.price.value) || 0,
+      icon: f.icon.value.trim() || 'minecraft:paper', saleEnds, perPlayer: f.unlimited.checked ? 0 : Number(f.perPlayer.value), forSale: f.forSale.checked };
+    if (before) list[ssCmdEditing] = o; else list.push(o);
+    if (await mkSave({ commandOffers: list }, 'pn-ss-cmd-msg', before ? 'Saved.' : 'Added.')) {
+      formMsg('pn-ss-cmd-note', $('pn-ss-cmd-msg').textContent, true);
+      ssCmdOpen(null);
+    }
+  });
+
+  /** Edit and delete buttons in a server shop table. */
+  function ssTableClick(key, open, msgId, label) {
+    return async (e) => {
+      const ed = e.target.closest('[data-edit]');
+      if (ed) {
+        open(Number(ed.dataset.edit));
+        e.currentTarget.closest('section').querySelector('.pn-pt-edit').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      const del = e.target.closest('[data-delete]');
+      if (!del) return;
+      const i = Number(del.dataset.delete);
+      const list = mkSettings.settings[key];
+      if (!confirm(`Delete ${label(list[i])}? Players who bought it keep what they got.`)) return;
+      open(null);
+      await mkSave({ [key]: list.filter((_, j) => j !== i) }, msgId, 'Deleted.');
+    };
+  }
+  $('pn-ss-claims').addEventListener('click', ssTableClick('claimBlocks', ssClaimOpen, 'pn-ss-claim-note', (o) => `the listing of ${Number(o.blocks).toLocaleString()} claim blocks`));
+  $('pn-ss-cmds').addEventListener('click', ssTableClick('commandOffers', ssCmdOpen, 'pn-ss-cmd-note', (o) => o.name));
+
+  $('pn-ss-max').addEventListener('submit', (e) => {
+    e.preventDefault();
+    mkSave({ claimBlocksMax: Number(e.target.claimBlocksMax.value) || 0 }, 'pn-ss-max-msg', 'Saved.');
+  });
 
   $('pn-mk-search').addEventListener('input', renderMarket);
   $('pn-mk-table').addEventListener('click', async (e) => {
@@ -4888,31 +4983,19 @@
   $('pn-mk-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
-    const body = { enabled: f.enabled.checked, currency: f.currency.value.trim(), listingDays: Number(f.listingDays.value) || 7,
+    const changes = { enabled: f.enabled.checked, currency: f.currency.value.trim(), listingDays: Number(f.listingDays.value) || 7,
       maxListings: Number(f.maxListings.value) || 10, maxPrice: Number(f.maxPrice.value) || 100000,
-      bannedItems: f.bannedItems.value.split(',').map((x) => x.trim()).filter(Boolean),
-      claimBlocksMax: Number(f.claimBlocksMax.value) || 0, claimBlocks: mkClaimOffers(), commandOffers: mkCmdOffers() };
-    if (typeof body.claimBlocks === 'string') return formMsg('pn-mk-msg', body.claimBlocks, false);
-    if (typeof body.commandOffers === 'string') return formMsg('pn-mk-msg', body.commandOffers, false);
-    if (body.enabled && !mkSettings.settings.enabled && !confirm('Open the market? Players can sell and buy with /market right away.')) return;
-    try {
-      const res = await api('api/market/settings', body);
-      formMsg('pn-mk-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
-      loadMarket();
-    } catch (err) {
-      formMsg('pn-mk-msg', err.message, false);
-    }
+      bannedItems: f.bannedItems.value.split(',').map((x) => x.trim()).filter(Boolean) };
+    if (changes.enabled && !mkSettings.settings.enabled && !confirm('Open the market? Players can sell and buy with /market right away.')) return;
+    if (await mkSave(changes, 'pn-mk-msg', 'Saved.')) Dirty.reset('market');
   });
+  ssClaimOpen(null);
+  ssCmdOpen(null);
 
   // ── Community → Market → Pets ─────────────────────────────────────────────
 
-  let ptData = null;
-  let ptEditing = null;
 
   const ptFace = (hash) => hash ? `<img class="pn-pt-face" src="info/heads/${esc(hash)}" alt="" loading="lazy">` : '<span class="pn-pt-face"></span>';
-  const ptSale = (p) => !p.saleEnds ? 'always' : (p.saleEnds < Date.now() ? '<span class="pn-warn">ended</span> ' : 'until ') + esc(new Date(p.saleEnds).toLocaleDateString([], { dateStyle: 'medium' }));
-  /** The yyyy-mm-dd of a time, in local time (for the date field). */
-  const ptDay = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
   async function loadPets() {
     try {
@@ -4926,7 +5009,8 @@
     f.particles.checked = s.particles;
     const edit = can('settings.server');
     f.querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
-    $('pn-pt-edit').hidden = !edit;
+    $('pn-pt-new').hidden = !edit;
+    if (!edit) ptOpen(null);
     const cur = ptData.currency.replace(/^minecraft:/, '').replace(/_/g, ' ');
     $('pn-pt-currency').textContent = `In ${cur}s (the market's currency); 0 makes it free`;
     renderPets();
@@ -4956,10 +5040,7 @@
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td><td>${Number(owners[p.id] || 0).toLocaleString()}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Name &amp; head</button>
         <button type="button" class="np-btn small" data-revive="${esc(p.id)}"><i class="bi bi-arrow-counterclockwise"></i> Back in the shop</button>` : ''}</td></tr>`).join('')}</tbody>` : '';
-    const buys = ptData.state.purchases || [];
-    $('pn-pt-sales').innerHTML = buys.length ? `<thead><tr><th>When</th><th>Pet</th><th>Player</th><th>Paid</th></tr></thead><tbody>${buys.map((b) => `
-      <tr><td>${esc(dateTime(b.time))}</td><td>${esc(b.petName)}</td><td>${esc(b.buyerName)}</td><td>${b.price ? Number(b.price).toLocaleString() : 'free'}</td></tr>`).join('')}</tbody>`
-      : '<tbody><tr><td class="pn-hint">Nobody has bought a pet yet.</td></tr></tbody>';
+    renderServerSales();
   }
 
   function ptPairs() {
@@ -4984,7 +5065,7 @@
     f.classList.toggle('pn-pt-edit--retired', !!(pet && pet.retired));
     $('pn-pt-edit-title').textContent = pet ? (pet.retired ? 'Name and head of ' : 'Edit ') + pet.name : 'Add a pet';
     $('pn-pt-add').innerHTML = pet ? '<i class="bi bi-check2"></i> Save pet' : '<i class="bi bi-plus-lg"></i> Add pet';
-    $('pn-pt-cancel').hidden = !pet;
+    f.hidden = !pet;
     const face = $('pn-pt-face');
     face.hidden = !(pet && ptData.heads[pet.id]);
     if (!face.hidden) face.src = 'info/heads/' + ptData.heads[pet.id];
@@ -5022,6 +5103,7 @@
     }
   });
   $('pn-pt-cancel').addEventListener('click', () => ptOpen(null));
+  $('pn-pt-new').addEventListener('click', () => ssNew(ptOpen, 'pn-pt-edit', 'name'));
   $('pn-pt-edit').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -5040,9 +5122,8 @@
     if (await ptSave(pets, 'pn-pt-edit-msg', wasEditing ? 'Saved.' : 'Added.')) {
       const fresh = await api('api/pets').catch(() => null);
       if (fresh) { ptData = fresh; renderPets(); }
-      const msg = $('pn-pt-edit-msg').textContent;
+      formMsg('pn-pt-note', $('pn-pt-edit-msg').textContent, true);
       ptOpen(null);
-      formMsg('pn-pt-edit-msg', msg, true);
     }
   });
   async function ptClick(e) {
@@ -5055,7 +5136,7 @@
     const revive = e.target.closest('[data-revive]');
     if (revive) {
       const pets = ptData.settings.pets.map((p) => (p.id === revive.dataset.revive ? { ...p, retired: false, forSale: true } : p));
-      await ptSave(pets, 'pn-pt-edit-msg', 'Back in the shop.');
+      await ptSave(pets, 'pn-pt-note', 'Back in the shop.');
       return;
     }
     const del = e.target.closest('[data-delete]');
@@ -5066,12 +5147,12 @@
     if (have > 0) {
       if (!confirm(`Take ${pet.name} out of the shop? ${have} player${have === 1 ? ' has' : 's have'} it and keep${have === 1 ? 's' : ''} it. It moves to "No longer sold", where you can still change its name and head.`)) return;
       if (ptEditing === pet.id) ptOpen(null);
-      await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, retired: true, forSale: false } : p)), 'pn-pt-edit-msg', 'Taken out of the shop.');
+      await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, retired: true, forSale: false } : p)), 'pn-pt-note', 'Taken out of the shop.');
       return;
     }
     if (!confirm(`Delete ${pet.name}? Nobody has it.`)) return;
     if (ptEditing === pet.id) ptOpen(null);
-    await ptSave(ptData.settings.pets.filter((p) => p.id !== pet.id), 'pn-pt-edit-msg', 'Deleted.');
+    await ptSave(ptData.settings.pets.filter((p) => p.id !== pet.id), 'pn-pt-note', 'Deleted.');
   }
   $('pn-pt-table').addEventListener('click', ptClick);
   $('pn-pt-retired').addEventListener('click', ptClick);

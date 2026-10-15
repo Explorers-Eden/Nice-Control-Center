@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.16
+- Market: pets for sale are listed in the Server shop too (their page's Back goes back there); the separate Pets button in /market is gone (/pets still opens the pet shop)
+- Claim block and command listings can be switched off without deleting them ("For sale", like pets)
+
 ## 1.13.15
 - Market: a Server shop in /market, apart from the player listings (Browse is now "Player listings")
   - Claim blocks are sold there instead of in their own shop in the claim menu ("Buy claim blocks" in /claim opens the Server shop): any number of listings, each with its own blocks, price, icon and optional end, paid in the market currency. The old claim shop settings are dropped; set the listings again in the panel

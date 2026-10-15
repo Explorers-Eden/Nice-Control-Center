@@ -96,8 +96,11 @@ public final class Market {
 		/** When the listing goes (epoch ms); 0 = always on sale. */
 		public long saleEnds;
 
+		/** Off: kept in the panel but not sold. */
+		public boolean forSale = true;
+
 		public boolean onSale() {
-			return saleEnds == 0 || System.currentTimeMillis() < saleEnds;
+			return forSale && (saleEnds == 0 || System.currentTimeMillis() < saleEnds);
 		}
 	}
 
@@ -118,8 +121,11 @@ public final class Market {
 		/** How many each player can buy in all; 0 = no limit. */
 		public int perPlayer;
 
+		/** Off: kept in the panel but not sold. */
+		public boolean forSale = true;
+
 		public boolean onSale() {
-			return saleEnds == 0 || System.currentTimeMillis() < saleEnds;
+			return forSale && (saleEnds == 0 || System.currentTimeMillis() < saleEnds);
 		}
 	}
 

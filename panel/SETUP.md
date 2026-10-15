@@ -169,13 +169,14 @@ Public pages → Info page: a read-only page where players can look up the serve
 - **World & nature:** nether portals in any shape, saplings that plant themselves, bone meal on more plants.
 - **Chat & tab list:** @mentions, the AFK tag, the tab list header and footer, and each player's dimension in the tab list (name and colour per dimension).
 
-**Market** (under Community in the sidebar):
+**Market** (under Community in the sidebar), in two parts: **Player market** and **Server shop**.
 
 - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
-- **Server shop** (what the server sells, apart from player listings in `/market` and on the info page):
-  - **Claim blocks** (while claims are on): any number of listings, each with its blocks, price, icon and an optional last day, plus the most blocks a player can buy in all. No listings: not sold.
-  - **Commands:** listings with a name, description, icon, price, optional last day and per-player limit that run console commands for the buyer, once per one bought. `{player}`, `{uuid}`, `{x}`, `{y}`, `{z}` and `{dimension}` are filled in. Changing the commands needs the **Run console commands** permission and goes to the audit log.
-  - Server sales show under Recent sales with "the server" as seller.
+- **Server shop** (what the server sells, apart from player listings in `/market` and on the info page). Every listing has a price, "Always on sale" or a last day, and a "For sale" switch to pause it:
+  - **Claim blocks** (while claims are on): blocks and icon per listing, plus the most blocks a player can buy in all. No listings: not sold.
+  - **Commands:** name, description, icon, a per-player limit and console commands run for the buyer, once per one bought. `{player}`, `{uuid}`, `{x}`, `{y}`, `{z}` and `{dimension}` are filled in. Changing the commands needs the **Run console commands** permission and goes to the audit log.
+  - **Pets** (see below).
+  - **Recent server shop purchases:** claim blocks, commands and pets in one list.
 - **What's for sale:** with item icons; **Take off** sends a listing back to the seller's mailbox.
 - **Recent sales.**
 - **Item icons:**
@@ -184,7 +185,7 @@ Public pages → Info page: a read-only page where players can look up the serve
   - The public info page shows the market with these icons.
 - **Database:** `market_listings` (id, seller, item id and name, the item as JSON with all components, lore, enchantments, amount left, price each, created, expires) and `market_sales` (listing, item, seller, buyer, amount, total, time), copied every 15 seconds.
 
-**Pets** (on the Market page, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
+**Pets** (Market → Server shop, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
 
 - **Settings:** pets on/off, the head size and whether players may give their pet a particle trail.
 - **Pet shop:** add a pet with a name, a head texture, a price in the market's currency (0 is free), how long the shop sells it (always, or until a day) and how many can be sold in all (or no limit). Players keep their pets for good.
@@ -192,7 +193,7 @@ Public pages → Info page: a read-only page where players can look up the serve
   - The panel fetches each skin from textures.minecraft.net once and keeps the face in `/data/panel/heads`, for the panel and the public info page.
   - **For sale** off stops selling a pet for a while. Removing one that players still have moves it to **No longer sold**: they keep it, and you can still change its name and head (changes reach them). It goes away by itself once nobody has it.
 - **Players → Players:** a player's card shows their pets; give one (free, for good), take it out or put it away, change how it moves, or take it away.
-- **Recent pet purchases**, and per pet how many were sold and how many players have it.
+- Pet purchases are in **Recent server shop purchases**; per pet the table shows how many were sold and how many players have it.
 
 **Links in the game** (Public pages → Info page): players type `/info` for a clickable link to the info page; set the text before the link and the link text there. Its address comes from `INFO_HOST` or `PANEL_PUBLIC_URL` unless you type one; `/info` says there's no page while it's switched off. Below that you add your own link commands (like `/website`, or `/discord` with the alias `/dc`): they're added and removed while the server runs, and a name another command already uses is skipped (the server log says so).
 

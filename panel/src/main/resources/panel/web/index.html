@@ -946,65 +946,111 @@
 
 			<div class="np-tab-panel" data-tab="market" hidden>
 				<div class="pn-stack">
-				<form id="pn-mk-form" autocomplete="off" class="pn-stack">
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-shop"></i> Market</h3>
-					<p class="np-card-intro">Players type <code>/market</code> to sell items for the server's currency (any amount, more than a stack is fine) and to buy what others sell. Unsold items go back to the seller's mailbox after a while. Items keep everything (names, enchantments, custom models).</p>
+				<form id="pn-mk-form" autocomplete="off" class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shop"></i> Player market</h3>
+					<p class="np-card-intro">Players type <code>/market</code> to sell items for the server's currency (any amount, more than a stack is fine) and to buy what others sell. Unsold items go back to the seller's mailbox after a while. Items keep everything (names, enchantments, custom models). What the server itself sells is under <a href="#market/server-shop">Server shop</a>.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Market open</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
-						<label class="np-form-row">Currency (item id)<input type="text" name="currency" placeholder="minecraft:diamond"></label>
+						<label class="np-form-row"><span>Currency (item id)<small class="pn-comment">Also pays for everything in the Server shop</small></span><input type="text" name="currency" placeholder="minecraft:diamond"></label>
 						<label class="np-form-row">Listings last … days<input type="number" name="listingDays" min="1" max="365"></label>
 						<label class="np-form-row">Listings per player<input type="number" name="maxListings" min="1" max="200"></label>
 						<label class="np-form-row">Highest price per item<input type="number" name="maxPrice" min="1"></label>
 						<label class="np-form-row">Items that can't be sold (comma separated)<input type="text" name="bannedItems"></label>
 					</div>
-				</section>
-				<section class="np-card pn-mk-shop">
-					<h3 class="np-card-title"><i class="bi bi-shop-window"></i> Server shop</h3>
-					<p class="np-card-intro">What the server itself sells, in the Server shop of <code>/market</code> (apart from what players sell) and on the info page. Paid in the market's currency.</p>
-					<h4 class="pn-pt-subhead">Claim blocks</h4>
-					<p class="np-card-intro">Claim blocks the server sells while land claims are on: also behind "Buy claim blocks" in <code>/claim</code>. Remove every listing to stop selling them. The icon is only how a listing looks; leave the end empty to sell it until you remove it.</p>
-					<div class="np-table-wrap"><table class="np-table" id="pn-mk-claims"></table></div>
-					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-mk-claim-add"><i class="bi bi-plus-lg"></i> Add listing</button></div>
-					<div class="np-form-grid">
-						<label class="np-form-row"><span>Most claim blocks a player can buy<span class="pn-comment">0: no limit. Counts everything they bought.</span></span><input type="number" name="claimBlocksMax" min="0"></label>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-mk-msg"></span>
 					</div>
-					<h4 class="pn-pt-subhead">Commands</h4>
-					<p class="np-card-intro">Things the server sells by running commands from the console for the buyer, once per one bought (a kit, a title, a teleport, a rank). <span id="pn-mk-vars"></span> Changing the commands needs the right to run console commands.</p>
-					<div id="pn-mk-cmds" class="pn-stack"></div>
-					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-mk-cmd-add"><i class="bi bi-plus-lg"></i> Add command listing</button></div>
-				</section>
-				<div class="pn-sticky-save np-form-actions">
-					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
-					<span class="np-form-msg" id="pn-mk-msg"></span>
-				</div>
 				</form>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-bag"></i> For sale</h3>
+					<h3 class="np-card-title"><i class="bi bi-bag"></i> Player listings</h3>
 					<p class="np-card-intro" id="pn-mk-intro"></p>
 					<div class="pn-cl-tools"><input type="search" id="pn-mk-search" placeholder="Find an item or seller" autocomplete="off"></div>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-mk-table"></table></div>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-receipt"></i> Recent sales</h3>
+					<h3 class="np-card-title"><i class="bi bi-receipt"></i> Recent player sales</h3>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-mk-sales"></table></div>
 				</section>
-				<form id="pn-pt-form" autocomplete="off" class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-emoji-smile"></i> Pets</h3>
-					<p class="np-card-intro">Pets are floating player heads that follow their owner, only for looks (no effects), and everyone nearby sees them. Players buy them in the pet shop (<code>/pets</code>, or Pets in <code>/market</code>) with the market's currency and keep them for good, then pick how theirs moves and, if you allow it, a particle trail. Pets taken out of the shop stay with the players who have them, and changes to a pet's name or head reach them too.</p>
-					<div class="np-form-grid">
-						<label class="np-form-row"><b>Pets on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
-						<label class="np-form-row"><span>Particle trails<small class="pn-comment">Players may pick particles that rise off their pet</small></span><span class="np-switch"><input type="checkbox" name="particles"><span></span></span></label>
-					</div>
-					<div class="np-form-actions">
-						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
-						<span class="np-form-msg" id="pn-pt-msg"></span>
-					</div>
-				</form>
+				</div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="servershop" hidden>
+				<div class="pn-stack">
+				<section class="np-card" id="pn-ss-closed" hidden>
+					<p class="np-card-intro">The market is closed (Player market → Market open), so nothing here is sold right now.</p>
+				</section>
+				<section class="np-card pn-mk-shop">
+					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Claim blocks</h3>
+					<p class="np-card-intro">Sold while land claims are on, also behind "Buy claim blocks" in <code>/claim</code>. No listings: claim blocks aren't sold. The icon is only how a listing looks.</p>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-ss-claims"></table></div>
+					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-ss-claim-new"><i class="bi bi-plus-lg"></i> Add listing</button><span class="np-form-msg" id="pn-ss-claim-note"></span></div>
+					<form id="pn-ss-claim-edit" autocomplete="off" class="pn-pt-edit" hidden>
+						<h4 id="pn-ss-claim-title">Add a listing</h4>
+						<div class="np-form-grid">
+							<label class="np-form-row">Claim blocks<input type="number" name="blocks" min="1" max="1000000" required></label>
+							<label class="np-form-row"><span>Price<small class="pn-comment pn-ss-cur">In the market's currency</small></span><input type="number" name="price" min="1" max="10000000" required></label>
+							<label class="np-form-row"><span><img class="pn-ss-icon" alt="" width="24" height="24" hidden>Icon (item id)</span><input type="text" name="icon" placeholder="minecraft:grass_block"></label>
+							<div class="np-form-row"><span>Always on sale<small class="pn-comment">Off: sold until the end of this day</small></span><span class="pn-pt-pair"><input type="date" name="saleEnd"><label class="np-switch"><input type="checkbox" name="always"><span></span></label></span></div>
+							<label class="np-form-row"><span>For sale<small class="pn-comment">Off: kept here, not sold</small></span><span class="np-switch"><input type="checkbox" name="forSale"><span></span></span></label>
+						</div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary" id="pn-ss-claim-add"><i class="bi bi-plus-lg"></i> Add listing</button>
+							<button type="button" class="np-btn" id="pn-ss-claim-cancel">Cancel</button>
+							<span class="np-form-msg" id="pn-ss-claim-msg"></span>
+						</div>
+					</form>
+					<form id="pn-ss-max" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row"><span>Most claim blocks a player can buy<small class="pn-comment">0: no limit. Counts everything they bought</small></span><input type="number" name="claimBlocksMax" min="0"></label>
+						</div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-ss-max-msg"></span>
+						</div>
+					</form>
+				</section>
+				<section class="np-card pn-mk-shop">
+					<h3 class="np-card-title"><i class="bi bi-terminal"></i> Commands</h3>
+					<p class="np-card-intro">Things the server sells by running commands from the console for the buyer, once per one bought (a kit, a title, a teleport, a rank). <span id="pn-mk-vars"></span> Changing the commands needs the right to run console commands.</p>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-ss-cmds"></table></div>
+					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-ss-cmd-new"><i class="bi bi-plus-lg"></i> Add listing</button><span class="np-form-msg" id="pn-ss-cmd-note"></span></div>
+					<form id="pn-ss-cmd-edit" autocomplete="off" class="pn-pt-edit" hidden>
+						<h4 id="pn-ss-cmd-title">Add a listing</h4>
+						<label class="pn-field"><span>Name</span><input type="text" name="name" maxlength="40" required placeholder="Starter kit"></label>
+						<label class="pn-field"><span>Description (optional; players see it in the shop and on the info page)</span><input type="text" name="description" maxlength="200" placeholder="What the player gets"></label>
+						<label class="pn-field"><span>Commands (one per line, without the slash)</span><textarea name="commands" rows="3" spellcheck="false" placeholder="give {player} minecraft:bread 16"></textarea></label>
+						<div class="np-form-grid">
+							<label class="np-form-row"><span>Price<small class="pn-comment pn-ss-cur">In the market's currency</small></span><input type="number" name="price" min="1" max="10000000" required></label>
+							<label class="np-form-row"><span><img class="pn-ss-icon" alt="" width="24" height="24" hidden>Icon (item id)</span><input type="text" name="icon" placeholder="minecraft:paper"></label>
+							<div class="np-form-row"><span>Always on sale<small class="pn-comment">Off: sold until the end of this day</small></span><span class="pn-pt-pair"><input type="date" name="saleEnd"><label class="np-switch"><input type="checkbox" name="always"><span></span></label></span></div>
+							<div class="np-form-row"><span>No limit per player<small class="pn-comment">Off: each player can buy only this many</small></span><span class="pn-pt-pair"><input type="number" name="perPlayer" min="1" max="100000" placeholder="amount"><label class="np-switch"><input type="checkbox" name="unlimited"><span></span></label></span></div>
+							<label class="np-form-row"><span>For sale<small class="pn-comment">Off: kept here, not sold</small></span><span class="np-switch"><input type="checkbox" name="forSale"><span></span></span></label>
+						</div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary" id="pn-ss-cmd-add"><i class="bi bi-plus-lg"></i> Add listing</button>
+							<button type="button" class="np-btn" id="pn-ss-cmd-cancel">Cancel</button>
+							<span class="np-form-msg" id="pn-ss-cmd-msg"></span>
+						</div>
+					</form>
+				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-shop-window"></i> Pet shop</h3>
-					<p class="np-card-intro" id="pn-pt-intro"></p>
-					<form id="pn-pt-edit" autocomplete="off" class="pn-pt-edit">
+					<h3 class="np-card-title"><i class="bi bi-emoji-smile"></i> Pets</h3>
+					<p class="np-card-intro">Floating player heads that follow their owner, only for looks (no effects), and everyone nearby sees them. Players buy them in the Server shop of <code>/market</code> or with <code>/pets</code> and keep them for good, then pick how theirs moves and, if you allow it, a particle trail. Pets taken out of the shop stay with the players who have them, and changes to a pet's name or head reach them too.</p>
+					<form id="pn-pt-form" autocomplete="off">
+						<div class="np-form-grid">
+							<label class="np-form-row"><b>Pets on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+							<label class="np-form-row"><span>Particle trails<small class="pn-comment">Players may pick particles that rise off their pet</small></span><span class="np-switch"><input type="checkbox" name="particles"><span></span></span></label>
+						</div>
+						<div class="np-form-actions">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-pt-msg"></span>
+						</div>
+					</form>
+					<p class="pn-hint" id="pn-pt-intro"></p>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-pt-table"></table></div>
+					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-pt-new"><i class="bi bi-plus-lg"></i> Add pet</button><span class="np-form-msg" id="pn-pt-note"></span></div>
+					<form id="pn-pt-edit" autocomplete="off" class="pn-pt-edit" hidden>
 						<h4 id="pn-pt-edit-title">Add a pet</h4>
 						<div class="pn-pt-edit__grid">
 							<img id="pn-pt-face" class="pn-pt-face pn-pt-face--big" alt="" hidden>
@@ -1016,21 +1062,17 @@
 						</div>
 						<div class="np-form-grid">
 							<label class="np-form-row pn-pt-sale"><span>Price<small class="pn-comment" id="pn-pt-currency">0 makes it free</small></span><input type="number" name="price" min="0" max="10000000" required></label>
-							<label class="np-form-row pn-pt-sale"><span>Always on sale<small class="pn-comment">Off: the shop sells it until the end of this day. Bought pets stay with their players for good either way</small></span><span class="pn-pt-pair"><input type="date" name="saleEnd"><span class="np-switch"><input type="checkbox" name="always"><span></span></span></span></label>
-							<label class="np-form-row pn-pt-sale"><span>No limit on how many<small class="pn-comment">Off: only this many can be sold in all</small></span><span class="pn-pt-pair"><input type="number" name="stock" min="1" max="1000000" placeholder="amount"><span class="np-switch"><input type="checkbox" name="unlimited"><span></span></span></span></label>
-							<label class="np-form-row pn-pt-sale">For sale<span class="np-switch"><input type="checkbox" name="forSale"><span></span></span></label>
-						</div>
-						<div class="np-form-grid">
 							<label class="np-form-row"><span>Head size<small class="pn-comment">1 is a normal player head (half a block); 0.8 is the usual</small></span><input type="number" name="size" min="0.3" max="2" step="0.1" required></label>
+							<div class="np-form-row pn-pt-sale"><span>Always on sale<small class="pn-comment">Off: sold until the end of this day. Bought pets stay with their players for good either way</small></span><span class="pn-pt-pair"><input type="date" name="saleEnd"><label class="np-switch"><input type="checkbox" name="always"><span></span></label></span></div>
+							<div class="np-form-row pn-pt-sale"><span>No limit on how many<small class="pn-comment">Off: only this many can be sold in all</small></span><span class="pn-pt-pair"><input type="number" name="stock" min="1" max="1000000" placeholder="amount"><label class="np-switch"><input type="checkbox" name="unlimited"><span></span></label></span></div>
+							<label class="np-form-row pn-pt-sale"><span>For sale<small class="pn-comment">Off: kept here, not sold</small></span><span class="np-switch"><input type="checkbox" name="forSale"><span></span></span></label>
 						</div>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary" id="pn-pt-add"><i class="bi bi-plus-lg"></i> Add pet</button>
-							<button type="button" class="np-btn" id="pn-pt-cancel" hidden>Cancel</button>
+							<button type="button" class="np-btn" id="pn-pt-cancel">Cancel</button>
 							<span class="np-form-msg" id="pn-pt-edit-msg"></span>
 						</div>
 					</form>
-					<h4 class="pn-pt-subhead">In the shop</h4>
-					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-pt-table"></table></div>
 					<div id="pn-pt-retired-box" hidden>
 						<h4 class="pn-pt-subhead">No longer sold</h4>
 						<p class="pn-hint">Players still have these, so they stay here and you can still change their name and head. They go away by themselves once nobody has them.</p>
@@ -1038,8 +1080,8 @@
 					</div>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-receipt"></i> Recent pet purchases</h3>
-					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-pt-sales"></table></div>
+					<h3 class="np-card-title"><i class="bi bi-receipt"></i> Recent server shop purchases</h3>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-ss-sales"></table></div>
 				</section>
 				</div>
 			</div>

@@ -4,6 +4,7 @@ import eu.explorerseden.nicecontrolcenter.Market;
 import eu.explorerseden.nicecontrolcenter.Pets;
 import eu.explorerseden.nicecontrolcenter.claims.ClaimMode;
 import eu.explorerseden.nicecontrolcenter.claims.ClaimStore;
+import eu.explorerseden.nicecontrolcenter.pets.PetDialogs;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -146,11 +147,10 @@ public final class MarketDialogs {
 		buttons.add(button("Sell", "List items from your inventory", "sell", args()));
 		buttons.add(button("My listings (" + data.of(me).size() + ")", null, "mine", args()));
 		buttons.add(button("Mailbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Your earnings and items that came back", "mail", args()));
-		if (eu.explorerseden.nicecontrolcenter.pets.PetStore.enabled()) buttons.add(eu.explorerseden.nicecontrolcenter.pets.PetDialogs.button("Pets", "Floating heads that follow you", "shop", args("page", "0")));
 		menu(player, "Market", body, List.of(), buttons);
 	}
 
-	/** What the server sells: claim blocks (while claims are on) and command listings. */
+	/** What the server sells: claim blocks (while claims are on), command listings and pets. */
 	private static void server(ServerPlayer player, String notice) {
 		List<DialogBody> body = new ArrayList<>();
 		if (notice != null) {
@@ -180,6 +180,12 @@ public final class MarketDialogs {
 					.append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
 					.append(Component.literal((o.saleEnds != 0 ? " · until " + Pets.date(o.saleEnds) : "") + "  ").withStyle(ChatFormatting.GRAY))
 					.append(link("Buy", "See it and buy", "command", args("id", o.id), ChatFormatting.GREEN))));
+		}
+		List<DialogBody> pets = PetDialogs.serverShopRows(player);
+		if (!pets.isEmpty()) {
+			any = true;
+			body.add(text("Pets · floating heads that follow you, just for looks", ChatFormatting.GRAY));
+			body.addAll(pets);
 		}
 		if (!any) body.add(text("The server sells nothing right now.", ChatFormatting.GRAY));
 		menu(player, "Market · Server shop", body, List.of(), List.of(), back("home", args()));
@@ -290,7 +296,7 @@ public final class MarketDialogs {
 
 	/** Does the server sell anything right now? */
 	private static boolean serverShopOpen() {
-		return sellsClaimBlocks() || MarketStore.settings().commandOffers.stream().anyMatch(Market.CommandOffer::onSale);
+		return sellsClaimBlocks() || MarketStore.settings().commandOffers.stream().anyMatch(Market.CommandOffer::onSale) || PetDialogs.forSale();
 	}
 
 	/** An offer's position plus what it was, so a click after the offers changed is caught. */

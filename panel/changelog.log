@@ -1,3 +1,9 @@
+## 1.12.13
+- Market is split into Player market (settings, player listings, player sales) and Server shop (claim blocks, commands, pets, and one list of everything bought from the server)
+- Claim block and command listings are edited like pets: a table, and an editor that opens with Add or Edit, with "Always on sale" (or a last day), "No limit per player" and "For sale" switches; pets' editor also opens only when needed
+- Fixed: the "Always on sale" and "No limit" switches of pets couldn't be clicked
+- Info page: pets are shown under "From the server" in the Market tab
+
 ## 1.12.12
 - Market: a Server shop card with claim block listings (blocks, price, icon, optional last day; most blocks per player) and command listings (name, description, icon, price, commands with player variables, optional last day, per-player limit); changing commands needs the Run console commands permission and is audited (needs mod 1.13.15)
 - Claims → Settings: the claim block shop moved to Market
