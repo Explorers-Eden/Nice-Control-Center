@@ -1,3 +1,7 @@
+## 1.12.28
+- Save and Cancel work the same everywhere: every settings form shows a bar with Save and Cancel at the bottom of the screen once something changed (before, some showed buttons in place and one was always there). Forms that open with Add or Edit keep their buttons
+- The mod's pages in the panel (Game: server.properties and game rules, Data pack settings) use the same bar under the page (needs mod 1.13.23)
+
 ## 1.12.27
 - Pets have their own page (Community → Pets): settings and the pets themselves (name, head, size, description). Market → Server shop only has Pet listings: pick a pet and set price, last day and how many; removing a listing keeps the pet. New pets aren't sold until listed (/pets grant still gives them)
 

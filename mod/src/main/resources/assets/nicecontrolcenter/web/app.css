@@ -779,6 +779,10 @@ body.report #np-bloat-card { display: none; }
 .np-switch input:checked + span::after { transform: translateX(16px); }
 .np-form-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
 .np-form-msg { font-size: var(--fs-sm); color: var(--muted); }
+/* A settings form's Save/Cancel bar: shows once something changed, stays in view while scrolling (same as the panel's). */
+.np-save-bar { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 14px; padding: 10px 14px;
+  background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--card-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.np-save-bar[hidden], .np-save-bar .np-btn[hidden] { display: none !important; }
 body.report #np-packsettings-card { display: none; }
 
 .np-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 12px; }

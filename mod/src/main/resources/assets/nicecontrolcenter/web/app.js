@@ -25,6 +25,33 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  // A settings form's Save/Cancel bar, like the panel's: it shows once something changed, and after saving
+  // it shows the message a moment, then goes. Inside the panel the panel shows it under the page instead.
+  const saveBar = (cancelAttr, message) => `<div class="np-save-bar" ${message ? '' : 'hidden'}>
+    <button type="submit" class="np-btn primary" ${message ? 'hidden' : ''}><i class="bi bi-check2"></i> Save</button>
+    <button type="button" class="np-btn" ${cancelAttr} ${message ? 'hidden' : ''}><i class="bi bi-x-lg"></i> Cancel</button>
+    <span class="np-form-msg">${esc(message || '')}</span></div>`;
+  function showSaveBar(form, changed, text) {
+    const bar = form && form.querySelector('.np-save-bar');
+    if (!bar) return;
+    clearTimeout(bar.hideTimer);
+    bar.hidden = !changed;
+    bar.querySelectorAll('button').forEach((b) => { b.hidden = !changed; b.disabled = false; });
+    bar.querySelector('.np-form-msg').textContent = text || '';
+  }
+  function busySaveBar(form, busy, text) {
+    const bar = form && form.querySelector('.np-save-bar');
+    if (!bar) return;
+    bar.querySelectorAll('button').forEach((b) => { b.disabled = busy; });
+    if (text !== undefined) bar.querySelector('.np-form-msg').textContent = text;
+  }
+  /** Bars that show a "Saved." message go after a moment. */
+  function fadeSaveBars(root) {
+    root.querySelectorAll('.np-save-bar:not([hidden])').forEach((bar) => {
+      bar.hideTimer = setTimeout(() => { bar.hidden = true; }, 2500);
+    });
+  }
+
   // Minecraft § formatting codes (the MOTD) as HTML, on one line (also a \n typed into server.properties).
   // Black and white keep the theme's text color so they stay readable on both themes.
   const MC_COLORS = { 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
@@ -1979,8 +2006,7 @@
               ${r.value !== r.defaultValue ? `<small class="np-prop-pending">Default: ${esc(r.defaultValue)}${d.editable ? ` · <a href="#" data-rule-reset="${esc(r.id)}">reset</a>` : ''}</small>` : ''}</span>
             ${ruleInput(r, d.editable)}</label>`).join('')}</div></details>`;
       }).join('')}
-      ${d.editable ? `<div class="np-form-actions"><button type="submit" class="np-btn primary" disabled>Save changes</button>
-        <button type="button" class="np-btn" data-rules-undo disabled>Undo</button><span class="np-form-msg">${esc(rulesState.message)}</span></div>` : ''}
+      ${d.editable ? saveBar('data-rules-undo', rulesState.message) : ''}
     </form>`;
   }
 
@@ -1998,21 +2024,20 @@
   async function saveRules(changes) {
     const form = $('np-rules-form');
     const msg = form.querySelector('.np-form-msg');
-    form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = true));
-    msg.textContent = 'Saving…';
+    busySaveBar(form, true, 'Saving…');
     try {
       const res = await api('api/gamerules/save', { method: 'POST', body: JSON.stringify({ changes }) });
       if (res.error) {
-        msg.textContent = res.error;
-        form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = false));
+        busySaveBar(form, false, res.error);
         return;
       }
       rulesState.data = res;
       rulesState.message = 'Saved; already in effect.';
       renderGamerules();
+      rulesState.message = '';
+      fadeSaveBars($('np-gamerules'));
     } catch (err) {
-      msg.textContent = 'The server did not respond: ' + err.message;
-      form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = false));
+      busySaveBar(form, false, 'The server did not respond: ' + err.message);
     }
   }
 
@@ -2022,9 +2047,8 @@
       const form = e.target.closest('#np-rules-form');
       if (!form) return;
       const count = Object.keys(ruleChanges(form)).length;
-      form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = !count));
       rulesState.message = '';
-      form.querySelector('.np-form-msg').textContent = count ? count + (count === 1 ? ' unsaved change' : ' unsaved changes') : '';
+      showSaveBar(form, count > 0, count ? count + (count === 1 ? ' unsaved change' : ' unsaved changes') : '');
     });
     box.addEventListener('click', (e) => {
       if (e.target.closest('[data-rules-undo]')) {
@@ -2355,8 +2379,7 @@
     $('np-properties').innerHTML = `<form id="np-props-form">
         ${d.editable ? '' : '<div class="np-empty">Changing server.properties here is switched off (web_properties_edit in the config). Values are read-only.</div>'}
         ${groups}
-        ${d.editable ? `<div class="np-form-actions"><button type="submit" class="np-btn primary" disabled>Save changes</button>
-          <button type="button" class="np-btn" data-props-reset disabled>Undo</button><span class="np-form-msg">${esc(propsState.message)}</span></div>` : ''}
+        ${d.editable ? saveBar('data-props-reset', propsState.message) : ''}
       </form>`;
   }
 
@@ -2382,9 +2405,8 @@
       const form = e.target.closest('#np-props-form');
       if (!form) return;
       const count = Object.keys(propertyChanges(form)).length;
-      form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = !count));
       propsState.message = '';
-      form.querySelector('.np-form-msg').textContent = count ? count + (count === 1 ? ' unsaved change' : ' unsaved changes') : '';
+      showSaveBar(form, count > 0, count ? count + (count === 1 ? ' unsaved change' : ' unsaved changes') : '');
     });
     box.addEventListener('click', (e) => {
       if (e.target.closest('[data-props-reset]')) {
@@ -2397,22 +2419,20 @@
       const form = e.target;
       const changes = propertyChanges(form);
       if (!Object.keys(changes).length) return;
-      const msg = form.querySelector('.np-form-msg');
-      form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = true));
-      msg.textContent = 'Saving…';
+      busySaveBar(form, true, 'Saving…');
       try {
         const res = await api('api/properties/save', { method: 'POST', body: JSON.stringify({ changes }) });
         if (res.error) {
-          msg.textContent = res.error;
-          form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = false));
+          busySaveBar(form, false, res.error);
           return;
         }
         propsState.data = res;
         propsState.message = 'Saved. Most changes take effect at the next restart.';
         renderProperties();
+        propsState.message = '';
+        fadeSaveBars($('np-properties'));
       } catch (err) {
-        msg.textContent = 'The server did not respond: ' + err.message;
-        form.querySelectorAll('.np-form-actions button').forEach((b) => (b.disabled = false));
+        busySaveBar(form, false, 'The server did not respond: ' + err.message);
       }
     });
   }
@@ -2484,8 +2504,7 @@
   function settingsForm(d) {
     return `<form class="np-settings-form" data-dialog="${esc(d.id)}">
       <div class="np-form-grid">${d.settings.map((x) => `<label class="np-form-row ${packSettings.highlight === x.key ? 'np-flash' : ''}" data-setting-row="${esc(x.key)}"><span>${esc(x.label)}</span>${settingInput(d, x)}</label>`).join('')}</div>
-      ${packSettings.editable ? `<div class="np-form-actions"><button type="submit" class="np-btn primary" disabled>Save changes</button>
-        <button type="button" class="np-btn" data-reset disabled>Undo</button><span class="np-form-msg"></span></div>` : ''}
+      ${packSettings.editable ? saveBar('data-reset', '') : ''}
     </form>`;
   }
 
@@ -2634,8 +2653,7 @@
         const slider = form.querySelector(`[data-mirror="${CSS.escape(e.target.dataset.setting)}"]`);
         if (slider) slider.value = e.target.value;
       }
-      form.querySelectorAll('button').forEach((b) => (b.disabled = false));
-      form.querySelector('.np-form-msg').textContent = 'Unsaved changes';
+      showSaveBar(form, true, 'Unsaved changes');
     });
     box.addEventListener('click', (e) => {
       if (e.target.closest('[data-reset]')) {
@@ -2645,23 +2663,23 @@
     box.addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
-      const msg = form.querySelector('.np-form-msg');
-      form.querySelectorAll('button').forEach((b) => (b.disabled = true));
-      msg.textContent = 'Saving…';
+      busySaveBar(form, true, 'Saving…');
       try {
         const res = await api('api/packsettings/apply', { method: 'POST', body: JSON.stringify({ dialog: form.dataset.dialog, values: formValues(form) }) });
         if (res.error) {
-          msg.textContent = res.error;
-          form.querySelectorAll('button').forEach((b) => (b.disabled = false));
+          busySaveBar(form, false, res.error);
           return;
         }
         packSettings.dialogs = res.dialogs || packSettings.dialogs;
         renderPackSettings();
-        const again = box.querySelector(`form[data-dialog="${CSS.escape(form.dataset.dialog)}"] .np-form-msg`);
-        if (again) again.textContent = 'Saved.';
+        const again = box.querySelector(`form[data-dialog="${CSS.escape(form.dataset.dialog)}"]`);
+        if (again) {
+          showSaveBar(again, true, 'Saved.');
+          again.querySelectorAll('.np-save-bar button').forEach((b) => { b.hidden = true; });
+          fadeSaveBars(again);
+        }
       } catch (err) {
-        msg.textContent = 'The server did not respond: ' + err.message;
-        form.querySelectorAll('button').forEach((b) => (b.disabled = false));
+        busySaveBar(form, false, 'The server did not respond: ' + err.message);
       }
     });
   }

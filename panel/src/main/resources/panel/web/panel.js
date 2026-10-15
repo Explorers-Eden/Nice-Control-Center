@@ -277,7 +277,9 @@
     body.embedded .np-inspector-list { height: 640px !important; }
     body.embedded .np-console-log { height: 520px !important; }
     /* Kick and ban live on Players → Whitelist & bans. */
-    body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }`;
+    body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }
+    /* The panel shows the Save/Cancel bar under the frame (in here it would sit at the end of the page). */
+    body.embedded .np-save-bar { display: none !important; }`;
   let frameResize = null;
 
   function showDashboard(page) {
@@ -300,6 +302,7 @@
           frameResize = new ResizeObserver(fit);
           frameResize.observe(doc.body);
           fit();
+          watchFrameSave(doc);
         } catch (e) { /* another origin: leave it as it is */ }
       };
       frame.src = 'dashboard/#' + page;
@@ -311,6 +314,56 @@
       frame.src = 'dashboard/#' + page;
     }
   }
+
+  // The mod pages' Save/Cancel bar: the panel's own bar under the frame does what the hidden one inside would.
+  let frameSaveWatch = null;
+
+  function frameBar() {
+    try {
+      const doc = $('pn-dashboard-frame').contentDocument;
+      // The bar itself is hidden in the frame, so its form counts as shown when no parent is hidden.
+      const shown = (el) => {
+        for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
+          if (e.hidden || e.ownerDocument.defaultView.getComputedStyle(e).display === 'none') return false;
+        }
+        return true;
+      };
+      return doc ? [...doc.querySelectorAll('.np-save-bar')].find((b) => !b.hidden && b.closest('form') && shown(b.closest('form'))) || null : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function mirrorFrameSave() {
+    const inner = activeTab.startsWith('mod:') ? frameBar() : null;
+    $('pn-frame-save').hidden = !inner;
+    if (!inner) return;
+    const [save, cancel] = inner.querySelectorAll('button');
+    for (const [mine, theirs] of [[$('pn-frame-save-btn'), save], [$('pn-frame-cancel-btn'), cancel]]) {
+      mine.hidden = !theirs || theirs.hidden;
+      mine.disabled = !!(theirs && theirs.disabled);
+    }
+    const msg = inner.querySelector('.np-form-msg');
+    $('pn-frame-save-msg').textContent = msg ? msg.textContent : '';
+  }
+
+  function watchFrameSave(doc) {
+    if (frameSaveWatch) frameSaveWatch.disconnect();
+    frameSaveWatch = new MutationObserver(() => queueMicrotask(mirrorFrameSave));
+    frameSaveWatch.observe(doc.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'disabled', 'class'] });
+    doc.defaultView.addEventListener('hashchange', mirrorFrameSave);
+    mirrorFrameSave();
+  }
+
+  $('pn-frame-save-btn').addEventListener('click', () => {
+    const inner = frameBar();
+    if (inner) inner.closest('form').requestSubmit();
+  });
+  $('pn-frame-cancel-btn').addEventListener('click', () => {
+    const inner = frameBar();
+    const cancel = inner && inner.querySelectorAll('button')[1];
+    if (cancel) cancel.click();
+  });
 
   /** The mod's page shown in the frame, or null. */
   function framePage() {
@@ -384,6 +437,7 @@
     if (tab === 'configs') loadConfigs();
     if (tab === 'versions') loadVersions(true);
     if (tab === 'discord') loadDiscord();
+    mirrorFrameSave();
     if (tab === 'map') loadMap();
     if (tab === 'world') loadWorld();
     if (tab === 'stats') loadStats();
@@ -4795,6 +4849,7 @@
     renderServerShop();
     Dirty.reset('market');
     Dirty.reset('servershop');
+    Dirty.reset('ssmax');
   }
 
   function renderMarket() {
@@ -5304,6 +5359,7 @@
   Dirty.track('chattweaks', $('pn-tc-form'), { reload: loadTweaks });
   Dirty.track('market', $('pn-mk-form'), { reload: loadMarket });
   Dirty.track('servershop', $('pn-ss-form'), { reload: loadMarket });
+  Dirty.track('ssmax', $('pn-ss-max'), { reload: loadMarket });
   Dirty.track('pets', $('pn-pt-form'), { reload: loadPets });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });
