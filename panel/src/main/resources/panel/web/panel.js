@@ -2544,7 +2544,7 @@
     const ok = st.startsWith('Connected as');
     $('pn-discord-status').className = 'pn-dc-status ' + (ok ? 'good' : /^Couldn|^Can't/.test(st) ? 'bad' : 'off');
     $('pn-discord-status').innerHTML = `<span class="pn-dc-dot"></span>Bot: ${esc(st)}${discordData.tokenFromEnv ? ' · token from the container settings' : ''}`;
-    renderLinks();
+    renderDiscordLinks();
     Dirty.reset('discord');
   }
 
@@ -2580,7 +2580,7 @@
   }
   $('pn-discord-form').gameFormat.addEventListener('input', previewGameFormat);
 
-  function renderLinks() {
+  function renderDiscordLinks() {
     const q = $('pn-link-search').value.trim().toLowerCase();
     const rows = discordData.links.filter((l) => !q || l.name.toLowerCase().includes(q) || l.discordName.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -2590,7 +2590,7 @@
       || '<tr><td colspan="4" class="np-empty">No linked accounts yet.</td></tr>';
   }
 
-  $('pn-link-search').addEventListener('input', renderLinks);
+  $('pn-link-search').addEventListener('input', renderDiscordLinks);
   $('pn-link-rows').addEventListener('click', async (e) => {
     if (!e.target.closest('[data-unlink]')) return;
     const row = e.target.closest('[data-link]');

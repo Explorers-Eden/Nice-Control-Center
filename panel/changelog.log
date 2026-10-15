@@ -1,3 +1,6 @@
+## 1.12.18
+- Fixed: the Discord page never showed its Save button (since 1.12.6 its linked-accounts list shared a function name with the info page's link commands, so loading the page stopped halfway)
+
 ## 1.12.17
 - Discord: a link channel, like DiscordJustSync: players post their code there, the bot removes the message right away and answers by direct message (a mention that disappears after 15 s when their DMs are closed); direct messages still work. The bot needs Manage Messages there. The join screen's message gets {where} (the link channel, or the bot's DMs)
 
