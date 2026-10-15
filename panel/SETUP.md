@@ -185,13 +185,14 @@ Public pages → Info page: a read-only page where players can look up the serve
   - The public info page shows the market with these icons.
 - **Database:** `market_listings` (id, seller, item id and name, the item as JSON with all components, lore, enchantments, amount left, price each, created, expires) and `market_sales` (listing, item, seller, buyer, amount, total, time), copied every 15 seconds.
 
-**Pets** (Market → Server shop, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
+**Pets** (Community → Pets, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
 
-- **Settings:** pets on/off, the head size and whether players may give their pet a particle trail.
-- **Pet shop:** add a pet with a name, a head texture, a price in the market's currency (0 is free), how long the shop sells it (always, or until a day) and how many can be sold in all (or no limit). Players keep their pets for good.
+- **Settings:** pets on/off and whether players may give their pet a particle trail.
+- **Pets:** add a pet with a name, a head texture, a head size and an optional description. A new pet isn't sold until it's listed (below); `/pets grant <player> <pet>` gives it either way. Players keep their pets for good.
   - The texture is the base64 "Value" from a head website (like minecraft-heads.com) or a `textures.minecraft.net/texture/…` link.
   - The panel fetches each skin from textures.minecraft.net once and keeps the face in `/data/panel/heads`, for the panel and the public info page.
-  - **For sale** off stops selling a pet for a while. Removing one that players still have moves it to **No longer sold**: they keep it, and you can still change its name and head (changes reach them). It goes away by itself once nobody has it.
+  - Removing one that players still have moves it to **Removed, still owned**: they keep it, and you can still change its name and head (changes reach them). It goes away by itself once nobody has it.
+- **Pet listings** (Market → Server shop): pick a pet and set its price in the market's currency (0 is free), how long the shop sells it (always, or until a day) and how many can be sold in all (or no limit). Removing a listing stops the sale; the pet stays.
 - **Players → Players:** a player's card shows their pets; give one (free, for good), take it out or put it away, change how it moves, or take it away.
 - Pet purchases are in **Recent server shop purchases**; per pet the table shows how many were sold and how many players have it.
 

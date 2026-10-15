@@ -1,3 +1,6 @@
+## 1.12.27
+- Pets have their own page (Community → Pets): settings and the pets themselves (name, head, size, description). Market → Server shop only has Pet listings: pick a pet and set price, last day and how many; removing a listing keeps the pet. New pets aren't sold until listed (/pets grant still gives them)
+
 ## 1.12.26
 - Discord: the join screen for players who aren't linked always shows an invite to your Discord ({invite}; added at the end of messages without it). Paste one under Account linking, or leave it empty and the bot makes a permanent invite for the link (or chat) channel (needs Create Invite). The default message now starts with "Join our Discord: …"
 

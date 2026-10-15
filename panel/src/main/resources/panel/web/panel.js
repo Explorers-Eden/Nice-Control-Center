@@ -96,7 +96,9 @@
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
         { tab: 'market', label: 'Player market', perm: 'server.view', desc: 'The player market (/market): settings, what players sell and what sold.' },
-        { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'What the server sells in /market: claim blocks, command listings and pets, and what players bought.' }] },
+        { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'What the server sells in /market: claim blocks, command listings and pet listings, and what players bought.' }] },
+      { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
+        { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: add pets, then list them in the Server shop or give them with /pets grant.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
@@ -373,7 +375,7 @@
     if (tab === 'claimblocks') loadClaimBlocks();
     if (tab === 'claimsettings') loadClaimSettings();
     if (tab === 'tweaks' || tab === 'felling' || tab === 'chattweaks') loadTweaks();
-    if (tab === 'market' || tab === 'servershop') { loadMarket(); loadPets(); }
+    if (tab === 'market' || tab === 'servershop' || tab === 'pets') { loadMarket(); loadPets(); }
     document.querySelectorAll('#pn-app .np-tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== panel; });
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
@@ -5020,10 +5022,14 @@
   ssClaimOpen(null);
   ssCmdOpen(null);
 
-  // ── Community → Market → Pets ─────────────────────────────────────────────
-
+  // ── Community → Pets, and Market → Server shop → Pet listings ─────────────
+  // One settings file: a pet (name, head, size, description) is made on the Pets page; its listing
+  // (price, last day, how many, forSale) is set in the Server shop. Unlisted pets can still be granted.
 
   const ptFace = (hash) => hash ? `<img class="pn-pt-face" src="info/heads/${esc(hash)}" alt="" loading="lazy">` : '<span class="pn-pt-face"></span>';
+  /** In the Server shop: listed and not taken out. */
+  const ptListed = (p) => p.forSale && !p.retired;
+  let ptlEditing = null;
 
   async function loadPets() {
     try {
@@ -5038,11 +5044,19 @@
     const edit = can('settings.server');
     f.querySelectorAll('input, button').forEach((el) => { el.disabled = !edit; });
     $('pn-pt-new').hidden = !edit;
-    if (!edit) ptOpen(null);
+    $('pn-ptl-new').hidden = !edit;
+    if (!edit) { ptOpen(null); ptlOpen(null); }
     const cur = ptData.currency.replace(/^minecraft:/, '').replace(/_/g, ' ');
     $('pn-pt-currency').textContent = `In ${cur}s (the market's currency); 0 makes it free`;
     renderPets();
     Dirty.reset('pets');
+  }
+
+  function ptInShop(p, sold) {
+    if (!ptListed(p)) return 'not listed';
+    if (p.stock > 0 && (sold[p.id] || 0) >= p.stock) return '<span class="pn-warn">sold out</span>';
+    if (p.saleEnds && p.saleEnds < Date.now()) return '<span class="pn-warn">sale ended</span>';
+    return p.price ? Number(p.price).toLocaleString() : 'free';
   }
 
   function renderPets() {
@@ -5050,32 +5064,40 @@
     const sold = ptData.state.sold || {};
     const owners = ptData.state.owners || {};
     const edit = can('settings.server');
-    const shop = s.pets.filter((p) => !p.retired);
+    const pets = s.pets.filter((p) => !p.retired);
     const retired = s.pets.filter((p) => p.retired);
-    $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: sold counts are from the last save. ')
-      + `${shop.length} pet${shop.length === 1 ? '' : 's'} in the shop${retired.length ? `, ${retired.length} no longer sold` : ''}.`;
-    $('pn-pt-table').innerHTML = shop.length ? `<thead><tr><th>Pet</th><th>Price</th><th>On sale</th><th>Sold</th><th>Players with it</th><th>For sale</th><th></th></tr></thead><tbody>${shop.map((p) => `
+    const listed = pets.filter(ptListed);
+    // The Pets page: every pet.
+    $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: counts are from the last save. ')
+      + `${pets.length} pet${pets.length === 1 ? '' : 's'}, ${listed.length} listed in the Server shop${retired.length ? `, ${retired.length} removed but still owned` : ''}.`;
+    $('pn-pt-table').innerHTML = pets.length ? `<thead><tr><th>Pet</th><th>Description</th><th>Size</th><th>Players with it</th><th>Server shop</th><th></th></tr></thead><tbody>${pets.map((p) => `
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
-      <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptSale(p)}</td>
-      <td>${Number(sold[p.id] || 0).toLocaleString()}${p.stock > 0 ? ' of ' + Number(p.stock).toLocaleString() : ''}</td>
-      <td>${Number(owners[p.id] || 0).toLocaleString()}</td>
-      <td>${p.forSale ? (p.stock > 0 && (sold[p.id] || 0) >= p.stock ? '<span class="pn-warn">sold out</span>' : 'yes') : 'no'}</td>
+      <td>${esc(p.description || '')}</td><td>${Number(p.size || 0.8)}</td>
+      <td>${Number(owners[p.id] || 0).toLocaleString()}</td><td>${ptInShop(p, sold)}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
-        <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Take it out of the shop"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
-      : '<tbody><tr><td class="pn-hint">No pets in the shop. Add one below.</td></tr></tbody>';
+        <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Remove"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No pets yet. Add one below.</td></tr></tbody>';
     $('pn-pt-retired-box').hidden = !retired.length;
     $('pn-pt-retired').innerHTML = retired.length ? `<thead><tr><th>Pet</th><th>Players with it</th><th></th></tr></thead><tbody>${retired.map((p) => `
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td><td>${Number(owners[p.id] || 0).toLocaleString()}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Name &amp; head</button>
-        <button type="button" class="np-btn small" data-revive="${esc(p.id)}"><i class="bi bi-arrow-counterclockwise"></i> Back in the shop</button>` : ''}</td></tr>`).join('')}</tbody>` : '';
+        <button type="button" class="np-btn small" data-revive="${esc(p.id)}"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>` : ''}</td></tr>`).join('')}</tbody>` : '';
+    // The Server shop: only the listings.
+    $('pn-ptl-intro').textContent = (s.enabled ? '' : 'Pets are off (Community → Pets), so none are sold right now. ')
+      + (pets.length ? `${listed.length} of ${pets.length} pet${pets.length === 1 ? '' : 's'} listed.` : 'Add pets under Community → Pets first.');
+    $('pn-ptl-table').innerHTML = listed.length ? `<thead><tr><th>Pet</th><th>Price</th><th>On sale</th><th>Sold</th><th>Players with it</th><th></th></tr></thead><tbody>${listed.map((p) => `
+      <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
+      <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptSale(p)}</td>
+      <td>${Number(sold[p.id] || 0).toLocaleString()}${p.stock > 0 ? ' of ' + Number(p.stock).toLocaleString() : ''}${p.stock > 0 && (sold[p.id] || 0) >= p.stock ? ' <span class="pn-warn">sold out</span>' : ''}</td>
+      <td>${Number(owners[p.id] || 0).toLocaleString()}</td>
+      <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
+        <button type="button" class="np-btn small" data-unlist="${esc(p.id)}" title="Remove the listing (the pet stays)"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td class="pn-hint">No pets listed. Add a listing below.</td></tr></tbody>';
+    $('pn-ptl-new').disabled = !pets.some((p) => !ptListed(p));
     renderServerSales();
   }
 
-  function ptPairs() {
-    const f = $('pn-pt-edit');
-    f.saleEnd.disabled = f.always.checked;
-    f.stock.disabled = f.unlimited.checked;
-  }
+  // ── The Pets page: a pet's name, head, size and description ──
 
   function ptOpen(pet) {
     ptEditing = pet ? pet.id : null;
@@ -5084,21 +5106,13 @@
     f.description.value = pet ? pet.description || '' : '';
     f.size.value = pet && pet.size ? pet.size : 0.8;
     f.texture.value = pet ? pet.texture : '';
-    f.price.value = pet ? pet.price : '';
-    f.always.checked = pet ? !pet.saleEnds : true;
-    f.saleEnd.value = ptDay(pet && pet.saleEnds ? pet.saleEnds : Date.now() + 30 * 86400000);
-    f.unlimited.checked = pet ? pet.stock === 0 : true;
-    f.stock.value = pet && pet.stock > 0 ? pet.stock : 10;
-    f.forSale.checked = pet ? pet.forSale : true;
-    f.classList.toggle('pn-pt-edit--retired', !!(pet && pet.retired));
     $('pn-pt-edit-title').textContent = pet ? (pet.retired ? 'Name and head of ' : 'Edit ') + pet.name : 'Add a pet';
     $('pn-pt-add').innerHTML = pet ? '<i class="bi bi-check2"></i> Save pet' : '<i class="bi bi-plus-lg"></i> Add pet';
     f.hidden = !pet;
     const face = $('pn-pt-face');
-    face.hidden = !(pet && ptData.heads[pet.id]);
+    face.hidden = !(pet && ptData && ptData.heads[pet.id]);
     if (!face.hidden) face.src = 'info/heads/' + ptData.heads[pet.id];
     formMsg('pn-pt-edit-msg', '', true);
-    ptPairs();
   }
 
   async function ptSave(pets, msgId, done) {
@@ -5116,8 +5130,6 @@
     }
   }
 
-  $('pn-pt-edit').always.addEventListener('change', ptPairs);
-  $('pn-pt-edit').unlimited.addEventListener('change', ptPairs);
   $('pn-pt-edit').texture.addEventListener('change', async (e) => {
     const face = $('pn-pt-face');
     try {
@@ -5135,19 +5147,14 @@
   $('pn-pt-edit').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
-    const pet = { id: ptEditing || undefined, name: f.name.value.trim(), description: f.description.value.trim(), size: Number(f.size.value) || 0.8, texture: f.texture.value.trim(), price: Number(f.price.value) || 0,
-      saleEnds: f.always.checked || !f.saleEnd.value ? 0 : new Date(f.saleEnd.value + 'T23:59:59').getTime(), stock: f.unlimited.checked ? 0 : Number(f.stock.value) || 0, forSale: f.forSale.checked };
     const before = ptData.settings.pets.find((p) => p.id === ptEditing);
-    if (before && before.retired) Object.assign(pet, { price: before.price, saleEnds: before.saleEnds, stock: before.stock, forSale: false, retired: true });
-    // A day in the past only matters when it was just picked (an ended sale can stay as it is).
-    const sameDay = before && before.saleEnds && pet.saleEnds && ptDay(before.saleEnds) === f.saleEnd.value;
-    if (sameDay) pet.saleEnds = before.saleEnds;
-    if (!f.always.checked && !(before && before.retired) && !sameDay && (!f.saleEnd.value || pet.saleEnds < Date.now())) return formMsg('pn-pt-edit-msg', 'Pick a day from today on, or switch on Always on sale.', false);
-    if (!f.unlimited.checked && pet.stock < 1) return formMsg('pn-pt-edit-msg', 'Type how many can be sold, or switch on No limit.', false);
+    // The listing stays as it was; a new pet isn't for sale until it's listed in the Server shop.
+    const pet = { ...(before || { price: 0, saleEnds: 0, stock: 0, forSale: false }), id: ptEditing || undefined, name: f.name.value.trim(),
+      description: f.description.value.trim(), size: Number(f.size.value) || 0.8, texture: f.texture.value.trim() };
     const pets = ptData.settings.pets.map((p) => (p.id === ptEditing ? pet : p));
     if (!ptEditing) pets.push(pet);
     const wasEditing = ptEditing;
-    if (await ptSave(pets, 'pn-pt-edit-msg', wasEditing ? 'Saved.' : 'Added.')) {
+    if (await ptSave(pets, 'pn-pt-edit-msg', wasEditing ? 'Saved.' : 'Added. List it under Market → Server shop to sell it.')) {
       const fresh = await api('api/pets').catch(() => null);
       if (fresh) { ptData = fresh; renderPets(); }
       formMsg('pn-pt-note', $('pn-pt-edit-msg').textContent, true);
@@ -5163,8 +5170,8 @@
     }
     const revive = e.target.closest('[data-revive]');
     if (revive) {
-      const pets = ptData.settings.pets.map((p) => (p.id === revive.dataset.revive ? { ...p, retired: false, forSale: true } : p));
-      await ptSave(pets, 'pn-pt-note', 'Back in the shop.');
+      const pets = ptData.settings.pets.map((p) => (p.id === revive.dataset.revive ? { ...p, retired: false, forSale: false } : p));
+      await ptSave(pets, 'pn-pt-note', 'Restored (not listed in the Server shop).');
       return;
     }
     const del = e.target.closest('[data-delete]');
@@ -5173,13 +5180,15 @@
     if (!pet) return;
     const have = Number((ptData.state.owners || {})[pet.id] || 0);
     if (have > 0) {
-      if (!confirm(`Take ${pet.name} out of the shop? ${have} player${have === 1 ? ' has' : 's have'} it and keep${have === 1 ? 's' : ''} it. It moves to "No longer sold", where you can still change its name and head.`)) return;
+      if (!confirm(`Remove ${pet.name}? ${have} player${have === 1 ? ' has' : 's have'} it and keep${have === 1 ? 's' : ''} it; its listing goes. It moves to "Removed, still owned", where you can still change its name and head.`)) return;
       if (ptEditing === pet.id) ptOpen(null);
-      await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, retired: true, forSale: false } : p)), 'pn-pt-note', 'Taken out of the shop.');
+      if (ptlEditing === pet.id) ptlOpen(null);
+      await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, retired: true, forSale: false } : p)), 'pn-pt-note', 'Removed.');
       return;
     }
-    if (!confirm(`Delete ${pet.name}? Nobody has it.`)) return;
+    if (!confirm(`Delete ${pet.name}? Nobody has it${ptListed(pet) ? ', and its Server shop listing goes too' : ''}.`)) return;
     if (ptEditing === pet.id) ptOpen(null);
+    if (ptlEditing === pet.id) ptlOpen(null);
     await ptSave(ptData.settings.pets.filter((p) => p.id !== pet.id), 'pn-pt-note', 'Deleted.');
   }
   $('pn-pt-table').addEventListener('click', ptClick);
@@ -5188,7 +5197,7 @@
     e.preventDefault();
     const f = e.target;
     const enabled = f.enabled.checked;
-    if (enabled && !ptData.settings.enabled && !confirm('Switch pets on? Players can use /pets and the pet shop right away.')) return;
+    if (enabled && !ptData.settings.enabled && !confirm('Switch pets on? Players can use /pets and buy listed pets right away.')) return;
     try {
       const res = await api('api/pets/settings', { enabled, size: ptData.settings.size, particles: f.particles.checked, pets: ptData.settings.pets });
       formMsg('pn-pt-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
@@ -5198,6 +5207,84 @@
     }
   });
   ptOpen(null);
+
+  // ── Server shop → Pet listings: price, last day and how many ──
+
+  function ptlPairs() {
+    const f = $('pn-ptl-edit');
+    f.saleEnd.disabled = f.always.checked;
+    f.stock.disabled = f.unlimited.checked;
+  }
+
+  /** pet: the listed pet to edit, or null for a new listing (or to close the form). */
+  function ptlOpen(pet) {
+    ptlEditing = pet ? pet.id : null;
+    const f = $('pn-ptl-edit');
+    const choices = ptData ? ptData.settings.pets.filter((p) => !p.retired && (!ptListed(p) || (pet && p.id === pet.id))) : [];
+    f.pet.innerHTML = choices.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    f.pet.disabled = !!pet;
+    if (pet) f.pet.value = pet.id;
+    const shown = pet || (ptData && ptData.settings.pets.find((p) => p.id === f.pet.value)) || null;
+    // An unlisted pet keeps what it was last sold for, as a start.
+    f.price.value = shown ? shown.price : '';
+    f.always.checked = shown ? !shown.saleEnds || shown.saleEnds < Date.now() && !pet : true;
+    f.saleEnd.value = ptDay(shown && shown.saleEnds && shown.saleEnds > Date.now() ? shown.saleEnds : Date.now() + 30 * 86400000);
+    f.unlimited.checked = shown ? shown.stock === 0 : true;
+    f.stock.value = shown && shown.stock > 0 ? shown.stock : 10;
+    $('pn-ptl-edit-title').textContent = pet ? 'Listing of ' + pet.name : 'List a pet';
+    $('pn-ptl-save').innerHTML = pet ? '<i class="bi bi-check2"></i> Save listing' : '<i class="bi bi-plus-lg"></i> Add listing';
+    f.hidden = !pet;
+    formMsg('pn-ptl-msg', '', true);
+    ptlPairs();
+  }
+
+  $('pn-ptl-edit').always.addEventListener('change', ptlPairs);
+  $('pn-ptl-edit').unlimited.addEventListener('change', ptlPairs);
+  $('pn-ptl-edit').pet.addEventListener('change', () => {
+    const f = $('pn-ptl-edit');
+    const chosen = f.pet.value;
+    ptlOpen(null);
+    f.pet.value = chosen;
+    const p = ptData.settings.pets.find((x) => x.id === chosen);
+    if (p) { f.price.value = p.price; f.unlimited.checked = p.stock === 0; f.stock.value = p.stock > 0 ? p.stock : 10; ptlPairs(); }
+    f.hidden = false;
+  });
+  $('pn-ptl-cancel').addEventListener('click', () => ptlOpen(null));
+  $('pn-ptl-new').addEventListener('click', () => ssNew(ptlOpen, 'pn-ptl-edit', 'pet'));
+  $('pn-ptl-edit').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const id = ptlEditing || f.pet.value;
+    const before = ptData.settings.pets.find((p) => p.id === id);
+    if (!before) return formMsg('pn-ptl-msg', 'Pick a pet.', false);
+    const saleEnds = f.always.checked || !f.saleEnd.value ? 0 : new Date(f.saleEnd.value + 'T23:59:59').getTime();
+    // A day in the past only matters when it was just picked (an ended sale can stay as it is).
+    const sameDay = ptlEditing && before.saleEnds && saleEnds && ptDay(before.saleEnds) === f.saleEnd.value;
+    if (!f.always.checked && !sameDay && (!f.saleEnd.value || saleEnds < Date.now())) return formMsg('pn-ptl-msg', 'Pick a day from today on, or switch on Always on sale.', false);
+    const stock = f.unlimited.checked ? 0 : Number(f.stock.value) || 0;
+    if (!f.unlimited.checked && stock < 1) return formMsg('pn-ptl-msg', 'Type how many can be sold, or switch on No limit.', false);
+    const listing = { price: Number(f.price.value) || 0, saleEnds: sameDay ? before.saleEnds : saleEnds, stock, forSale: true };
+    const pets = ptData.settings.pets.map((p) => (p.id === id ? { ...p, ...listing } : p));
+    if (await ptSave(pets, 'pn-ptl-msg', ptlEditing ? 'Saved.' : 'Listed.')) {
+      formMsg('pn-ptl-note', $('pn-ptl-msg').textContent, true);
+      ptlOpen(null);
+    }
+  });
+  $('pn-ptl-table').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-edit]');
+    if (ed) {
+      ptlOpen(ptData.settings.pets.find((p) => p.id === ed.dataset.edit));
+      $('pn-ptl-edit').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    const un = e.target.closest('[data-unlist]');
+    if (!un) return;
+    const pet = ptData.settings.pets.find((p) => p.id === un.dataset.unlist);
+    if (!pet || !confirm(`Stop selling ${pet.name}? The pet stays (Community → Pets), and players who have it keep it.`)) return;
+    if (ptlEditing === pet.id) ptlOpen(null);
+    await ptSave(ptData.settings.pets.map((p) => (p.id === pet.id ? { ...p, forSale: false } : p)), 'pn-ptl-note', 'Listing removed.');
+  });
+  ptlOpen(null);
 
   // ── Start ──────────────────────────────────────────────────────────────
 
