@@ -80,7 +80,9 @@ public final class Discord implements Notifier {
 			d.templates.forEach(templates::putIfAbsent);
 			if (alertChannelId == null) alertChannelId = "";
 			if (linkChannelId == null) linkChannelId = "";
-			if (OLD_KICK.equals(kickMessage)) kickMessage = d.kickMessage;
+			if (kickMessage == null || kickMessage.isBlank()) kickMessage = d.kickMessage;
+			// Messages from before the link channel (the default, or an edited one) tell players to DM the bot: {where} names the link channel instead.
+			kickMessage = OLD_WHERE.matcher(kickMessage).replaceAll("Post this code {where}:");
 			if (gameFormat == null || gameFormat.isBlank()) gameFormat = GameFormat.DEFAULT;
 			if (eventChannels == null) eventChannels = new LinkedHashMap<>();
 			eventChannels.keySet().retainAll(events.keySet());
@@ -113,8 +115,8 @@ public final class Discord implements Notifier {
 			templates.put("broadcast", "📢 {message}");
 		}
 		public String kickMessage = "Link your Discord account to play on this server.\n\nPost this code {where}:\n\n{code}\n\nThe code works for 15 minutes.";
-		/** The default before the link channel; saved settings with it get the new one. */
-		private static final String OLD_KICK = "Link your Discord account to play on this server.\n\nSend this code to {bot} as a direct message on Discord:\n\n{code}\n\nThe code works for 15 minutes.";
+		/** "Send this code to {bot} as a direct message on Discord:" from messages before the link channel. */
+		private static final java.util.regex.Pattern OLD_WHERE = java.util.regex.Pattern.compile("(?i)send (?:this|the|your) code to \\S.*? as an? (?:direct message|DM)(?: on Discord)?:?");
 		public String notMemberMessage = "Your linked Discord account isn't on our Discord server anymore. Join it again to play.";
 	}
 

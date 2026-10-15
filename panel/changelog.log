@@ -1,3 +1,6 @@
+## 1.12.20
+- Discord: join-screen messages that still say "send this code to … as a direct message" (the old default, also when it was edited) now say "Post this code {where}:", so players are pointed to the link channel
+
 ## 1.12.19
 - Discord: the page says what keeps the bot from working (not on the Discord server, a channel it can't see, missing permissions such as Manage Messages in the link channel) and offers a link that adds the bot with every permission it needs
 
