@@ -1,3 +1,6 @@
+## 1.12.29
+- Server shop: claim block and command listings take an item model for their icon (like one from your resource pack, e.g. eden:coin) on top of the item; the info page and the panel draw it from the server's resource pack (needs mod 1.13.24 for the in-game menu)
+
 ## 1.12.28
 - Save and Cancel work the same everywhere: every settings form shows a bar with Save and Cancel at the bottom of the screen once something changed (before, some showed buttons in place and one was always there). Forms that open with Add or Edit keep their buttons
 - The mod's pages in the panel (Game: server.properties and game rules, Data pack settings) use the same bar under the page (needs mod 1.13.23)

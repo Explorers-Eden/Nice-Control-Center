@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.24
+- Server shop: claim block and command listings show their item model (set in the panel, like one from the server's resource pack) in /market
+
 ## 1.13.23
 - Dashboard: server.properties, game rules and data pack settings get a Save/Cancel bar that shows once something changed, like the panel's (the panel shows it under the page)
 

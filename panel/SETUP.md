@@ -174,6 +174,7 @@ Public pages → Info page: a read-only page where players can look up the serve
 - **Settings:** open/closed, the currency item, how long listings last, listings per player, the highest price and banned items.
 - **Server shop** (what the server sells, apart from player listings in `/market` and on the info page), shown with a seller name you choose (default "the server"). Every listing has a price, "Always on sale" or a last day, and a "For sale" switch to pause it:
   - **Claim blocks** (while claims are on): blocks and icon per listing, plus the most blocks a player can buy in all. No listings: not sold.
+  - **Icons:** an item, plus optionally an **item model** from your resource pack (like `eden:coin` for `assets/eden/items/coin.json`), shown in game and drawn on the info page from the server's resource pack.
   - **Commands:** name, description, icon, a per-player limit and console commands run for the buyer, once per one bought. `{player}`, `{uuid}`, `{x}`, `{y}`, `{z}` and `{dimension}` are filled in. Changing the commands needs the **Run console commands** permission and goes to the audit log.
   - **Pets** (see below).
   - **Recent server shop purchases:** claim blocks, commands and pets in one list.

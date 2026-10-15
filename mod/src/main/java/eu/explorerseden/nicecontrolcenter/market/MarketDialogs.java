@@ -164,7 +164,7 @@ public final class MarketDialogs {
 				Market.ClaimOffer o = ms.claimBlocks.get(i);
 				if (!o.onSale()) continue;
 				any = true;
-				body.add(iconRow(o.icon, Component.empty()
+				body.add(iconRow(o.icon, o.iconModel, Component.empty()
 						.append(Component.literal(String.format(Locale.ROOT, "%,d claim blocks", o.blocks)).withStyle(ChatFormatting.WHITE))
 						.append(Component.literal("\n" + money(o.price)).withStyle(ChatFormatting.GOLD))
 						.append(Component.literal((o.saleEnds != 0 ? " · until " + Pets.date(o.saleEnds) : "") + "  ").withStyle(ChatFormatting.GRAY))
@@ -174,7 +174,7 @@ public final class MarketDialogs {
 		for (Market.CommandOffer o : ms.commandOffers) {
 			if (!o.onSale()) continue;
 			any = true;
-			body.add(iconRow(o.icon, Component.empty()
+			body.add(iconRow(o.icon, o.iconModel, Component.empty()
 					.append(Component.literal(o.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("\n" + (o.description.isEmpty() ? "" : o.description + "\n")).withStyle(ChatFormatting.GRAY))
 					.append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
@@ -310,12 +310,18 @@ public final class MarketDialogs {
 		return o != null && o.onSale() && o.blocks == num(in, "blocks") && o.price == num(in, "price") ? o : null;
 	}
 
-	/** A server listing's row: its icon (an item set in the panel, without that item's tooltip: it isn't that item) and the text. */
-	private static DialogBody iconRow(String icon, Component text) {
+	/**
+	 * A server listing's row: its icon (an item set in the panel, without that item's tooltip: it isn't that item) and the text.
+	 * model: an item model for the icon (like one from the server's resource pack), or empty for the item's own.
+	 */
+	private static DialogBody iconRow(String icon, String model, Component text) {
 		Identifier id = Identifier.tryParse(icon);
 		Item item = id == null ? null : BuiltInRegistries.ITEM.getValue(id);
 		if (item == null || item == Items.AIR) return new PlainMessage(text, TEXT_WIDTH);
-		return new ItemBody(ItemStackTemplate.fromNonEmptyStack(new ItemStack(item)), Optional.of(new PlainMessage(text, TEXT_WIDTH - 30)), true, false, 16, 16);
+		ItemStack stack = new ItemStack(item);
+		Identifier modelId = model == null || model.isEmpty() ? null : Identifier.tryParse(model);
+		if (modelId != null) stack.set(net.minecraft.core.component.DataComponents.ITEM_MODEL, modelId);
+		return new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(text, TEXT_WIDTH - 30)), true, false, 16, 16);
 	}
 
 	/** Opens the server shop, where the claim block listings are. */
@@ -331,7 +337,7 @@ public final class MarketDialogs {
 			body.add(text(notice, notice.startsWith("Bought") ? ChatFormatting.GREEN : ChatFormatting.RED));
 			Plop.play(player);
 		}
-		body.add(iconRow(o.icon, Component.literal(String.format(Locale.ROOT, "%,d claim blocks", o.blocks)).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
+		body.add(iconRow(o.icon, o.iconModel, Component.literal(String.format(Locale.ROOT, "%,d claim blocks", o.blocks)).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
 				.append(Component.literal("\nEvery claimed block costs one. Use them in /claim.").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 		body.add(new PlainMessage(Component.empty()
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
@@ -405,7 +411,7 @@ public final class MarketDialogs {
 		}
 		MutableComponent title = Component.literal(o.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD);
 		if (!o.description.isEmpty()) title.append(Component.literal("\n" + o.description).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
-		body.add(iconRow(o.icon, title));
+		body.add(iconRow(o.icon, o.iconModel, title));
 		int bought = MarketStore.data().serverBought(o.id, me);
 		MutableComponent facts = Component.empty()
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))

@@ -4938,6 +4938,7 @@
     f.blocks.value = o ? o.blocks : 100;
     f.price.value = o ? o.price : '';
     f.icon.value = o ? o.icon : 'minecraft:grass_block';
+    f.iconModel.value = o ? o.iconModel || '' : '';
     f.always.checked = o ? !o.saleEnds : true;
     f.saleEnd.value = ptDay(o && o.saleEnds ? o.saleEnds : Date.now() + 30 * 86400000);
     f.forSale.checked = o ? o.forSale !== false : true;
@@ -4958,6 +4959,7 @@
     f.commands.value = o ? o.commands.join('\n') : '';
     f.price.value = o ? o.price : '';
     f.icon.value = o ? o.icon : 'minecraft:paper';
+    f.iconModel.value = o ? o.iconModel || '' : '';
     f.always.checked = o ? !o.saleEnds : true;
     f.saleEnd.value = ptDay(o && o.saleEnds ? o.saleEnds : Date.now() + 30 * 86400000);
     f.unlimited.checked = o ? !o.perPlayer : true;
@@ -4996,7 +4998,7 @@
     const saleEnds = ssSaleEnds(f, before);
     if (typeof saleEnds === 'string') return formMsg('pn-ss-claim-msg', saleEnds, false);
     const o = { id: before ? before.id : undefined, blocks: Number(f.blocks.value) || 0, price: Number(f.price.value) || 0,
-      icon: f.icon.value.trim() || 'minecraft:grass_block', saleEnds, forSale: f.forSale.checked };
+      icon: f.icon.value.trim() || 'minecraft:grass_block', iconModel: f.iconModel.value.trim(), saleEnds, forSale: f.forSale.checked };
     if (before) list[ssClaimEditing] = o; else list.push(o);
     if (await mkSave({ claimBlocks: list }, 'pn-ss-claim-msg', before ? 'Saved.' : 'Added.')) {
       formMsg('pn-ss-claim-note', $('pn-ss-claim-msg').textContent, true);
@@ -5015,7 +5017,7 @@
     if (!commands.length) return formMsg('pn-ss-cmd-msg', 'Add at least one command.', false);
     if (!f.unlimited.checked && !(Number(f.perPlayer.value) >= 1)) return formMsg('pn-ss-cmd-msg', 'Type how many each player can buy, or switch on No limit.', false);
     const o = { id: before ? before.id : undefined, name: f.name.value.trim(), description: f.description.value.trim(), commands, price: Number(f.price.value) || 0,
-      icon: f.icon.value.trim() || 'minecraft:paper', saleEnds, perPlayer: f.unlimited.checked ? 0 : Number(f.perPlayer.value), forSale: f.forSale.checked };
+      icon: f.icon.value.trim() || 'minecraft:paper', iconModel: f.iconModel.value.trim(), saleEnds, perPlayer: f.unlimited.checked ? 0 : Number(f.perPlayer.value), forSale: f.forSale.checked };
     if (before) list[ssCmdEditing] = o; else list.push(o);
     if (await mkSave({ commandOffers: list }, 'pn-ss-cmd-msg', before ? 'Saved.' : 'Added.')) {
       formMsg('pn-ss-cmd-note', $('pn-ss-cmd-msg').textContent, true);

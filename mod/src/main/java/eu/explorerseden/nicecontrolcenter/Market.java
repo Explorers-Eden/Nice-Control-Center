@@ -62,6 +62,7 @@ public final class Market {
 			claimBlocks = new ArrayList<>(claimBlocks.stream().filter(o -> o != null).toList());
 			for (ClaimOffer o : claimBlocks) {
 				o.icon = o.icon == null || o.icon.isBlank() ? "minecraft:grass_block" : id(o.icon);
+				o.iconModel = o.iconModel == null || o.iconModel.isBlank() ? "" : id(o.iconModel);
 				o.id = uuidOr(o.id);
 			}
 			if (commandOffers == null) commandOffers = new ArrayList<>();
@@ -69,6 +70,7 @@ public final class Market {
 			for (CommandOffer o : commandOffers) {
 				o.id = uuidOr(o.id);
 				o.icon = o.icon == null || o.icon.isBlank() ? "minecraft:paper" : id(o.icon);
+				o.iconModel = o.iconModel == null || o.iconModel.isBlank() ? "" : id(o.iconModel);
 				o.name = o.name == null ? "" : o.name.strip();
 				o.description = o.description == null ? "" : o.description.strip().replaceAll("\\s+", " ");
 				if (o.commands == null) o.commands = new ArrayList<>();
@@ -96,6 +98,8 @@ public final class Market {
 		public int price = 1;
 		/** The listing's icon (an item id); only how it looks. */
 		public String icon = "minecraft:grass_block";
+		/** An item model for the icon (like one from the server's resource pack); empty = the item's own. */
+		public String iconModel = "";
 		/** When the listing goes (epoch ms); 0 = always on sale. */
 		public long saleEnds;
 
@@ -117,6 +121,8 @@ public final class Market {
 		public String description = "";
 		/** The listing's icon (an item id); only how it looks. */
 		public String icon = "minecraft:paper";
+		/** An item model for the icon (like one from the server's resource pack); empty = the item's own. */
+		public String iconModel = "";
 		public int price = 1;
 		public List<String> commands = new ArrayList<>();
 		/** When the listing goes (epoch ms); 0 = always on sale. */
@@ -157,6 +163,7 @@ public final class Market {
 		if (s.claimBlocks.size() > 20) return "At most 20 claim block listings.";
 		for (ClaimOffer o : s.claimBlocks) {
 			if (!o.icon.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + o.icon + "\" isn't an item id (like minecraft:grass_block).";
+			if (!o.iconModel.isEmpty() && !o.iconModel.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + o.iconModel + "\" isn't an item model id (like eden:coin).";
 			if (o.price < 1 || o.price > 10_000_000) return "Claim block prices are 1 to 10,000,000.";
 			if (o.blocks < 1 || o.blocks > 1_000_000) return "Claim block listings have 1 to 1,000,000 blocks.";
 			if (o.saleEnds < 0 || o.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "Claim block listings end within ten years, or never.";
@@ -170,6 +177,7 @@ public final class Market {
 			if (o.name.isEmpty() || o.name.length() > 40) return "Command listing names are 1 to 40 characters.";
 			if (o.description.length() > 200) return "The description of " + o.name + " is longer than 200 characters.";
 			if (!o.icon.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + o.icon + "\" isn't an item id (like minecraft:paper).";
+			if (!o.iconModel.isEmpty() && !o.iconModel.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + o.iconModel + "\" isn't an item model id (like eden:coin).";
 			if (o.price < 1 || o.price > 10_000_000) return "The price of " + o.name + " is 1 to 10,000,000.";
 			if (o.commands.isEmpty() || o.commands.size() > 20) return o.name + " needs 1 to 20 commands.";
 			for (String c : o.commands) if (c.length() > 2000 || c.contains("\n")) return "A command of " + o.name + " is too long.";

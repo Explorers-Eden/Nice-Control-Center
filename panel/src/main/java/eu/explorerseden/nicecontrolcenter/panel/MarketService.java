@@ -186,7 +186,7 @@ final class MarketService {
 						+ (s.claimBlocksMax > 0 ? String.format(java.util.Locale.ROOT, " Up to %,d per player in all.", s.claimBlocksMax) : ""));
 				m.put("price", o.price);
 				if (o.saleEnds != 0) m.put("until", o.saleEnds);
-				String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+				String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 				if (icon != null) m.put("icon", icon);
 				out.add(m);
 			}
@@ -199,7 +199,7 @@ final class MarketService {
 			m.put("price", o.price);
 			if (o.saleEnds != 0) m.put("until", o.saleEnds);
 			if (o.perPlayer > 0) m.put("perPlayer", o.perPlayer);
-			String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+			String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 			if (icon != null) m.put("icon", icon);
 			out.add(m);
 		}
@@ -355,12 +355,12 @@ final class MarketService {
 			// Icon previews for the claim block listings ("" when there's none).
 			List<String> claimIcons = new ArrayList<>();
 			for (Market.ClaimOffer o : s.claimBlocks) {
-				String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+				String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 				claimIcons.add(icon == null ? "" : icon);
 			}
 			List<String> commandIcons = new ArrayList<>();
 			for (Market.CommandOffer o : s.commandOffers) {
-				String icon = icons.iconFor("{\"id\":\"" + o.icon + "\"}");
+				String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 				commandIcons.add(icon == null ? "" : icon);
 			}
 			json(ctx, Map.of("settings", s, "defaults", new Market.Settings().fill(), "claimIcons", claimIcons, "commandIcons", commandIcons,
@@ -431,5 +431,17 @@ final class MarketService {
 			}
 			ctx.contentType("image/png").header("Cache-Control", "public, max-age=86400").result(Files.readAllBytes(f));
 		});
+	}
+
+	/** A server listing's icon as a stack: the item, with the item model (like one from the resource pack) when one is set. */
+	private static String offerStack(String icon, String model) {
+		JsonObject stack = new JsonObject();
+		stack.addProperty("id", icon);
+		if (model != null && !model.isBlank()) {
+			JsonObject components = new JsonObject();
+			components.addProperty("minecraft:item_model", model);
+			stack.add("components", components);
+		}
+		return stack.toString();
 	}
 }
