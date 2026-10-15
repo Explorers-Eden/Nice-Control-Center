@@ -1,3 +1,6 @@
+## 1.12.23
+- Discord: player names default to "Oakhearted ┃ Name", with the same line as the admin and Discord messages in game (the old default "[{race}] {player}" switches over)
+
 ## 1.12.22
 - Discord: roles for linked players: one role for everyone linked, plus a role per Fabled Roots race (read from the race tag every 5 minutes), swapped when the race changes and taken away on unlink. The bot needs Manage Roles and its role above those roles; the page says when it can't give one
 

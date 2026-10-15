@@ -72,7 +72,7 @@ public final class Discord implements Notifier {
 		/** How Discord messages look in game (DiscordJustSync style tags, %user% and %msg%). */
 		public String gameFormat = GameFormat.DEFAULT;
 		/** The player's name on Discord for game chat: {player} and {race} (Fabled Roots; left out with its brackets when there's none). */
-		public String nameFormat = "[{race}] {player}";
+		public String nameFormat = "{race} ┃ {player}";
 		public boolean presence = true;
 		public Map<String, Boolean> events = new LinkedHashMap<>(Map.of("join", true, "leave", true, "death", true, "advancement", true,
 				"start", true, "stop", true, "crash", true));
@@ -97,7 +97,8 @@ public final class Discord implements Notifier {
 			// Messages from before the link channel (the default, or an edited one) tell players to DM the bot: {where} names the link channel instead.
 			kickMessage = OLD_WHERE.matcher(kickMessage).replaceAll("Post this code {where}:");
 			if (gameFormat == null || gameFormat.isBlank()) gameFormat = GameFormat.DEFAULT;
-			if (nameFormat == null || nameFormat.isBlank() || !nameFormat.contains("{player}")) nameFormat = d.nameFormat;
+			// "[{race}] {player}" was the first default; the line matches the admin and Discord prefixes in game.
+			if (nameFormat == null || nameFormat.isBlank() || !nameFormat.contains("{player}") || nameFormat.equals("[{race}] {player}")) nameFormat = d.nameFormat;
 			if (eventChannels == null) eventChannels = new LinkedHashMap<>();
 			eventChannels.keySet().retainAll(events.keySet());
 			eventChannels.replaceAll((k, v) -> "alerts".equals(v) ? "alerts" : "chat");
@@ -861,7 +862,7 @@ public final class Discord implements Notifier {
 		return ids;
 	}
 
-	/** "[Oakhearted] NiceRon" from the name format; without a race the {race} part goes, with its brackets. */
+	/** "Oakhearted ┃ NiceRon" from the name format; without a race the {race} part goes, with its brackets. */
 	String chatName(String player, String race) {
 		String format = settings.nameFormat;
 		String out = race == null || race.isBlank()
