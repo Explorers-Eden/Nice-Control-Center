@@ -6,7 +6,7 @@ Keep the Crafty server untouched (only stopped) until everything runs, so you ca
 
 ## 1. Before the day
 
-- [ ] **Updates:** pushed and built: panel image (1.12.11 or newer), Nice Control Center mod (1.13.14 or newer), Merl (1.6.2 or newer).
+- [ ] **Updates:** pushed and built: panel image (1.12.32 or newer), Nice Control Center mod (1.13.25 or newer), Merl (1.6.2 or newer).
 - [ ] **Live server:** note its Minecraft and Fabric version, its memory and Java flags, its port and its mod list.
 - [ ] **Discord links:** players linked through DiscordJustSync have to link again through the panel's bridge, because the old links aren't carried over. Tell them, or switch off "require a link" for the first days.
 - [ ] **Announce** the downtime (Discord, and in game).
@@ -20,7 +20,7 @@ Everything gets wiped and set up fresh: the test server, the panel's own data an
 - **Public pages:** info page texts and switches, links in the game (`/info` texts, `/website`, `/discord`…), the map settings, the server list MOTDs, the logo and banner (keep the image files).
 - **Server:** Startup & Java (memory, flags), Schedule (restarts, backups, outer wilds reset), backup settings.
 - **Settings and gameplay:** borders and permanent area, Tuning, Maintenance, claim settings, Gameplay (Items & tools, World & nature, Chat & tab list), Market.
-- **The pet shop:** names, descriptions, head textures and sizes, prices, sale dates, amounts. The head textures are easiest to copy out of `config/nicecontrolcenter-pets.json`.
+- **Pets:** names, descriptions, head textures and sizes (Community → Pets), and their listings: prices, sale dates, amounts (Market → Server shop → Pet listings). The head textures are easiest to copy out of `config/nicecontrolcenter-pets.json`.
 - **Users and roles** you made in the panel, and their SSH keys.
 
 Tip: copy the panel's settings files (`*.json` in the volume `nicecontrolcenter-panel`, on the host) somewhere safe and keep them only to look things up. Don't copy them back.
@@ -35,6 +35,7 @@ Tip: copy the panel's settings files (`*.json` in the volume `nicecontrolcenter-
    ```sql
    DROP VIEW IF EXISTS claim_player_summary;
    DROP TABLE IF EXISTS
+     smp_players, smp_command_storage, smp_sync,
      market_listings, market_sales, market_sync,
      claim_members, claim_players, claim_sync, claims,
      discord_links, user_ssh_keys, sessions, user_roles, role_permissions, users, roles, audit_log,
@@ -44,7 +45,7 @@ Tip: copy the panel's settings files (`*.json` in the volume `nicecontrolcenter-
 
 5. [ ] **Deploy the stack again:** Stacks → the stack → Editor. Set `MINECRAFT_PORT` to the port players will use (the live server's), then **Update the stack** with **Re-pull image and redeploy**. That makes a new container and new, empty volumes. Crafty publishes 25500–25600 even while its server is stopped: if the port is in that range, first stop the live server in Crafty, make its backup (section 4, step 1) and stop the whole Crafty stack, or the panel's container can't start. Sign in with `PANEL_ADMIN_USER` / `PANEL_ADMIN_PASSWORD` (without a password set, the panel prints a new one once in its log).
 6. [ ] Things that come with a fresh panel:
-   - **SFTP host key:** the panel makes a new one, so SFTP clients (and the website's deploy) warn about a changed key. Accept the new one / update the website's known host.
+   - **SFTP host key:** the panel makes a new one, so SFTP clients warn about a changed key. Accept the new one. (The website doesn't use SFTP any more.)
    - **Discord links:** everyone links again (also those who linked on the test server).
    - The **map** renders the live world from scratch, which takes a while for a big world.
 
@@ -68,7 +69,8 @@ Tip: copy the panel's settings files (`*.json` in the volume `nicecontrolcenter-
 
 - [ ] Players connect on `MINECRAFT_PORT` from the stack (set in section 3). Crafty publishes 25500–25600 on the same host, so stop Crafty's server (or the whole Crafty stack) before the panel takes the same port: if the port is still taken when you redeploy, the container won't start; stop Crafty and redeploy again.
 - [ ] If the port players use changes, update the DNS record (and the SRV record, if you have one).
-- [ ] Traefik: the panel's domain, plus `MAP_HOST` and `INFO_HOST` if you use them, point at the panel. Set `PANEL_PUBLIC_URL` (or `INFO_HOST`) in the stack too: `/info` in the game links there. The website's SFTP access uses port 2022 (`SFTP_PORT`), which must be open.
+- [ ] Traefik: the panel's domain, plus `MAP_HOST` and `INFO_HOST` if you use them, point at the panel. Set `PANEL_PUBLIC_URL` (or `INFO_HOST`) in the stack too: `/info` in the game links there.
+- [ ] **Database for the website:** the website reads everything from the panel's Postgres, so GitHub Actions must reach it (section 7). SFTP (port 2022) only needs to be open if you use it yourself.
 
 ## 6. First start
 
@@ -76,21 +78,63 @@ Tip: copy the panel's settings files (`*.json` in the volume `nicecontrolcenter-
 2. [ ] **Home dashboard:** TPS, players and the mod connection show up. If the mod isn't connected, the pages say so.
 3. [ ] **Server settings from your notes (step 2):** set them again in the panel; each page writes its file into the server's `config` folder when you save.
    - **World → Borders & reset:** the permanent area and world edge for the live world; pregenerate if needed.
-   - **Settings → Tuning** and **Players → Maintenance** (check that maintenance is **off**).
+   - **Settings → Tuning** and **Settings → Server → Maintenance** (check that maintenance is **off**).
 4. [ ] **Claims:**
    1. Claims → GOML import → **Check**, then **Import** (the server must be running with GOML).
    2. Claims → Settings: set them up again and switch claims **on**.
    3. Look at a few imported claims on the map.
    4. Remove GOML at the next restart.
-5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and set up the Market. Under Market → Pets, switch pets on and add the pets again. The market starts empty, and nobody owns a pet yet.
+5. [ ] **Gameplay and market:** switch on what you want under Settings → Gameplay (Items & tools, World & nature, Chat & tab list) and set up the Market. Under **Community → Pets**, switch pets on and add the pets again, then list the ones for sale under **Market → Server shop → Pet listings**. The market starts empty, and nobody owns a pet yet.
 6. [ ] **Links:** under Public pages → Info page → Links in the game, check the address for `/info` and your link commands (like `/website` and `/discord`), then press **Save** once so they're written into the server's `config` folder. The server log says when a link's name is already taken by another command.
 7. [ ] **Discord:** the bridge posts "The server is online"; check that chat and joins go both ways.
 8. [ ] **Join yourself:** try `/claim`, `/market`, `/merl`, felling a tree and a death message. For pets: give yourself one with `/pets grant <you> <pet>`, take it out with `/pets on`, and try a few moves and particles in `/pets`. Click the links from `/info` and your link commands.
 9. [ ] Make a **backup** in the panel and check that it finishes.
 
-## 7. Afterwards
+## 7. Website (explorerseden.eu)
 
-- [ ] **Website:** follow `PANEL-MIGRATION.md` in the website repo (new SFTP and database secrets; profiles read links and claims from the panel).
+The website reads **everything** about the SMP from the panel's database: Discord links, land claims, market listings, and the world's player data and command storage, which the panel copies there every minute when it changed. It no longer uses SFTP. The website changes are ready but **not pushed yet** (they need the panel's tables): push them in step 5.
+
+1. [ ] **Panel tables:** after the first start (section 6), check in the panel's database:
+   ```sql
+   SELECT count(*) FROM discord_links;
+   SELECT count(*) FROM smp_players;               -- everyone who has a player file
+   SELECT name, saved_at FROM smp_command_storage;  -- the data packs' storage, e.g. eden
+   SELECT * FROM smp_sync;                          -- level name and when the last copy ran
+   ```
+   Players and storage show up within a minute (the storage once the world has saved).
+2. [ ] **Read-only database user for the website** (in the panel's database):
+   ```sql
+   CREATE ROLE website_reader LOGIN PASSWORD 'choose-one';
+   GRANT CONNECT ON DATABASE panel TO website_reader;   -- your panel database name
+   GRANT USAGE ON SCHEMA public TO website_reader;
+   GRANT SELECT ON discord_links, claims, claim_members, claim_players, claim_player_summary,
+     market_listings, market_sync, smp_players, smp_command_storage, smp_sync TO website_reader;
+   ```
+   The Postgres port must be reachable from GitHub Actions. If it needs SSL from outside, also set the secret `PANEL_DATABASE_SSL=true` and add it to the workflow's `env` next to `PANEL_DATABASE_URL`.
+3. [ ] **GitHub secrets** (explorerseden.eu → Settings → Secrets and variables → Actions):
+
+   | Secret | |
+   | --- | --- |
+   | `PANEL_DATABASE_URL` | **new:** `postgres://website_reader:choose-one@<db-host>:5432/<panel database>` |
+   | `SFTP_HOST`, `SFTP_PORT`, `SFTP_USER`, `SFTP_PASSWORD` | **delete**, no longer used |
+   | `SMP_WORLD_SFTP_REMOTE_PATH`, `WAYPOINT_SFTP_REMOTE_PATH`, `SMP_CONFIG_SFTP_REMOTE_PATH` | **delete**, no longer used |
+
+   And these repository **variables** (not secrets):
+
+   | Variable | |
+   | --- | --- |
+   | `PANEL_PUBLIC_URL` | the address of the panel's public info page without `/info`, e.g. `https://info.explorerseden.eu` (your `INFO_HOST`). Market item icons load from `<that>/info/items/…`; without it the Market tab shows no icons. |
+   | `PANEL_WAYPOINT_STORAGE` | only if the waypoint hubs aren't in the `eden` storage: the namespace from the old `WAYPOINT_SFTP_REMOTE_PATH` file (`command_storage_<namespace>.dat`, in 26.3 `data/<namespace>/command_storage.dat`). |
+4. [ ] **Admin Player Inspector:** it's removed from the website (the panel's Players page covers it). Nothing to do: the next "Publish generated data to Postgres" run deletes its old data from the website database.
+5. [ ] **Push the website changes** (in the explorerseden.eu repo: the scripts read the panel's database, the SFTP steps and the inspector are gone). Then run **Generate Files and Deploy** by hand (Actions tab) and check the log:
+   - "Fetch waypoint hub data": `Loaded the "eden" command storage from the panel` and the number of public hubs.
+   - "Generate SMP player profile data": `Loaded N player(s) from the panel`, `Loaded N Discord link(s), M claim(s) and K market listing(s) from the panel.` and `Wrote N player profile(s)`.
+6. [ ] **Open My SMP Profile:** race and class, stats, advancements, waypoints, home and last grave are there; the Claims tab lists each claim with its name, colour, size and members (only claims with an owner); the Market tab shows what the player sells on `/market` with icons, price and days left.
+
+Testing the website scripts locally without the database: `SMP_LOCAL_WORLD_DIR=/path/to/world` (player files), `WAYPOINT_LOCAL_FILE=/path/to/command_storage.dat`, and for links, claims and market `PANEL_LOCAL_LINKS_FILE`, `PANEL_LOCAL_CLAIMS_FILE`, `PANEL_LOCAL_MARKET_FILE`.
+
+## 8. Afterwards
+
 - [ ] **A Realm Recrafted:** push the README update (Market, Pets, Land Claims) and the removal of the config conversion; delete that repo's SFTP secrets.
 - [ ] **Permissions:** with a permissions mod, `nicecontrolcenter.pets.admin` allows `/pets grant` and `/pets revoke` (operators level 2 without one); `nicecontrolcenter.pets.use`, `nicecontrolcenter.market.use` and `nicecontrolcenter.links.use` are for everyone by default.
 - [ ] **Public pages:** switch on the public info page and the map under Public pages → Info page / World → Map, if they aren't already.

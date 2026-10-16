@@ -136,6 +136,8 @@ public final class Panel {
 		ItemIcons icons = new ItemIcons(dataDir, serverDir, () -> versions.installed().mc());
 		MarketService market = new MarketService(serverDir, dataDir, db, server, dashboard, audit, icons);
 		market.start();
+		// Player tags, stats and advancements and the command storage, for a website (smp_* tables).
+		new SmpData(serverDir, db).start();
 		PetsService pets = new PetsService(serverDir, dataDir, server, dashboard, audit);
 		InfoPage info = new InfoPage(dataDir, serverDir, server, dashboard, audit);
 		info.useClaims(claims);

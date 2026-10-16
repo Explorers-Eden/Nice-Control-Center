@@ -159,6 +159,9 @@ Public pages → Info page: a read-only page where players can look up the serve
   - `claim_players`: player_uuid, name, accrued, bonus, bought, play_minutes, last_seen.
   - `claim_player_summary` (view): per player total, used and available claim blocks and number of claims.
   - `discord_links`: player_uuid, player_name, discord_id, discord_name, linked_at (the Discord bridge's account links, copied when they change).
+  - `smp_players`: player_uuid, player_name, race, class (Fabled Roots tags), tags, stats and advancements (each player's stats and advancements JSON as the game saved them), data_version, saved_at. Copied from the world's player files every minute when they changed, so a website needs no SFTP.
+  - `smp_command_storage`: name (the data pack namespace, e.g. `eden`), data (the whole command storage as JSON: compounds are objects, lists and arrays are arrays, longs are `[high, low]`, like prismarine-nbt's `simplify`), saved_at. Waypoint hubs, homes and graves of the Explorer's Eden packs live here.
+  - `smp_sync`: level_name, players, synced_at (the last copy).
 - **Permissions:** "See land claims" (Moderator and Viewer by default) and "Change claims…" (Moderator).
 
 ## Gameplay and market
