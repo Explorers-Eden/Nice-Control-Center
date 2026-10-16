@@ -143,6 +143,9 @@ public final class Panel {
 		info.useClaims(claims);
 		info.useMarket(market);
 		info.usePets(pets);
+		WaypointHubs waypointHubs = new WaypointHubs(serverDir);
+		info.useWaypointHubs(waypointHubs);
+		pets.useWaypointHubs(waypointHubs);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		home.useMod(dashboard);

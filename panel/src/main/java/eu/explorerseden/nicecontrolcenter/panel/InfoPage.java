@@ -49,6 +49,8 @@ final class InfoPage {
 		public boolean tweaks = true;
 		/** The player market's listings (while the market is open). */
 		public boolean market = true;
+		/** The public waypoint hubs (Explorer's Eden data packs). */
+		public boolean waypoints = true;
 		/** When the next scheduled restart is, in the banner. */
 		public boolean restart = true;
 		/** server.properties keys left out besides the secret ones. */
@@ -158,6 +160,12 @@ final class InfoPage {
 
 	void usePets(PetsService pets) {
 		this.pets = pets;
+	}
+
+	private WaypointHubs waypointHubs;
+
+	void useWaypointHubs(WaypointHubs hubs) {
+		this.waypointHubs = hubs;
 	}
 
 	void useMarket(MarketService market) {
@@ -331,6 +339,10 @@ final class InfoPage {
 				out.put("pets", p);
 				if (m == null) out.put("petCurrency", eu.explorerseden.nicecontrolcenter.Market.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Market.FILE)).currency);
 			}
+		}
+		if (s.waypoints && waypointHubs != null) {
+			List<Map<String, Object>> w = waypointHubs.publicHubs();
+			if (!w.isEmpty()) out.put("waypoints", w);
 		}
 		if (s.tweaks) {
 			var t = eu.explorerseden.nicecontrolcenter.ServerFacts.tweaks(eu.explorerseden.nicecontrolcenter.Tweaks.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Tweaks.FILE)));

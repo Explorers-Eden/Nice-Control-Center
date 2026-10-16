@@ -126,6 +126,13 @@ final class PetsService {
 
 	// ---------------------------------------------------------------- heads
 
+	/** Its owners' faces may be shown on the info page too. */
+	private volatile WaypointHubs waypointHubs;
+
+	void useWaypointHubs(WaypointHubs hubs) {
+		this.waypointHubs = hubs;
+	}
+
 	/** The face picture for a skin hash (fetched once), or null. */
 	Path head(String hash) {
 		if (hash == null || !hash.matches("[0-9a-f]{32,128}")) return null;
@@ -228,10 +235,12 @@ final class PetsService {
 			}
 			ctx.contentType("image/png").header("Cache-Control", "private, max-age=604800").result(Files.readAllBytes(f));
 		}));
-		// Faces of the shop's pets: public, for the info page (only those, so nobody can make the panel fetch others).
+		// Faces of the shop's pets and of public waypoint hubs' owners: public, for the info page (only those, so
+		// nobody can make the panel fetch others).
 		routes.get("/info/heads/{hash}", ctx -> {
 			String hash = ctx.pathParam("hash").replaceFirst("\\.png$", "");
-			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture)));
+			WaypointHubs hubs = waypointHubs;
+			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture))) || hubs != null && hubs.isOwnerHead(hash);
 			Path f = known ? head(hash) : null;
 			if (f == null) {
 				ctx.status(HttpStatus.NOT_FOUND);

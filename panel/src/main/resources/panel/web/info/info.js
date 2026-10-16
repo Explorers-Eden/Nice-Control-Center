@@ -241,6 +241,23 @@
           { id: 'market-list', title: 'From players', icon: 'bi-bag', sub: `${list.length} listing${list.length === 1 ? '' : 's'}`, wide: true,
           body: list.length ? `<div class="in-tiles">${list.map(item).join('')}</div>` : '<p class="in-empty">Nothing for sale right now.</p>' }] });
     }
+    if (d.waypoints && d.waypoints.length) {
+      // Grouped by dimension, in the order the panel sorted them.
+      const byDim = new Map();
+      for (const h of d.waypoints) {
+        if (!byDim.has(h.dimension)) byDim.set(h.dimension, []);
+        byDim.get(h.dimension).push(h);
+      }
+      const hub = (h) => `<div class="in-tile" data-search="${esc([h.name, h.description, h.owner, h.dimension].join(' ').toLowerCase())} waypoint hub">
+          <span class="in-slot">${h.head ? `<img class="in-head" src="heads/${esc(h.head)}" alt="" loading="lazy">` : '<i class="bi bi-signpost-2"></i>'}</span>
+          <span class="in-tile__text"><b>${esc(h.name)}</b>${h.description ? `<small class="in-tile__extra">${esc(h.description)}</small>` : ''}
+            <span class="in-tile__price"><i class="bi bi-geo-alt"></i> ${Number(h.x).toLocaleString()}, ${Number(h.y).toLocaleString()}, ${Number(h.z).toLocaleString()}</span>
+            ${h.owner ? `<small class="in-tile__seller"><i class="bi bi-person"></i> ${esc(h.owner)}</small>` : ''}</span></div>`;
+      sections.push({ id: 'waypoints', title: 'Waypoint hubs', tab: 'Waypoints', statLabel: 'public hubs', icon: 'bi-signpost-2', hue: '#4fd1c5', count: d.waypoints.length,
+        lead: 'The waypoint hubs players have made public, with where to find them.',
+        children: [...byDim.entries()].map(([dim, list]) => ({ id: slug(dim), title: titleCase(String(dim).replace(/^minecraft:/, '').replace(/^the_/, '')), icon: 'bi-globe-americas',
+          sub: `${list.length} hub${list.length === 1 ? '' : 's'}`, wide: true, body: `<div class="in-tiles">${list.map(hub).join('')}</div>` })) });
+    }
     if (d.tweaks && d.tweaks.length) {
       sections.push({ id: 'tweaks', title: 'Gameplay tweaks', tab: 'Gameplay', statLabel: 'tweaks', icon: 'bi-magic', hue: '#c4a6ff', count: d.tweaks.length,
         lead: 'Things that work differently from vanilla here.',

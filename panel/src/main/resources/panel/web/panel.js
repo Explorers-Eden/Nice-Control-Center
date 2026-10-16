@@ -3967,7 +3967,7 @@
     }
     const s = infoData.settings;
     const f = $('pn-info-form');
-    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders', 'tweaks', 'market']) f.elements[k].checked = !!s[k];
+    for (const k of ['enabled', 'properties', 'gamerules', 'packs', 'performance', 'commands', 'restart', 'claims', 'borders', 'tweaks', 'market', 'waypoints']) f.elements[k].checked = !!s[k];
     f.title.value = s.title || '';
     f.intro.value = s.intro || '';
     f.infoText.value = s.infoText || '';
@@ -4042,7 +4042,7 @@
     const body = {
       enabled: f.enabled.checked, title: f.title.value.trim() || 'Server info', intro: f.intro.value,
       properties: f.properties.checked, gamerules: f.gamerules.checked, packs: f.packs.checked, performance: f.performance.checked, commands: f.commands.checked, restart: f.restart.checked,
-      claims: f.claims.checked, borders: f.borders.checked, tweaks: f.tweaks.checked, market: f.market.checked,
+      claims: f.claims.checked, borders: f.borders.checked, tweaks: f.tweaks.checked, market: f.market.checked, waypoints: f.waypoints.checked,
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
       infoAddress: f.infoAddress.value.trim(), infoText: f.infoText.value.trim(), infoLabel: f.infoLabel.value.trim(),

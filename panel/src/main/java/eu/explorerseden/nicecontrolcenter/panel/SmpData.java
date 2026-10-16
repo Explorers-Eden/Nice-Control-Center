@@ -219,7 +219,7 @@ final class SmpData {
 	}
 
 	/** Command storage per namespace: data/<namespace>/command_storage.dat (26.3+) or data/command_storage_<namespace>.dat. */
-	private static Map<String, Path> storageFiles(Path data) {
+	static Map<String, Path> storageFiles(Path data) {
 		Map<String, Path> out = new TreeMap<>();
 		for (Path f : list(data, ".dat")) {
 			String name = f.getFileName().toString();
@@ -269,7 +269,7 @@ final class SmpData {
 		return json.replace("\\u0000", "");
 	}
 
-	private static Map<String, Object> readNbt(Path f) {
+	static Map<String, Object> readNbt(Path f) {
 		try (InputStream raw = new BufferedInputStream(Files.newInputStream(f))) {
 			raw.mark(2);
 			int b1 = raw.read();
