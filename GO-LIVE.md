@@ -110,21 +110,33 @@ The website reads **everything** about the SMP from the panel's database: Discor
    GRANT SELECT ON discord_links, claims, claim_members, claim_players, claim_player_summary,
      market_listings, market_sync, smp_players, smp_command_storage, smp_sync TO website_reader;
    ```
-   The Postgres port must be reachable from GitHub Actions. If it needs SSL from outside, also set the secret `PANEL_DATABASE_SSL=true` and add it to the workflow's `env` next to `PANEL_DATABASE_URL`.
-3. [ ] **GitHub secrets** (explorerseden.eu → Settings → Secrets and variables → Actions):
+   The Postgres port must be reachable from GitHub Actions (for SSL see step 3).
+3. [ ] **GitHub secrets and variables** (explorerseden.eu → Settings → Secrets and variables → Actions). This is the complete list after the change:
 
-   | Secret | |
+   **No longer needed: delete these secrets.** Nothing in the website uses them any more (it reads the database instead of SFTP):
+
+   | Secret | Was used for |
    | --- | --- |
-   | `PANEL_DATABASE_URL` | **new:** `postgres://website_reader:choose-one@<db-host>:5432/<panel database>` |
-   | `SFTP_HOST`, `SFTP_PORT`, `SFTP_USER`, `SFTP_PASSWORD` | **delete**, no longer used |
-   | `SMP_WORLD_SFTP_REMOTE_PATH`, `WAYPOINT_SFTP_REMOTE_PATH`, `SMP_CONFIG_SFTP_REMOTE_PATH` | **delete**, no longer used |
+   | `SFTP_HOST` | the server's SFTP host |
+   | `SFTP_PORT` | the server's SFTP port |
+   | `SFTP_USER` | the SFTP account |
+   | `SFTP_PASSWORD` | the SFTP password |
+   | `SMP_WORLD_SFTP_REMOTE_PATH` | where the world's player files were downloaded from |
+   | `WAYPOINT_SFTP_REMOTE_PATH` | the command storage file with the waypoint hubs, homes and graves |
+   | `SMP_CONFIG_SFTP_REMOTE_PATH` | the server config the old Player Inspector read |
 
-   And these repository **variables** (not secrets):
+   No repository variables become unused.
 
-   | Variable | |
-   | --- | --- |
-   | `PANEL_PUBLIC_URL` | the address of the panel's public info page without `/info`, e.g. `https://info.explorerseden.eu` (your `INFO_HOST`). Market item icons load from `<that>/info/items/…`; without it the Market tab shows no icons. |
-   | `PANEL_WAYPOINT_STORAGE` | only if the waypoint hubs aren't in the `eden` storage: the namespace from the old `WAYPOINT_SFTP_REMOTE_PATH` file (`command_storage_<namespace>.dat`, in 26.3 `data/<namespace>/command_storage.dat`). |
+   **New: add these.**
+
+   | Name | Kind | Value |
+   | --- | --- | --- |
+   | `PANEL_DATABASE_URL` | secret | `postgres://website_reader:choose-one@<db-host>:5432/<panel database>` (the user from step 2) |
+   | `PANEL_PUBLIC_URL` | variable | the address of the panel's public info page without `/info`, e.g. `https://info.explorerseden.eu` (your `INFO_HOST`). Market item icons load from `<that>/info/items/…`; without it the Market tab shows no icons. |
+   | `PANEL_WAYPOINT_STORAGE` | variable, optional | only if the waypoint hubs aren't in the `eden` storage: the namespace from the old `WAYPOINT_SFTP_REMOTE_PATH` file (`command_storage_<namespace>.dat`, in 26.3 `data/<namespace>/command_storage.dat`). Look it up before deleting that secret. |
+   | `PANEL_DATABASE_SSL` | secret, optional | `true` if the database needs SSL from outside (then also add it to the workflow's `env` next to `PANEL_DATABASE_URL`). |
+
+   **Unchanged: keep these.** `REPO_TOKEN`, `TRANSLATIONS_DATABASE_URL`, `DOCKER_USERNAME`, `DOCKER_PASSWORD` (secrets) and `SYNC_TRANSLATIONS_LIVE` (variable, used by "Sync translations").
 4. [ ] **Admin Player Inspector:** it's removed from the website (the panel's Players page covers it). Nothing to do: the next "Publish generated data to Postgres" run deletes its old data from the website database.
 5. [ ] **Push the website changes** (in the explorerseden.eu repo: the scripts read the panel's database, the SFTP steps and the inspector are gone). Then run **Generate Files and Deploy** by hand (Actions tab) and check the log:
    - "Fetch waypoint hub data": `Loaded the "eden" command storage from the panel` and the number of public hubs.
