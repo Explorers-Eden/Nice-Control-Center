@@ -139,9 +139,10 @@ The website reads **everything** about the SMP from the panel's database: Discor
    **Unchanged: keep these.** `REPO_TOKEN`, `TRANSLATIONS_DATABASE_URL`, `DOCKER_USERNAME`, `DOCKER_PASSWORD` (secrets) and `SYNC_TRANSLATIONS_LIVE` (variable, used by "Sync translations").
 4. [ ] **Admin Player Inspector:** it's removed from the website (the panel's Players page covers it). Nothing to do: the next "Publish generated data to Postgres" run deletes its old data from the website database.
 5. [ ] **Push the website changes** (in the explorerseden.eu repo: the scripts read the panel's database, the SFTP steps and the inspector are gone). Then run **Generate Files and Deploy** by hand (Actions tab) and check the log:
-   - "Fetch waypoint hub data": `Loaded the "eden" command storage from the panel` and the number of public hubs.
+   - "Read each player's waypoint hubs, home and last grave": `Loaded the "eden" command storage from the panel` and the number of owners, homes and graves.
    - "Generate SMP player profile data": `Loaded N player(s) from the panel`, `Loaded N Discord link(s), M claim(s) and K market listing(s) from the panel.` and `Wrote N player profile(s)`.
-6. [ ] **Open My SMP Profile:** race and class, stats, advancements, waypoints, home and last grave are there; the Claims tab lists each claim with its name, colour, size and members (only claims with an owner); the Market tab shows what the player sells on `/market` with icons, price and days left.
+6. [ ] **Waypoint hubs moved to the info page:** the website's Waypoint Hubs page is gone. The navbar's SMP menu links to **Server Info** (`https://serverinfo.explorerseden.eu`, new tab) instead, and the old `/waypoint-hubs/` address forwards to the info page's Waypoints tab. Check that tab shows the public hubs (Public pages → Info page → "Waypoint hubs" switch). Players still see their own hubs, public and private, on My SMP Profile.
+7. [ ] **Open My SMP Profile:** race and class, stats, advancements, waypoints, home and last grave are there; the Claims tab lists each claim with its name, colour, size and members (only claims with an owner); the Market tab shows what the player sells on `/market` with icons, price and days left.
 
 Testing the website scripts locally without the database: `SMP_LOCAL_WORLD_DIR=/path/to/world` (player files), `WAYPOINT_LOCAL_FILE=/path/to/command_storage.dat`, and for links, claims and market `PANEL_LOCAL_LINKS_FILE`, `PANEL_LOCAL_CLAIMS_FILE`, `PANEL_LOCAL_MARKET_FILE`.
 
