@@ -1,3 +1,6 @@
+## 1.12.33
+- Server shop: shorter hint under Item model
+
 ## 1.12.32
 - Database: the world's player data for a website, copied every minute when it changed: smp_players (name, Fabled Roots race and class, tags, stats and advancements per player) and smp_command_storage (the data packs' command storage, e.g. waypoint hubs, homes and graves, as JSON). With this the explorerseden.eu website reads everything from the database and needs no SFTP
 
