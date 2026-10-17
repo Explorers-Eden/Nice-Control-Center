@@ -19,6 +19,7 @@
 		"ThrownTridentAccessor",
 		"TridentVoidMixin",
 		"DispenserPlaceMixin",
+		"VillagerGolemMixin",
 		"AnvilTweakMixin",
 		"ArrowDespawnMixin",
 		"BlockUpdatesMixin",

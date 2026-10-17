@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.13.28
+- Gameplay tweak: iron golems when villagers panic. A frightened villager calls an iron golem if none is around, on its own; sleeping, gossiping and other villagers are no longer needed, and gossiping no longer calls golems. Shown on the info page
+
 ## 1.13.27
 - Market: a player listing's price can be for several items ("For how many" when selling, like 5 Diamonds per 16); buyers buy that many at a time. Older listings stay per item
 

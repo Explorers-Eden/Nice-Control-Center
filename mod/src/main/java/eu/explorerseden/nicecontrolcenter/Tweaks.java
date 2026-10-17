@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Gameplay tweaks that need the server mod (a data pack can't do them), kept in
  * config/nicecontrolcenter-tweaks.json: anvil limits, nether portals in any shape, tree felling and vein
- * mining, the AFK tag and the tab list, chat mentions, the grindstone, spawners, saplings, bone meal, tridents and dispensers. Written by the panel, read by the mod when the file changes;
+ * mining, the AFK tag and the tab list, chat mentions, the grindstone, spawners, saplings, bone meal, tridents, dispensers and iron golems. Written by the panel, read by the mod when the file changes;
  * Minecraft-free so both compile it. Everything is off until switched on, and vanilla clients work.
  */
 public final class Tweaks {
@@ -225,6 +225,11 @@ public final class Tweaks {
 		public boolean placeBlocks = false;
 	}
 
+	public static final class Villagers {
+		/** A panicking villager calls an iron golem when none is around: no sleeping, gossiping or other villagers needed. */
+		public boolean panicGolems = false;
+	}
+
 	public static final class Settings {
 		public Anvil anvil = new Anvil();
 		public Portals portals = new Portals();
@@ -239,6 +244,7 @@ public final class Tweaks {
 		public BoneMeal boneMeal = new BoneMeal();
 		public Tridents tridents = new Tridents();
 		public Dispensers dispensers = new Dispensers();
+		public Villagers villagers = new Villagers();
 
 		public Settings fill() {
 			if (anvil == null) anvil = new Anvil();
@@ -254,6 +260,7 @@ public final class Tweaks {
 			if (boneMeal == null) boneMeal = new BoneMeal();
 			if (tridents == null) tridents = new Tridents();
 			if (dispensers == null) dispensers = new Dispensers();
+			if (villagers == null) villagers = new Villagers();
 			if (chat.highlightColor == null || !chat.highlightColor.matches("#[0-9a-fA-F]{6}")) chat.highlightColor = "#FFD166";
 			spawners.deniedMobs = ids(spawners.deniedMobs);
 			spawners.tools = ids(spawners.tools);

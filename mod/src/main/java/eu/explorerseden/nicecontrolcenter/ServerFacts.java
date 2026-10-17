@@ -157,6 +157,9 @@ public final class ServerFacts {
 		if (t.dispensers.placeBlocks) {
 			out.add(tweak("dispensers", "Dispensers place blocks", "bi-box-arrow-right", "A dispenser places blocks in front of it instead of dropping them (droppers still drop).", List.of()));
 		}
+		if (t.villagers.panicGolems) {
+			out.add(tweak("golems", "Iron golems when villagers panic", "bi-shield-shaded", "A frightened villager calls an iron golem if none is around; villagers no longer need to sleep or gossip for one.", List.of()));
+		}
 		if (t.chat.mentions) {
 			out.add(tweak("mentions", "@Mentions", "bi-at", "Write @Name in chat and that player hears a little plop and sees who mentioned them"
 					+ (t.chat.discordPing ? "; players who aren't online get pinged on Discord if they linked their account." : "."), List.of()));

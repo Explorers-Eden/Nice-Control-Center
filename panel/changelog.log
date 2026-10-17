@@ -1,3 +1,6 @@
+## 1.12.36
+- Gameplay → World & nature: Iron golems when villagers panic (needs mod 1.13.28)
+
 ## 1.12.35
 - Market: player listings show "per 16" when priced for several items (mod 1.13.27); the market table and info page too. Database: market_listings gets a per column (1 = price each) for the website
 - Market settings: "Highest price a player can ask" (for one lot) instead of per item
