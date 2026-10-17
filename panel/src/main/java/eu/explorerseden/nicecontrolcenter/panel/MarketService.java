@@ -126,6 +126,7 @@ final class MarketService {
 			m.put("enchantments", l.item.enchantments);
 			m.put("amount", l.amount);
 			m.put("price", l.price);
+			m.put("per", l.lot());
 			m.put("seller", l.sellerName);
 			m.put("sellerUuid", l.seller);
 			m.put("created", l.created);
@@ -275,8 +276,8 @@ final class MarketService {
 					del.executeUpdate();
 				}
 				try (PreparedStatement ins = con.prepareStatement("""
-						INSERT INTO market_listings (id, seller_uuid, seller_name, item_id, item_name, item, lore, enchantments, amount, price, created_at, expires_at, icon)
-						VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?, ?, ?, ?)""")) {
+						INSERT INTO market_listings (id, seller_uuid, seller_name, item_id, item_name, item, lore, enchantments, amount, price, per, created_at, expires_at, icon)
+						VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?, ?, ?, ?, ?)""")) {
 					for (Market.Listing l : c.listings) {
 						ins.setObject(1, UUID.fromString(l.id));
 						ins.setObject(2, UUID.fromString(l.seller));
@@ -288,9 +289,10 @@ final class MarketService {
 						ins.setString(8, Json.GSON.toJson(l.item.enchantments));
 						ins.setInt(9, l.amount);
 						ins.setInt(10, l.price);
-						ins.setTimestamp(11, new Timestamp(l.created));
-						ins.setTimestamp(12, new Timestamp(l.expires));
-						ins.setString(13, icons.iconFor(l.item.stack));
+						ins.setInt(11, l.lot());
+						ins.setTimestamp(12, new Timestamp(l.created));
+						ins.setTimestamp(13, new Timestamp(l.expires));
+						ins.setString(14, icons.iconFor(l.item.stack));
 						ins.addBatch();
 					}
 					ins.executeBatch();

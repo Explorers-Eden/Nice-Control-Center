@@ -39,7 +39,7 @@ public final class Market {
 		public int listingDays = 7;
 		/** Listings per player at once. */
 		public int maxListings = 10;
-		/** Highest price per item. */
+		/** Highest price a player can ask (for one lot of a listing). */
 		public int maxPrice = 100_000;
 		/** Items that can't be listed (ids). */
 		public List<String> bannedItems = new ArrayList<>();
@@ -220,11 +220,17 @@ public final class Market {
 		public Item item;
 		/** Items left to buy (any number, several stacks). */
 		public int amount;
-		/** Price per item, in the currency. */
+		/** Price per {@link #per} items, in the currency. */
 		public int price;
+		/** How many items the price is for: bought in lots of this many (missing in older files: 1). */
+		public int per = 1;
 		public long created;
 		public long expires;
 		public long rev;
+
+		public int lot() {
+			return Math.max(1, per);
+		}
 	}
 
 	/** An item waiting in a mailbox (bought items that didn't fit, unsold items back from the market). */
@@ -338,9 +344,11 @@ public final class Market {
 		}
 
 		/** Lists items (already taken from the seller). Error for the player, or null. */
-		public String list(String seller, String sellerName, Item item, int amount, int price, Settings s, long now) {
+		public String list(String seller, String sellerName, Item item, int amount, int price, int per, Settings s, long now) {
 			if (amount < 1) return "List at least one item.";
-			if (price < 1 || price > s.maxPrice) return "The price per item is 1 to " + s.maxPrice + ".";
+			if (price < 1 || price > s.maxPrice) return "The price is 1 to " + s.maxPrice + ".";
+			if (per < 1 || per > amount) return "The price is for 1 to " + amount + " items.";
+			if (amount % per != 0) return "Sell a multiple of " + per + " (they're bought " + per + " at a time).";
 			if (s.bannedItems.contains(item.id)) return "That item can't be sold here.";
 			if (of(seller).size() >= s.maxListings) return "You already have " + s.maxListings + " listings.";
 			Listing l = new Listing();
@@ -350,6 +358,7 @@ public final class Market {
 			l.item = item;
 			l.amount = amount;
 			l.price = price;
+			l.per = per;
 			l.created = now;
 			l.expires = now + s.listingDays * 86_400_000L;
 			l.rev = bump();
@@ -358,10 +367,10 @@ public final class Market {
 			return null;
 		}
 
-		/** A purchase (the currency is already taken from the buyer): the seller is paid into their mailbox. */
+		/** A purchase of whole lots (the currency is already taken from the buyer): the seller is paid into their mailbox. */
 		public Sale buy(Listing l, String buyer, String buyerName, int amount, long now) {
 			l.amount -= amount;
-			int total = amount * l.price;
+			int total = amount / l.lot() * l.price;
 			Mailbox m = mailbox(l.seller, l.sellerName);
 			m.currency += total;
 			m.rev = bump();

@@ -187,7 +187,7 @@ Public pages → Info page: a read-only page where players can look up the serve
   - The panel downloads the game's textures for the server's Minecraft version from Mojang once, plus the server resource pack (`resource-pack` in server.properties).
   - It draws icons from them, custom models included, into `/data/panel/assets` and `/data/panel/icons`.
   - The public info page shows the market with these icons.
-- **Database:** `market_listings` (id, seller, item id and name, the item as JSON with all components, lore, enchantments, amount left, price each, created, expires) and `market_sales` (listing, item, seller, buyer, amount, total, time), copied every 15 seconds.
+- **Database:** `market_listings` (id, seller, item id and name, the item as JSON with all components, lore, enchantments, amount left, price and `per` (the price is for that many items, bought that many at a time; 1 = price each), created, expires) and `market_sales` (listing, item, seller, buyer, amount, total, time), copied every 15 seconds.
 
 **Pets** (Community → Pets, needs mod 1.13.0): floating player heads that follow their owner, only for looks. Players use `/pets` to take theirs out and pick how it moves.
 

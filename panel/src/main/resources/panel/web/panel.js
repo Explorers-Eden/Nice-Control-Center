@@ -4857,9 +4857,9 @@
     const q = $('pn-mk-search').value.trim().toLowerCase();
     const rows = mkData.listings.filter((l) => !q || [l.name, l.seller, l.item].some((t) => String(t).toLowerCase().includes(q)));
     const remove = can('players.manage');
-    $('pn-mk-table').innerHTML = rows.length ? `<thead><tr><th>Item</th><th>Seller</th><th>Left</th><th>Price each</th><th>Ends</th><th></th></tr></thead><tbody>${rows.map((l) => `
+    $('pn-mk-table').innerHTML = rows.length ? `<thead><tr><th>Item</th><th>Seller</th><th>Left</th><th>Price</th><th>Ends</th><th></th></tr></thead><tbody>${rows.map((l) => `
       <tr><td class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${esc(l.name)}<small class="pn-hint">${esc([...(l.enchantments || []), ...(l.lore || [])].join(' · '))}</small></span></td>
-      <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}</td><td>${esc(dateTime(l.expires))}</td>
+      <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}${l.per > 1 ? ` per ${Number(l.per).toLocaleString()}` : ' each'}</td><td>${esc(dateTime(l.expires))}</td>
       <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's mailbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
       : `<tbody><tr><td class="pn-hint">${mkData.listings.length ? 'Nothing matches.' : 'Nothing for sale.'}</td></tr></tbody>`;
     const sales = mkData.sales.filter((s) => s.seller);

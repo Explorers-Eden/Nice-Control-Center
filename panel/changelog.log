@@ -1,3 +1,7 @@
+## 1.12.35
+- Market: player listings show "per 16" when priced for several items (mod 1.13.27); the market table and info page too. Database: market_listings gets a per column (1 = price each) for the website
+- Market settings: "Highest price a player can ask" (for one lot) instead of per item
+
 ## 1.12.34
 - Info page: a Waypoint hubs tab with the public waypoint hubs of the Explorer's Eden data packs (name, description, owner with their head, dimension and coordinates), read from the world's command storage; switch it off under Public pages → Info page
 

@@ -113,6 +113,11 @@ public final class MarketDialogs {
 		return Optional.of(new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), true, true, 16, 16));
 	}
 
+	/** "5 Diamonds each" or "5 Diamonds per 16". */
+	private static String price(Market.Listing l) {
+		return money(l.price) + (l.lot() == 1 ? " each" : " per " + l.lot());
+	}
+
 	private static String money(int n) {
 		return String.format(Locale.ROOT, "%,d %s", n, n == 1 ? MarketStore.currencyName().replaceAll("s$", "") : MarketStore.currencyName());
 	}
@@ -201,7 +206,7 @@ public final class MarketDialogs {
 		Comparator<Market.Listing> order = switch (sort) {
 			case "new" -> Comparator.comparingLong((Market.Listing l) -> l.created).reversed();
 			case "name" -> Comparator.comparing((Market.Listing l) -> l.item.name.toLowerCase(Locale.ROOT));
-			default -> Comparator.comparingInt((Market.Listing l) -> l.price);
+			default -> Comparator.comparingDouble((Market.Listing l) -> (double) l.price / l.lot());
 		};
 		all.sort(order);
 		int pages = Math.max(1, (all.size() + PAGE - 1) / PAGE);
@@ -231,7 +236,7 @@ public final class MarketDialogs {
 			Component desc = Component.empty()
 					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
-					.append(Component.literal("\n" + money(l.price) + " each").withStyle(ChatFormatting.GOLD))
+					.append(Component.literal("\n" + price(l)).withStyle(ChatFormatting.GOLD))
 					.append(Component.literal(" · " + (own ? "you" : l.sellerName) + "  ").withStyle(ChatFormatting.GRAY))
 					.append(own ? link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA)
 							: link("Buy", "See it and buy", "view", args("id", l.id), ChatFormatting.GREEN));
@@ -271,7 +276,7 @@ public final class MarketDialogs {
 		else body.add(new PlainMessage(title, TEXT_WIDTH));
 		// The facts in one line: label grey, value bright.
 		body.add(new PlainMessage(Component.empty()
-				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(l.price) + " each").withStyle(ChatFormatting.GOLD))
+				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(price(l)).withStyle(ChatFormatting.GOLD))
 				.append(Component.literal("   Left ").withStyle(ChatFormatting.GRAY)).append(Component.literal(String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.WHITE))
 				.append(Component.literal("   Seller ").withStyle(ChatFormatting.GRAY)).append(Component.literal(own ? "you" : l.sellerName).withStyle(ChatFormatting.WHITE)), TEXT_WIDTH));
 		List<ActionButton> buttons = new ArrayList<>();
@@ -283,11 +288,14 @@ public final class MarketDialogs {
 			return;
 		}
 		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
-		int afford = Math.min(carried / Math.max(1, l.price), l.amount);
-		body.add(afford > 0 ? text("You carry " + money(carried) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + ".", ChatFormatting.GRAY)
-				: text("You carry " + money(carried) + ": not enough for one.", ChatFormatting.RED));
-		List<Input> inputs = List.of(new Input("amount", new TextInput(120, Component.literal("How many"), true, "1", 9, Optional.empty())));
-		buttons.add(button("Buy", money(l.price) + " each", "buy", args("id", l.id)));
+		// Bought in whole lots: "How many" counts lots when a lot is more than one item.
+		int lot = l.lot();
+		int afford = Math.min(carried / Math.max(1, l.price), l.amount / lot);
+		String unit = lot == 1 ? "" : afford == 1 ? " lot of " + lot : " lots of " + lot;
+		body.add(afford > 0 ? text("You carry " + money(carried) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + unit + ".", ChatFormatting.GRAY)
+				: text("You carry " + money(carried) + ": not enough for " + (lot == 1 ? "one." : lot + "."), ChatFormatting.RED));
+		List<Input> inputs = List.of(new Input("amount", new TextInput(120, Component.literal(lot == 1 ? "How many" : "Lots of " + lot), true, "1", 9, Optional.empty())));
+		buttons.add(button("Buy", price(l), "buy", args("id", l.id)));
 		menu(player, l.item.name, body, inputs, buttons, back("browse", args("page", "0")));
 	}
 
@@ -532,7 +540,8 @@ public final class MarketDialogs {
 			menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));
 			return;
 		}
-		body.add(text("The price is per item, in " + MarketStore.currencyName() + ". More than a stack is fine. "
+		body.add(text("The price is in " + MarketStore.currencyName() + " for as many items as \"For how many\" says (1: per item), and buyers buy that many at a time. "
+				+ "More than a stack is fine. "
 				+ "Unsold items come back to your mailbox after " + MarketStore.settings().listingDays + " days.", ChatFormatting.GRAY));
 		List<SingleOptionInput.Entry> entries = new ArrayList<>();
 		for (int i = 0; i < kinds.size() && i < 36; i++) {
@@ -542,7 +551,8 @@ public final class MarketDialogs {
 		List<Input> inputs = List.of(
 				new Input("slot", new SingleOptionInput(250, entries, Component.literal("Item"), true)),
 				new Input("amount", new TextInput(120, Component.literal("How many"), true, "", 9, Optional.empty())),
-				new Input("price", new TextInput(120, Component.literal("Price each"), true, "", 9, Optional.empty())));
+				new Input("price", new TextInput(120, Component.literal("Price"), true, "", 9, Optional.empty())),
+				new Input("per", new TextInput(120, Component.literal("For how many"), true, "1", 9, Optional.empty())));
 		menu(player, "Market · Sell", body, inputs, List.of(button("List it", null, "list", args("kinds", signature(kinds)))), back("home", args()));
 	}
 
@@ -555,7 +565,7 @@ public final class MarketDialogs {
 			Component desc = Component.empty()
 					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
-					.append(Component.literal("\n" + money(l.price) + " each").withStyle(ChatFormatting.GOLD))
+					.append(Component.literal("\n" + price(l)).withStyle(ChatFormatting.GOLD))
 					.append(Component.literal(" · " + days + (days == 1 ? " day" : " days") + " left  ").withStyle(ChatFormatting.GRAY))
 					.append(link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA));
 			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
@@ -647,16 +657,18 @@ public final class MarketDialogs {
 			return;
 		}
 		if (l.seller.equals(player.getStringUUID())) return;
-		int amount = num(in, "amount");
-		if (amount < 1) {
+		int lots = num(in, "amount");
+		int lot = l.lot();
+		if (lots < 1) {
 			view(player, l, "Type how many you want.");
 			return;
 		}
-		if (amount > l.amount) {
-			view(player, l, "Only " + l.amount + " left.");
+		if ((long) lots * lot > l.amount) {
+			view(player, l, "Only " + (lot == 1 ? l.amount : l.amount / lot + (l.amount / lot == 1 ? " lot" : " lots")) + " left.");
 			return;
 		}
-		long cost = (long) amount * l.price;
+		int amount = lots * lot;
+		long cost = (long) lots * l.price;
 		ItemStack coin = new ItemStack(MarketStore.currency());
 		if (cost > Integer.MAX_VALUE || MarketStore.count(player, coin) < cost) {
 			view(player, l, "You need " + money((int) Math.min(cost, Integer.MAX_VALUE)) + ".");
@@ -707,6 +719,7 @@ public final class MarketDialogs {
 		ItemStack like = kinds.get(slot);
 		int amount = num(in, "amount");
 		int price = num(in, "price");
+		int per = num(in, "per");
 		int have = MarketStore.count(player, like);
 		if (amount < 1 || amount > have) {
 			sell(player, amount < 1 ? "Type how many to sell." : "You only have " + have + ".");
@@ -714,7 +727,15 @@ public final class MarketDialogs {
 		}
 		Market.Settings s = MarketStore.settings();
 		if (price < 1 || price > s.maxPrice) {
-			sell(player, "The price each is 1 to " + s.maxPrice + ".");
+			sell(player, "The price is 1 to " + s.maxPrice + ".");
+			return;
+		}
+		if (per < 1 || per > amount) {
+			sell(player, "\"For how many\" is 1 to " + amount + ".");
+			return;
+		}
+		if (amount % per != 0) {
+			sell(player, "Sell a multiple of " + per + ": they're bought " + per + " at a time.");
 			return;
 		}
 		Market.Item item = MarketStore.store(player, like);
@@ -731,14 +752,14 @@ public final class MarketDialogs {
 			sell(player, "You don't have that many any more.");
 			return;
 		}
-		String err = MarketStore.data().list(player.getStringUUID(), player.getPlainTextName(), item, amount, price, s, System.currentTimeMillis());
+		String err = MarketStore.data().list(player.getStringUUID(), player.getPlainTextName(), item, amount, price, per, s, System.currentTimeMillis());
 		if (err != null) {
 			MarketStore.give(player, like, amount);
 			sell(player, err);
 			return;
 		}
 		MarketStore.saveNow();
-		home(player, "Listed " + amount + " × " + item.name + " for " + money(price) + " each.");
+		home(player, "Listed " + amount + " × " + item.name + " for " + money(price) + (per == 1 ? " each." : " per " + per + "."));
 	}
 
 	private static void collect(ServerPlayer player) {

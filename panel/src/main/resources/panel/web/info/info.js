@@ -220,7 +220,7 @@
           <span class="in-slot">${l.icon ? `<img src="items/${esc(l.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}${l.amount > 1 ? `<b class="in-slot__count">${l.amount > 999 ? Math.round(l.amount / 100) / 10 + 'k' : l.amount}</b>` : ''}</span>
           <span class="in-tile__text"><b${extra.length ? ' class="in-tile__name--magic"' : ''}>${esc(l.name)}</b>
             ${extra.length ? `<small class="in-tile__extra">${esc(extra.join(' · '))}</small>` : ''}
-            <span class="in-tile__price">${coin}${Number(l.price).toLocaleString()} <small>${esc(l.price === 1 ? cur : cur + 's')} each</small></span>
+            <span class="in-tile__price">${coin}${Number(l.price).toLocaleString()} <small>${esc(l.price === 1 ? cur : cur + 's')} ${l.per > 1 ? `per ${Number(l.per).toLocaleString()}` : 'each'}</small></span>
             <small class="in-tile__seller"><i class="bi bi-person"></i> ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>`;
       };
       const offer = (o) => `<div class="in-tile" data-search="${esc([o.name, o.description].join(' ').toLowerCase())}">
