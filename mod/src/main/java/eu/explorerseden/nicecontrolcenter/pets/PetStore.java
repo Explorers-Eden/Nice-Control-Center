@@ -61,7 +61,11 @@ public final class PetStore {
 			file = null;
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(PetStore::tick);
-		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((h, s) -> PetFollowers.remove(h.player.getUUID()));
+		// A dropped connection fires this on a network thread: the pet's entity goes on the server thread.
+		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((h, s) -> {
+			java.util.UUID id = h.player.getUUID();
+			s.execute(() -> PetFollowers.remove(id));
+		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((e, level) -> {
 			if (PetFollowers.leftOver(e)) e.discard();
 		});

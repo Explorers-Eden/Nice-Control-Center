@@ -106,8 +106,10 @@ public final class MarketDialogs {
 
 	/** An item row: its icon (with the item's own tooltip on hover) and a description next to it. */
 	private static Optional<DialogBody> itemRow(ServerPlayer player, Market.Item item, int count, Component description) {
-		ItemStack stack = MarketStore.stack(player.level().getServer(), item, Math.max(1, Math.min(count, 99)));
+		ItemStack stack = MarketStore.stack(player.level().getServer(), item, 1);
 		if (stack.isEmpty()) return Optional.empty();
+		// Over the item's stack size the dialog can't be sent and the player gets kicked.
+		stack.setCount(Math.max(1, Math.min(count, stack.getMaxStackSize())));
 		return Optional.of(new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), true, true, 16, 16));
 	}
 
