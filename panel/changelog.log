@@ -1,3 +1,6 @@
+## 1.13.3
+- Market and info page: colour codes in enchantment names and lore (like "Soul Speed §3III") are no longer shown as text
+
 ## 1.13.2
 - Tuning: lower default ranges for tick-less and lighter mob AI (mod 1.14.2)
 

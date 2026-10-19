@@ -215,7 +215,8 @@
       const cur = titleCase(String(m.currency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));
       const coin = m.currencyIcon ? `<img class="in-item in-item--coin" src="items/${esc(m.currencyIcon)}" alt="">` : '';
       const item = (l) => {
-        const extra = [...(l.enchantments || []), ...(l.lore || [])];
+        // Colour codes (§3…) out: shown as plain text.
+        const extra = [...(l.enchantments || []), ...(l.lore || [])].map((t) => String(t).replace(/\u00a7[0-9a-fk-or]/gi, ''));
         return `<div class="in-tile" data-search="${esc([l.name, l.seller, l.item, ...extra].join(' ').toLowerCase())}">
           <span class="in-slot">${l.icon ? `<img src="items/${esc(l.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}${l.amount > 1 ? `<b class="in-slot__count">${l.amount > 999 ? Math.round(l.amount / 100) / 10 + 'k' : l.amount}</b>` : ''}</span>
           <span class="in-tile__text"><b${extra.length ? ' class="in-tile__name--magic"' : ''}>${esc(l.name)}</b>
