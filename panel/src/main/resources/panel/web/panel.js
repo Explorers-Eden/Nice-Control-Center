@@ -4,6 +4,38 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  /** Minecraft text with § codes as HTML, like the game shows it: the 16 colours, bold, italic, underlined, struck through; §r resets, §k is left out. */
+  const MC_COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
+    8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };
+  const MC_STYLES = { l: 'font-weight:800', o: 'font-style:italic', n: 'text-decoration:underline', m: 'text-decoration:line-through' };
+  function mcHtml(text) {
+    let out = '';
+    let open = 0;
+    for (const part of String(text ?? '').split(/(\u00a7[0-9a-fk-or])/i)) {
+      const code = /^\u00a7([0-9a-fk-or])$/i.exec(part);
+      if (!code) {
+        out += esc(part);
+        continue;
+      }
+      const c = code[1].toLowerCase();
+      if (MC_COLORS[c] || c === 'r') {
+        // A colour (or reset) ends the formatting before it, like in the game.
+        out += '</span>'.repeat(open);
+        open = 0;
+        if (MC_COLORS[c]) {
+          out += `<span style="color:${MC_COLORS[c]}">`;
+          open++;
+        }
+      } else if (MC_STYLES[c]) {
+        out += `<span style="${MC_STYLES[c]}">`;
+        open++;
+      }
+    }
+    return out + '</span>'.repeat(open);
+  }
+  /** The same text without its codes (for searching). */
+  const mcPlain = (text) => String(text ?? '').replace(/\u00a7[0-9a-fk-or]/gi, '');
+
   async function api(path, body) {
     const res = await fetch(path, body === undefined ? {} : {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' }, body: JSON.stringify(body),
@@ -3846,10 +3878,7 @@
 
   // ── Settings → Maintenance ──────────────────────────────────────────────
 
-  const MC_COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
-    8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };
-
-  /** A MOTD with § codes as it looks in the server list. */
+  /** A MOTD with § codes as it looks in the server list (MC_COLORS at the top). */
   function motdHtml(text) {
     let out = '';
     let style = { color: '#AAAAAA', b: false, i: false, u: false, s: false };
@@ -5009,7 +5038,7 @@
     const rows = mkData.listings.filter((l) => !q || [l.name, l.seller, l.item].some((t) => String(t).toLowerCase().includes(q)));
     const remove = can('players.manage');
     $('pn-mk-table').innerHTML = rows.length ? `<thead><tr><th>Item</th><th>Seller</th><th>Left</th><th>Price</th><th>Ends</th><th></th></tr></thead><tbody>${rows.map((l) => `
-      <tr><td class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${esc(l.name)}<small class="pn-hint">${esc([...(l.enchantments || []), ...(l.lore || [])].join(' · ').replace(/\u00a7[0-9a-fk-or]/gi, ''))}</small></span></td>
+      <tr><td class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${mcHtml(l.name)}<small class="pn-hint">${[...(l.enchantments || []), ...(l.lore || [])].map(mcHtml).join(' · ')}</small></span></td>
       <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}${l.per > 1 ? ` per ${Number(l.per).toLocaleString()}` : ' each'}</td><td>${esc(dateTime(l.expires))}</td>
       <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's mailbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
       : `<tbody><tr><td class="pn-hint">${mkData.listings.length ? 'Nothing matches.' : 'Nothing for sale.'}</td></tr></tbody>`;

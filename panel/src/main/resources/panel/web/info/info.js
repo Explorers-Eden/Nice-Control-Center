@@ -7,6 +7,38 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /** Minecraft text with § codes as HTML, like the game shows it: the 16 colours, bold, italic, underlined, struck through; §r resets, §k is left out. */
+  const MC_COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
+    8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };
+  const MC_STYLES = { l: 'font-weight:800', o: 'font-style:italic', n: 'text-decoration:underline', m: 'text-decoration:line-through' };
+  function mcHtml(text) {
+    let out = '';
+    let open = 0;
+    for (const part of String(text ?? '').split(/(\u00a7[0-9a-fk-or])/i)) {
+      const code = /^\u00a7([0-9a-fk-or])$/i.exec(part);
+      if (!code) {
+        out += esc(part);
+        continue;
+      }
+      const c = code[1].toLowerCase();
+      if (MC_COLORS[c] || c === 'r') {
+        // A colour (or reset) ends the formatting before it, like in the game.
+        out += '</span>'.repeat(open);
+        open = 0;
+        if (MC_COLORS[c]) {
+          out += `<span style="color:${MC_COLORS[c]}">`;
+          open++;
+        }
+      } else if (MC_STYLES[c]) {
+        out += `<span style="${MC_STYLES[c]}">`;
+        open++;
+      }
+    }
+    return out + '</span>'.repeat(open);
+  }
+  /** The same text without its codes (for searching). */
+  const mcPlain = (text) => String(text ?? '').replace(/\u00a7[0-9a-fk-or]/gi, '');
   const COLORS = { 0: '#000000', 1: '#0000AA', 2: '#00AA00', 3: '#00AAAA', 4: '#AA0000', 5: '#AA00AA', 6: '#FFAA00', 7: '#AAAAAA',
     8: '#555555', 9: '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF' };
 
@@ -215,12 +247,11 @@
       const cur = titleCase(String(m.currency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));
       const coin = m.currencyIcon ? `<img class="in-item in-item--coin" src="items/${esc(m.currencyIcon)}" alt="">` : '';
       const item = (l) => {
-        // Colour codes (§3…) out: shown as plain text.
-        const extra = [...(l.enchantments || []), ...(l.lore || [])].map((t) => String(t).replace(/\u00a7[0-9a-fk-or]/gi, ''));
-        return `<div class="in-tile" data-search="${esc([l.name, l.seller, l.item, ...extra].join(' ').toLowerCase())}">
+        const extra = [...(l.enchantments || []), ...(l.lore || [])];
+        return `<div class="in-tile" data-search="${esc(mcPlain([l.name, l.seller, l.item, ...extra].join(' ')).toLowerCase())}">
           <span class="in-slot">${l.icon ? `<img src="items/${esc(l.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}${l.amount > 1 ? `<b class="in-slot__count">${l.amount > 999 ? Math.round(l.amount / 100) / 10 + 'k' : l.amount}</b>` : ''}</span>
-          <span class="in-tile__text"><b${extra.length ? ' class="in-tile__name--magic"' : ''}>${esc(l.name)}</b>
-            ${extra.length ? `<small class="in-tile__extra">${esc(extra.join(' · '))}</small>` : ''}
+          <span class="in-tile__text"><b${extra.length ? ' class="in-tile__name--magic"' : ''}>${mcHtml(l.name)}</b>
+            ${extra.length ? `<small class="in-tile__extra">${extra.map(mcHtml).join(' · ')}</small>` : ''}
             <span class="in-tile__price">${coin}${Number(l.price).toLocaleString()} <small>${esc(l.price === 1 ? cur : cur + 's')} ${l.per > 1 ? `per ${Number(l.per).toLocaleString()}` : 'each'}</small></span>
             <small class="in-tile__seller"><i class="bi bi-person"></i> ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>`;
       };

@@ -1,3 +1,6 @@
+## 1.13.4
+- Market and info page: colour and format codes in item names, enchantments and lore (like "Soul Speed §3III") are shown in their colours, like in game, instead of as text
+
 ## 1.13.3
 - Market and info page: colour codes in enchantment names and lore (like "Soul Speed §3III") are no longer shown as text
 
