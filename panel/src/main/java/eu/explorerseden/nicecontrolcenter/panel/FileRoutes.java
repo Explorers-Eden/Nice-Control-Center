@@ -129,6 +129,8 @@ final class FileRoutes {
 				return;
 			}
 			ctx.header("Content-Disposition", "attachment; filename=\"" + p.getFileName().toString().replace("\"", "") + "\"");
+			// Sent as it is: compressing on the fly would write fewer bytes than the length promised (Jetty then fails the download).
+			ctx.disableCompression();
 			ctx.header("Content-Length", String.valueOf(Files.size(p)));
 			ctx.contentType("application/octet-stream");
 			ctx.result(Files.newInputStream(p));

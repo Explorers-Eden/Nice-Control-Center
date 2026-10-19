@@ -14,7 +14,8 @@ import java.util.Map;
 /**
  * Gameplay tweaks that need the server mod (a data pack can't do them), kept in
  * config/nicecontrolcenter-tweaks.json: anvil limits, nether portals in any shape, tree felling and vein
- * mining, the AFK tag and the tab list, chat mentions, the grindstone, spawners, saplings, bone meal, tridents, dispensers and iron golems. Written by the panel, read by the mod when the file changes;
+ * mining, the AFK tag and the tab list, chat mentions, the grindstone, spawners, saplings, bone meal, tridents, dispensers, iron golems,
+ * crops in the rain, Mending repairs at the anvil and AFK players at night. Written by the panel, read by the mod when the file changes;
  * Minecraft-free so both compile it. Everything is off until switched on, and vanilla clients work.
  */
 public final class Tweaks {
@@ -230,6 +231,39 @@ public final class Tweaks {
 		public boolean panicGolems = false;
 	}
 
+	public static final class Crops {
+		/** Crops out in the rain grow faster: each growth tick has rainBoost percent chance of a second one. */
+		public boolean rainGrowth = false;
+		public int rainBoost = 50;
+	}
+
+	public static final class Mending {
+		/**
+		 * Sneak + right click an anvil: the Mending item in the main hand (or the off hand, with the main hand empty) is repaired with the
+		 * player's experience points, at Mending's rate (1 point = 2 durability).
+		 */
+		public boolean anvilRepair = false;
+	}
+
+	public static final class Sleep {
+		/** AFK players (see Afk.minutes) don't count when working out how many need to sleep to skip the night. */
+		public boolean ignoreAfk = false;
+	}
+
+	/**
+	 * Hide ores from x-ray (like Paper's anti-xray, engine mode 1): ores with no open side are sent to players as
+	 * stone, deepslate, netherrack or end stone; as soon as a block next to one changes, the real ore is sent.
+	 */
+	public static final class AntiXray {
+		public boolean enabled = false;
+		/** Blocks that are hidden (ids or #tags). */
+		public List<String> blocks = new ArrayList<>(List.of("minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:emerald_ore",
+				"minecraft:deepslate_emerald_ore", "minecraft:gold_ore", "minecraft:deepslate_gold_ore", "minecraft:lapis_ore", "minecraft:deepslate_lapis_ore",
+				"minecraft:redstone_ore", "minecraft:deepslate_redstone_ore", "minecraft:ancient_debris"));
+		/** Overworld-like dimensions: only below this height (ores above are rare, and it saves work); the Nether and End: everywhere. */
+		public int maxY = 64;
+	}
+
 	public static final class Settings {
 		public Anvil anvil = new Anvil();
 		public Portals portals = new Portals();
@@ -245,6 +279,10 @@ public final class Tweaks {
 		public Tridents tridents = new Tridents();
 		public Dispensers dispensers = new Dispensers();
 		public Villagers villagers = new Villagers();
+		public Crops crops = new Crops();
+		public Mending mending = new Mending();
+		public Sleep sleep = new Sleep();
+		public AntiXray antiXray = new AntiXray();
 
 		public Settings fill() {
 			if (anvil == null) anvil = new Anvil();
@@ -261,6 +299,11 @@ public final class Tweaks {
 			if (tridents == null) tridents = new Tridents();
 			if (dispensers == null) dispensers = new Dispensers();
 			if (villagers == null) villagers = new Villagers();
+			if (crops == null) crops = new Crops();
+			if (mending == null) mending = new Mending();
+			if (sleep == null) sleep = new Sleep();
+			if (antiXray == null) antiXray = new AntiXray();
+			antiXray.blocks = ids(antiXray.blocks);
 			if (chat.highlightColor == null || !chat.highlightColor.matches("#[0-9a-fA-F]{6}")) chat.highlightColor = "#FFD166";
 			spawners.deniedMobs = ids(spawners.deniedMobs);
 			spawners.tools = ids(spawners.tools);
@@ -333,11 +376,14 @@ public final class Tweaks {
 		for (Dimension d : s.tabList.dimensions.values()) if (d.name.length() > 32) return "Dimension names are up to 32 characters.";
 		if (s.veins.maxBlocks < 2 || s.veins.maxBlocks > 1024) return "Veins are 2 to 1024 blocks.";
 		if (s.afk.minutes < 1 || s.afk.minutes > 120) return "AFK after 1 to 120 minutes.";
+		if (s.crops.rainBoost < 1 || s.crops.rainBoost > 100) return "Rain makes crops grow 1 to 100 % faster.";
+		if (s.antiXray.maxY < -64 || s.antiXray.maxY > 320) return "Ores are hidden below a height of -64 to 320.";
+		if (s.antiXray.blocks.size() > 100) return "At most 100 blocks to hide.";
 		if (s.afk.tag.length() > 16) return "The AFK tag is up to 16 characters.";
 		if (s.tabList.header.length() > 500 || s.tabList.footer.length() > 500) return "Header and footer are up to 500 characters each.";
 		for (String id : s.spawners.deniedMobs) if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't a mob id.";
 		for (List<String> l : List.of(s.spawners.tools, s.saplings.items, s.saplings.ground, s.felling.tools, s.felling.deniedTools, s.felling.logs, s.felling.deniedLogs, s.felling.leaves,
-				s.veins.tools, s.veins.deniedTools, s.veins.blocks, s.veins.deniedBlocks)) {
+				s.veins.tools, s.veins.deniedTools, s.veins.blocks, s.veins.deniedBlocks, s.antiXray.blocks)) {
 			for (String id : l) if (!id.matches("#?[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + id + "\" isn't an id or #tag.";
 		}
 		return null;

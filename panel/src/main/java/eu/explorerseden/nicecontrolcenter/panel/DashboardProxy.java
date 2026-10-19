@@ -32,6 +32,7 @@ final class DashboardProxy {
 			Map.entry("/api/console/run", Permissions.CONSOLE_WRITE),
 			Map.entry("/api/chat/send", Permissions.CONSOLE_WRITE),
 			Map.entry("/api/players/action", Permissions.PLAYERS_MANAGE),
+			Map.entry("/api/market/remove", Permissions.PLAYERS_MANAGE),
 			Map.entry("/api/properties/save", Permissions.SETTINGS_SERVER),
 			Map.entry("/api/gamerules/save", Permissions.SETTINGS_SERVER),
 			Map.entry("/api/packsettings/apply", Permissions.SETTINGS_SERVER),

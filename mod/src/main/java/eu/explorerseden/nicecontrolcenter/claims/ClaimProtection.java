@@ -181,6 +181,9 @@ public final class ClaimProtection {
 	/** What touching the entity needs; null = anyone may (monsters, players: PvP is its own switch). */
 	private static Role entityRole(Entity e, boolean attack) {
 		if (e instanceof Player || e instanceof Enemy) return null;
+		// Interaction entities only exist for data packs to notice clicks (graves, waypoint hubs, the spawn's
+		// buttons and signs): anyone may use them, the pack decides what's allowed.
+		if (e instanceof net.minecraft.world.entity.Interaction) return null;
 		if (e instanceof LivingEntity && attack && !(e instanceof ArmorStand)) return null; // Damage is checked in allowDamage.
 		if (e instanceof AbstractVillager) return attack ? Role.CONTAINERS : Role.ACCESS;
 		if (e instanceof ArmorStand || e instanceof HangingEntity || e instanceof net.minecraft.world.entity.vehicle.VehicleEntity

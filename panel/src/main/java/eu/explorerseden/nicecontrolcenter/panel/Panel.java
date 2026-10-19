@@ -146,6 +146,7 @@ public final class Panel {
 		WaypointHubs waypointHubs = new WaypointHubs(serverDir);
 		info.useWaypointHubs(waypointHubs);
 		pets.useWaypointHubs(waypointHubs);
+		pets.startDbSync(db);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);
 		home.useMod(dashboard);
@@ -241,6 +242,7 @@ public final class Panel {
 			routes.get("/api/server", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				Map<String, Object> out = new LinkedHashMap<>(server.status());
 				out.put("eula", server.eulaAccepted());
+				if (ctx.queryParam("memory") != null) out.put("memory", MemoryInfo.read(out.get("pid") instanceof Long pid ? pid : null));
 				json(ctx, out);
 			}));
 			routes.post("/api/server/start", guard(Permissions.SERVER_POWER, (ctx, me) -> power(ctx, me, audit, "server.start", server.start())));
@@ -357,6 +359,7 @@ public final class Panel {
 			// Live console: the last lines first, then each new line. Commands go through POST.
 			routes.ws("/api/console", ws -> {
 				Map<String, Consumer<String>> listeners = new ConcurrentHashMap<>();
+				Map<String, ConsoleClient> clients = new ConcurrentHashMap<>();
 				ws.onConnect(ctx -> {
 					Auth.Session session = auth.session(ctx.cookie(Auth.COOKIE));
 					if (session == null) {
@@ -368,19 +371,23 @@ public final class Panel {
 						return;
 					}
 					ctx.enableAutomaticPings();
-					ctx.send(Json.GSON.toJson(Map.of("history", server.history())));
-					Consumer<String> listener = line -> send(ctx, line);
+					// Lines go out in order through the client's own queue; history first. A send that fails
+					// closes the connection so the browser reconnects, instead of the console going quiet.
+					ConsoleClient client = new ConsoleClient(ctx);
+					clients.put(ctx.sessionId(), client);
+					client.offer(Json.GSON.toJson(Map.of("history", server.history())));
+					Consumer<String> listener = line -> client.offer(Json.GSON.toJson(Map.of("line", line)));
 					listeners.put(ctx.sessionId(), listener);
 					server.listen(listener);
 				});
-				ws.onClose(ctx -> {
+				Consumer<WsContext> gone = ctx -> {
 					Consumer<String> listener = listeners.remove(ctx.sessionId());
 					if (listener != null) server.unlisten(listener);
-				});
-				ws.onError(ctx -> {
-					Consumer<String> listener = listeners.remove(ctx.sessionId());
-					if (listener != null) server.unlisten(listener);
-				});
+					ConsoleClient client = clients.remove(ctx.sessionId());
+					if (client != null) client.stop();
+				};
+				ws.onClose(gone::accept);
+				ws.onError(gone::accept);
 			});
 		});
 
@@ -434,8 +441,59 @@ public final class Panel {
 		return out;
 	}
 
-	private static void send(WsContext ctx, String line) {
-		if (ctx.session.isOpen()) ctx.send(Json.GSON.toJson(Map.of("line", line)));
+	/**
+	 * One browser's console connection: messages are sent one after another from a virtual thread, with
+	 * a heartbeat every 25 s (the browser reconnects when it hears nothing for longer). A full queue or a
+	 * failed send closes the connection; the browser then reconnects and gets the history again.
+	 */
+	private static final class ConsoleClient {
+		private static final String HEARTBEAT = "{\"ping\":1}";
+		private final WsContext ctx;
+		private final java.util.concurrent.LinkedBlockingQueue<String> queue = new java.util.concurrent.LinkedBlockingQueue<>(5000);
+		private final Thread thread;
+		private volatile boolean stopped;
+
+		ConsoleClient(WsContext ctx) {
+			this.ctx = ctx;
+			this.thread = Thread.ofVirtual().name("console-ws").start(this::run);
+		}
+
+		void offer(String message) {
+			if (!stopped && !queue.offer(message)) fail("too far behind");
+		}
+
+		void stop() {
+			stopped = true;
+			thread.interrupt();
+		}
+
+		private void run() {
+			try {
+				while (!stopped) {
+					String message = queue.poll(25, TimeUnit.SECONDS);
+					if (message == null) message = HEARTBEAT;
+					if (!ctx.session.isOpen()) return;
+					var done = new org.eclipse.jetty.websocket.api.Callback.Completable();
+					ctx.session.sendText(message, done);
+					done.get(30, TimeUnit.SECONDS);
+				}
+			} catch (InterruptedException e) {
+				// Closed.
+			} catch (Exception e) {
+				fail(e.getClass().getSimpleName());
+			}
+		}
+
+		private void fail(String why) {
+			if (stopped) return;
+			stopped = true;
+			thread.interrupt();
+			try {
+				ctx.closeSession(1011, "Console connection lost (" + why + ")");
+			} catch (RuntimeException e) {
+				// Already gone.
+			}
+		}
 	}
 
 	/** TIMEZONE or TZ (e.g. Europe/Berlin) for schedules and backup names; the system zone otherwise. */

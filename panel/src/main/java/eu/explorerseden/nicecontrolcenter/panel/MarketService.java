@@ -43,6 +43,8 @@ final class MarketService {
 		List<Market.Listing> listings = new ArrayList<>();
 		List<String> removed = new ArrayList<>();
 		List<Market.Sale> sales = new ArrayList<>();
+		/** Null from a mod before 1.14.0 (then the mail table is left as it is). */
+		Map<String, Market.Mailbox> mail;
 	}
 
 	private final Path serverDir;
@@ -108,6 +110,7 @@ final class MarketService {
 			c.full = true;
 			c.listings = new ArrayList<>(d.listings.values());
 			c.sales = d.sales;
+			c.mail = d.mail;
 		} catch (IOException | RuntimeException e) {
 			// Nothing to show.
 		}
@@ -279,6 +282,8 @@ final class MarketService {
 						INSERT INTO market_listings (id, seller_uuid, seller_name, item_id, item_name, item, lore, enchantments, amount, price, per, created_at, expires_at, icon)
 						VALUES (?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, ?, ?, ?, ?, ?, ?)""")) {
 					for (Market.Listing l : c.listings) {
+						// One broken entry mustn't stop the whole copy.
+						if (uuid(l.id) == null || uuid(l.seller) == null) continue;
 						ins.setObject(1, UUID.fromString(l.id));
 						ins.setObject(2, UUID.fromString(l.seller));
 						ins.setString(3, l.sellerName);
@@ -301,6 +306,7 @@ final class MarketService {
 						INSERT INTO market_sales (listing_id, item_id, item_name, seller_uuid, seller_name, buyer_uuid, buyer_name, amount, total, sold_at)
 						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING""")) {
 					for (Market.Sale s : c.sales) {
+						if (uuid(s.listing) == null || uuid(s.buyer) == null || s.seller != null && uuid(s.seller) == null) continue;
 						ins.setObject(1, UUID.fromString(s.listing));
 						ins.setString(2, s.itemId);
 						ins.setString(3, s.itemName);
@@ -314,6 +320,34 @@ final class MarketService {
 						ins.addBatch();
 					}
 					ins.executeBatch();
+				}
+				if (c.mail != null) {
+					try (PreparedStatement del = con.prepareStatement("DELETE FROM market_mail")) {
+						del.executeUpdate();
+					}
+					try (PreparedStatement ins = con.prepareStatement("INSERT INTO market_mail (player_uuid, player_name, currency, parcels) VALUES (?, ?, ?, ?::jsonb)")) {
+						for (Map.Entry<String, Market.Mailbox> e : c.mail.entrySet()) {
+							Market.Mailbox m = e.getValue();
+							if (uuid(e.getKey()) == null || m == null || m.currency <= 0 && (m.parcels == null || m.parcels.isEmpty())) continue;
+							List<Map<String, Object>> parcels = new ArrayList<>();
+							if (m.parcels != null) for (Market.Parcel p : m.parcels) {
+								if (p.item == null) continue;
+								Map<String, Object> row = new LinkedHashMap<>();
+								row.put("item_id", p.item.id);
+								row.put("item_name", p.item.name);
+								row.put("amount", p.amount);
+								String icon = icons.iconFor(p.item.stack);
+								if (icon != null) row.put("icon", icon);
+								parcels.add(row);
+							}
+							ins.setObject(1, UUID.fromString(e.getKey()));
+							ins.setString(2, m.name);
+							ins.setInt(3, Math.max(0, m.currency));
+							ins.setString(4, Json.GSON.toJson(parcels));
+							ins.addBatch();
+						}
+						ins.executeBatch();
+					}
 				}
 				try (PreparedStatement st = con.prepareStatement("""
 						INSERT INTO market_sync (id, world_id, rev, synced_at, currency, currency_icon) VALUES (1, ?, ?, now(), ?, ?)
@@ -334,6 +368,14 @@ final class MarketService {
 				con.rollback();
 				throw e;
 			}
+		}
+	}
+
+	private static UUID uuid(String s) {
+		try {
+			return s == null ? null : UUID.fromString(s);
+		} catch (IllegalArgumentException e) {
+			return null;
 		}
 	}
 

@@ -27,6 +27,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .mp-facts:empty { display: none; }
 .mp-facts dt { color: var(--faint); }
 .mp-facts dd { margin: 0; color: var(--muted); }
+.mp-name { border: 0; padding: 0; background: none; color: var(--text); font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+.mp-name:hover { color: var(--gold); }
 .mp-dims { display: flex; flex-wrap: wrap; gap: 6px; }
 .mp-dims button { border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 500; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
 .mp-dims button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }

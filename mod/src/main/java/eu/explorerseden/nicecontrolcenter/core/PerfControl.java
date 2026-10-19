@@ -102,10 +102,21 @@ public final class PerfControl {
 		trapped.clear();
 	}
 
+	/** Activation and "far from players" ranges never go below this many blocks. */
+	private static final int MIN_RANGE = 16;
+	/** The simulation distance in blocks right now (lag protection may have lowered it). */
+	private static int simulationBlocks = 160;
+
+	/** Blocks for a percentage of the current simulation distance. */
+	private static int rangeOf(int percent) {
+		return Math.max(MIN_RANGE, simulationBlocks * Math.min(100, percent) / 100);
+	}
+
 	/** Start of every server tick. */
 	public static void tick(MinecraftServer server) {
 		int tick = server.getTickCount();
 		if (modified < 0 || tick % 100 == 0) reload(server);
+		simulationBlocks = server.getPlayerList().getSimulationDistance() * 16;
 		players.clear();
 		if (settings.activation.enabled || settings.ai.enabled) {
 			for (ServerLevel level : server.getAllLevels()) {
@@ -335,8 +346,9 @@ public final class PerfControl {
 		// The world's clock, not the entity's: a skipped entity's own tick count doesn't move.
 		if ((level.getGameTime() + entity.getId()) % a.every == 0) return false;
 		if (immune(mob)) return false;
-		int range = entity instanceof Enemy ? a.monsters : entity instanceof AbstractVillager ? a.villagers : entity instanceof Animal ? a.animals : a.other;
-		if (activationTight) range = Math.max(8, range / 2);
+		int range = rangeOf(entity instanceof Enemy ? a.monstersPercent : entity instanceof AbstractVillager ? a.villagersPercent
+				: entity instanceof Animal ? a.animalsPercent : a.otherPercent);
+		if (activationTight) range = Math.max(MIN_RANGE, range / 2);
 		double[] xz = players.get(level);
 		if (xz == null) return false;
 		double r2 = (double) range * range;
@@ -406,7 +418,7 @@ public final class PerfControl {
 		if (!ai.enabled || !(mob.level() instanceof ServerLevel level)) return true;
 		if ((level.getGameTime() + mob.getId()) % ai.farGoalEvery == 0) return true;
 		if (immune(mob)) return true;
-		return playerWithin(level, mob, ai.farDistance);
+		return playerWithin(level, mob, rangeOf(ai.farPercent));
 	}
 
 	/** Whether this mob may search a new path now (at most pathBudget searches per tick). */

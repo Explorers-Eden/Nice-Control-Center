@@ -126,6 +126,71 @@ final class PetsService {
 
 	// ---------------------------------------------------------------- heads
 
+	// ---------------------------------------------------------------- database copy
+
+	private volatile long syncedModified = -1;
+
+	/** Copies who owns which pet into the database for the website, once a minute when the world file changed. */
+	void startDbSync(Db db) {
+		if (db == null) return;
+		java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+			Thread t = new Thread(r, "pets-sync");
+			t.setDaemon(true);
+			return t;
+		}).scheduleWithFixedDelay(() -> {
+			try {
+				syncDb(db);
+			} catch (IOException | java.sql.SQLException | RuntimeException e) {
+				System.err.println("Pets sync: " + e);
+			}
+		}, 30, 60, java.util.concurrent.TimeUnit.SECONDS);
+	}
+
+	private void syncDb(Db db) throws IOException, java.sql.SQLException {
+		if (!db.ready()) return;
+		Path f = worldFile();
+		long modified = Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0;
+		if (modified == syncedModified) return;
+		Pets.Data d = Pets.readData(f);
+		Map<String, String> shopTextures = new LinkedHashMap<>();
+		for (Pets.Pet p : settings().pets) shopTextures.put(p.id, p.texture);
+		try (java.sql.Connection con = db.connection()) {
+			con.setAutoCommit(false);
+			try {
+				try (java.sql.PreparedStatement del = con.prepareStatement("DELETE FROM pets_owned")) {
+					del.executeUpdate();
+				}
+				try (java.sql.PreparedStatement ins = con.prepareStatement("INSERT INTO pets_owned (player_uuid, pet_id, pet_name, head, since, active) VALUES (?, ?, ?, ?, ?, ?)")) {
+					for (Map.Entry<String, Pets.Owner> e : d.owners.entrySet()) {
+						java.util.UUID player;
+						try {
+							player = java.util.UUID.fromString(e.getKey());
+						} catch (IllegalArgumentException bad) {
+							continue;
+						}
+						for (Pets.Owned o : e.getValue().pets) {
+							String head = Pets.skinHash(o.texture);
+							if (head == null) head = Pets.skinHash(shopTextures.get(o.pet));
+							ins.setObject(1, player);
+							ins.setString(2, o.pet);
+							ins.setString(3, o.name);
+							ins.setString(4, head);
+							ins.setTimestamp(5, o.since > 0 ? new java.sql.Timestamp(o.since) : null);
+							ins.setBoolean(6, o.pet.equals(e.getValue().active));
+							ins.addBatch();
+						}
+					}
+					ins.executeBatch();
+				}
+				con.commit();
+				syncedModified = modified;
+			} catch (java.sql.SQLException | RuntimeException e) {
+				con.rollback();
+				throw e;
+			}
+		}
+	}
+
 	/** Its owners' faces may be shown on the info page too. */
 	private volatile WaypointHubs waypointHubs;
 
@@ -237,7 +302,8 @@ final class PetsService {
 		}));
 		// Faces of the shop's pets and of public waypoint hubs' owners: public, for the info page (only those, so
 		// nobody can make the panel fetch others).
-		routes.get("/info/heads/{hash}", ctx -> {
+		// The map has the same ones under /map/ (on the map's own host name only /map/ exists).
+		io.javalin.http.Handler faces = ctx -> {
 			String hash = ctx.pathParam("hash").replaceFirst("\\.png$", "");
 			WaypointHubs hubs = waypointHubs;
 			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture))) || hubs != null && hubs.isOwnerHead(hash);
@@ -247,7 +313,9 @@ final class PetsService {
 				return;
 			}
 			ctx.contentType("image/png").header("Cache-Control", "public, max-age=604800").result(Files.readAllBytes(f));
-		});
+		};
+		routes.get("/info/heads/{hash}", faces);
+		routes.get("/map/heads/{hash}", faces);
 	}
 
 	/** Pet id → skin hash, for the face pictures. */

@@ -141,7 +141,9 @@ final class PetFollowers {
 			double size = PetStore.size(owned);
 			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
 			Pets.Behavior behavior = chosen == Pets.Behavior.RANDOM ? f.rolledMove : chosen;
-			Target goal = target(player, behavior, t * PACE, f);
+			// While the owner is AFK the pet roams around them on its own; its move comes back with them.
+			Target goal = eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAfk(player) ? roam(player, t * PACE, f) : target(player, behavior, t * PACE, f);
+			if (!goal.stay) goal = new Target(clear(goal.offset, h, size, player.getYRot()), goal.yaw, goal.follow, false);
 			Vec3 want = base.add(goal.offset);
 			boolean fresh = f.display == null || f.display.isRemoved() || f.display.level() != player.level() || !texture.equals(f.texture) || size != f.size
 					|| f.pos == null || f.pos.distanceToSqr(want) > JUMP * JUMP;
@@ -170,7 +172,8 @@ final class PetFollowers {
 				f.display.setPos(f.pos);
 				pose(f, Vec3.ZERO, goal.yaw, size, GLIDE);
 			} else {
-				f.offset = f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow));
+				// Gliding there may cut through the player; it goes around them instead.
+				f.offset = clear(f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow)), h, size, player.getYRot());
 				f.pos = base.add(f.offset);
 				// Told again now and then, for players who only just came near (and more often right after spawning).
 				if (!f.riding || time - f.ridingSent >= (time - f.spawned < 40 ? 5 : 20)) ride(f, player, true, time);
@@ -307,6 +310,37 @@ final class PetFollowers {
 		};
 	}
 
+	/**
+	 * Keeps the head out of the player's body: an offset (from their feet) closer to their middle than their
+	 * half width plus the head's half size is pushed out sideways, so no move ever passes through them.
+	 */
+	private static Vec3 clear(Vec3 off, double h, double size, float look) {
+		double r = 0.3 + 0.25 * size + 0.1;
+		if (off.y < -0.25 * size || off.y > h + 0.25 * size) return off;
+		double d2 = off.x * off.x + off.z * off.z;
+		if (d2 >= r * r) return off;
+		double d = Math.sqrt(d2);
+		if (d < 1e-3) {
+			// Right in the middle: out to the player's right.
+			double yaw = Math.toRadians(look);
+			return new Vec3(-Math.cos(yaw) * r, off.y, -Math.sin(yaw) * r);
+		}
+		return new Vec3(off.x / d * r, off.y, off.z / d * r);
+	}
+
+	/** AFK owner: the pet floats to a new spot a few blocks around them every few seconds, slowly, looking where it goes. */
+	private static Target roam(ServerPlayer player, double t, Follower f) {
+		Vec3 base = player.position();
+		double h = player.getBbHeight();
+		long hop = (long) (t / 70) + f.phase;
+		double a = frac(Math.sin(hop * 12.9898) * 43758.5453) * Math.PI * 2;
+		double far = 1.6 + 2.0 * frac(Math.sin(hop * 39.346) * 11.135);
+		double up = h * (0.35 + 0.6 * frac(Math.sin(hop * 78.233) * 12543.123));
+		Vec3 spot = new Vec3(Math.cos(a) * far, up + 0.06 * Math.sin(t * 0.08), Math.sin(a) * far);
+		Vec3 at = f.pos == null ? base.add(spot) : f.pos;
+		return new Target(spot, heading(at, base.add(spot)), 0.03, true);
+	}
+
 	/** The part after the decimal point (0 to 1). */
 	private static double frac(double x) {
 		return x - Math.floor(x);
@@ -357,20 +391,32 @@ final class PetFollowers {
 		if (type == null) return;
 		ServerLevel level = player.level();
 		// Somewhere around the head, not inside it, and with no push of their own: they float where they appear.
+		// A little below its middle, so they don't drift up past the owner's eyes.
 		double spread = 0.2 + 0.25 * size;
+		double y = f.pos.y - 0.15 * size;
+		// The owner doesn't get them while the pet is right in front of their face (close to their eyes); everyone else does.
+		boolean ownerToo = f.pos.distanceToSqr(player.getEyePosition()) > 1.6 * 1.6;
+		var r = player.getRandom();
 		if (trail == Pets.Trail.NOTES) {
 			// A note's colour comes in the first of the three numbers, so it's placed by hand.
-			var r = player.getRandom();
-			level.sendParticles(ParticleTypes.NOTE, f.pos.x + (r.nextDouble() - 0.5) * 2 * spread, f.pos.y + r.nextDouble() * spread, f.pos.z + (r.nextDouble() - 0.5) * 2 * spread,
+			send(level, player, ownerToo, ParticleTypes.NOTE, f.pos.x + (r.nextDouble() - 0.5) * 2 * spread, y + r.nextDouble() * spread, f.pos.z + (r.nextDouble() - 0.5) * 2 * spread,
 					0, r.nextDouble(), 0, 0, 1);
 			return;
 		}
-		var r = player.getRandom();
 		if (trail == Pets.Trail.AUTUMN_LEAVES || trail == Pets.Trail.LUSH_LEAVES) {
 			int[] colours = trail == Pets.Trail.AUTUMN_LEAVES ? AUTUMN : LUSH;
 			type = ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, 0xFF000000 | colours[r.nextInt(colours.length)]);
 		}
-		level.sendParticles(type, f.pos.x, f.pos.y, f.pos.z, 1, spread, spread, spread, 0);
+		send(level, player, ownerToo, type, f.pos.x, y, f.pos.z, 1, spread, spread, spread, 0);
+	}
+
+	/** Particles for the players near the pet (like ServerLevel.sendParticles), with or without its owner. */
+	private static void send(ServerLevel level, ServerPlayer owner, boolean ownerToo, ParticleOptions type, double x, double y, double z, int count,
+			double dx, double dy, double dz, double speed) {
+		for (ServerPlayer p : level.players()) {
+			if (p == owner && !ownerToo) continue;
+			level.sendParticles(p, type, false, false, x, y, z, count, dx, dy, dz, speed);
+		}
 	}
 
 	/** Red, orange and yellow leaves; and lush greens. */

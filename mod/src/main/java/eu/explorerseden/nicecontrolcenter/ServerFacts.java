@@ -157,6 +157,15 @@ public final class ServerFacts {
 		if (t.dispensers.placeBlocks) {
 			out.add(tweak("dispensers", "Dispensers place blocks", "bi-box-arrow-right", "A dispenser places blocks in front of it instead of dropping them (droppers still drop).", List.of()));
 		}
+		if (t.crops.rainGrowth) {
+			out.add(tweak("rain", "Crops love rain", "bi-cloud-rain", "Crops grow " + t.crops.rainBoost + " % faster while rain falls on them.", List.of()));
+		}
+		if (t.mending.anvilRepair) {
+			out.add(tweak("mending", "Better Mending", "bi-hammer", "Sneak and right-click an anvil to repair the Mending item in your hand with your experience (2 durability per point, like Mending).", List.of()));
+		}
+		if (t.sleep.ignoreAfk) {
+			out.add(tweak("sleep", "AFK players don't block the night", "bi-moon-stars", "Players who have been AFK for " + t.afk.minutes + " minutes don't count when the server checks whether enough players sleep.", List.of()));
+		}
 		if (t.villagers.panicGolems) {
 			out.add(tweak("golems", "Iron golems when villagers panic", "bi-shield-shaded", "A frightened villager calls an iron golem if none is around; villagers no longer need to sleep or gossip for one.", List.of()));
 		}
@@ -244,6 +253,11 @@ public final class ServerFacts {
 		return Map.of("label", label, "value", value, "description", desc);
 	}
 
+	/** "within 50 % of the simulation distance" for ranges that follow it. */
+	private static String share(int percent) {
+		return percent >= 100 ? "the whole simulation distance" : percent + " % of the simulation distance";
+	}
+
 	private static String blocks(double v) {
 		return (v == Math.rint(v) ? String.valueOf((long) v) : String.valueOf(v)) + (v == 1 ? " block" : " blocks");
 	}
@@ -267,10 +281,10 @@ public final class ServerFacts {
 		if (a.enabled) {
 			String tick = "Farther away they move and think every " + a.every + " ticks instead of every tick.";
 			List<Map<String, String>> rows = new ArrayList<>();
-			rows.add(line("Monsters", blocks(a.monsters), "Zombies, skeletons, creepers…"));
-			rows.add(line("Animals", blocks(a.animals), "Cows, sheep, chickens…"));
-			rows.add(line("Villagers", blocks(a.villagers), ""));
-			rows.add(line("Everything else", blocks(a.other), ""));
+			rows.add(line("Monsters", share(a.monstersPercent), "Zombies, skeletons, creepers…"));
+			rows.add(line("Animals", share(a.animalsPercent), "Cows, sheep, chickens…"));
+			rows.add(line("Villagers", share(a.villagersPercent), ""));
+			rows.add(line("Everything else", share(a.otherPercent), ""));
 			out.add(tweak("activation", "Mobs far from players", "bi-broadcast",
 					"Mobs that are far from every player are updated less often. " + tick
 							+ " Items, projectiles, vehicles, bosses, mobs on a lead and mobs that were just hurt always update normally.", rows));
@@ -293,7 +307,7 @@ public final class ServerFacts {
 		if (ai.enabled) {
 			out.add(tweak("ai", "Lighter mob AI", "bi-cpu",
 					"Mobs far from every player decide what to do next less often; what they're doing keeps running. While the server lags, only so many mobs can look for a new path at once, the others try again a moment later.",
-					List.of(line("Far from players means", "more than " + blocks(ai.farDistance), ""),
+					List.of(line("Far from players means", "more than " + share(ai.farPercent), ""),
 							line("Far mobs decide every", ai.farGoalEvery + " ticks", "Vanilla: every tick or two."))));
 		}
 		if (p.collisions.enabled) {

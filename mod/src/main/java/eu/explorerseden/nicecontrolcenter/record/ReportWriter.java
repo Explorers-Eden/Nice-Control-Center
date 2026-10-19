@@ -91,7 +91,7 @@ public final class ReportWriter {
 				players = Math.max(players, p.players());
 			}
 			result.add(new Point(part.get(0).t(), tps / n, mspt / n, msptMax, heap / n, heapMax, heapLive, cpuP / n, cpuS / n,
-					entities, blockEntities, chunks, players, gc, paused));
+					entities, blockEntities, chunks, players, gc, paused, part.get(part.size() - 1).view(), part.get(part.size() - 1).sim()));
 		}
 		return result;
 	}

@@ -66,7 +66,7 @@ public final class Views {
 
 	public record PlayerView(String name, String dimension, int x, int y, int z, int ping, int viewDistance, int entitiesNear,
 			int blockEntitiesNear, double newChunksPerMinute, double newChunksPercent, boolean online, double msNear, double msNearPercent,
-			int hotX, int hotZ) {
+			int hotX, int hotZ, int chunksLoaded) {
 	}
 
 	public record BlockUpdateView(String dimension, int x, int y, int z, String block, double perSecond, double activePercent) {
@@ -262,7 +262,7 @@ public final class Views {
 		for (Breakdown.PlayerRow p : b.players.values()) {
 			result.add(new PlayerView(p.name, p.dimension, p.x, p.y, p.z, p.ping, p.viewDistance, p.entitiesNear, p.blockEntitiesNear,
 					p.newChunks / minutes, p.newChunks * 100.0 / totalChunks, p.lastSeen >= b.end - 3000,
-					b.ticks > 0 ? p.nsNear / 1_000_000.0 / b.ticks : 0, b.tickNsSum > 0 ? p.nsNear * 100.0 / b.tickNsSum : 0, p.hotX, p.hotZ));
+					b.ticks > 0 ? p.nsNear / 1_000_000.0 / b.ticks : 0, b.tickNsSum > 0 ? p.nsNear * 100.0 / b.tickNsSum : 0, p.hotX, p.hotZ, p.chunksLoaded));
 		}
 		// The players whose surroundings cost the most first.
 		result.sort(Comparator.comparingDouble(PlayerView::msNear).reversed()

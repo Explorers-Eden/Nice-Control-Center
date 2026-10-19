@@ -488,6 +488,8 @@ public final class DashboardServer {
 					result.put("detail", detail);
 					if (detail instanceof Map<?, ?> d && d.get("uuid") instanceof String u) {
 						result.put("pets", onServerThread(() -> eu.explorerseden.nicecontrolcenter.pets.PetStore.forPlayer(u)));
+						result.put("claims", onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.PlayerExtras.claims(u)));
+						result.put("market", onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.PlayerExtras.market(u)));
 					}
 				}
 				sendJson(exchange, result);
@@ -751,6 +753,7 @@ public final class DashboardServer {
 		server.put("version", minecraft.getServerVersion());
 		server.put("mods", FabricLoader.getInstance().getAllMods().size());
 		server.put("dedicated", minecraft.isDedicatedServer());
+		server.put("maxPlayers", minecraft.getMaxPlayers());
 		server.put("monitorSince", startedAt);
 		result.put("server", server);
 		result.put("recording", Recorder.status());
@@ -759,6 +762,8 @@ public final class DashboardServer {
 		result.put("lagging", eu.explorerseden.nicecontrolcenter.alert.AlertWatcher.lagging());
 		result.put("lagSince", eu.explorerseden.nicecontrolcenter.alert.AlertWatcher.lagSince());
 		result.put("replies", eu.explorerseden.nicecontrolcenter.players.Conversations.unreadReplies());
+		// Only while a pregeneration runs: the panel shows its progress next to the game clock.
+		if (eu.explorerseden.nicecontrolcenter.core.Pregen.active()) result.put("pregen", eu.explorerseden.nicecontrolcenter.core.Pregen.status());
 		return result;
 	}
 

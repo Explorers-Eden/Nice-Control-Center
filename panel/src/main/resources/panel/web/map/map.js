@@ -94,8 +94,11 @@
         .addTo(layers.claims);
     }
     for (const h of live.hubs.filter((h) => h.dim === dim.id)) {
-      L.marker(ll(h.x + 0.5, h.z + 0.5), { icon: L.divIcon({ className: 'mp-hub', html: '<i class="bi bi-geo-alt-fill"></i>', iconSize: [24, 24], iconAnchor: [12, 22] }) })
-        .bindPopup(`<div class="mp-hub-pop">${h.owner || h.ownerUuid ? `<img class="mp-head" src="https://mc-heads.net/avatar/${encodeURIComponent(h.ownerUuid || h.owner)}/40" alt="" width="40" height="40">` : ''}
+      // The pin in the colour of the hub's title in game; the hub's own head (its icon) in the popup.
+      const color = /^#[0-9a-f]{6}$/i.test(h.color || '') ? h.color : '';
+      const head = /^[0-9a-f]{20,80}$/.test(h.head || '') ? `heads/${h.head}` : '';
+      L.marker(ll(h.x + 0.5, h.z + 0.5), { icon: L.divIcon({ className: 'mp-hub', html: `<i class="bi bi-geo-alt-fill"${color ? ` style="color:${color}"` : ''}></i>`, iconSize: [24, 24], iconAnchor: [12, 22] }) })
+        .bindPopup(`<div class="mp-hub-pop">${head ? `<img class="mp-head" src="${head}" alt="" width="40" height="40" onerror="this.remove()">` : ''}
           <div><b>${esc(h.name)}</b>${h.description ? `<span class="mp-hub-sub">${esc(h.description)}</span>` : ''}
           <small>${h.owner ? 'by ' + esc(h.owner) + ' · ' : ''}${h.x}, ${h.y}, ${h.z}</small></div></div>`)
         .addTo(layers.hubs);
@@ -164,12 +167,26 @@
     $('mp-state').textContent = label;
     $('mp-count').textContent = st.state === 'offline' ? '' : `${st.players} / ${st.maxPlayers} players`;
     const facts = [];
-    if (st.names && st.names.length) facts.push(['Playing', st.names.map(esc).join(', ')]);
+    // Names (when the panel lists them): each one jumps to that player on the map (if players are shown).
+    if (st.names) {
+      const where = (n) => (live.players || []).find((p) => p.name === n);
+      facts.push(['Playing', st.names.length ? st.names.map((n) => where(n) ? `<button type="button" class="mp-name" data-name="${esc(n)}">${esc(n)}</button>` : esc(n)).join(', ')
+        : st.state === 'offline' ? 'nobody (server offline)' : 'nobody right now']);
+    }
     if (st.uptime7d != null) facts.push(['Uptime', `${st.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })} % in the last 7 days`]);
     if (info.nextRestart) facts.push(['Next restart', esc(resetText(info.nextRestart))]);
     if (info.nextReset && info.dimensions.some((d) => d.borders && d.borders.hard > 0)) facts.push(['Outer wilds reset', esc(resetText(info.nextReset))]);
     $('mp-facts').innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   }
+
+  $('mp-facts').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-name]');
+    const p = b && (live.players || []).find((x) => x.name === b.dataset.name);
+    if (!p) return;
+    const d = info.dimensions.find((x) => x.id === p.dim);
+    if (d && d !== dim) setDim(d.key, p.x, p.z, 1);
+    else map.setView(ll(p.x + 0.5, p.z + 0.5), Math.max(map.getZoom(), 1));
+  });
 
   async function poll() {
     try {

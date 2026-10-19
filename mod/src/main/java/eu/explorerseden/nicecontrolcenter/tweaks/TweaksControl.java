@@ -57,6 +57,12 @@ public final class TweaksControl {
 			TreeFall.tick(s);
 			ToolWear.tick();
 			AfkTabList.tick(s);
+			// AFK players can turn AFK while others sleep; the game only counts sleepers again when someone gets in or out of bed.
+			if (settings.sleep.ignoreAfk && s.getTickCount() % 20 == 0) {
+				for (var level : s.getAllLevels()) {
+					if (level.players().stream().anyMatch(p -> p.isSleeping())) level.updateSleepingPlayerList();
+				}
+			}
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTING.register(s -> modified = -1);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> TreeFall.finishAll());
@@ -67,6 +73,7 @@ public final class TweaksControl {
 		Spawners.register();
 		BoneMeal.register();
 		Mentions.register();
+		BetterMending.register();
 	}
 
 	/** Reads the file again if it changed (also called from the dashboard API, which works while the server is paused). */
@@ -86,6 +93,7 @@ public final class TweaksControl {
 		matchers = new Matchers(items(next.felling.tools), items(next.felling.deniedTools), blocks(next.felling.logs), blocks(next.felling.deniedLogs),
 				blocks(next.felling.leaves), items(next.veins.tools), items(next.veins.deniedTools), blocks(next.veins.blocks), blocks(next.veins.deniedBlocks),
 				items(next.saplings.items), blocks(next.saplings.ground), items(next.spawners.tools));
+		AntiXray.rebuild(next, blocks(next.antiXray.blocks));
 		if (!first) NiceControlCenter.LOGGER.info("Reloaded the gameplay tweaks");
 	}
 
@@ -121,7 +129,7 @@ public final class TweaksControl {
 		return false;
 	}
 
-	private static boolean block(List<Match<Block>> list, BlockState state) {
+	static boolean block(List<Match<Block>> list, BlockState state) {
 		for (Match<Block> m : list) {
 			for (TagKey<Block> t : m.tags()) if (state.is(t)) return true;
 			if (!m.ids().isEmpty() && m.ids().contains(BuiltInRegistries.BLOCK.getKey(state.getBlock()))) return true;

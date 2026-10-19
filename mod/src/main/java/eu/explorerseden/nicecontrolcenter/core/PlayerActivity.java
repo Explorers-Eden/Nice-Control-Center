@@ -35,6 +35,11 @@ public final class PlayerActivity {
 		active.put(player.getUUID(), player.level().getServer().getTickCount());
 	}
 
+	/** AFK: did nothing for the gameplay tweaks' AFK minutes (whether or not the tab list shows the tag). */
+	public static boolean isAfk(ServerPlayer player) {
+		return idleTicks(player) > eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl.settings().afk.minutes * 1200;
+	}
+
 	/** Ticks since the player last did something (0 when unknown). */
 	public static int idleTicks(ServerPlayer player) {
 		Integer at = active.get(player.getUUID());

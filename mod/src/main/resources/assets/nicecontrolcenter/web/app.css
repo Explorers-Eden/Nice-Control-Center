@@ -235,24 +235,21 @@ body.report .np-clock { display: none; }
   flex: 1;
 }
 
-.np-notes-link {
-  margin-top: 12px;
-  width: 100%;
-  text-align: left;
-  border: 1px dashed rgba(var(--ink),.16);
-  background: transparent;
-  color: var(--muted);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  padding: 9px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  line-height: 1.5;
+.np-notes-box { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.np-notes-box[hidden] { display: none; }
+.np-notes-head { margin: 0 0 2px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.np-note-row {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid rgba(var(--ink),.10); background: rgba(var(--ink),.03); color: var(--text);
+  padding: 9px 12px; border-radius: 10px; font: inherit; font-size: var(--fs-sm); line-height: 1.5;
 }
-.np-notes-link:hover { background: rgba(var(--ink),.04); color: var(--text); }
-.np-notes-link .bi { color: var(--accent); }
-.np-notes-link.warn .bi-sliders { color: var(--accent-2); }
-.np-notes-link[hidden] { display: none; }
+.np-note-row:hover { background: rgba(var(--ink),.06); }
+.np-note-row > .bi:first-child { margin-top: 2px; color: var(--accent); }
+.np-note-row.warn > .bi:first-child, .np-note-row.poor > .bi:first-child { color: var(--accent-2); }
+.np-note-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.np-note-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 600; color: var(--strong); }
+.np-note-reason { color: var(--muted); }
+.np-note-go { color: var(--muted); font-size: 1.2em; }
 .np-more--list { align-self: center; margin-top: 4px; }
 
 .np-group { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
@@ -1087,6 +1084,16 @@ summary.np-update-row:hover { background: rgba(var(--ink),.03); }
 .np-item-count { color: var(--faint); font-variant-numeric: tabular-nums; }
 .np-subhead small { text-transform: none; letter-spacing: 0; font-weight: 500; }
 .np-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.np-player-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(var(--ink),.08); }
+.np-player-tab { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--muted); font: inherit;
+  font-size: var(--fs-sm); font-weight: 600; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.np-player-tab:hover { background: rgba(var(--ink),.05); color: var(--text); }
+.np-player-tab.active { background: rgba(var(--ink),.10); color: var(--strong); }
+.np-player-tab .np-tab-badge { position: static; }
+.np-player-pane > .np-subhead:first-child { margin-top: 0; }
+.np-player-summary { margin-top: 12px; }
+.np-player-summary button.np-tag { cursor: pointer; font: inherit; font-size: var(--fs-sm); display: inline-flex; gap: 6px; align-items: center; }
+.np-claim-blocks { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
 
 /* Gamerules */
 .np-prop.changed .np-prop-name > span:first-child { color: var(--accent-2); }

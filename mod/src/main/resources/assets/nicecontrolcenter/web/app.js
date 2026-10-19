@@ -198,8 +198,12 @@
     // Same limits as the memory finding: 5% of the time paused is worth a look, 10% hurts. A collector
     // that runs nearly all the time (ZGC with a full heap) makes the server wait without pausing it.
     const pauseClass = gc.percent >= 10 ? 'poor' : gc.percent >= 5 ? 'warn' : 'good';
-    const bgClass = gc.background >= 95 && livePct >= 85 ? 'poor' : gc.background >= 80 ? 'warn' : 'good';
-    const gcClass = [pauseClass, bgClass].includes('poor') ? 'poor' : [pauseClass, bgClass].includes('warn') ? 'warn' : 'good';
+    // ZGC runs most of the time anyway; that only matters once the heap is filling up too.
+    const bgClass = gc.background >= 95 && livePct >= 85 ? 'poor' : gc.background >= 80 && livePct >= 70 ? 'warn' : 'good';
+    const rank = { good: 0, warn: 1, poor: 2 };
+    const gcClass = rank[bgClass] > rank[pauseClass] ? bgClass : pauseClass;
+    // The tile shows the number its color comes from: pauses, or background work when that's the worse one.
+    const showBusy = rank[bgClass] > rank[pauseClass];
     const gcAvg = gc.count ? gc.timeMs / gc.count : 0;
     const c = k.counts || {};
     const ms = (v) => v >= 100 ? fixed(v, 0) : fixed(v, 1);
@@ -217,14 +221,14 @@
       ['Memory', null, null, `<div class="np-mspt">${memCols.map(([l, v, cls]) => { const [n, u = ''] = bytes(v).split(' '); return `<span class="${cls}"><b>${n}<i>${u}</i></b><small>${l}</small></span>`; }).join('')}</div>`,
         `Still in use after garbage collection: ${bytes(heapLive || heapUsed)} · including garbage not collected yet: ${bytes(heapUsed)} · maximum: ${bytes(heapMax)}`],
       ...(state.disk && !REPORT ? [diskTile(state.disk)] : []),
-      ['GC', `<span class="${gcClass}">${fixed(gc.percent, 1)}%</span><small> paused</small>`,
-        `${gc.background >= 1 ? `busy ${fixed(gc.background, 0)}% · ` : ''}${num(gc.count)} pauses${gc.count ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${recent}`, null,
+      ['GC', showBusy ? `<span class="${gcClass}">${fixed(gc.background, 0)}%</span><small> busy</small>` : `<span class="${gcClass}">${fixed(gc.percent, 1)}%</span><small> paused</small>`,
+        `${showBusy ? `paused ${fixed(gc.percent, 1)}% · ` : gc.background >= 1 ? `busy ${fixed(gc.background, 0)}% · ` : ''}${num(gc.count)} pauses${gc.count ? ` · ⌀ ${fixed(gcAvg, 0)} ms` : ''} · ${recent}`, null,
         `Share of time the server was paused for garbage collection over the ${recent}: ${num(gc.timeMs)} ms over ${num(gc.count)} pauses${gc.count ? `, ${fixed(gcAvg, 1)} ms each on average` : ''}. `
         + `The collector also ran in the background ${fixed(gc.background, 0)}% of the time. Concurrent collectors like ZGC barely pause; when the heap is nearly full they run all the time instead and the server waits for memory, which no pause counter shows — then "busy" turns gold or red.`],
       ['Entities', num(now ? now.entities : c.entities), 'loaded'],
       ['Block entities', num(now ? now.blockEntities : c.blockEntities), 'ticking'],
       ['Chunks', num(now ? now.chunks : c.chunks), `${num(c.chunkTasks)} tasks waiting`],
-      ['Players', num(now ? now.players : c.players), 'online'],
+      ['Players', num(now ? now.players : c.players), state.maxPlayers ? `online of ${num(state.maxPlayers)}` : 'online'],
     ];
     patchHtml($('np-stats'), tiles.map(([label, value, sub, extra, tip]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}"${tip ? ` title="${esc(tip)}"` : ''}>
       <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join(''));
@@ -259,19 +263,29 @@
 
   // ── Breakdowns ─────────────────────────────────────────────────────────
 
-  /** One quiet line pointing to setting tips and bloat, instead of mixing them into the costs. */
+  /**
+   * Things outside the tick worth a look (log errors, server settings, bloat), one row each with what it
+   * is about and why, instead of mixing them into the costs. Each row opens its section.
+   */
   function renderNotesLink(notes) {
-    const link = $('np-notes-link');
+    const box = $('np-notes-link');
     if (!notes.length) {
-      link.hidden = true;
+      box.hidden = true;
+      box.innerHTML = '';
       return;
     }
-    const warn = notes.some((n) => n.severity === 'WARN' || n.severity === 'POOR');
-    link.hidden = false;
-    link.className = 'np-notes-link' + (warn ? ' warn' : '');
-    const errors = notes.filter((n) => n.category === 'Errors').length;
-    const label = errors ? `${notes.length} ${notes.length === 1 ? 'thing' : 'things'} worth a look (${errors} with log errors)` : `${notes.length} server ${notes.length === 1 ? 'setting or check' : 'settings and checks'} worth a look`;
-    link.innerHTML = `<i class="bi ${errors ? 'bi-exclamation-octagon' : 'bi-sliders'}"></i> ${label}: ${notes.map((n) => esc(n.title)).join(' · ')} <i class="bi bi-arrow-right-short"></i>`;
+    const all = state.showAll.has('notes');
+    const order = { POOR: 0, WARN: 1, INFO: 2, GOOD: 3 };
+    const sorted = [...notes].sort((a, b) => (order[a.severity] ?? 2) - (order[b.severity] ?? 2));
+    const shown = all ? sorted : sorted.slice(0, 4);
+    const icon = (n) => (n.category === 'Errors' ? 'bi-exclamation-octagon' : n.severity === 'POOR' || n.severity === 'WARN' ? 'bi-exclamation-triangle' : 'bi-sliders');
+    const html = `<p class="np-notes-head">Not part of the tick, but worth a look:</p>`
+      + shown.map((n) => `<button type="button" class="np-note-row ${sev(n.severity)}" data-note="${n.category === 'Errors' ? 'np-errors-card' : 'np-settings-card'}">
+        <i class="bi ${icon(n)}"></i><span class="np-note-text"><span class="np-note-title"><span class="np-chip ${n.severity === 'POOR' || n.severity === 'WARN' ? 'gold' : ''}">${esc(n.category)}</span>${esc(n.title)}</span>
+        ${n.reason || n.hint ? `<span class="np-note-reason">${[n.reason, n.hint].filter(Boolean).map(md).join(' ')}</span>` : ''}</span><i class="bi bi-arrow-right-short np-note-go"></i></button>`).join('')
+      + (sorted.length > 4 ? `<button type="button" class="np-more np-more--list" data-show-all="notes">${all ? 'Show fewer' : `Show ${sorted.length - 4} more`}</button>` : '');
+    patchHtml(box, html);
+    box.hidden = false;
   }
 
   function openSection(id) {
@@ -424,11 +438,12 @@
       table.innerHTML = '<tr><td class="np-empty">Nobody was online in this window.</td></tr>';
       return;
     }
-    table.innerHTML = `<thead><tr><th>Player</th><th class="num" title="Measured tick time of the chunks around this player; each chunk counts for the nearest player only, so the shares add up">Tick time around</th><th class="num">Ping</th><th class="num">Entities near</th><th class="num">Block ent. near</th><th class="num">New chunks/min</th>${REPORT ? '' : '<th></th>'}</tr></thead><tbody>` +
+    table.innerHTML = `<thead><tr><th>Player</th><th class="num" title="Measured tick time of the chunks around this player; each chunk counts for the nearest player only, so the shares add up">Tick time around</th><th class="num">Ping</th><th class="num" title="Loaded chunks within the view distance this player gets; players close to each other share chunks">Chunks loaded</th><th class="num">Entities near</th><th class="num">Block ent. near</th><th class="num">New chunks/min</th>${REPORT ? '' : '<th></th>'}</tr></thead><tbody>` +
       players.map((p) => `<tr>
         <td class="name">${esc(p.name)}${p.online ? '' : ' <span class="np-chip">left</span>'}<small>${esc(prettyDimension(p.dimension))} · ${p.x}, ${p.y}, ${p.z}</small></td>
         <td class="num">${p.msNear ? `<b>${p.msNear >= 10 ? fixed(p.msNear, 1) : fixed(p.msNear, 2)} ms</b>${p.msNearPercent >= 1 ? `<br><small>${pct(p.msNearPercent)} of all</small>` : ''}${p.msNear >= 0.05 ? `<br><small title="Their costliest chunk">worst at x ${p.hotX * 16 + 8}, z ${p.hotZ * 16 + 8}</small>` : ''}` : '–'}</td>
         <td class="num">${p.online ? num(p.ping) + ' ms' : '–'}</td>
+        <td class="num">${p.chunksLoaded ? `${num(p.chunksLoaded)}<br><small>view ${num(p.viewDistance)}</small>` : '–'}</td>
         <td class="num">${num(p.entitiesNear)}</td>
         <td class="num">${num(p.blockEntitiesNear)}</td>
         <td class="num">${p.newChunksPerMinute >= 10 ? num(p.newChunksPerMinute) : fixed(p.newChunksPerMinute, 1)}${p.newChunksPercent >= 1 ? `<br><small>${pct(p.newChunksPercent)} of all</small>` : ''}</td>
@@ -692,6 +707,8 @@
         heapUsed: avg('heapUsed'), heapMax: Math.max(...src.map((p) => p.heapMax)), heapLive: Math.max(...src.map((p) => p.heapLive || 0)),
         entities: avg('entities'), chunks: avg('chunks'), players: avg('players'), blockEntities: avg('blockEntities'),
         gcMs: part.reduce((a, p) => a + p.gcMs, 0),
+        // The lowest distance in the slot: a step down shows even when it was short.
+        view: Math.min(...src.map((p) => p.view || 0)), sim: Math.min(...src.map((p) => p.sim || 0)),
       });
     };
     for (const p of points) {
@@ -771,6 +788,11 @@
         base: (max) => (max >= 1073741824 ? 1073741824 : 1048576),
         unit: (v) => (v >= 1073741824 ? fixed(v / 1073741824, v % 1073741824 ? 1 : 0) + ' GB' : v ? fixed(v / 1048576, 0) + ' MB' : '0'),
         tip: (b) => `<b>${bytes(b.heapLive || b.heapUsed)}</b> after GC · ${bytes(b.heapUsed)} incl. garbage · of ${bytes(b.heapMax)}${b.gcMs ? ` · GC ${num(b.gcMs)} ms` : ''}<br><span class="t">${rangeText(b)}</span>`,
+      },
+      distances: {
+        lines: [{ field: 'view', color: COLORS.accent, step: true, width: 2 }, { field: 'sim', color: COLORS.gold, step: true, width: 2 }],
+        max: (bs) => Math.max(8, ...bs.map((b) => Math.max(b.view, b.sim))), unit: (v) => num(v),
+        tip: (b) => `View <b>${num(b.view)}</b> · simulation <b>${num(b.sim)}</b> chunks<br><span class="t">${rangeText(b)}</span>`,
       },
       entities: {
         lines: [{ field: 'entities', color: COLORS.accent, fill: true }],
@@ -1629,7 +1651,7 @@
   }
 
   function locTile(p, icon, title, loc, extra) {
-    if (!loc) return '';
+    if (!loc || loc.x == null) return '';
     return `<div class="np-loc-tile"><p class="np-loc-title"><i class="bi ${icon}"></i> ${esc(title)}</p>
       <p class="np-loc-coords">${loc.x}, ${loc.y}, ${loc.z}</p><p class="np-loc-sub">${esc(loc.dimension)}${extra ? ' · ' + extra : ''}</p>
       <button type="button" class="np-link-btn" data-copy="/${esc(tpCommand(p, loc))}" title="Copies a /tp command for yourself"><i class="bi bi-clipboard"></i> Copy /tp</button></div>`;
@@ -1786,33 +1808,41 @@
     const banInfo = p.ban ? `<div class="np-update-error"><i class="bi bi-slash-circle"></i> Banned${p.ban.since ? ' since ' + esc(dateTime(p.ban.since)) : ''}${p.ban.by ? ' by ' + esc(p.ban.by) : ''}${p.ban.reason ? ': ' + esc(p.ban.reason) : ''}${p.ban.until ? ' (until ' + esc(dateTime(p.ban.until)) + ')' : ''}</div>` : '';
     const msgs = $('np-msgs');
     const atBottom = !msgs || msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 20;
+    // One long page was hard to read: the card is split into tabs, the head and moderation stay put.
+    const places = [
+      s ? locTile(p, 'bi-person-walking', p.online ? 'Current position' : 'Position when last saved', s, statusBits) : '',
+      locTile(p, 'bi-house', 'Home', p.home), locTile(p, 'bi-heartbreak', 'Last death', p.lastDeath), grave,
+      locTile(p, 'bi-arrow-counterclockwise', '/back position', p.back), locTile(p, 'bi-shield-check', 'Last safe position', p.lastSafePos),
+    ].join('');
+    const waypoints = p.waypoints && p.waypoints.length ? `<h4 class="np-subhead">Waypoints</h4><div class="np-loc-grid">${p.waypoints.map((w) =>
+      locTile(p, w.access === 'public' ? 'bi-signpost-2' : 'bi-lock', w.name, w, esc(w.access))).join('')}</div>` : '';
+    const items = itemSection('Equipment', p.equipment) + itemSection('Inventory', p.inventory, p.online ? 'live' : 'when last saved')
+      + itemSection('Ender chest', p.enderChest) + (p.grave ? itemSection('Grave contents', p.grave.contents) : '');
+    const claims = claimsSection(p, d);
+    const market = marketSection(p, d);
+    const pets = petsSection(p, d);
+    const checks = clientSection(p) + miningSection(p)
+      + (p.tags && p.tags.length ? `<h4 class="np-subhead">Tags</h4><div class="np-chips">${p.tags.map((t) => `<span class="np-tag">${esc(t)}</span>`).join('')}</div>` : '');
+    const ownClaims = d.claims ? d.claims.owned.length + d.claims.member.length : (p.claims || []).length;
+    const tabs = [
+      ['overview', 'Overview', 'bi-person', `${actions}${s ? `<div class="np-loc-grid">${locTile(p, 'bi-person-walking', p.online ? 'Current position' : 'Position when last saved', s, statusBits)}</div>` : ''}${playerSummary(p, d)}`],
+      ['items', 'Items', 'bi-backpack', items || `<p class="np-empty">No items saved.</p>`],
+      ['places', 'Places', 'bi-geo-alt', `<div class="np-loc-grid">${places}</div>${waypoints}`],
+      ['claims', 'Claims', 'bi-bounding-box', claims, ownClaims],
+      ['market', 'Market', 'bi-shop', market, d.market ? d.market.listings.length : 0],
+      ['pets', 'Pets', 'bi-emoji-smile', pets, d.pets ? d.pets.owned.length : 0],
+      ['checks', 'Checks', 'bi-shield-check', checks, p.mining && p.mining.flags && p.mining.flags.length ? '!' : 0],
+    ].filter((t) => t[3]);
+    if (!tabs.some((t) => t[0] === playersState.tab)) playersState.tab = 'overview';
+    const tab = tabs.find((t) => t[0] === playersState.tab);
     const changed = patchHtml(box, `<div class="np-player-head">${face(p, 64)}<div>
         <h3>${esc(p.name)} <span class="np-level ${p.online ? 'good' : 'info'}">${p.online ? 'Online' : 'Offline'}</span>${p.ban ? ' <span class="np-level poor">Banned</span>' : ''}</h3>
         <p class="np-loc-sub">${[p.race, p.class].filter(Boolean).map(esc).join(' · ')}</p>
         ${seenLine(p)}
         ${p.uuid ? `<p class="np-loc-sub np-mono">${esc(p.uuid)}</p>` : ''}</div></div>
       ${banInfo}
-      ${actions}
-      <div class="np-loc-grid">
-        ${s ? locTile(p, 'bi-person-walking', p.online ? 'Current position' : 'Position when last saved', s, statusBits) : ''}
-        ${locTile(p, 'bi-house', 'Home', p.home)}
-        ${locTile(p, 'bi-heartbreak', 'Last death', p.lastDeath)}
-        ${grave}
-        ${locTile(p, 'bi-arrow-counterclockwise', '/back position', p.back)}
-        ${locTile(p, 'bi-shield-check', 'Last safe position', p.lastSafePos)}
-      </div>
-      ${itemSection('Equipment', p.equipment)}
-      ${itemSection('Inventory', p.inventory, p.online ? 'live' : 'when last saved')}
-      ${itemSection('Ender chest', p.enderChest)}
-      ${p.grave ? itemSection('Grave contents', p.grave.contents) : ''}
-      ${p.waypoints && p.waypoints.length ? `<h4 class="np-subhead">Waypoints</h4><div class="np-loc-grid">${p.waypoints.map((w) =>
-        locTile(p, w.access === 'public' ? 'bi-signpost-2' : 'bi-lock', w.name, w, esc(w.access))).join('')}</div>` : ''}
-      ${p.claims && p.claims.length ? `<h4 class="np-subhead">Claims</h4><div class="np-loc-grid">${p.claims.map((c) =>
-        locTile(p, 'bi-bounding-box', c.anchor, c, c.trusted.length ? 'trusted: ' + esc(c.trusted.join(', ')) : 'nobody trusted')).join('')}</div>` : ''}
-      ${petsSection(p, d)}
-      ${p.tags && p.tags.length ? `<h4 class="np-subhead">Tags</h4><div class="np-chips">${p.tags.map((t) => `<span class="np-tag">${esc(t)}</span>`).join('')}</div>` : ''}
-      ${clientSection(p)}
-      ${miningSection(p)}
+      <div class="np-player-tabs" role="tablist">${tabs.map(([id, label, icon, , count]) => `<button type="button" role="tab" class="np-player-tab${id === tab[0] ? ' active' : ''}" aria-selected="${id === tab[0]}" data-player-tab="${id}"><i class="bi ${icon}"></i>${esc(label)}${count ? `<span class="np-tab-badge${count === '!' ? ' warn' : ''}">${count}</span>` : ''}</button>`).join('')}</div>
+      <div class="np-player-pane">${tab[3]}</div>
       ${moderation}`);
     if (changed && $('np-msgs') && atBottom) $('np-msgs').scrollTop = $('np-msgs').scrollHeight;
     if (changed && focused) {
@@ -1820,6 +1850,56 @@
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
     }
+  }
+
+  /** Overview tab: a few numbers from the other tabs, each opening its tab. */
+  function playerSummary(p, d) {
+    const bits = [];
+    if (d.claims) bits.push(['claims', 'bi-bounding-box', `${num(d.claims.owned.length)} claim${d.claims.owned.length === 1 ? '' : 's'} · ${num(d.claims.blocks.available)} claim blocks left`]);
+    if (d.market && (d.market.listings.length || d.market.sales.length)) bits.push(['market', 'bi-shop', `${num(d.market.listings.length)} on the market · ${num(d.market.sales.length)} recent trades`]);
+    if (d.pets && d.pets.owned.length) bits.push(['pets', 'bi-emoji-smile', `${num(d.pets.owned.length)} pet${d.pets.owned.length === 1 ? '' : 's'}`]);
+    if (p.waypoints && p.waypoints.length) bits.push(['places', 'bi-signpost-2', `${num(p.waypoints.length)} waypoint${p.waypoints.length === 1 ? '' : 's'}`]);
+    if (p.mining && p.mining.flags && p.mining.flags.length) bits.push(['checks', 'bi-exclamation-triangle', 'x-ray hint']);
+    return bits.length ? `<div class="np-chips np-player-summary">${bits.map(([tab, icon, text]) => `<button type="button" class="np-tag" data-player-tab="${tab}"><i class="bi ${icon}"></i>${esc(text)}</button>`).join('')}</div>` : '';
+  }
+
+  /** Claims tab: this mod's claims (owned, member of, claim blocks); Get Off My Lawn claims when that mod is there. */
+  function claimsSection(p, d) {
+    const c = d.claims;
+    const tp = (r) => `<button type="button" class="np-link-btn" data-copy="/${esc(`execute in ${r.dimensionId} run tp @s ${r.x} ~ ${r.z}`)}" title="Copies a /tp command for yourself"><i class="bi bi-clipboard"></i> Copy /tp</button>`;
+    const tile = (r, sub) => `<div class="np-loc-tile"><p class="np-loc-title"><i class="bi bi-bounding-box" style="color:${esc(r.color)}"></i> ${esc(r.name || 'Unnamed claim')}</p>
+      <p class="np-loc-coords">${r.x}, ${r.z}</p><p class="np-loc-sub">${esc(prettyDimension(r.dimensionId))} · ${num(r.width)} × ${num(r.length)} (${num(r.area)} blocks)</p>${sub}${tp(r)}</div>`;
+    let out = '';
+    if (c) {
+      const b = c.blocks;
+      out += `<div class="np-client-box np-claim-blocks"><span><b>${num(b.available)}</b> claim blocks left</span>
+        <span class="np-loc-sub">${num(b.earned)} earned${b.bonus ? ` · ${b.bonus > 0 ? '+' : ''}${num(b.bonus)} from admins` : ''}${b.bought ? ` · ${num(b.bought)} bought` : ''} · ${num(b.used)} in use${b.playMinutes ? ` · ${duration(b.playMinutes * 60000)} played while earning` : ''}</span>
+        ${c.enabled ? '' : '<span class="np-loc-sub">Claims are switched off.</span>'}</div>`;
+      out += `<h4 class="np-subhead">Owns <small>${num(c.owned.length)}</small></h4>` + (c.owned.length ? `<div class="np-loc-grid">${c.owned.map((r) => tile(r,
+        `<p class="np-loc-sub">${r.members.length ? r.members.map((m) => `${esc(m.name)} <small>(${esc(m.role)})</small>`).join(', ') : 'No members'}${r.subclaims ? ` · ${r.subclaims} subclaim${r.subclaims === 1 ? '' : 's'}` : ''}</p>`)).join('')}</div>` : `<p class="np-loc-sub">${esc(p.name)} has no claims.</p>`);
+      if (c.member.length) out += `<h4 class="np-subhead">Member of <small>${num(c.member.length)}</small></h4><div class="np-loc-grid">${c.member.map((r) => tile(r,
+        `<p class="np-loc-sub">${esc(r.role)} in ${esc(r.owner || '?')}'s claim</p>`)).join('')}</div>`;
+    }
+    if (p.claims && p.claims.length) out += `<h4 class="np-subhead">Get Off My Lawn claims</h4><div class="np-loc-grid">${p.claims.map((x) =>
+      locTile(p, 'bi-bounding-box', x.anchor, x, x.trusted.length ? 'trusted: ' + esc(x.trusted.join(', ')) : 'nobody trusted')).join('')}</div>`;
+    return out;
+  }
+
+  /** Market tab: what they sell now (admins can take a listing off), their mailbox and recent trades. */
+  function marketSection(p, d) {
+    const m = d.market;
+    if (!m || (!m.listings.length && !m.sales.length && !m.mailbox.currency && !m.mailbox.parcels.length)) return '';
+    const cur = esc(m.currency);
+    const listings = m.listings.length ? `<div class="np-table-wrap"><table class="np-table"><thead><tr><th>Item</th><th>Left</th><th>Price</th><th>Ends</th><th></th></tr></thead><tbody>
+      ${m.listings.map((l) => `<tr><td title="${esc(l.itemId)}">${esc(l.item)}</td><td>${num(l.amount)}</td><td>${num(l.price)} ${cur}${l.per > 1 ? ` per ${num(l.per)}` : ''}</td>
+        <td>${esc(dateTime(l.expires))}</td><td>${d.actions ? `<button type="button" class="np-btn small" data-market-withdraw="${esc(l.id)}" title="Takes it off the market; the items go to ${esc(p.name)}'s mailbox">Withdraw</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
+      : `<p class="np-loc-sub">Nothing on the market right now.</p>`;
+    const mail = m.mailbox.currency || m.mailbox.parcels.length ? `<h4 class="np-subhead">Mailbox <small>waiting for ${esc(p.name)} in /market</small></h4>
+      <div class="np-chips">${m.mailbox.currency ? `<span class="np-tag">${num(m.mailbox.currency)} ${cur}</span>` : ''}${m.mailbox.parcels.map((x) => `<span class="np-tag">${esc(x.item)} ×${num(x.amount)}</span>`).join('')}</div>` : '';
+    const sales = m.sales.length ? `<h4 class="np-subhead">Recent trades <small>newest first</small></h4><div class="np-table-wrap"><table class="np-table"><thead><tr><th>When</th><th></th><th>Item</th><th>Amount</th><th>Total</th><th>With</th></tr></thead><tbody>
+      ${m.sales.map((x) => `<tr><td>${esc(dateTime(x.time))}</td><td><span class="np-level ${x.sold ? 'good' : 'info'}">${x.sold ? 'Sold' : 'Bought'}</span></td><td>${esc(x.item)}</td><td>${num(x.amount)}</td><td>${num(x.total)} ${cur}</td><td>${esc(x.with || '')}</td></tr>`).join('')}</tbody></table></div>` : '';
+    const note = playersState.marketNote ? `<p class="np-loc-sub ${playersState.marketNoteError ? 'np-pet-error' : ''}">${esc(playersState.marketNote)}</p>` : '';
+    return `<h4 class="np-subhead">On the market <small>${num(m.listings.length)}</small></h4>${listings}${note}${mail}${sales}${m.enabled ? '' : '<p class="np-loc-sub">The market is switched off.</p>'}`;
   }
 
   /** The player's pets (cosmetic floating heads), with what an admin can change. */
@@ -1896,8 +1976,10 @@
         ${flags.length ? `<p class="np-xray-note"><i class="bi bi-exclamation-triangle"></i> Possible x-ray: unusually little stone dug per ${flags.map((f) => f === 'diamonds' ? 'diamond' : 'ancient debris').join(' and ')}. A hint, not proof.</p>`
           : '<p class="np-loc-sub">Nothing unusual.</p>'}
         ${row('Diamonds', m.diamonds, m.stone, m.diamondRatio, m.diamondMedian, m.minDiamonds, flags.includes('diamonds'))}
+        ${m.otherOresRatio != null ? `<div class="np-mine-row"><span></span><span><b>${per(m.otherOresRatio)}</b> other ores per diamond <small>(${num(m.otherOres)} coal, iron, copper, gold, redstone, lapis, emerald)</small></span><span class="np-loc-sub">cave explorers mine many; x-ray users few</span></div>` : ''}
         ${row('Ancient debris', m.debris, m.netherStone, m.debrisRatio, m.debrisMedian, m.minDebris, flags.includes('debris'))}
-        <p class="np-loc-sub">From the game's statistics. Legit players dig through a lot of stone, deepslate or netherrack per ore; x-ray users go almost straight to it. Caves, lucky finds, and bed or TNT mining for debris can also look like this.</p>
+        ${m.blasting ? `<div class="np-mine-row"><span></span><span>Uses beds or TNT (${num(m.explosives)})</span><span class="np-loc-sub">blown-up netherrack doesn't count as dug, so debris isn't judged</span></div>` : ''}
+        <p class="np-loc-sub">From the game's statistics. Legit players dig through a lot of stone, deepslate or netherrack per ore; x-ray users go almost straight to it. A diamond hint needs little stone <i>and</i> few other ores per diamond (cave explorers mine plenty of those), and debris isn't judged for players who blast with beds or TNT. Lucky finds can still look like this.</p>
       </div>`;
   }
 
@@ -1940,7 +2022,29 @@
       if (!e.target.matches('[data-pet-style]')) return;
       petAction(e.target.closest('[data-uuid]').dataset.uuid, { action: e.target.dataset.petStyle, how: e.target.value });
     });
-    $('np-player-detail').addEventListener('click', (e) => {
+    $('np-player-detail').addEventListener('click', async (e) => {
+      const tb = e.target.closest('[data-player-tab]');
+      if (tb) {
+        playersState.tab = tb.dataset.playerTab;
+        renderPlayerDetail();
+        return;
+      }
+      const wb = e.target.closest('[data-market-withdraw]');
+      if (wb) {
+        const name = (playersState.data.detail || {}).name;
+        if (!confirm(`Take this listing off the market? What's left goes to ${name}'s mailbox.`)) return;
+        try {
+          const res = await api('api/market/remove', { method: 'POST', body: JSON.stringify({ id: wb.dataset.marketWithdraw }) });
+          playersState.marketNote = res.error || 'Withdrawn; the items are in their mailbox.';
+          playersState.marketNoteError = !!res.error;
+        } catch (err) {
+          playersState.marketNote = 'The server did not respond: ' + err.message;
+          playersState.marketNoteError = true;
+        }
+        loadPlayers();
+        setTimeout(() => { playersState.marketNote = ''; renderPlayerDetail(); }, 5000);
+        return;
+      }
       const pb = e.target.closest('[data-pet-act]');
       if (pb) {
         const uuid = pb.closest('[data-uuid]').dataset.uuid;
@@ -2932,6 +3036,7 @@
       state.clockSkew = data.now - Date.now();
       state.current = data.current || null;
       state.disk = data.disk || null;
+      state.maxPlayers = data.server ? data.server.maxPlayers || 0 : 0;
       if (data.points.length) {
         state.points.push(...data.points);
         if (state.points.length > MAX_POINTS) state.points.splice(0, state.points.length - MAX_POINTS);
@@ -3151,10 +3256,8 @@
         if (state.showAll.has(key)) state.showAll.delete(key); else state.showAll.add(key);
         if (state.view) renderView(state.view);
       }
-      if (e.target.closest('#np-notes-link')) {
-        const hasErrors = (state.view && state.view.diagnosis.notes || []).some((n) => n.category === 'Errors');
-        openSection(hasErrors ? 'np-errors-card' : 'np-settings-card');
-      }
+      const note = e.target.closest('[data-note]');
+      if (note) openSection(note.dataset.note);
       const monitor = e.target.closest('[data-monitor]');
       if (monitor) {
         setMonitoring(monitor.dataset.monitor === '1');

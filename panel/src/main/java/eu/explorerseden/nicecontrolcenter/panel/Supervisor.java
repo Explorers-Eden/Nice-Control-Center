@@ -195,7 +195,7 @@ public final class Supervisor {
 		if (line.startsWith("/")) line = line.substring(1);
 		if (line.isEmpty()) return "Empty command.";
 		if (state != State.STARTING && state != State.RUNNING) return "The server isn't running.";
-		addLine("> " + line);
+		addLine(stamp() + "> " + line);
 		return send(line) ? null : "Could not reach the server's console.";
 	}
 
@@ -454,8 +454,15 @@ public final class Supervisor {
 
 	/** The panel's own notes in the console, marked so the UI can tell them apart. */
 	private void panelLine(String text) {
-		addLine("[panel] " + text);
+		addLine(stamp() + "[panel] " + text);
 	}
+
+	/** "[14:03:22] " like the server's own log lines (same clock: the container's time zone). */
+	private static String stamp() {
+		return "[" + java.time.LocalTime.now().format(STAMP) + "] ";
+	}
+
+	private static final java.time.format.DateTimeFormatter STAMP = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss");
 
 	private void addLine(String line) {
 		synchronized (this) {

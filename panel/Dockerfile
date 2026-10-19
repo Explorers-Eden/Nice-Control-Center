@@ -24,4 +24,7 @@ WORKDIR /data
 EXPOSE 8080 25565 2022
 VOLUME ["/data/server", "/data/backups", "/data/map", "/data/panel"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD curl -fs http://localhost:8080/api/health || exit 1
-ENTRYPOINT ["/usr/bin/tini", "--", "java", "-XX:MaxRAMPercentage=25", "-jar", "/app/panel.jar"]
+# The panel's own Java: a fixed heap limit (25 % of the host's RAM was several GB on a big host) that gives unused
+# memory back when idle. PANEL_JAVA_OPTS replaces these in the stack if the panel ever needs more.
+ENV PANEL_JAVA_OPTS="-Xmx1536m -XX:+UseG1GC -XX:G1PeriodicGCInterval=60000 -XX:MaxMetaspaceSize=256m"
+ENTRYPOINT ["/usr/bin/tini", "--", "sh", "-c", "exec java $PANEL_JAVA_OPTS -jar /app/panel.jar"]

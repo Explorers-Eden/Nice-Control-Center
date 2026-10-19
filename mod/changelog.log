@@ -1,4 +1,23 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.14.0
+- Gameplay tweak: crops grow faster in the rain (wheat, carrots, potatoes, beetroot, stems, sweet berries, cocoa…), by a percentage set in the panel
+- Gameplay tweak: Better Mending. Sneak and right-click an anvil to repair the Mending item in your hand with your experience, at Mending's rate
+- Gameplay tweak: AFK players don't count when the game works out how many players need to sleep to skip the night
+- Gameplay tweak: hide ores from x-ray (like Paper's anti-xray): ores with no open side are sent to players as stone, deepslate, netherrack or end stone, and shown as soon as a block next to them changes. Off by default; which blocks and below which height are set in the panel
+- X-ray hint: fewer false alarms. A diamond hint now also needs few other ores per diamond (cave explorers mine lots of iron, coal and copper on the way), debris isn't judged for players who blast with beds or TNT, and more kinds of stone count as dug
+- Claims: anyone may use interaction entities in claims (graves, waypoint hubs, the spawn's buttons); the data packs decide what's allowed
+- Tree felling: trees whose branches or leaves touch are no longer felled together; a trunk standing on the ground is another tree (2×2 trunks still fall as one)
+- Pets: they no longer fly through their owner during their moves; while the owner is AFK the pet roams around them on its own and goes back to its move when they're back; their particles no longer drift into the owner's view
+- Market: selling starts with a row per item you carry, each with its item and a [ Sell ] button, then a form for that item
+- Market: change the price of your listing and add more of the item to it (Add more), or add to a listing of the same item straight from the sell form; restocking runs the listing for its full time again
+- Market: Browse shows which listings of how many are on the page and has the page buttons below the list too (expensive listings were easy to miss on page 2)
+- Tuning: "Tick less where nobody is" and "Lighter mob AI" ranges are a share of the simulation distance now, so they're never farther than it and shrink while lag protection lowers it (at least 16 blocks). Earlier block values are replaced by the new defaults: check them in the panel
+- Dashboard: Overview has a View & simulation distance chart; the note under "What's costing performance" lists each setting or check with what it's about; World → Players shows how many chunks are loaded around each player
+- Dashboard: the player card is split into tabs (Overview, Items, Places, Claims, Market, Pets, Checks); Claims shows this mod's claims (owned, member of, claim blocks), Market the player's listings with Withdraw, their mailbox and recent trades
+- Dashboard: the GC tile shows the number its colour comes from (background work with ZGC), and only warns about it once the heap is filling up too; the Players tile shows the player limit
+- Map: waypoint hubs carry their own head and title colour for the panel's map
+- API for Merl: market prices per item (MarketApi), for price advice
+
 ## 1.13.28
 - Gameplay tweak: iron golems when villagers panic. A frightened villager calls an iron golem if none is around, on its own; sleeping, gossiping and other villagers are no longer needed, and gossiping no longer calls golems. Shown on the info page
 

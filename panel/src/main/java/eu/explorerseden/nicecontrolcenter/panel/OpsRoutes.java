@@ -58,6 +58,7 @@ final class OpsRoutes {
 			}
 			audit.log(me.name(), "backup.download", file.getFileName().toString(), clientIp(ctx));
 			ctx.header("Content-Disposition", "attachment; filename=\"" + file.getFileName() + "\"");
+			ctx.disableCompression();
 			ctx.header("Content-Length", String.valueOf(Files.size(file)));
 			ctx.contentType("application/zip");
 			InputStream in = Files.newInputStream(file);

@@ -278,6 +278,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `MAP_HOST` | – | the map's own address, e.g. `map.example.com` |
 | `INFO_HOST` | – | the public info page's own address, e.g. `info.example.com` |
 | `SFTP_PORT` | `2022` | SFTP port inside the container (`off` turns SFTP off) |
+| `PANEL_JAVA_OPTS` | `-Xmx1536m -XX:+UseG1GC …` | Java options of the panel itself (not the Minecraft server); raise `-Xmx` only if the panel runs out of memory |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |
 | `PANEL_PORT` | `8080` | port the panel listens on inside the container |
 

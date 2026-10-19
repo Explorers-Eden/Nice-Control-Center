@@ -109,8 +109,8 @@
         { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
         { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
       { id: 'gameplay', hue: '#c4a6ff', label: 'Gameplay', icon: 'bi-magic', subs: [
-        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, grindstone, spawners, tridents, dispensers, tree felling and vein mining: things vanilla does differently.' },
-        { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Nether portals in any shape, saplings that plant themselves, bone meal on more plants and iron golems.' },
+        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, Better Mending, grindstone, spawners, tridents, dispensers, tree felling and vein mining: things vanilla does differently.' },
+        { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Nether portals in any shape, saplings that plant themselves, bone meal on more plants, hidden ores, crops in the rain and iron golems.' },
         { tab: 'chattweaks', label: 'Chat & tab list', perm: 'server.view', desc: '@Mentions in chat, the AFK tag, and the tab list\'s header, footer and dimensions.' }] },
       { id: 'tuning', hue: '#ffb35c', label: 'Tuning', icon: 'bi-speedometer', subs: [
         { tab: 'tuning', label: 'Tuning', perm: 'dashboard.view', desc: 'Make the server lighter: tick less where nobody is, cap what piles up, step down while it lags.' }] },
@@ -251,6 +251,7 @@
   let dashboardHash = '';
   let activeTab = '';
   let homeTicks = 0;
+  let memTicks = 0;
 
   // Backups and schedules change on their own (progress, next run): refresh the open tab.
   setInterval(() => {
@@ -259,6 +260,7 @@
     if (activeTab === 'schedule') loadSchedule();
     if (activeTab === 'versions' && versionState.running) loadVersions(false);
     if (activeTab === 'world') worldTick();
+    if (activeTab === 'java' && ++memTicks % 3 === 0) loadMemory();
     if (activeTab === 'tuning') loadPerfLive();
     if (activeTab === 'maintenance' && ++mtTicks % 2 === 0) refreshStaffList();
     if (activeTab === 'mod:overview' && ++homeTicks % 5 === 0) loadHome();
@@ -274,10 +276,14 @@
     html, body { min-height: 0 !important; height: auto !important; }
     body.embedded { min-height: 0 !important; }
     body.embedded > .navbar, body.embedded .np-tabs, body.embedded .np-toasts { display: none !important; }
-    body.embedded .np-inspector-list { height: 640px !important; }
+    /* The player list runs as long as the open card (at least 640px) and scrolls inside. */
+    body.embedded .np-inspector { align-items: stretch !important; }
+    body.embedded .np-inspector-list { height: auto !important; min-height: 640px; contain: size; position: static !important; }
     body.embedded .np-console-log { height: 520px !important; }
     /* Kick and ban live on Players → Whitelist & bans. */
     body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }
+    /* On Home the health banner is part of the panel's greeting card. */
+    body.embedded.pn-overview #np-banner { display: none !important; }
     /* The panel shows the Save/Cancel bar under the frame (in here it would sit at the end of the page). */
     body.embedded .np-save-bar { display: none !important; }`;
   let frameResize = null;
@@ -385,9 +391,12 @@
       let changed = false;
       doc.querySelectorAll('#np-tabs .np-tab').forEach((t) => {
         const src = t.querySelector('.np-tab-badge');
-        if (!src) return;
-        const n = src.hidden ? '' : src.textContent.trim();
+        // The Game page's count (settings worth a look) says nothing next to "Server"; Home lists those.
+        if (!src || t.dataset.tab === 'server') return;
         const warn = src.classList.contains('warn');
+        let n = src.hidden ? '' : src.textContent.trim();
+        // Players online come from the navbar's live data (the frame only counts when its page is open); unread answers win.
+        if (t.dataset.tab === 'players' && !warn) n = liveOnline ? String(liveOnline) : '';
         if ((badges['mod:' + t.dataset.tab] || '') !== n || !!badgeWarn['mod:' + t.dataset.tab] !== warn) {
           badges['mod:' + t.dataset.tab] = n;
           badgeWarn['mod:' + t.dataset.tab] = warn;
@@ -396,6 +405,12 @@
       });
       if (changed) renderBadges();
     } catch (e) { /* not loaded */ }
+    syncHeroHealth();
+    // Without the frame (never opened a mod page) the online count still shows.
+    if (!$('pn-dashboard-frame').dataset.loaded && (badges['mod:players'] || '') !== (liveOnline ? String(liveOnline) : '')) {
+      badges['mod:players'] = liveOnline ? String(liveOnline) : '';
+      renderBadges();
+    }
   }, 700);
 
   function markTab(tab) {
@@ -433,6 +448,7 @@
     document.body.classList.remove('pn-nav-open');
     if (panel === 'dashboard') showDashboard(tab.slice(4));
     if (tab === 'backups') loadBackups();
+    if (tab === 'java') loadMemory();
     if (tab === 'files') { loadFiles(); loadCleanup(); }
     if (tab === 'configs') loadConfigs();
     if (tab === 'versions') loadVersions(true);
@@ -751,6 +767,8 @@
     serverRunning = st.state === 'RUNNING';
     if (serverRunning && !liveTimer && can('dashboard.view')) pollLive();
     if (!serverRunning) {
+      liveOnline = 0;
+      $('pn-pregen-pill').hidden = true;
       $('pn-stats').hidden = true;
       $('pn-clock').hidden = true;
     }
@@ -769,6 +787,8 @@
   // ── Navbar: stat tiles and game clock (from the mod's live data) ───────
 
   let serverRunning = false;
+  /** Players online from the last live reading: the sidebar's Players count. */
+  let liveOnline = 0;
   let liveTimer = null;
   let liveAfter = 0;
 
@@ -783,6 +803,7 @@
       const data = await api('dashboard/api/live?after=' + (liveAfter || Date.now() - 2000));
       if (data.points && data.points.length) liveAfter = data.points[data.points.length - 1].t;
       renderTiles(data);
+      renderPregenPill(data.pregen);
       renderGameClock(data.clock);
       renderReplies(data.replies);
     } catch (e) {
@@ -796,6 +817,7 @@
     const p = d.latest;
     const cur = d.current;
     if (!p) return;
+    liveOnline = p.players || 0;
     const budget = 50;
     const tpsClass = p.tps >= 19.4 ? 'good' : p.tps >= 17 ? 'warn' : 'poor';
     const msptClass = (v) => (v <= budget * 0.7 ? 'good' : v <= budget ? 'warn' : 'poor');
@@ -806,7 +828,13 @@
     const cpuClass = p.cpuSystem >= 90 ? 'poor' : p.cpuSystem >= 70 ? 'warn' : 'good';
     const gcPct = cur && cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0;
     const bg = cur && cur.wallMs ? Math.min(100, (cur.gcBackgroundMs || 0) * 100 / cur.wallMs) : 0;
-    const gcClass = gcPct >= 10 || (bg >= 95 && livePct >= 85) ? 'poor' : gcPct >= 5 || bg >= 80 ? 'warn' : 'good';
+    // Same rules as the mod's tile: background work (ZGC) only counts once the heap is filling up, and
+    // the tile shows the number its color comes from.
+    const pauseClass = gcPct >= 10 ? 'poor' : gcPct >= 5 ? 'warn' : 'good';
+    const bgClass = bg >= 95 && livePct >= 85 ? 'poor' : bg >= 80 && livePct >= 70 ? 'warn' : 'good';
+    const rank = { good: 0, warn: 1, poor: 2 };
+    const showBusy = rank[bgClass] > rank[pauseClass];
+    const gcClass = showBusy ? bgClass : pauseClass;
     const ms = (v) => (v >= 100 ? fixed(v, 0) : fixed(v, 1));
     // Short sizes for the tiles: "54 MB", "2.0 GB", "540 GB".
     const short = (b) => { const [v, u] = b >= 1073741824 ? [b / 1073741824, 'GB'] : [b / 1048576, 'MB']; return (v < 10 ? v.toFixed(1) : Math.round(v)) + ' ' + u; };
@@ -823,16 +851,37 @@
       tiles.push(['Disk', null, null, sizes([['world', d.disk.world, ''], ['server', d.disk.server, ''], ['free', d.disk.free, freePct < 5 ? 'poor' : freePct < 10 ? 'warn' : 'good']])]);
     }
     tiles.push(
-      ['GC', `<span class="${gcClass}">${fixed(gcPct, 1)}%</span><small> paused</small>`, `${bg >= 1 ? `busy ${fixed(bg, 0)}% · ` : ''}${num(cur ? cur.gcCount : 0)} pauses`],
+      ['GC', showBusy ? `<span class="${gcClass}">${fixed(bg, 0)}%</span><small> busy</small>` : `<span class="${gcClass}">${fixed(gcPct, 1)}%</span><small> paused</small>`,
+        showBusy ? `paused ${fixed(gcPct, 1)}%` : `${num(cur ? cur.gcCount : 0)} pauses`],
       ['Entities', num(p.entities), 'loaded'],
       ['Block entities', num(p.blockEntities), 'ticking'],
       ['Chunks', num(p.chunks), 'loaded'],
-      ['Players', num(p.players), 'online'],
+      ['Players', num(p.players), d.server && d.server.maxPlayers ? `online of ${num(d.server.maxPlayers)}` : 'online'],
     );
     $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}">
       <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join('');
     $('pn-stats').hidden = false;
   }
+
+  /** "Overworld: 42%" left of the game clock, only while chunks are being pregenerated. */
+  function renderPregenPill(st) {
+    const pill = $('pn-pregen-pill');
+    if (!st || !st.running) {
+      pill.hidden = true;
+      return;
+    }
+    const dim = (worldDims.find((x) => x.id === st.dimension) || {}).name
+      || String(st.dimension || '').replace(/^minecraft:/, '').replace(/^[^:]*:/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const pct = st.total ? Math.floor(st.done / st.total * 100) : 0;
+    const status = st.counting ? 'counting…' : st.paused ? 'paused' : pct + '%';
+    const html = `<i class="bi bi-grid-3x3-gap"></i><b>${esc(dim)}:</b><span>${esc(status)}</span>`;
+    if (pill.dataset.html !== html) { pill.innerHTML = html; pill.dataset.html = html; }
+    pill.title = `Pregenerating ${dim}: ${(st.done || 0).toLocaleString()} of ${(st.total || 0).toLocaleString()} chunks`
+      + `${st.paused ? ' · paused: ' + st.paused : st.etaSeconds > 0 ? ' · about ' + duration(st.etaSeconds * 1000) + ' left' : ''}`
+      + `${(st.queued || []).length ? ' · then ' + st.queued.length + ' more' : ''}`;
+    pill.hidden = false;
+  }
+  $('pn-pregen-pill').addEventListener('click', () => selectTab('world'));
 
   /** The in-game clock badge, like in the mod's navbar. */
   function renderGameClock(c) {
@@ -892,9 +941,13 @@
   let reconnect = null;
   const MAX_LINES = 2000;
 
+  /** Panel notes and command echoes start with their time like the server's lines: "[14:03:22] [panel] …". */
+  const STAMP = /^\[\d\d:\d\d:\d\d\] /;
+  const unstamped = (line) => line.replace(STAMP, '');
+
   function lineClass(line) {
-    if (line.startsWith('[panel] ')) return 'panel';
-    if (line.startsWith('> ')) return 'cmd';
+    if (unstamped(line).startsWith('[panel] ')) return 'panel';
+    if (unstamped(line).startsWith('> ')) return 'cmd';
     if (/\b(ERROR|FATAL)\b|Exception|^\s+at /.test(line)) return 'poor';
     if (/\bWARN\b/.test(line)) return 'warn';
     return '';
@@ -906,7 +959,7 @@
 
   /** The line's level; stack trace lines ("at …", "Caused by") belong to the line above them. */
   function lineLevel(line) {
-    if (line.startsWith('[panel] ')) return 'PANEL';
+    if (unstamped(line).startsWith('[panel] ')) return 'PANEL';
     const m = line.match(/\/(ERROR|FATAL|WARN|INFO|DEBUG|TRACE)\]/);
     if (m) return (lastLevel = m[1]);
     if (/^\s+at |^\s*Caused by:|^\s*\.\.\. \d+ more/.test(line)) return lastLevel;
@@ -921,8 +974,8 @@
     switch (conFilter) {
       case 'errors': return level === 'ERROR' || level === 'FATAL';
       case 'warnings': return level === 'WARN';
-      case 'ncc': return /Nice Control Center/.test(div.textContent);
-      case 'panel': return level === 'PANEL';
+      // The mod's lines and the panel's own notes.
+      case 'ncc': return level === 'PANEL' || /Nice Control Center|nicecontrolcenter/.test(div.textContent);
       default: return true;
     }
   }
@@ -940,6 +993,9 @@
     refilterConsole();
   });
   $('pn-console-debug').addEventListener('change', refilterConsole);
+
+  /** Notes made here in the browser get the time like the rest. */
+  const panelNote = (text) => `[${new Date().toTimeString().slice(0, 8)}] [panel] ${text}`;
 
   function addLines(lines) {
     const log = $('pn-log');
@@ -961,8 +1017,11 @@
     closeConsole();
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'api/console';
     socket = new WebSocket(url);
+    consoleHeard = Date.now();
     socket.onmessage = (e) => {
+      consoleHeard = Date.now();
       const msg = JSON.parse(e.data);
+      if (msg.ping) return;
       if (msg.history) {
         $('pn-log').textContent = '';
         addLines(msg.history);
@@ -974,12 +1033,25 @@
       socket = null;
       if (e.code === 4401) return showLogin();
       if (e.code === 4403) return;
-      if (loggedIn) reconnect = setTimeout(openConsole, 3000);
+      if (loggedIn) reconnect = setTimeout(() => { reconnect = null; openConsole(); }, 3000);
     };
   }
 
+  // The server sends something at least every 25 s. A connection that went quiet (sleep, network
+  // change, a proxy dropping it without closing) is replaced, so the console never needs a reload.
+  let consoleHeard = 0;
+  function checkConsole() {
+    if (!loggedIn || !can('console.read')) return;
+    const dead = !socket || socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING;
+    if ((socket && socket.readyState === WebSocket.OPEN && Date.now() - consoleHeard > 70000) || (dead && !reconnect)) openConsole();
+  }
+  setInterval(checkConsole, 10000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkConsole(); });
+  window.addEventListener('online', () => checkConsole());
+
   function closeConsole() {
     clearTimeout(reconnect);
+    reconnect = null;
     if (socket) {
       socket.onclose = null;
       socket.close();
@@ -998,7 +1070,7 @@
       await api('api/server/command', { command });
       input.value = '';
     } catch (err) {
-      addLines(['[panel] ' + err.message]);
+      addLines([panelNote(err.message)]);
     }
   });
 
@@ -1017,10 +1089,10 @@
     const on = e.target.checked;
     try {
       await api('api/console/ops', { on });
-      addLines([`[panel] Commands run here are ${on ? 'now shown to operators in game' : 'no longer shown to operators in game'}.`]);
+      addLines([panelNote(`Commands run here are ${on ? 'now shown to operators in game' : 'no longer shown to operators in game'}.`)]);
     } catch (err) {
       e.target.checked = !on;
-      addLines(['[panel] ' + err.message]);
+      addLines([panelNote(err.message)]);
     }
   });
 
@@ -1073,6 +1145,32 @@
     try {
       fillSettings(await api('api/settings'));
     } catch (e) { /* the form stays empty; saving shows the error */ }
+  }
+
+  /**
+   * Where the container's memory goes: the Minecraft process (its heap plus what Java and the mods use outside
+   * it), the panel, and the file cache the kernel gives back when needed (Linux containers only).
+   */
+  async function loadMemory() {
+    let m;
+    try {
+      m = (await api('api/server?memory=1')).memory;
+    } catch (e) {
+      return;
+    }
+    const box = $('pn-memory');
+    if (!m || (!m.server && !m.container)) {
+      box.hidden = true;
+      return;
+    }
+    const gb = (b) => (b / 1073741824).toLocaleString(undefined, { maximumFractionDigits: 1 }) + ' GB';
+    const heap = Number($('pn-settings').memoryMaxMb.value) * 1048576;
+    const rows = [];
+    if (m.server) rows.push(['Minecraft server', gb(m.server), heap ? `${gb(heap)} heap (maximum memory) plus ${gb(Math.max(0, m.server - heap))} outside it: Java itself, mods' code, network buffers and native libraries (Distant Horizons' database, C2ME…)` : '']);
+    if (m.panel) rows.push(['Panel', gb(m.panel), `map, backups, website sync; heap limit ${gb(m.panelHeapMax)}`]);
+    if (m.container) rows.push(['Whole container', gb(m.container), m.fileCache ? `incl. ${gb(m.fileCache)} file cache (region files, backups): Docker counts it, but the system gives it back as soon as something needs memory` : '']);
+    box.innerHTML = `<p class="pn-preview-label">Memory right now</p><dl>${rows.map(([k, v, note]) => `<dt>${esc(k)}</dt><dd><b>${esc(v)}</b>${note ? ` <span class="pn-hint">${esc(note)}</span>` : ''}</dd>`).join('')}</dl>`;
+    box.hidden = false;
   }
 
   $('pn-settings').addEventListener('input', previewCommand);
@@ -3344,9 +3442,8 @@
       return;
     }
     renderHero(d);
+    // Updates aren't listed: the Updates entry in the sidebar already counts them.
     const items = [...d.attention];
-    // Things only the browser knows: the mod's update count and the dynamic distances.
-    if (Number(badges['mod:updates']) > 0) items.push({ level: 'info', text: `${badges['mod:updates']} mod update${badges['mod:updates'] > 1 ? 's are' : ' is'} available.`, tab: 'mod:updates', action: 'Updates' });
     $('pn-attention').hidden = !items.length;
     $('pn-attn-list').innerHTML = items.map((i) => `<li class="pn-attn ${esc(i.level)}"><i class="bi ${i.level === 'bad' ? 'bi-x-circle-fill' : i.level === 'warn' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'}"></i>
       <span>${esc(i.text)}</span><button type="button" class="np-btn small" data-goto="${esc(i.tab)}">${esc(i.action)} <i class="bi bi-arrow-right"></i></button></li>`).join('');
@@ -3365,14 +3462,56 @@
     const part = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('pn-hero-greet').textContent = `${part}, ${me ? me.user : ''}`;
     $('pn-hero-motd').innerHTML = motdHtml(d.motd);
-    const state = { RUNNING: ['Online', 'good'], STARTING: ['Starting', 'warn'], STOPPING: ['Stopping', 'warn'], CRASHED: ['Crashed', 'bad'] }[d.state] || ['Offline', 'off'];
-    const facts = [`<span class="pn-hero-fact ${state[1]}"><span class="pn-hero-dot"></span>${state[0]}</span>`];
-    if (d.players != null) facts.push(`<span class="pn-hero-fact"><i class="bi bi-people-fill"></i>${d.players} / ${esc(d.maxPlayers)} playing</span>`);
-    if (d.uptime7d != null) facts.push(`<span class="pn-hero-fact"><i class="bi bi-activity"></i>${d.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })}% up this week</span>`);
-    const clock = $('pn-clock');
-    if (!clock.hidden && clock.textContent.trim()) facts.push(`<span class="pn-hero-fact">${clock.innerHTML}</span>`);
-    $('pn-hero-facts').innerHTML = facts.join('');
+    // Server state and the game clock are always in the navbar, so they aren't repeated here.
+    heroFacts = [];
+    if (d.players != null) heroFacts.push(`<span class="pn-hero-fact"><i class="bi bi-people-fill"></i>${d.players} / ${esc(d.maxPlayers)} playing</span>`);
+    if (d.uptime7d != null) heroFacts.push(`<span class="pn-hero-fact"><i class="bi bi-activity"></i>${d.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })}% up this week</span>`);
+    syncHeroHealth();
   }
+  let heroFacts = [];
+
+  /**
+   * The mod's health banner ("The server is running smoothly", TPS line, summary, time window) shown
+   * in the greeting card on Home; the frame's own banner is hidden on that page (EMBED_CSS).
+   */
+  function syncHeroHealth() {
+    let doc = null;
+    try { doc = $('pn-dashboard-frame').contentDocument; } catch (e) { /* not loaded */ }
+    const on = activeTab === 'mod:overview';
+    if (doc && doc.body) doc.body.classList.toggle('pn-overview', on);
+    const title = on && doc && doc.getElementById('np-health-title');
+    const health = !!(title && serverRunning && title.textContent.trim() && !/^Waiting/.test(title.textContent));
+    $('pn-hero-health').hidden = !health;
+    $('pn-hero-window').hidden = !health;
+    const extra = [];
+    if (health) {
+      const dot = 'np-status-dot ' + doc.getElementById('np-status-dot').className.replace(/^np-status-dot\s*/, '');
+      if ($('pn-hero-dot').className !== dot) $('pn-hero-dot').className = dot;
+      for (const [mine, theirs] of [['pn-hero-title', 'np-health-title'], ['pn-hero-headline', 'np-health-headline'], ['pn-hero-summary', 'np-health-summary']]) {
+        const text = doc.getElementById(theirs).textContent;
+        if ($(mine).textContent !== text) $(mine).textContent = text;
+      }
+      const win = [...doc.querySelectorAll('#np-window button[data-window]')]
+        .map((b) => `<button type="button" role="tab" data-window="${esc(b.dataset.window)}" class="${b.classList.contains('active') ? 'active' : ''}">${esc(b.textContent)}</button>`).join('');
+      if ($('pn-hero-window').innerHTML !== win) $('pn-hero-window').innerHTML = win;
+      // Version, mods and a running lag report from the banner's chips (the server name is the message above).
+      doc.querySelectorAll('#np-meta .np-tag').forEach((t) => {
+        if (t.querySelector('.bi-hdd-network, .bi-clock-history')) return;
+        extra.push(`<span class="pn-hero-fact${t.classList.contains('np-tag--lag') ? ' warn' : ''}">${t.innerHTML}</span>`);
+      });
+    }
+    const facts = heroFacts.concat(extra).join('');
+    if ($('pn-hero-facts').innerHTML !== facts) $('pn-hero-facts').innerHTML = facts;
+  }
+  $('pn-hero-window').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-window]');
+    if (!b) return;
+    try {
+      const theirs = $('pn-dashboard-frame').contentDocument.querySelector(`#np-window button[data-window="${b.dataset.window}"]`);
+      if (theirs) theirs.click();
+    } catch (err) { /* not loaded */ }
+    syncHeroHealth();
+  });
 
   $('pn-home').addEventListener('click', (e) => {
     const b = e.target.closest('[data-goto]');

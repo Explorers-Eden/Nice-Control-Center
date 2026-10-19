@@ -193,6 +193,8 @@ public final class Breakdown {
 		public int viewDistance;
 		public int entitiesNear;
 		public int blockEntitiesNear;
+		/** Loaded chunks within the view distance they get (others nearby may share them). */
+		public int chunksLoaded;
 		/** New chunks generated closest to this player. */
 		public long newChunks;
 		/** Measured tick time of the chunks around this player (each chunk counted for the nearest player only). */
@@ -224,6 +226,7 @@ public final class Breakdown {
 			viewDistance = newer.viewDistance;
 			entitiesNear = newer.entitiesNear;
 			blockEntitiesNear = newer.blockEntitiesNear;
+			chunksLoaded = newer.chunksLoaded;
 		}
 	}
 

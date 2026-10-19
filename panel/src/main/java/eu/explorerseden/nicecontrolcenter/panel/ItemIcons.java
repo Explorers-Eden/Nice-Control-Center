@@ -42,6 +42,8 @@ import java.util.zip.ZipFile;
 final class ItemIcons {
 	private static final String MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 	private static final int SIZE = 64;
+	/** 2: shulker boxes, chests, banners and other items the game draws with code. */
+	private static final int RENDERER = 2;
 
 	private final Path assetsDir;
 	private final Path iconsDir;
@@ -222,7 +224,8 @@ final class ItemIcons {
 		String id = stack.has("id") ? stack.get("id").getAsString() : "minecraft:air";
 		JsonObject comps = stack.has("components") && stack.get("components").isJsonObject() ? stack.getAsJsonObject("components") : new JsonObject();
 		String modelKey = comps.has("minecraft:item_model") ? comps.get("minecraft:item_model").getAsString() : id;
-		String key = modelKey + "|" + comps.get("minecraft:custom_model_data") + "|" + comps.get("minecraft:dyed_color") + "|" + readyFor;
+		// RENDERER: raised when icons are drawn differently, so they're drawn again.
+		String key = modelKey + "|" + comps.get("minecraft:custom_model_data") + "|" + comps.get("minecraft:dyed_color") + "|" + readyFor + "|" + RENDERER;
 		String hash = sha1(key);
 		if (Files.isRegularFile(iconsDir.resolve(hash + ".png"))) return hash;
 		if (failed.containsKey(hash) || readyFor.isEmpty()) return null;
@@ -251,7 +254,11 @@ final class ItemIcons {
 		}
 	}
 
-	private record Pick(String model, int tint) {
+	/** special: the game draws it with code (shulker boxes, chests, banners, heads…): {type, texture} of that renderer. */
+	private record Pick(String model, int tint, JsonObject special) {
+		Pick(String model, int tint) {
+			this(model, tint, null);
+		}
 	}
 
 	private BufferedImage render(String modelKey, JsonObject comps) throws IOException {
@@ -260,7 +267,69 @@ final class ItemIcons {
 		Pick pick = def != null && def.has("model") ? choose(def.get("model"), comps) : null;
 		String model = pick != null ? pick.model() : id[0] + ":item/" + id[1];
 		if (model == null) return null;
+		if (pick != null && pick.special() != null) {
+			BufferedImage img = renderSpecial(pick.special(), model);
+			if (img != null) return img;
+		}
 		return renderModel(model, pick != null ? pick.tint() : -1);
+	}
+
+	/**
+	 * Items the game draws with code: shulker boxes and chests as cubes cut from their entity textures, the rest
+	 * (banners, beds, pots…) as a cube of the base model's particle texture. Null when neither is there.
+	 */
+	private BufferedImage renderSpecial(JsonObject special, String base) {
+		String type = special.has("type") ? special.get("type").getAsString().replace("minecraft:", "") : "";
+		String tex = special.has("texture") ? special.get("texture").getAsString() : null;
+		if (type.equals("shulker_box") && tex != null) {
+			String[] t = split(tex);
+			BufferedImage skin = texture(t[0] + ":entity/shulker/" + t[1]);
+			if (skin != null && skin.getWidth() >= 64 && skin.getHeight() >= 52) {
+				int k = skin.getWidth() / 64;
+				// Lid (12 high) over the bottom 4 rows of the base: the front as it looks closed.
+				BufferedImage side = new BufferedImage(16 * k, 16 * k, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g = side.createGraphics();
+				g.drawImage(skin.getSubimage(16 * k, 16 * k, 16 * k, 12 * k), 0, 0, null);
+				g.drawImage(skin.getSubimage(16 * k, 48 * k, 16 * k, 4 * k), 0, 12 * k, null);
+				g.dispose();
+				return cube(skin.getSubimage(16 * k, 0, 16 * k, 16 * k), side, side);
+			}
+		}
+		if (type.equals("chest") && tex != null) {
+			String[] t = split(tex);
+			BufferedImage skin = texture(t[0] + ":entity/chest/" + t[1]);
+			if (skin != null && skin.getWidth() >= 64 && skin.getHeight() >= 43) {
+				int k = skin.getWidth() / 64;
+				// Lid front (5 high) over the bottom's front (10 high), 14 wide.
+				BufferedImage side = new BufferedImage(14 * k, 15 * k, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g = side.createGraphics();
+				g.drawImage(skin.getSubimage(14 * k, 14 * k, 14 * k, 5 * k), 0, 0, null);
+				g.drawImage(skin.getSubimage(14 * k, 33 * k, 14 * k, 10 * k), 0, 5 * k, null);
+				g.dispose();
+				// The lid's outer face (the other square of the top row is its inside).
+				return cube(skin.getSubimage(28 * k, 0, 14 * k, 14 * k), side, side);
+			}
+		}
+		if (type.equals("banner") && special.has("color")) {
+			Integer rgb = DYES.get(special.get("color").getAsString());
+			if (rgb != null) return banner(rgb);
+		}
+		// The particle texture of the base model (and its parents).
+		String current = base;
+		for (int depth = 0; current != null && depth < 16; depth++) {
+			String[] id = split(current);
+			JsonObject m = json(id[0], "models/" + id[1] + ".json");
+			if (m == null) break;
+			if (m.has("textures") && m.getAsJsonObject("textures").has("particle")) {
+				String ref = m.getAsJsonObject("textures").get("particle").getAsString();
+				if (!ref.startsWith("#")) {
+					BufferedImage t = texture(ref);
+					if (t != null) return cube(t, t, t);
+				}
+			}
+			current = m.has("parent") ? m.get("parent").getAsString() : null;
+		}
+		return null;
 	}
 
 	/** Walks the item definition (select / condition / range_dispatch…) to the model the GUI shows. */
@@ -331,12 +400,35 @@ final class ItemIcons {
 				return n.has("models") && !n.getAsJsonArray("models").isEmpty() ? choose(n.getAsJsonArray("models").get(0), comps) : null;
 			}
 			case "special" -> {
-				return n.has("base") ? new Pick(n.get("base").getAsString(), -1) : null;
+				return n.has("base") ? new Pick(n.get("base").getAsString(), -1, n.has("model") && n.get("model").isJsonObject() ? n.getAsJsonObject("model") : new JsonObject()) : null;
 			}
 			default -> {
 				return choose(n.has("fallback") ? n.get("fallback") : n.get("model"), comps);
 			}
 		}
+	}
+
+	/** The dye colours as the game tints banners with them. */
+	private static final Map<String, Integer> DYES = Map.ofEntries(Map.entry("white", 0xF9FFFE), Map.entry("orange", 0xF9801D), Map.entry("magenta", 0xC74EBD),
+			Map.entry("light_blue", 0x3AB3DA), Map.entry("yellow", 0xFED83D), Map.entry("lime", 0x80C71F), Map.entry("pink", 0xF38BAA), Map.entry("gray", 0x474F52),
+			Map.entry("light_gray", 0x9D9D97), Map.entry("cyan", 0x169C9C), Map.entry("purple", 0x8932B8), Map.entry("blue", 0x3C44AA), Map.entry("brown", 0x835432),
+			Map.entry("green", 0x5E7C16), Map.entry("red", 0xB02E26), Map.entry("black", 0x1D1D21));
+
+	/** A banner: the cloth in its colour hanging from a wooden bar. */
+	private static BufferedImage banner(int rgb) {
+		BufferedImage out = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = out.createGraphics();
+		int u = SIZE / 16;
+		g.setColor(new java.awt.Color(0x6B4F2A));
+		g.fillRect(3 * u, 1 * u, 10 * u, u);
+		g.fillRect(7 * u, 0, 2 * u, 16 * u);
+		g.setColor(new java.awt.Color(rgb));
+		g.fillRect(4 * u, 2 * u, 8 * u, 13 * u);
+		g.setColor(new java.awt.Color(0, 0, 0, 60));
+		g.fillRect(4 * u, 2 * u, u, 13 * u);
+		g.fillRect(4 * u, 14 * u, 8 * u, u);
+		g.dispose();
+		return out;
 	}
 
 	private static boolean contains(JsonArray a, String s) {

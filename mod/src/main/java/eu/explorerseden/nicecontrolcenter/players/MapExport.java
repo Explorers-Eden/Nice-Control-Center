@@ -172,6 +172,16 @@ public final class MapExport {
 			h.put("owner", profile.getStringOr("name", ""));
 			profile.getIntArray("id").filter(a -> a.length == 4).ifPresent(a -> h.put("ownerUuid", net.minecraft.core.UUIDUtil.uuidFromIntArray(a).toString()));
 			h.put("color", hub.getStringOr("color", ""));
+			// The hub's own head (picked by left-clicking it), else its owner's: the skin hash for the map's picture.
+			String head = eu.explorerseden.nicecontrolcenter.Pets.skinHash(hub.getStringOr("icon", ""));
+			if (head == null) {
+				var props = profile.getListOrEmpty("properties");
+				for (int i = 0; i < props.size() && head == null; i++) {
+					CompoundTag prop = props.getCompoundOrEmpty(i);
+					if ("textures".equals(prop.getStringOr("name", ""))) head = eu.explorerseden.nicecontrolcenter.Pets.skinHash(prop.getStringOr("value", ""));
+				}
+			}
+			if (head != null) h.put("head", head);
 			out.add(h);
 		}
 		return out;

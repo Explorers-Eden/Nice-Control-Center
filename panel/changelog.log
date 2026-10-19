@@ -1,3 +1,18 @@
+## 1.13.0
+- Home: the greeting and the "running smoothly" card are one card (health, time window, version and mods); online state and the clock aren't repeated (they're at the top); available updates aren't listed under Needs attention
+- Navbar: a pill next to the game clock while chunks are being pregenerated ("Overworld: 42%"), click it for World → Borders; the Players tile shows the player limit; the GC tile shows the number its colour comes from
+- Sidebar: Players counts who's online without opening the page first; the unexplained number on Server is gone
+- Console: timestamps on the panel's own lines and command echoes; the Panel filter is part of Nice Control Center; the console reconnects on its own when the connection went quiet (no more reloading the page)
+- Players: the player list runs as long as the open player card
+- Gameplay: Better Mending (Items & tools); hide ores from x-ray and crops in the rain (World & nature); AFK players don't count for sleeping (Chat & tab list) — needs mod 1.14.0
+- Tuning: tick-less and lighter-AI ranges are set as a share of the simulation distance (mod 1.14.0)
+- Map: waypoint hub pins in the colour of the hub's title, with the hub's own head; with "names of who's online" the status card always lists them ("nobody right now" otherwise) and a name jumps to that player
+- Market and info page: shulker boxes, chests, banners and other items the game draws with code get icons
+- Files: downloading a single file (like a .log.gz) no longer fails with "Insufficient content written"
+- Startup & Java: "Memory right now" shows what the Minecraft process, the panel and the container use, with the file cache the system gives back on its own
+- Docker: the panel's own Java has a fixed 1.5 GB heap limit (was 25 % of the host's memory); PANEL_JAVA_OPTS changes it
+- Database: market_mail (what waits in each player's market mailbox) and pets_owned (who owns which pet) for the website; one broken market entry no longer stops the whole copy
+
 ## 1.12.36
 - Gameplay → World & nature: Iron golems when villagers panic (needs mod 1.13.28)
 

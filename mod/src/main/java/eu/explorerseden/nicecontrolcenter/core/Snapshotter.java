@@ -125,7 +125,8 @@ public final class Snapshotter {
 
 		Point point = new Point(now, b.tps(1000.0 / Math.max(1e-3, b.targetMspt)), b.msptAvg(), b.tickNsMax / 1e6,
 				system.heapUsed(), system.heapMax(), system.heapLive(), system.cpuProcess(), system.cpuSystem(),
-				b.latest.entities, b.latest.blockEntities, b.latest.chunks, b.latest.players, system.gcTimeMs(), paused);
+				b.latest.entities, b.latest.blockEntities, b.latest.chunks, b.latest.players, system.gcTimeMs(), paused,
+				server.getPlayerList().getViewDistance(), server.getPlayerList().getSimulationDistance());
 		History.add(b, point);
 		AlertWatcher.onSecond(server, b);
 		Advisor.maybeRun(server);
@@ -252,11 +253,13 @@ public final class Snapshotter {
 			int cx = row.x >> 4;
 			int cz = row.z >> 4;
 			int r = row.viewDistance;
+			var chunkSource = level.getChunkSource();
 			for (int dx = -r; dx <= r; dx++) {
 				for (int dz = -r; dz <= r; dz++) {
 					long chunk = ChunkPos.pack(cx + dx, cz + dz);
 					row.entitiesNear += entities.get(chunk);
 					row.blockEntitiesNear += blockEntities.get(chunk);
+					if (chunkSource.hasChunk(cx + dx, cz + dz)) row.chunksLoaded++;
 				}
 			}
 			b.players.put(player.getUUID().toString(), row);

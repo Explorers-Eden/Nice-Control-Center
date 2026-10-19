@@ -236,6 +236,9 @@ public final class Felling {
 		ArrayDeque<BlockPos> queue = new ArrayDeque<>();
 		queue.add(origin);
 		seen.add(origin);
+		// The trunk that was cut: its own column, or the four of a 2×2 trunk (dark oak, jungle, giant spruce).
+		Set<Long> trunk = trunkColumns(level, origin, kind, fel);
+		java.util.Map<Long, Boolean> rooted = new java.util.HashMap<>();
 		while (!queue.isEmpty() && logs.size() < maxScan) {
 			BlockPos p = queue.poll();
 			for (int dx = -1; dx <= 1; dx++) {
@@ -247,6 +250,9 @@ public final class Felling {
 						if (n.getY() < origin.getY() || !seen.add(n)) continue;
 						BlockState s = level.getBlockState(n);
 						if (TweaksControl.isLog(s) && (fel.mixedLogs || s.getBlock() == kind)) {
+							// Another tree whose branches or crown touch this one: its trunk stands on the ground (branches never do). Left standing.
+							long column = BlockPos.asLong(n.getX(), 0, n.getZ());
+							if (!trunk.contains(column) && rooted.computeIfAbsent(column, c -> standsOnGround(level, n, origin))) continue;
 							logs.add(n);
 							queue.add(n);
 						} else if (s.is(BlockTags.WART_BLOCKS) || s.is(Blocks.SHROOMLIGHT)) {
@@ -286,6 +292,42 @@ public final class Felling {
 			spreadLeaves(level, leaves, fel.leafRadius);
 		}
 		return new Tree(new ArrayList<>(logs), warts, roots, leaves);
+	}
+
+	/** The columns (x, z as BlockPos.asLong(x, 0, z)) of the cut trunk: the cut one, plus the rest of a 2×2 trunk. */
+	private static Set<Long> trunkColumns(ServerLevel level, BlockPos origin, Block kind, Tweaks.Felling fel) {
+		Set<Long> out = new HashSet<>();
+		out.add(BlockPos.asLong(origin.getX(), 0, origin.getZ()));
+		// The cut block is gone, so a 2×2 shows one level up (or at the cut for its three others).
+		for (int sx = -1; sx <= 0; sx++) {
+			for (int sz = -1; sz <= 0; sz++) {
+				boolean square = true;
+				for (int x = 0; x <= 1 && square; x++) {
+					for (int z = 0; z <= 1 && square; z++) {
+						BlockPos c = origin.offset(sx + x, 0, sz + z);
+						if (c.equals(origin)) c = c.above();
+						BlockState st = level.getBlockState(c);
+						square = TweaksControl.isLog(st) && (fel.mixedLogs || st.getBlock() == kind);
+					}
+				}
+				if (square) {
+					for (int x = 0; x <= 1; x++) for (int z = 0; z <= 1; z++) out.add(BlockPos.asLong(origin.getX() + sx + x, 0, origin.getZ() + sz + z));
+					return out;
+				}
+			}
+		}
+		return out;
+	}
+
+	/** Whether the log column through this block goes down to solid ground near the cut's height: a trunk of its own, not a branch. */
+	private static boolean standsOnGround(ServerLevel level, BlockPos log, BlockPos origin) {
+		BlockPos.MutableBlockPos p = log.mutable();
+		// Down through the logs of this column.
+		for (int i = 0; i < 64 && TweaksControl.isLog(level.getBlockState(p.below())); i++) p.move(0, -1, 0);
+		if (p.getY() > origin.getY() + 1) return false;
+		BlockPos below = p.below();
+		BlockState ground = level.getBlockState(below);
+		return !ground.isAir() && !TweaksControl.isLeaves(ground) && ground.isFaceSturdy(level, below, net.minecraft.core.Direction.UP);
 	}
 
 	/** Leaves connected to the ones found, up to radius blocks further out. */

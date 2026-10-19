@@ -33,6 +33,7 @@
 				<img class="pn-brand-logo" id="pn-brand-logo" alt="" src="branding/panel" hidden>
 			</h1>
 			<div class="np-nav-right">
+				<button type="button" class="np-clock pn-pregen-pill" id="pn-pregen-pill" hidden></button>
 				<span class="np-clock" id="pn-clock" hidden></span>
 				<span class="np-live" id="pn-state-pill" hidden><span class="np-live-dot"></span><span id="pn-state-text"></span><span class="pn-uptime" id="pn-uptime"></span></span>
 				<div class="pn-power" id="pn-power" hidden>
@@ -97,9 +98,17 @@
 				<div class="pn-hero" id="pn-hero">
 					<div class="pn-hero-text">
 						<p class="pn-hero-greet" id="pn-hero-greet">Welcome back</p>
+						<div class="pn-hero-health" id="pn-hero-health" hidden>
+							<p class="pn-hero-status"><span class="np-status-dot info" id="pn-hero-dot"></span><span id="pn-hero-title"></span></p>
+							<p class="pn-hero-headline" id="pn-hero-headline"></p>
+							<p class="pn-hero-summary" id="pn-hero-summary"></p>
+						</div>
 						<div class="pn-hero-motd" id="pn-hero-motd"></div>
 					</div>
-					<div class="pn-hero-facts" id="pn-hero-facts"></div>
+					<div class="pn-hero-side">
+						<div class="np-window" id="pn-hero-window" role="tablist" aria-label="Time window" hidden></div>
+						<div class="pn-hero-facts" id="pn-hero-facts"></div>
+					</div>
 				</div>
 				<div class="np-card pn-attention" id="pn-attention" hidden>
 					<h3 class="np-card-title"><i class="bi bi-exclamation-circle"></i> Needs attention</h3>
@@ -128,7 +137,6 @@
 					<button type="button" class="np-filter" data-confilter="errors">Errors</button>
 					<button type="button" class="np-filter" data-confilter="warnings">Warnings</button>
 					<button type="button" class="np-filter" data-confilter="ncc">Nice Control Center</button>
-					<button type="button" class="np-filter" data-confilter="panel">Panel</button>
 					<input type="search" class="np-console-search" id="pn-console-search" placeholder="Search the log" aria-label="Search the log">
 					<label class="np-check" title="Detailed loader and mod messages, hidden by default"><input type="checkbox" id="pn-console-debug"> Show debug</label>
 					<label class="np-check"><input type="checkbox" id="pn-console-follow" checked> Follow</label>
@@ -164,6 +172,7 @@
 					</details>
 					<p class="pn-preview-label">Command line</p>
 					<pre class="np-pre pn-preview" id="pn-preview"></pre>
+					<div class="pn-memory" id="pn-memory" hidden></div>
 					<div class="pn-sticky-save">
 						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 						<span class="np-form-msg" id="pn-settings-msg"></span>
@@ -442,10 +451,11 @@
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
 						<div class="np-form-grid" data-needs="activation.enabled">
-							<label class="np-form-row">Monsters: active within (blocks)<input type="number" name="activation.monsters" min="8" max="256"></label>
-							<label class="np-form-row">Animals: active within (blocks)<input type="number" name="activation.animals" min="8" max="256"></label>
-							<label class="np-form-row">Villagers: active within (blocks)<input type="number" name="activation.villagers" min="8" max="256"></label>
-							<label class="np-form-row">Other mobs: active within (blocks)<input type="number" name="activation.other" min="8" max="256"></label>
+							<p class="pn-hint">Ranges are a share of the simulation distance: never farther than it, and smaller while lag protection lowers it (at least 16 blocks).</p>
+							<label class="np-form-row">Monsters: active within (% of simulation distance)<input type="number" name="activation.monstersPercent" min="10" max="100"></label>
+							<label class="np-form-row">Animals: active within (% of simulation distance)<input type="number" name="activation.animalsPercent" min="10" max="100"></label>
+							<label class="np-form-row">Villagers: active within (% of simulation distance)<input type="number" name="activation.villagersPercent" min="10" max="100"></label>
+							<label class="np-form-row">Other mobs: active within (% of simulation distance)<input type="number" name="activation.otherPercent" min="10" max="100"></label>
 							<label class="np-form-row">Farther away, tick every … ticks<input type="number" name="activation.every" min="2" max="40"></label>
 						</div>
 					</details>
@@ -455,7 +465,7 @@
 					<p class="np-card-intro">Mobs far from every player decide what to do next only every few ticks; what they're already doing keeps running (like Pufferfish). While the server lags, it also limits how many mobs may search a new path per tick; the others try again a moment later.</p>
 					<div class="np-form-grid" data-needs="ai.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="ai.enabled"><span></span></span></label>
-						<label class="np-form-row">Far means more than (blocks)<input type="number" name="ai.farDistance" min="16" max="256"></label>
+						<label class="np-form-row"><span>Far means more than (% of simulation distance) <small class="pn-hint">never farther than the simulation distance, at least 16 blocks</small></span><input type="number" name="ai.farPercent" min="10" max="100"></label>
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
 						<div class="np-form-grid" data-needs="ai.enabled">
@@ -851,6 +861,7 @@
 					<h3 class="np-card-title"><i class="bi bi-toggles"></i> Small tweaks</h3>
 					<div class="np-form-grid">
 						<label class="np-form-row"><span>Loyalty tridents come back from the void<span class="pn-comment">Thrown into the void (e.g. in the End), they return to their owner instead of being lost.</span></span><span class="np-switch"><input type="checkbox" name="tridents.voidReturn"><span></span></span></label>
+						<label class="np-form-row"><span>Better Mending<span class="pn-comment">Sneak and right-click an anvil: the Mending item in your main hand (or off hand, with the main hand empty) is repaired with your experience, at Mending's rate of 2 durability per point.</span></span><span class="np-switch"><input type="checkbox" name="mending.anvilRepair"><span></span></span></label>
 						<label class="np-form-row"><span>Dispensers place blocks<span class="pn-comment">Placed in front instead of dropped, also seeds, redstone dust and string. TNT, shulker boxes and the like work as before, droppers still drop, and never into someone else's claim.</span></span><span class="np-switch"><input type="checkbox" name="dispensers.placeBlocks"><span></span></span></label>
 					</div>
 				</section>
@@ -899,6 +910,22 @@
 					</div>
 				</section>
 				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-eye-slash"></i> Hide ores from x-ray</h3>
+					<p class="np-card-intro">Like Paper's anti-xray: ores with no open side are sent to players as the stone around them, so x-ray mods and texture packs see nothing. Players see an ore as soon as they uncover it. The world itself isn't changed.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Hide ores</b><span class="np-switch"><input type="checkbox" name="antiXray.enabled"><span></span></span></label>
+						<label class="np-form-row"><span>Only below height<span class="pn-comment">Overworld and similar dimensions; the Nether and the End are hidden at every height. Higher means more work for the server when it sends chunks.</span></span><input type="number" name="antiXray.maxY" min="-64" max="320"></label>
+						<label class="np-form-row"><span>Which blocks<span class="pn-comment">Ids or #tags, separated by commas.</span></span><input type="text" name="antiXray.blocks"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-cloud-rain"></i> Crops in the rain</h3>
+					<div class="np-form-grid">
+						<label class="np-form-row"><span>Crops grow faster in the rain<span class="pn-comment">Wheat, carrots, potatoes, beetroot, melon and pumpkin stems, sweet berries, cocoa and the other crops grow faster while rain falls on them.</span></span><span class="np-switch"><input type="checkbox" name="crops.rainGrowth"><span></span></span></label>
+						<label class="np-form-row"><span>Faster by (%)<span class="pn-comment">50 is half again as fast, 100 twice as fast.</span></span><input type="number" name="crops.rainBoost" min="1" max="100"></label>
+					</div>
+				</section>
+				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-shield-shaded"></i> Iron golems</h3>
 					<div class="np-form-grid">
 						<label class="np-form-row"><span>Golems when villagers panic<span class="pn-comment">A frightened villager (zombie nearby, hurt) calls an iron golem if none is around, on its own: no sleeping and no other villagers needed. Villagers no longer call golems while gossiping, so golem farms that rely on that stop working.</span></span><span class="np-switch"><input type="checkbox" name="villagers.panicGolems"><span></span></span></label>
@@ -930,6 +957,7 @@
 						<label class="np-form-row"><b>AFK tag</b><span class="np-switch"><input type="checkbox" name="afk.enabled"><span></span></span></label>
 						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
 						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
+						<label class="np-form-row"><span>AFK players don't count for sleeping<span class="pn-comment">Skipping the night only needs the share of players who aren't AFK (after the minutes above; also when the tag is off).</span></span><span class="np-switch"><input type="checkbox" name="sleep.ignoreAfk"><span></span></span></label>
 						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
 						<label class="np-form-row"><span>Empty line around the player list<span class="pn-comment">Between the header, the players and the footer.</span></span><span class="np-switch"><input type="checkbox" name="tabList.gap"><span></span></span></label>
 					</div>

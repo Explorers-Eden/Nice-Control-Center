@@ -367,6 +367,28 @@ public final class Market {
 			return null;
 		}
 
+		/** The seller changes the price or how many are bought at a time. Error for the player, or null. */
+		public String edit(Listing l, int price, int per, Settings s) {
+			if (price < 1 || price > s.maxPrice) return "The price is 1 to " + s.maxPrice + ".";
+			if (per < 1 || per > l.amount) return "The price is for 1 to " + l.amount + " items.";
+			if (l.amount % per != 0) return l.amount + " are left: \"For how many\" has to fit into that (they're bought " + per + " at a time).";
+			l.price = price;
+			l.per = per;
+			l.rev = bump();
+			return null;
+		}
+
+		/** More of the same item (already taken from the seller); the listing runs for its full time again. Error, or null. */
+		public String restock(Listing l, int amount, Settings s, long now) {
+			if (amount < 1) return "Add at least one item.";
+			if (amount % l.lot() != 0) return "Add a multiple of " + l.lot() + " (they're bought " + l.lot() + " at a time).";
+			if ((long) l.amount + amount > Integer.MAX_VALUE) return "That's too many.";
+			l.amount += amount;
+			l.expires = now + s.listingDays * 86_400_000L;
+			l.rev = bump();
+			return null;
+		}
+
 		/** A purchase of whole lots (the currency is already taken from the buyer): the seller is paid into their mailbox. */
 		public Sale buy(Listing l, String buyer, String buyerName, int amount, long now) {
 			l.amount -= amount;
@@ -436,6 +458,8 @@ public final class Market {
 			List<Sale> newSales = new ArrayList<>();
 			for (Sale s : sales) if (full || s.rev > since) newSales.add(s);
 			out.put("sales", newSales);
+			// Mailboxes are few and small: always all of them (for the panel's database copy).
+			out.put("mail", mail);
 			return out;
 		}
 	}

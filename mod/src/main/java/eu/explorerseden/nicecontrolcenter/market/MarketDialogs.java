@@ -229,8 +229,9 @@ public final class MarketDialogs {
 			else nav.append(Component.literal("[ → ]").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.BOLD));
 		}
 		body.add(new PlainMessage(nav, TEXT_WIDTH));
-		body.add(text((all.isEmpty() ? "Nothing found" : all.size() + (all.size() == 1 ? " listing" : " listings")) + (q.isEmpty() ? "" : " for \"" + query.strip() + "\"")
-				+ " · " + sortName, ChatFormatting.GRAY));
+		// Which part of the list this page is, so nobody misses the listings on the next pages.
+		String shown = pages > 1 ? "Showing " + (p * PAGE + 1) + "–" + Math.min(all.size(), (p + 1) * PAGE) + " of " + all.size() + " listings" : all.size() + (all.size() == 1 ? " listing" : " listings");
+		body.add(text((all.isEmpty() ? "Nothing found" : shown) + (q.isEmpty() ? "" : " for \"" + query.strip() + "\"") + " · " + sortName, ChatFormatting.GRAY));
 		for (Market.Listing l : all.subList(p * PAGE, Math.min(all.size(), (p + 1) * PAGE))) {
 			boolean own = l.seller.equals(player.getStringUUID());
 			Component desc = Component.empty()
@@ -241,6 +242,14 @@ public final class MarketDialogs {
 					.append(own ? link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA)
 							: link("Buy", "See it and buy", "view", args("id", l.id), ChatFormatting.GREEN));
 			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
+		}
+		// The pages again below the list, where the eye ends up.
+		if (pages > 1) {
+			MutableComponent more = Component.empty();
+			if (p > 0) more.append(link("← Previous page", "Page " + p, "browse", args("page", String.valueOf(p - 1), "keepq", query, "keepsort", sort), ChatFormatting.YELLOW)).append(Component.literal("   "));
+			more.append(Component.literal("Page " + (p + 1) + " of " + pages).withStyle(ChatFormatting.GRAY));
+			if (p < pages - 1) more.append(Component.literal("   ")).append(link("Next page →", "Page " + (p + 2), "browse", args("page", String.valueOf(p + 1), "keepq", query, "keepsort", sort), ChatFormatting.YELLOW));
+			body.add(new PlainMessage(more, TEXT_WIDTH));
 		}
 		menu(player, "Market · Browse", body, List.of(), List.of(), back("home", args()));
 	}
@@ -259,6 +268,11 @@ public final class MarketDialogs {
 	}
 
 	private static void view(ServerPlayer player, Market.Listing l, String notice) {
+		view(player, l, notice, null);
+	}
+
+	/** done: a note that something worked (green), notice: what went wrong (red). */
+	private static void view(ServerPlayer player, Market.Listing l, String notice, String done) {
 		ItemStack stack = MarketStore.stack(player.level().getServer(), l.item, 1);
 		boolean own = l.seller.equals(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();
@@ -266,6 +280,7 @@ public final class MarketDialogs {
 			body.add(text(notice, ChatFormatting.RED));
 			Plop.play(player);
 		}
+		if (done != null) body.add(text(done, ChatFormatting.GREEN));
 		// The item (hover it for its own tooltip) with what's special about it.
 		List<String> extra = new ArrayList<>(l.item.enchantments);
 		extra.addAll(l.item.lore);
@@ -282,9 +297,17 @@ public final class MarketDialogs {
 		List<ActionButton> buttons = new ArrayList<>();
 		if (own) {
 			long days = Math.max(0, (l.expires - System.currentTimeMillis()) / 86_400_000L);
-			body.add(text("Your listing · " + days + (days == 1 ? " day" : " days") + " left. Taking it back sends it to your mailbox.", ChatFormatting.GRAY));
+			int carried = stack.isEmpty() ? 0 : MarketStore.count(player, stack);
+			body.add(text("Your listing · " + days + (days == 1 ? " day" : " days") + " left. Change the price below, add more of the item"
+					+ (carried > 0 ? " (you carry " + String.format(Locale.ROOT, "%,d", carried) + ")" : "") + ", or take it back into your mailbox.", ChatFormatting.GRAY));
+			List<Input> inputs = List.of(
+					new Input("price", new TextInput(120, Component.literal("Price"), true, String.valueOf(l.price), 9, Optional.empty())),
+					new Input("per", new TextInput(120, Component.literal("For how many"), true, String.valueOf(l.lot()), 9, Optional.empty())),
+					new Input("more", new TextInput(120, Component.literal("Add more"), true, "", 9, Optional.empty())));
+			buttons.add(button("Save price", "Price and how many at a time", "edit", args("id", l.id)));
+			buttons.add(button("Add more", "From your inventory; runs " + MarketStore.settings().listingDays + " days again", "restock", args("id", l.id)));
 			buttons.add(button("Take it back", "Into your mailbox", "cancel", args("id", l.id)));
-			menu(player, l.item.name, body, List.of(), buttons, back("mine", args()));
+			menu(player, l.item.name, body, inputs, buttons, back("mine", args()));
 			return;
 		}
 		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
@@ -528,6 +551,7 @@ public final class MarketDialogs {
 		return Integer.toHexString(h);
 	}
 
+	/** Step one of selling: every kind of item the player carries, each with its own [ Sell ] (the item drawn as it looks in game). */
 	private static void sell(ServerPlayer player, String notice) {
 		List<ItemStack> kinds = kinds(player);
 		List<DialogBody> body = new ArrayList<>();
@@ -540,20 +564,67 @@ public final class MarketDialogs {
 			menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));
 			return;
 		}
-		body.add(text("The price is in " + MarketStore.currencyName() + " for as many items as \"For how many\" says (1: per item), and buyers buy that many at a time. "
-				+ "More than a stack is fine. "
-				+ "Unsold items come back to your mailbox after " + MarketStore.settings().listingDays + " days.", ChatFormatting.GRAY));
-		List<SingleOptionInput.Entry> entries = new ArrayList<>();
+		body.add(text("Pick what to sell. Unsold items come back to your mailbox after " + MarketStore.settings().listingDays + " days.", ChatFormatting.GRAY));
+		String sig = signature(kinds);
+		List<Market.Listing> mine = MarketStore.data().of(player.getStringUUID());
 		for (int i = 0; i < kinds.size() && i < 36; i++) {
 			ItemStack k = kinds.get(i);
-			entries.add(new SingleOptionInput.Entry(String.valueOf(i), Optional.of(Component.literal(k.getHoverName().getString() + " ×" + MarketStore.count(player, k))), i == 0));
+			boolean selling = listingOf(player, mine, k) != null;
+			Component desc = Component.empty()
+					.append(Component.literal(k.getHoverName().getString()).withStyle(ChatFormatting.WHITE))
+					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", MarketStore.count(player, k)) + (selling ? " · you sell these  " : "  ")).withStyle(ChatFormatting.GRAY))
+					.append(link("Sell", selling ? "List more or add them to your listing" : "Set the price and amount", "sellitem", args("slot", String.valueOf(i), "kinds", sig), ChatFormatting.GREEN));
+			ItemStack shown = k.copyWithCount(Math.max(1, Math.min(MarketStore.count(player, k), k.getMaxStackSize())));
+			body.add(new ItemBody(ItemStackTemplate.fromNonEmptyStack(shown), Optional.of(new PlainMessage(desc, TEXT_WIDTH - 30)), true, true, 16, 16));
 		}
+		menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));
+	}
+
+	/** The player's listing of exactly this item, or null. */
+	private static Market.Listing listingOf(ServerPlayer player, List<Market.Listing> mine, ItemStack like) {
+		for (Market.Listing l : mine) {
+			ItemStack stored = MarketStore.stack(player.level().getServer(), l.item, 1);
+			if (!stored.isEmpty() && ItemStack.isSameItemSameComponents(stored, like)) return l;
+		}
+		return null;
+	}
+
+	/** Step two: how many and for how much, for the one item picked (or more of it into a listing that sells it already). */
+	private static void sellItem(ServerPlayer player, CompoundTag in, String notice) {
+		List<ItemStack> kinds = kinds(player);
+		int slot = num(in, "slot");
+		// The inventory changed while the menu was open (something used up or picked up): the same slot is another item now.
+		if (slot < 0 || slot >= kinds.size() || !signature(kinds).equals(str(in, "kinds"))) {
+			sell(player, "Your inventory changed: pick the item again.");
+			return;
+		}
+		ItemStack like = kinds.get(slot);
+		int have = MarketStore.count(player, like);
+		List<DialogBody> body = new ArrayList<>();
+		if (notice != null) {
+			body.add(text(notice, ChatFormatting.RED));
+			Plop.play(player);
+		}
+		ItemStack shown = like.copyWithCount(Math.max(1, Math.min(have, like.getMaxStackSize())));
+		body.add(new ItemBody(ItemStackTemplate.fromNonEmptyStack(shown), Optional.of(new PlainMessage(Component.literal(like.getHoverName().getString()).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
+				.append(Component.literal("\nYou carry " + String.format(Locale.ROOT, "%,d", have)).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY))), TEXT_WIDTH - 30)), true, true, 16, 16));
+		body.add(text("The price is in " + MarketStore.currencyName() + " for as many items as \"For how many\" says (1: per item); buyers buy that many at a time. More than a stack is fine.", ChatFormatting.GRAY));
+		Market.Listing existing = listingOf(player, MarketStore.data().of(player.getStringUUID()), like);
+		if (existing != null) body.add(text("You already sell these for " + price(existing) + " (" + String.format(Locale.ROOT, "%,d", existing.amount) + " left): "
+				+ "\"Add to my listing\" puts the amount there at that price.", ChatFormatting.GOLD));
 		List<Input> inputs = List.of(
-				new Input("slot", new SingleOptionInput(250, entries, Component.literal("Item"), true)),
-				new Input("amount", new TextInput(120, Component.literal("How many"), true, "", 9, Optional.empty())),
-				new Input("price", new TextInput(120, Component.literal("Price"), true, "", 9, Optional.empty())),
-				new Input("per", new TextInput(120, Component.literal("For how many"), true, "1", 9, Optional.empty())));
-		menu(player, "Market · Sell", body, inputs, List.of(button("List it", null, "list", args("kinds", signature(kinds)))), back("home", args()));
+				new Input("amount", new TextInput(120, Component.literal("How many"), true, String.valueOf(have), 9, Optional.empty())),
+				new Input("price", new TextInput(120, Component.literal("Price"), true, existing == null ? "" : String.valueOf(existing.price), 9, Optional.empty())),
+				new Input("per", new TextInput(120, Component.literal("For how many"), true, existing == null ? "1" : String.valueOf(existing.lot()), 9, Optional.empty())));
+		CompoundTag pick = args("slot", String.valueOf(slot), "kinds", str(in, "kinds"));
+		List<ActionButton> buttons = new ArrayList<>();
+		buttons.add(button("List it", "A new listing", "list", pick));
+		if (existing != null) {
+			CompoundTag more = pick.copy();
+			more.putString("id", existing.id);
+			buttons.add(button("Add to my listing", "Same price, runs " + MarketStore.settings().listingDays + " days again", "restock", more));
+		}
+		menu(player, "Market · Sell " + like.getHoverName().getString(), body, inputs, buttons, back("sell", args()));
 	}
 
 	private static void mine(ServerPlayer player) {
@@ -611,6 +682,9 @@ public final class MarketDialogs {
 			}
 			case "search" -> search(player, str(in, "keepq"), str(in, "keepsort").isEmpty() ? "price" : str(in, "keepsort"));
 			case "sell" -> sell(player, null);
+			case "sellitem" -> sellItem(player, in, null);
+			case "restock" -> restock(player, in);
+			case "edit" -> edit(player, in);
 			case "mine" -> mine(player);
 			case "mail" -> mail(player);
 			case "view" -> {
@@ -707,12 +781,8 @@ public final class MarketDialogs {
 	private static void list(ServerPlayer player, CompoundTag in) {
 		List<ItemStack> kinds = kinds(player);
 		int slot = num(in, "slot");
-		if (slot < 0 || slot >= kinds.size()) {
-			sell(player, "Pick an item.");
-			return;
-		}
 		// The inventory changed while the menu was open (something used up or picked up): the same slot is another item now.
-		if (!signature(kinds).equals(str(in, "kinds"))) {
+		if (slot < 0 || slot >= kinds.size() || !signature(kinds).equals(str(in, "kinds"))) {
 			sell(player, "Your inventory changed: pick the item again.");
 			return;
 		}
@@ -722,44 +792,103 @@ public final class MarketDialogs {
 		int per = num(in, "per");
 		int have = MarketStore.count(player, like);
 		if (amount < 1 || amount > have) {
-			sell(player, amount < 1 ? "Type how many to sell." : "You only have " + have + ".");
+			sellItem(player, in, amount < 1 ? "Type how many to sell." : "You only have " + have + ".");
 			return;
 		}
 		Market.Settings s = MarketStore.settings();
 		if (price < 1 || price > s.maxPrice) {
-			sell(player, "The price is 1 to " + s.maxPrice + ".");
+			sellItem(player, in, "The price is 1 to " + s.maxPrice + ".");
 			return;
 		}
 		if (per < 1 || per > amount) {
-			sell(player, "\"For how many\" is 1 to " + amount + ".");
+			sellItem(player, in, "\"For how many\" is 1 to " + amount + ".");
 			return;
 		}
 		if (amount % per != 0) {
-			sell(player, "Sell a multiple of " + per + ": they're bought " + per + " at a time.");
+			sellItem(player, in, "Sell a multiple of " + per + ": they're bought " + per + " at a time.");
 			return;
 		}
 		Market.Item item = MarketStore.store(player, like);
 		// Check everything before taking the items.
 		if (s.bannedItems.contains(item.id)) {
-			sell(player, "That item can't be sold here.");
+			sellItem(player, in, "That item can't be sold here.");
 			return;
 		}
 		if (MarketStore.data().of(player.getStringUUID()).size() >= s.maxListings) {
-			sell(player, "You already have " + s.maxListings + " listings.");
+			sellItem(player, in, "You already have " + s.maxListings + " listings.");
 			return;
 		}
 		if (!MarketStore.take(player, like, amount)) {
-			sell(player, "You don't have that many any more.");
+			sellItem(player, in, "You don't have that many any more.");
 			return;
 		}
 		String err = MarketStore.data().list(player.getStringUUID(), player.getPlainTextName(), item, amount, price, per, s, System.currentTimeMillis());
 		if (err != null) {
 			MarketStore.give(player, like, amount);
-			sell(player, err);
+			sellItem(player, in, err);
 			return;
 		}
 		MarketStore.saveNow();
 		home(player, "Listed " + amount + " × " + item.name + " for " + money(price) + (per == 1 ? " each." : " per " + per + "."));
+	}
+
+	/** More of the same item into one of the player's listings (from the sell form or the listing's own page). */
+	private static void restock(ServerPlayer player, CompoundTag in) {
+		Market.Data data = MarketStore.data();
+		Market.Listing l = data.listings.get(str(in, "id"));
+		if (l == null || !l.seller.equals(player.getStringUUID())) {
+			home(player, "That listing is gone.");
+			return;
+		}
+		boolean fromSell = in.contains("kinds");
+		java.util.function.Consumer<String> again = msg -> {
+			if (fromSell) sellItem(player, in, msg);
+			else view(player, l, msg);
+		};
+		ItemStack like = MarketStore.stack(player.level().getServer(), l.item, 1);
+		if (like.isEmpty()) {
+			again.accept("This item can't be read any more.");
+			return;
+		}
+		int amount = num(in, fromSell ? "amount" : "more");
+		int have = MarketStore.count(player, like);
+		if (amount < 1 || amount > have) {
+			again.accept(amount < 1 ? "Type how many to add." : "You only have " + have + ".");
+			return;
+		}
+		if (amount % l.lot() != 0) {
+			again.accept("Add a multiple of " + l.lot() + ": they're bought " + l.lot() + " at a time.");
+			return;
+		}
+		if (!MarketStore.take(player, like, amount)) {
+			again.accept("You don't have that many any more.");
+			return;
+		}
+		String err = data.restock(l, amount, MarketStore.settings(), System.currentTimeMillis());
+		if (err != null) {
+			MarketStore.give(player, like, amount);
+			again.accept(err);
+			return;
+		}
+		MarketStore.saveNow();
+		view(player, l, null, "Added " + amount + ": " + String.format(Locale.ROOT, "%,d", l.amount) + " for sale now.");
+	}
+
+	/** A new price (or lot size) for one of the player's listings. */
+	private static void edit(ServerPlayer player, CompoundTag in) {
+		Market.Data data = MarketStore.data();
+		Market.Listing l = data.listings.get(str(in, "id"));
+		if (l == null || !l.seller.equals(player.getStringUUID())) {
+			home(player, "That listing is gone.");
+			return;
+		}
+		String err = data.edit(l, num(in, "price"), num(in, "per"), MarketStore.settings());
+		if (err != null) {
+			view(player, l, err);
+			return;
+		}
+		MarketStore.saveNow();
+		view(player, l, null, "Now " + price(l) + ".");
 	}
 
 	private static void collect(ServerPlayer player) {

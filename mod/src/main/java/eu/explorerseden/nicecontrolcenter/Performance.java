@@ -38,11 +38,15 @@ public final class Performance {
 
 	public static final class Activation {
 		public boolean enabled = false;
-		/** Blocks from the nearest player; farther away an entity only ticks every {@link #every} ticks. */
-		public int monsters = 32;
-		public int animals = 32;
-		public int villagers = 32;
-		public int other = 16;
+		/**
+		 * How far from the nearest player mobs tick normally, in percent of the simulation distance (so never
+		 * farther than it, and smaller while lag protection lowers it); farther away they only tick every
+		 * {@link #every} ticks. At least 16 blocks.
+		 */
+		public int monstersPercent = 50;
+		public int animalsPercent = 50;
+		public int villagersPercent = 50;
+		public int otherPercent = 25;
 		public int every = 4;
 	}
 
@@ -136,7 +140,8 @@ public final class Performance {
 	/** Mobs far from players re-plan their goals less often; at most so many new paths per tick. */
 	public static final class Ai {
 		public boolean enabled = false;
-		public int farDistance = 48;
+		/** Far means more than this percent of the simulation distance from every player (at least 16 blocks). */
+		public int farPercent = 60;
 		public int farGoalEvery = 4;
 		public int pathBudget = 40;
 		/** The path budget only while lag protection has lowered something. */
@@ -241,8 +246,8 @@ public final class Performance {
 		if (d.viewMin < 2 || d.viewMin > 32) return "The lowest view distance must be between 2 and 32.";
 		if (d.mobCapMin < 10 || d.mobCapMin > 100) return "The lowest mob cap must be between 10 and 100 %.";
 		Activation a = s.activation;
-		for (int r : new int[] { a.monsters, a.animals, a.villagers, a.other }) {
-			if (r < 8 || r > 256) return "Activation ranges must be between 8 and 256 blocks.";
+		for (int r : new int[] { a.monstersPercent, a.animalsPercent, a.villagersPercent, a.otherPercent }) {
+			if (r < 10 || r > 100) return "Activation ranges must be between 10 and 100 % of the simulation distance.";
 		}
 		if (a.every < 2 || a.every > 40) return "Inactive entities tick every 2 to 40 ticks.";
 		if (s.merge.items < 0.5 || s.merge.items > 8 || s.merge.xp < 0.5 || s.merge.xp > 8) return "Merge radii must be between 0.5 and 8 blocks.";
@@ -271,7 +276,7 @@ public final class Performance {
 			if (e.getValue() < 0 || e.getValue() > 5000) return "Save limits are 0 to 5000 per chunk.";
 		}
 		Ai ai = s.ai;
-		if (ai.farDistance < 16 || ai.farDistance > 256) return "\"Far from players\" is 16 to 256 blocks.";
+		if (ai.farPercent < 10 || ai.farPercent > 100) return "\"Far from players\" is 10 to 100 % of the simulation distance.";
 		if (ai.farGoalEvery < 2 || ai.farGoalEvery > 20) return "Far mobs re-plan every 2 to 20 ticks.";
 		if (ai.pathBudget < 5 || ai.pathBudget > 1000) return "The path budget is 5 to 1000 per tick.";
 		if (s.hoppers.idleCooldown < 1 || s.hoppers.idleCooldown > 40) return "Idle hoppers wait 1 to 40 ticks.";
