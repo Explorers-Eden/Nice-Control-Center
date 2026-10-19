@@ -754,6 +754,7 @@ public final class DashboardServer {
 		server.put("mods", FabricLoader.getInstance().getAllMods().size());
 		server.put("dedicated", minecraft.isDedicatedServer());
 		server.put("maxPlayers", minecraft.getMaxPlayers());
+		server.put("cores", eu.explorerseden.nicecontrolcenter.core.SystemMetrics.cores());
 		server.put("monitorSince", startedAt);
 		result.put("server", server);
 		result.put("recording", Recorder.status());

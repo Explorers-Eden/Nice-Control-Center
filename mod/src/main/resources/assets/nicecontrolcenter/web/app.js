@@ -98,6 +98,8 @@
     return h + ' h ' + (m % 60 ? (m % 60) + ' min' : '');
   };
   const sev = (s) => String(s || 'INFO').toLowerCase();
+  /** Nobody looks: the browser tab is hidden, or the panel shows one of its own pages (it sets nccPaused). */
+  const idle = () => document.hidden || window.nccPaused === true;
   const barClass = (p) => (p >= 30 ? 'hot' : p >= 10 ? 'warm' : '');
   const prettyType = (id) => {
     const i = id.indexOf(':');
@@ -3032,6 +3034,11 @@
 
   async function pollLive() {
     try {
+      if (idle()) {
+        // Catches up in one go (everything after lastT) once someone looks again.
+        setTimeout(pollLive, 3000);
+        return;
+      }
       const data = await api('api/live?after=' + state.lastT);
       state.clockSkew = data.now - Date.now();
       state.current = data.current || null;
@@ -3131,11 +3138,14 @@
   }
 
   async function pollWindow() {
-    try {
-      renderView(await api('api/window?m=' + state.window));
-    } catch (e) { /* the live indicator shows the connection state */ }
     clearTimeout(pollWindow.timer);
-    pollWindow.timer = setTimeout(pollWindow, 2000);
+    if (!idle()) {
+      try {
+        renderView(await api('api/window?m=' + state.window));
+      } catch (e) { /* the live indicator shows the connection state */ }
+    }
+    // Longer windows change slowly: no need to add them up again every 2 seconds.
+    pollWindow.timer = setTimeout(pollWindow, idle() ? 5000 : ({ 1: 2000, 5: 4000, 15: 8000, 60: 15000 }[state.window] || 2000));
   }
 
   // ── Events ─────────────────────────────────────────────────────────────

@@ -309,6 +309,7 @@
           frameResize.observe(doc.body);
           fit();
           watchFrameSave(doc);
+          pauseFrame();
         } catch (e) { /* another origin: leave it as it is */ }
       };
       frame.src = 'dashboard/#' + page;
@@ -413,8 +414,17 @@
     }
   }, 700);
 
+  /** The dashboard in the frame only polls while one of its pages is shown (it keeps running in the background otherwise). */
+  function pauseFrame() {
+    try {
+      const win = $('pn-dashboard-frame').contentWindow;
+      if (win) win.nccPaused = !activeTab.startsWith('mod:');
+    } catch (e) { /* not loaded */ }
+  }
+
   function markTab(tab) {
     activeTab = tab;
+    pauseFrame();
     const entry = ENTRY_OF[tab];
     document.querySelectorAll('#pn-side-groups [data-entry]').forEach((b) => {
       const on = !!entry && b.dataset.entry === entry.id;
@@ -843,7 +853,9 @@
       ['TPS', `<span class="${tpsClass}">${fixed(p.tps, 1)}</span>`, 'target 20'],
       ['MSPT', null, null, cur ? `<div class="np-mspt">${[['min', cur.msptMin], ['med', cur.msptMedian], ['95%ile', cur.msptP95], ['max', cur.msptMax]]
         .map(([l, v]) => `<span class="${msptClass(v)}">${ms(v)}<small>${l}</small></span>`).join('')}</div>` : ''],
-      ['CPU', `<span class="${cpuClass}">${fixed(p.cpuProcess, 0)}%</span>`, `machine ${fixed(p.cpuSystem, 0)}%`],
+      // In cores too: docker stats counts 100 % per core, this tile a share of the whole machine.
+      ['CPU', `<span class="${cpuClass}">${fixed(p.cpuProcess, 0)}%</span>`, d.server && d.server.cores
+        ? `≈ ${fixed(p.cpuProcess * d.server.cores / 100, 1)} of ${d.server.cores} cores` : `machine ${fixed(p.cpuSystem, 0)}%`],
       ['Memory', null, null, sizes([[p.heapLive ? 'after GC' : 'in use', p.heapLive || p.heapUsed, heapClass], ['w/ garbage', p.heapUsed, usedClass], ['max', p.heapMax, '']])],
     ];
     if (d.disk) {

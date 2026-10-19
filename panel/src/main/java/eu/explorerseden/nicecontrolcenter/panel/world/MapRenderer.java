@@ -61,27 +61,84 @@ public final class MapRenderer {
 		BufferedImage image = new BufferedImage(TILE, TILE, BufferedImage.TYPE_INT_ARGB);
 		int[] out = new int[TILE * TILE];
 		for (int z = 0; z < TILE; z++) {
-			for (int x = 0; x < TILE; x++) {
-				int i = z * TILE + x;
-				if (kind[i] == 0) continue;
-				int shade;
-				if (kind[i] == 2) {
-					double d = depth[i] * 0.1 + ((x + z) & 1) * 0.2;
-					shade = d < 0.5 ? HIGH : d > 0.9 ? LOW : NORMAL;
-				} else {
-					int north = z > 0 ? (kind[i - TILE] != 0 ? height[i - TILE] : height[i])
-							: northRow != null && northRow[x] != Integer.MIN_VALUE ? northRow[x] : height[i];
-					shade = height[i] > north ? HIGH : height[i] < north ? LOW : NORMAL;
-				}
-				int c = color[i];
-				int r = ((c >> 16) & 0xFF) * shade / 255;
-				int g = ((c >> 8) & 0xFF) * shade / 255;
-				int b = (c & 0xFF) * shade / 255;
-				out[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
-			}
+			for (int x = 0; x < TILE; x++) out[z * TILE + x] = pixel(x, z, height, color, depth, kind, northRow);
 		}
 		image.setRGB(0, 0, TILE, TILE, out, 0, TILE);
 		return image;
+	}
+
+	/**
+	 * Redraws only some chunks (index cz * 32 + cx) of a tile drawn before, and the chunks south of them (their
+	 * relief compares with the row above). Much cheaper than {@link #render} when players changed a few chunks of a
+	 * region: the others keep their pixels. Null when nothing is left to show.
+	 */
+	public BufferedImage update(Path regionFile, boolean ceiling, BufferedImage previous, Set<Integer> chunks) throws IOException {
+		Set<Integer> redraw = new java.util.HashSet<>();
+		for (int c : chunks) {
+			redraw.add(c);
+			if (c / 32 < 31) redraw.add(c + 32);
+		}
+		// Their own columns and the chunks north of them (for the relief of their top rows).
+		Set<Integer> read = new java.util.HashSet<>(redraw);
+		for (int c : redraw) if (c / 32 > 0) read.add(c - 32);
+		int[] height = new int[TILE * TILE];
+		int[] color = new int[TILE * TILE];
+		int[] depth = new int[TILE * TILE];
+		byte[] kind = new byte[TILE * TILE];
+		try (RegionFile region = new RegionFile(regionFile)) {
+			for (int c : read) {
+				int cx = c % 32, cz = c / 32;
+				if (!region.has(cx, cz)) continue;
+				try {
+					Map<String, Object> chunk = region.read(cx, cz);
+					if (chunk != null && finished(chunk)) column(chunk, cx, cz, ceiling, height, color, depth, kind);
+				} catch (IOException | RuntimeException e) {
+					// Being written right now: that chunk stays as it was drawn last time.
+					redraw.remove(c);
+				}
+			}
+		}
+		boolean top = redraw.stream().anyMatch(c -> c / 32 == 0);
+		int[] northRow = top ? northEdge(regionFile, ceiling) : null;
+		int[] out = new int[TILE * TILE];
+		previous.getRGB(0, 0, TILE, TILE, out, 0, TILE);
+		for (int c : redraw) {
+			int x0 = (c % 32) * 16, z0 = (c / 32) * 16;
+			for (int z = z0; z < z0 + 16; z++) {
+				for (int x = x0; x < x0 + 16; x++) out[z * TILE + x] = pixel(x, z, height, color, depth, kind, northRow);
+			}
+		}
+		boolean any = false;
+		for (int p : out) {
+			if (p != 0) {
+				any = true;
+				break;
+			}
+		}
+		if (!any) return null;
+		BufferedImage image = new BufferedImage(TILE, TILE, BufferedImage.TYPE_INT_ARGB);
+		image.setRGB(0, 0, TILE, TILE, out, 0, TILE);
+		return image;
+	}
+
+	/** One pixel: the block's colour, shaded by height against the block to the north (water by depth); 0 for nothing. */
+	private static int pixel(int x, int z, int[] height, int[] color, int[] depth, byte[] kind, int[] northRow) {
+		int i = z * TILE + x;
+		if (kind[i] == 0) return 0;
+		int shade;
+		if (kind[i] == 2) {
+			double d = depth[i] * 0.1 + ((x + z) & 1) * 0.2;
+			shade = d < 0.5 ? HIGH : d > 0.9 ? LOW : NORMAL;
+		} else {
+			int north = z > 0 ? (kind[i - TILE] != 0 ? height[i - TILE] : height[i])
+					: northRow != null && northRow[x] != Integer.MIN_VALUE ? northRow[x] : height[i];
+			shade = height[i] > north ? HIGH : height[i] < north ? LOW : NORMAL;
+		}
+		int c = color[i];
+		int r = ((c >> 16) & 0xFF) * shade / 255;
+		int g = ((c >> 8) & 0xFF) * shade / 255;
+		int b = (c & 0xFF) * shade / 255;
+		return 0xFF000000 | (r << 16) | (g << 8) | b;
 	}
 
 	/** Heights of the bottom row of the region to the north (MIN_VALUE where there's nothing), or null. */

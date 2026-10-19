@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.14.1
+- Dashboard: stops asking the server for new numbers while nobody looks (the browser tab is hidden, or the panel shows one of its own pages), and refreshes the 15 and 60 minute views less often; it catches up as soon as it's shown again
+- The panel's CPU tile can show the server's CPU in cores (panel 1.13.1)
+
 ## 1.14.0
 - Gameplay tweak: crops grow faster in the rain (wheat, carrots, potatoes, beetroot, stems, sweet berries, cocoa…), by a percentage set in the panel
 - Gameplay tweak: Better Mending. Sneak and right-click an anvil to repair the Mending item in your hand with your experience, at Mending's rate

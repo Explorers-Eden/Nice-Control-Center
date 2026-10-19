@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -305,32 +306,55 @@ public final class MapService {
 					files = s.filter(f -> RegionFile.coords(f.getFileName().toString()) != null).toList();
 				}
 				total += files.size();
+				// Chunks redrawn in the bottom row of a region, by region: the top row of the one south of it follows (relief).
+				Map<String, Set<Integer>> southEdges = new HashMap<>();
 				for (Path mca : files) {
 					int[] rc = RegionFile.coords(mca.getFileName().toString());
 					Path tile = tiles.resolve("0").resolve(rc[0] + "_" + rc[1] + ".png");
-					if (!all && Files.exists(tile) && Files.getLastModifiedTime(tile).compareTo(Files.getLastModifiedTime(mca)) >= 0) {
+					boolean exists = Files.exists(tile);
+					long tileTime = exists ? Files.getLastModifiedTime(tile).toMillis() : 0;
+					if (!all && exists && tileTime >= Files.getLastModifiedTime(mca).toMillis()) {
 						done++;
 						continue;
 					}
 					renderStatus = "Drawing " + dim.name() + " region " + rc[0] + ", " + rc[1];
-					BufferedImage image = renderer.render(mca, dim.ceiling());
+					// Only the chunks saved since the tile was drawn (the region file keeps a time per chunk): the
+					// game saves the regions around players again and again, mostly with a few changed chunks.
+					Set<Integer> chunks = all || !exists ? null : changedChunks(mca, tileTime);
+					BufferedImage previous = chunks == null || chunks.isEmpty() || chunks.size() > 512 ? null : readTile(tile);
+					BufferedImage image;
+					if (chunks != null && chunks.isEmpty()) {
+						// Saved, but nothing in it changed: the tile is up to date.
+						Files.setLastModifiedTime(tile, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis()));
+						done++;
+						continue;
+					} else if (previous != null) {
+						image = renderer.update(mca, dim.ceiling(), previous, chunks);
+					} else {
+						image = renderer.render(mca, dim.ceiling());
+						chunks = null;
+					}
 					if (image != null) MapRenderer.write(image, tile);
 					else Files.deleteIfExists(tile);
 					changed.add(rc[0] + "_" + rc[1]);
+					Set<Integer> edge = new java.util.HashSet<>();
+					for (int cx = 0; cx < 32; cx++) if (chunks == null || chunks.contains(31 * 32 + cx)) edge.add(cx);
+					if (!edge.isEmpty()) southEdges.put(rc[0] + "_" + (rc[1] + 1), edge);
 					done++;
 					regionsRendered = done;
 				}
-				// A changed region also changes the top edge of the one south of it (relief shading).
-				for (String key : Set.copyOf(changed)) {
-					String[] p = key.split("_");
-					int x = Integer.parseInt(p[0]);
-					int z = Integer.parseInt(p[1]) + 1;
-					Path south = dim.regions().resolve("r." + x + "." + z + ".mca");
-					if (changed.contains(x + "_" + z) || !Files.isRegularFile(south)) continue;
-					BufferedImage image = renderer.render(south, dim.ceiling());
-					Path tile = tiles.resolve("0").resolve(x + "_" + z + ".png");
+				// A changed bottom row also changes the top row of the region south of it (relief shading).
+				for (Map.Entry<String, Set<Integer>> e : southEdges.entrySet()) {
+					if (changed.contains(e.getKey())) continue;
+					String[] p = e.getKey().split("_");
+					Path south = dim.regions().resolve("r." + p[0] + "." + p[1] + ".mca");
+					Path tile = tiles.resolve("0").resolve(e.getKey() + ".png");
+					if (!Files.isRegularFile(south)) continue;
+					BufferedImage previous = readTile(tile);
+					Set<Integer> top = new java.util.HashSet<>(e.getValue());
+					BufferedImage image = previous != null ? renderer.update(south, dim.ceiling(), previous, top) : renderer.render(south, dim.ceiling());
 					if (image != null) MapRenderer.write(image, tile);
-					changed.add(x + "_" + z);
+					changed.add(e.getKey());
 				}
 				if (!changed.isEmpty()) zoomOut(tiles, changed);
 			}
@@ -340,6 +364,32 @@ public final class MapService {
 			renderStatus = "Up to date";
 		} catch (IOException | RuntimeException e) {
 			renderStatus = "Drawing failed: " + e.getMessage();
+		}
+	}
+
+	/** The chunks (cz * 32 + cx) of a region saved after the given time; null when the file can't be read. */
+	private static Set<Integer> changedChunks(Path mca, long sinceMillis) {
+		Set<Integer> out = new HashSet<>();
+		// Chunk times are whole seconds; a little slack so a save right around the last drawing isn't missed.
+		long since = sinceMillis / 1000 - 2;
+		try (RegionFile region = new RegionFile(mca)) {
+			for (int cz = 0; cz < 32; cz++) {
+				for (int cx = 0; cx < 32; cx++) {
+					if (region.has(cx, cz) && Integer.toUnsignedLong(region.timestamp(cx, cz)) >= since) out.add(cz * 32 + cx);
+				}
+			}
+		} catch (IOException e) {
+			return null;
+		}
+		return out;
+	}
+
+	private static BufferedImage readTile(Path tile) {
+		try {
+			BufferedImage img = Files.exists(tile) ? javax.imageio.ImageIO.read(tile.toFile()) : null;
+			return img != null && img.getWidth() == MapRenderer.TILE && img.getHeight() == MapRenderer.TILE ? img : null;
+		} catch (IOException e) {
+			return null;
 		}
 	}
 

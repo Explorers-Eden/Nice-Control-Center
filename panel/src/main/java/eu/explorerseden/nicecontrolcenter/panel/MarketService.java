@@ -59,6 +59,10 @@ final class MarketService {
 	private volatile long syncedRev = -1;
 	private volatile String syncedWorld;
 	private volatile long fileModified = -1;
+	/** What the cache file was last written from. */
+	private long cacheRev = -1;
+	private String cacheWorld;
+	private long cacheAt;
 
 	MarketService(Path serverDir, Path dataDir, Db db, Supervisor server, DashboardProxy dashboard, Audit audit, ItemIcons icons) {
 		this.serverDir = serverDir;
@@ -250,7 +254,16 @@ final class MarketService {
 			} else {
 				return;
 			}
-			writeCache(c);
+			// Unchanged since the last time (same world and revision): nothing to write. The cache is still
+			// written now and then, so new settings (currency, icons) reach the info page.
+			boolean same = c.rev == cacheRev && java.util.Objects.equals(c.worldId, cacheWorld) && Files.exists(cacheFile)
+					&& System.currentTimeMillis() - cacheAt < 10 * 60_000;
+			if (!same) {
+				writeCache(c);
+				cacheRev = c.rev;
+				cacheWorld = c.worldId;
+				cacheAt = System.currentTimeMillis();
+			}
 			if (db != null && db.ready()) write(c);
 		} catch (IOException | SQLException | RuntimeException e) {
 			System.err.println("Market sync: " + e);

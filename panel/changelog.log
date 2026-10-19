@@ -1,3 +1,9 @@
+## 1.13.1
+- Map: a changed region is no longer drawn again in full; only the chunks saved since its last drawing are (the region file keeps a time per chunk), plus their neighbours for the relief. The game saves the regions around players over and over, so this saves most of the panel's map work on a busy server and during pregeneration
+- Market: the copy for the info page isn't written again every 15 seconds when nothing changed
+- Navbar: the CPU tile shows the server's CPU in cores too ("≈ 3.4 of 12 cores"), comparable to docker stats (which counts 100 % per core); needs mod 1.14.1
+- The mod's pages in the frame pause their updates while one of the panel's own pages is shown
+
 ## 1.13.0
 - Home: the greeting and the "running smoothly" card are one card (health, time window, version and mods); online state and the clock aren't repeated (they're at the top); available updates aren't listed under Needs attention
 - Navbar: a pill next to the game clock while chunks are being pregenerated ("Overworld: 42%"), click it for World → Borders; the Players tile shows the player limit; the GC tile shows the number its colour comes from
