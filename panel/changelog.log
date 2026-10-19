@@ -1,3 +1,6 @@
+## 1.13.2
+- Tuning: lower default ranges for tick-less and lighter mob AI (mod 1.14.2)
+
 ## 1.13.1
 - Map: a changed region is no longer drawn again in full; only the chunks saved since its last drawing are (the region file keeps a time per chunk), plus their neighbours for the relief. The game saves the regions around players over and over, so this saves most of the panel's map work on a busy server and during pregeneration
 - Market: the copy for the info page isn't written again every 15 seconds when nothing changed

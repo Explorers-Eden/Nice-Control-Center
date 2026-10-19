@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.14.2
+- Tuning: lower defaults for "Tick less where nobody is" (25 % of the simulation distance for monsters, animals and villagers, 15 % for other mobs) and "Lighter mob AI" (40 %). 1.14.0's 50 % was about twice the old 32 blocks, so mobs far from players were slowed down less than before. Values set in the panel stay as they are
+
 ## 1.14.1
 - Dashboard: stops asking the server for new numbers while nobody looks (the browser tab is hidden, or the panel shows one of its own pages), and refreshes the 15 and 60 minute views less often; it catches up as soon as it's shown again
 - The panel's CPU tile can show the server's CPU in cores (panel 1.13.1)

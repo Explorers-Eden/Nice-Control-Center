@@ -43,10 +43,11 @@ public final class Performance {
 		 * farther than it, and smaller while lag protection lowers it); farther away they only tick every
 		 * {@link #every} ticks. At least 16 blocks.
 		 */
-		public int monstersPercent = 50;
-		public int animalsPercent = 50;
-		public int villagersPercent = 50;
-		public int otherPercent = 25;
+		// 25 % of a simulation distance of 8 is 32 blocks, the old default.
+		public int monstersPercent = 25;
+		public int animalsPercent = 25;
+		public int villagersPercent = 25;
+		public int otherPercent = 15;
 		public int every = 4;
 	}
 
@@ -141,7 +142,7 @@ public final class Performance {
 	public static final class Ai {
 		public boolean enabled = false;
 		/** Far means more than this percent of the simulation distance from every player (at least 16 blocks). */
-		public int farPercent = 60;
+		public int farPercent = 40;
 		public int farGoalEvery = 4;
 		public int pathBudget = 40;
 		/** The path budget only while lag protection has lowered something. */
