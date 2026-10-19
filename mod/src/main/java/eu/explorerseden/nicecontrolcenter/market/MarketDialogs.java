@@ -52,7 +52,8 @@ import eu.explorerseden.nicecontrolcenter.core.Plop;
 public final class MarketDialogs {
 	private static final int WIDTH = 150;
 	private static final int TEXT_WIDTH = 310;
-	private static final int PAGE = 10;
+	/** Listings per Browse page: all of them in one scrolling list, pages only for a very full market. */
+	private static final int PAGE = 100;
 
 	private MarketDialogs() {
 	}
@@ -110,7 +111,22 @@ public final class MarketDialogs {
 		if (stack.isEmpty()) return Optional.empty();
 		// Over the item's stack size the dialog can't be sent and the player gets kicked.
 		stack.setCount(Math.max(1, Math.min(count, stack.getMaxStackSize())));
-		return Optional.of(new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), true, true, 16, 16));
+		return Optional.of(new ItemBody(ItemStackTemplate.fromNonEmptyStack(light(stack)), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), true, true, 16, 16));
+	}
+
+	/**
+	 * The item for a row in a long list, without what it carries (a shulker box's items, a bundle's, a book's
+	 * pages): one full shulker box can be hundreds of kilobytes, and a dialog too big to send kicks the player.
+	 * A listing's own page shows the whole item.
+	 */
+	private static ItemStack light(ItemStack stack) {
+		ItemStack out = stack.copy();
+		out.remove(net.minecraft.core.component.DataComponents.CONTAINER);
+		out.remove(net.minecraft.core.component.DataComponents.BUNDLE_CONTENTS);
+		out.remove(net.minecraft.core.component.DataComponents.WRITTEN_BOOK_CONTENT);
+		out.remove(net.minecraft.core.component.DataComponents.WRITABLE_BOOK_CONTENT);
+		out.remove(net.minecraft.core.component.DataComponents.CHARGED_PROJECTILES);
+		return out;
 	}
 
 	/** "5 Diamonds each" or "5 Diamonds per 16". */
@@ -574,7 +590,7 @@ public final class MarketDialogs {
 					.append(Component.literal(k.getHoverName().getString()).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", MarketStore.count(player, k)) + (selling ? " · you sell these  " : "  ")).withStyle(ChatFormatting.GRAY))
 					.append(link("Sell", selling ? "List more or add them to your listing" : "Set the price and amount", "sellitem", args("slot", String.valueOf(i), "kinds", sig), ChatFormatting.GREEN));
-			ItemStack shown = k.copyWithCount(Math.max(1, Math.min(MarketStore.count(player, k), k.getMaxStackSize())));
+			ItemStack shown = light(k.copyWithCount(Math.max(1, Math.min(MarketStore.count(player, k), k.getMaxStackSize()))));
 			body.add(new ItemBody(ItemStackTemplate.fromNonEmptyStack(shown), Optional.of(new PlainMessage(desc, TEXT_WIDTH - 30)), true, true, 16, 16));
 		}
 		menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));

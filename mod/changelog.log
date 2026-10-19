@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.14.3
+- Market: Browse shows all listings in one scrolling list (pages only past 100)
+- Market: rows in lists (Browse, My listings, Mailbox, Sell) show the item without what's inside it (a shulker box's items, a bundle's, a book's pages); the listing's own page still shows everything. 100 full shulker boxes made a 69 MB menu (players get kicked over the client's limit), now 10 KB
+
 ## 1.14.2
 - Tuning: lower defaults for "Tick less where nobody is" (25 % of the simulation distance for monsters, animals and villagers, 15 % for other mobs) and "Lighter mob AI" (40 %). 1.14.0's 50 % was about twice the old 32 blocks, so mobs far from players were slowed down less than before. Values set in the panel stay as they are
 
