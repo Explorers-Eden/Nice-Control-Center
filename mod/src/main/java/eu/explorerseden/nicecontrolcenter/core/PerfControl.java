@@ -62,8 +62,13 @@ public final class PerfControl {
 	private static int view = -1;
 	private static volatile int mobCap = 100;
 	private static long lastStep;
-	// The extra steps before the view distance: activation ranges halved, then entity tracking at 60 %.
-	private static volatile boolean activationTight;
+	/**
+	 * The far-mob ranges (Tick less where nobody is, Lighter mob AI) while lag protection is on: step 0 is the
+	 * whole simulation distance, RANGE_STEPS the percentages set in the panel. Lag protection's first steps.
+	 */
+	private static volatile int rangeStep;
+	private static final int RANGE_STEPS = 3;
+	// The extra step before the view distance: entity tracking at 60 %.
 	private static volatile int tracking = 100;
 	// Resolved on reload, for the checks that run per entity.
 	private static Set<Item> junk = Set.of();
@@ -93,8 +98,9 @@ public final class PerfControl {
 		modified = -1;
 		baseSim = baseView = sim = view = -1;
 		mobCap = 100;
-		activationTight = false;
+		rangeStep = 0;
 		tracking = 100;
+		taken.clear();
 		calmSince = -1;
 		lastChange = "";
 		capped.clear();
@@ -107,9 +113,19 @@ public final class PerfControl {
 	/** The simulation distance in blocks right now (lag protection may have lowered it). */
 	private static int simulationBlocks = 160;
 
-	/** Blocks for a percentage of the current simulation distance. */
+	/**
+	 * Blocks for a far-mob range: a percentage of the current simulation distance. With lag protection on,
+	 * the set percentage is the lowest it goes: without lag it's the whole simulation distance, and each lag
+	 * step brings it closer to the set one.
+	 */
 	private static int rangeOf(int percent) {
-		return Math.max(MIN_RANGE, simulationBlocks * Math.min(100, percent) / 100);
+		int p = Math.min(100, percent);
+		if (settings.dynamic.enabled) p = 100 - (100 - p) * rangeStep / RANGE_STEPS;
+		return Math.max(MIN_RANGE, simulationBlocks * p / 100);
+	}
+
+	private static boolean rangesUsed() {
+		return settings.activation.enabled || settings.ai.enabled;
 	}
 
 	/** Start of every server tick. */
@@ -199,12 +215,26 @@ public final class PerfControl {
 		if (s.ai.enabled) b.append("lighter mob AI, ");
 		if (s.hoppers.enabled) b.append("hopper cooldown, ");
 		if (s.decor.armorStands) b.append("armor stands still, ");
+		if (s.smooth.saving) b.append("smooth saving, ");
+		if (s.smooth.teleports) b.append("warm teleport targets, ");
 		if (!s.frozen.isEmpty()) b.append(s.frozen.size()).append(" frozen chunks, ");
 		return b.isEmpty() ? "all off" : b.substring(0, b.length() - 2);
 	}
 
 	// ── Dynamic distances ──────────────────────────────────────────────
 
+	/** One step lag protection took, undone in reverse order once it's calm. */
+	private enum Step { RANGES, MOB_CAP, SIMULATION, TRACKING, VIEW }
+
+	/** What lag protection lowered, newest last. */
+	private static final java.util.ArrayDeque<Step> taken = new java.util.ArrayDeque<>();
+
+	/**
+	 * The ladder, cheapest for players first: the far-mob ranges (three quick steps), then the mob cap and the
+	 * simulation distance taking turns (mob cap first), then how far players see mobs (More steps first), and
+	 * last the view distance. Normally a step every 10 seconds, every 5 while ticks take over twice the target.
+	 * Going back up undoes the steps in reverse, so the ranges come back last.
+	 */
 	private static void dynamic(MinecraftServer server) {
 		Performance.Dynamic d = settings.dynamic;
 		if (!d.enabled) return;
@@ -212,32 +242,42 @@ public final class PerfControl {
 		if (baseSim < 0) {
 			baseSim = sim = list.getSimulationDistance();
 			baseView = view = list.getViewDistance();
+			taken.clear();
 		}
 		double ms = server.getAverageTickTimeNanos() / 1_000_000.0;
 		long now = System.currentTimeMillis();
 		if (ms > d.targetMspt) {
 			calmSince = -1;
-			if (now - lastStep < 10_000) return;
-			String what = null;
-			if (sim > Math.min(d.simulationMin, baseSim)) {
-				sim--;
-				list.setSimulationDistance(sim);
-				what = "simulation distance " + sim;
-			} else if (mobCap > d.mobCapMin) {
-				mobCap = Math.max(d.mobCapMin, mobCap - 10);
-				what = "mob cap " + mobCap + " %";
-			} else if (d.extraSteps && settings.activation.enabled && !activationTight) {
-				activationTight = true;
-				what = "activation ranges to half";
-			} else if (d.extraSteps && tracking > 60) {
-				tracking = 60;
-				what = "range players see mobs from to 60 %";
-			} else if (d.view && view > Math.min(d.viewMin, baseView)) {
-				view--;
-				list.setViewDistance(view);
-				what = "view distance " + view;
-			}
-			if (what != null) step(now, "Lag (" + Math.round(ms) + " ms per tick): lowered the " + what);
+			boolean quick = ms > d.targetMspt * 2 || (rangesUsed() && rangeStep < RANGE_STEPS);
+			if (now - lastStep < (quick ? 5_000 : 10_000)) return;
+			Step next = nextDown(d);
+			if (next == null) return;
+			String what = switch (next) {
+				case RANGES -> {
+					rangeStep++;
+					yield rangeStep == RANGE_STEPS ? "ranges for far mobs to the lowest set" : "ranges for far mobs (step " + rangeStep + " of " + RANGE_STEPS + ")";
+				}
+				case MOB_CAP -> {
+					mobCap = Math.max(d.mobCapMin, mobCap - 10);
+					yield "mob cap " + mobCap + " %";
+				}
+				case SIMULATION -> {
+					sim--;
+					list.setSimulationDistance(sim);
+					yield "simulation distance " + sim;
+				}
+				case TRACKING -> {
+					tracking = 60;
+					yield "range players see mobs from to 60 %";
+				}
+				case VIEW -> {
+					view--;
+					list.setViewDistance(view);
+					yield "view distance " + view;
+				}
+			};
+			taken.addLast(next);
+			step(now, "Lag (" + Math.round(ms) + " ms per tick): lowered the " + what);
 			return;
 		}
 		if (ms >= d.recoverMspt || !lowered()) {
@@ -246,30 +286,62 @@ public final class PerfControl {
 		}
 		if (calmSince < 0) calmSince = now;
 		if (now - calmSince < 60_000 || now - lastStep < 30_000) return;
-		String what;
-		if (view < baseView) {
-			view++;
-			list.setViewDistance(view);
-			what = "view distance " + view;
-		} else if (tracking < 100) {
-			tracking = 100;
-			what = "range players see mobs from to normal";
-		} else if (activationTight) {
-			activationTight = false;
-			what = "activation ranges to normal";
-		} else if (mobCap < 100) {
-			mobCap = Math.min(100, mobCap + 10);
-			what = "mob cap " + mobCap + " %";
-		} else {
-			sim++;
-			list.setSimulationDistance(sim);
-			what = "simulation distance " + sim;
-		}
+		Step last = taken.pollLast();
+		// Lowered before this list was kept (or switched on in between): the old order, view first.
+		if (last == null) last = view < baseView ? Step.VIEW : tracking < 100 ? Step.TRACKING : sim < baseSim ? Step.SIMULATION
+				: mobCap < 100 ? Step.MOB_CAP : Step.RANGES;
+		String what = switch (last) {
+			case VIEW -> {
+				view = Math.min(baseView, view + 1);
+				list.setViewDistance(view);
+				yield "view distance " + view;
+			}
+			case TRACKING -> {
+				tracking = 100;
+				yield "range players see mobs from to normal";
+			}
+			case SIMULATION -> {
+				sim = Math.min(baseSim, sim + 1);
+				list.setSimulationDistance(sim);
+				yield "simulation distance " + sim;
+			}
+			case MOB_CAP -> {
+				mobCap = Math.min(100, mobCap + 10);
+				yield "mob cap " + mobCap + " %";
+			}
+			case RANGES -> {
+				rangeStep = Math.max(0, rangeStep - 1);
+				yield rangeStep == 0 ? "ranges for far mobs to the whole simulation distance" : "ranges for far mobs (step " + rangeStep + " of " + RANGE_STEPS + ")";
+			}
+		};
 		step(now, "Recovered (" + Math.round(ms) + " ms per tick): raised the " + what + (lowered() ? "" : ", back to normal"));
 	}
 
+	/** The next step down, or null when everything is as low as allowed. */
+	private static Step nextDown(Performance.Dynamic d) {
+		if (rangesUsed() && rangeStep < RANGE_STEPS) return Step.RANGES;
+		boolean cap = mobCap > d.mobCapMin;
+		boolean simulation = sim > Math.min(d.simulationMin, baseSim);
+		if (cap || simulation) {
+			// Taking turns, the mob cap first.
+			Step before = null;
+			for (java.util.Iterator<Step> it = taken.descendingIterator(); it.hasNext();) {
+				Step s = it.next();
+				if (s == Step.MOB_CAP || s == Step.SIMULATION) {
+					before = s;
+					break;
+				}
+			}
+			if (cap && (before != Step.MOB_CAP || !simulation)) return Step.MOB_CAP;
+			return Step.SIMULATION;
+		}
+		if (d.extraSteps && tracking > 60) return Step.TRACKING;
+		if (d.view && view > Math.min(d.viewMin, baseView)) return Step.VIEW;
+		return null;
+	}
+
 	private static boolean lowered() {
-		return baseSim >= 0 && (sim < baseSim || view < baseView || mobCap < 100 || activationTight || tracking < 100);
+		return baseSim >= 0 && (sim < baseSim || view < baseView || mobCap < 100 || rangeStep > 0 || tracking < 100);
 	}
 
 	private static void step(long now, String text) {
@@ -288,8 +360,9 @@ public final class PerfControl {
 		server.getPlayerList().setSimulationDistance(baseSim);
 		server.getPlayerList().setViewDistance(baseView);
 		mobCap = 100;
-		activationTight = false;
+		rangeStep = 0;
 		tracking = 100;
+		taken.clear();
 		NiceControlCenter.LOGGER.info("Distances back to normal ({})", why);
 		lastChange = "Back to normal (" + why + ")";
 		baseSim = baseView = sim = view = -1;
@@ -305,7 +378,9 @@ public final class PerfControl {
 		out.put("simulationBase", baseSim >= 0 ? baseSim : list.getSimulationDistance());
 		out.put("viewBase", baseView >= 0 ? baseView : list.getViewDistance());
 		out.put("mobCap", mobCap);
-		out.put("activationHalved", activationTight);
+		out.put("rangeStep", rangeStep);
+		out.put("rangeSteps", RANGE_STEPS);
+		out.put("warmTargets", WarmTargets.warm());
 		out.put("tracking", tracking);
 		long mobs = 0;
 		long items = 0;
@@ -348,7 +423,6 @@ public final class PerfControl {
 		if (immune(mob)) return false;
 		int range = rangeOf(entity instanceof Enemy ? a.monstersPercent : entity instanceof AbstractVillager ? a.villagersPercent
 				: entity instanceof Animal ? a.animalsPercent : a.otherPercent);
-		if (activationTight) range = Math.max(MIN_RANGE, range / 2);
 		double[] xz = players.get(level);
 		if (xz == null) return false;
 		double r2 = (double) range * range;

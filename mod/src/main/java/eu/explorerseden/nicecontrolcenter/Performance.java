@@ -160,6 +160,14 @@ public final class Performance {
 		public boolean armorStands = false;
 	}
 
+	/** Lag spikes from saving and teleporting, smoothed out. */
+	public static final class Smooth {
+		/** Autosave writes the world over the next seconds instead of all in one tick. */
+		public boolean saving = true;
+		/** Places players often teleport to stay loaded (not ticking), so arriving doesn't load them first. */
+		public boolean teleports = true;
+	}
+
 	public static final class Chunk {
 		public String dimension;
 		public int x;
@@ -192,6 +200,7 @@ public final class Performance {
 		public Ai ai = new Ai();
 		public Hoppers hoppers = new Hoppers();
 		public Decor decor = new Decor();
+		public Smooth smooth = new Smooth();
 
 		/** Missing parts (older file, partial JSON) get their defaults. */
 		public Settings fill() {
@@ -219,6 +228,7 @@ public final class Performance {
 			if (ai == null) ai = new Ai();
 			if (hoppers == null) hoppers = new Hoppers();
 			if (decor == null) decor = new Decor();
+			if (smooth == null) smooth = new Smooth();
 			return this;
 		}
 	}

@@ -1,4 +1,12 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.15.0
+- Smooth saving (on by default): the autosave every 5 minutes no longer writes the whole world in one tick. That tick only notes what changed; chunks are then written a few per tick (at most 1.5 ms of each) and player files one per tick. On the live server that tick caused more than half of all lag spikes (about 190 ms each). save-all, stopping and backups still save everything at once
+- Warm teleport targets (on by default): places players teleport to three times in a day (hubs, homes, spawn) stay loaded without ticking, so a teleport there doesn't load the chunks first. At most 24; they show under Loaded chunks as "Teleport target" and can be released there
+- Lag protection, reworked: the far-mob percentages of "Tick less where nobody is" and "Lighter mob AI" are now the lowest they go. Without lag mobs tick normally across the whole simulation distance; lag protection's first steps (three quick ones) shrink the ranges down to the set share of the simulation distance at that moment. Then the mob cap and the simulation distance come down taking turns, then how far players see mobs (More steps first), then the view distance. Steps come every 5 seconds instead of 10 while ticks take more than twice the target, and going back up undoes them in reverse, so the far-mob ranges return last. With lag protection off the percentages always apply, as before
+- Lag report: spikes from teleports point at /spreadplayers (random teleports), which loads or generates the target chunk on the spot, and at pregeneration
+- Pets: particle trails show for their owner again (1.14.0 hid them while the pet was in front of the owner's face); instead they stay close around the head, slightly below and on the side away from the owner
+- Dashboard: the overview's charts fill every row; the view and simulation distance chart moved to "More charts"
+
 ## 1.14.3
 - Market: Browse shows all listings in one scrolling list (pages only past 100)
 - Market: rows in lists (Browse, My listings, Mailbox, Sell) show the item without what's inside it (a shulker box's items, a bundle's, a book's pages); the listing's own page still shows everything. 100 full shulker boxes made a 69 MB menu (players get kicked over the client's limit), now 10 KB

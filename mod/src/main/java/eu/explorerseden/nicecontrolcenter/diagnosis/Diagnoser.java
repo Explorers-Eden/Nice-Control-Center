@@ -466,7 +466,10 @@ public final class Diagnoser {
 			reason += " Most were caused by " + cause.toLowerCase(Locale.ROOT) + ".";
 		}
 		String hint = switch (cause == null ? "" : cause) {
-			case "Autosave" -> "Saving causes the spikes. Faster disks or fewer loaded chunks help.";
+			case "Autosave" -> "Saving causes the spikes. Switch on Smooth saving (Tuning), and fewer loaded chunks help.";
+			case "Network & console", "World upkeep" -> "Often teleports: /tp and /spreadplayers (random teleports) load the target chunk on the spot, "
+					+ "and generate it if nobody has been there yet; spreadplayers rolls again on water or lava and generates another. "
+					+ "Pre-generate the area random teleports reach, and keep Warm teleport targets on for hubs and homes.";
 			case "Chunk management" -> "Chunk loading/generation causes the spikes. Pre-generate the world.";
 			case "Data pack functions" -> "A data pack does a lot of work in single ticks. See the data pack findings above.";
 			case "Other" -> "Often garbage collection pauses or a heavy command. Check memory below.";

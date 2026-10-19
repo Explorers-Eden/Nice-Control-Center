@@ -3726,7 +3726,7 @@
       return;
     }
     $('pn-loaded-count').textContent = r.count ? `${r.count}${r.ticking ? `, ${r.ticking} ticking` : ''}` : '';
-    const REASONS = { forced: '/forceload', ender_pearl: 'Ender pearl', portal: 'Portal', dragon: 'Dragon fight', spawn_search: 'Spawn search', player_spawn: 'Respawn point', unknown: 'Other' };
+    const REASONS = { forced: '/forceload', ender_pearl: 'Ender pearl', portal: 'Portal', dragon: 'Dragon fight', spawn_search: 'Spawn search', player_spawn: 'Respawn point', warm: 'Teleport target', pregen: 'Pregeneration', unknown: 'Other' };
     const shown = loadedAll ? r.chunks : r.chunks.slice(0, 15);
     const more = r.chunks.length - shown.length;
     table.innerHTML = r.chunks.length
@@ -3760,7 +3760,7 @@
       const p = await api('dashboard/api/perf');
       el.className = 'pn-perf-live' + (p.lowered ? ' lowered' : '');
       el.innerHTML = `<span><b>${p.mspt}</b> ms per tick</span><span>Simulation distance <b>${p.simulation}</b>${p.simulation !== p.simulationBase ? ` of ${p.simulationBase}` : ''}</span>
-        <span>View distance <b>${p.view}</b>${p.view !== p.viewBase ? ` of ${p.viewBase}` : ''}</span><span>Mob caps <b>${p.mobCap} %</b></span>${p.activationHalved ? '<span>Activation ranges <b>halved</b></span>' : ''}${p.tracking < 100 ? `<span>Mobs seen from <b>${p.tracking} %</b></span>` : ''}${p.cappedMobsHour || p.cappedItemsHour ? `<span>Auto caps, last hour: <b>${p.cappedMobsHour}</b> mobs, <b>${p.cappedItemsHour}</b> items</span>` : ''}
+        <span>View distance <b>${p.view}</b>${p.view !== p.viewBase ? ` of ${p.viewBase}` : ''}</span><span>Mob caps <b>${p.mobCap} %</b></span>${p.rangeStep ? `<span>Far-mob ranges <b>${p.rangeStep === p.rangeSteps ? 'lowest' : `step ${p.rangeStep} of ${p.rangeSteps}`}</b></span>` : ''}${p.activationHalved ? '<span>Activation ranges <b>halved</b></span>' : ''}${p.warmTargets ? `<span>Warm teleport targets <b>${p.warmTargets}</b></span>` : ''}${p.tracking < 100 ? `<span>Mobs seen from <b>${p.tracking} %</b></span>` : ''}${p.cappedMobsHour || p.cappedItemsHour ? `<span>Auto caps, last hour: <b>${p.cappedMobsHour}</b> mobs, <b>${p.cappedItemsHour}</b> items</span>` : ''}
         ${p.lastChange ? `<small>${esc(p.lastChange)}</small>` : ''}`;
     } catch (e) {
       el.className = 'pn-perf-live off';
@@ -3857,8 +3857,10 @@
     const kind = c.dataset.cleanup;
     const run = c.dataset.run === '1';
     const note = $(kind === 'items' ? 'pn-cl-items-note' : 'pn-cl-excess-note');
-    if (run && !confirm(kind === 'items' ? 'Remove all dropped items and XP orbs in loaded chunks?' : 'Remove mobs over their limit per chunk?')) return;
-    const q = `kind=${kind}`;
+    const per = Math.max(1, Math.min(500, parseInt($('pn-cl-per').value, 10) || 24));
+    $('pn-cl-per').value = per;
+    if (run && !confirm(kind === 'items' ? 'Remove all dropped items and XP orbs in loaded chunks?' : `Remove mobs over ${per} of one kind per chunk?`)) return;
+    const q = kind === 'items' ? 'kind=items' : `kind=excess&perChunk=${per}`;
     try {
       const r = run ? await api('dashboard/api/cleanup/run?' + q, {}) : await api('dashboard/api/cleanup/preview?' + q);
       if (kind === 'items') {
@@ -3866,7 +3868,7 @@
         $('pn-cl-table-wrap').hidden = true;
       } else {
         if (r.error) { note.textContent = r.error; return; }
-        note.textContent = r.remove ? `${run ? 'Removed' : 'Would remove'} ${r.remove} mobs in ${r.chunkCount} chunks` : 'No chunk is over a limit.';
+        note.textContent = r.remove ? `${run ? 'Removed' : 'Would remove'} ${r.remove} mobs in ${r.chunkCount} chunks` : `No chunk has more than ${per} of one kind.`;
         $('pn-cl-table-wrap').hidden = !r.chunks.length || run;
         $('pn-cl-table').innerHTML = `<thead><tr><th>Where</th><th>Kind</th><th class="num">There</th><th class="num">Limit</th><th class="num">Would go</th></tr></thead><tbody>${r.chunks.map((x) =>
           `<tr><td>${esc(dimLabel(x.dimension))} <small>x ${x.x * 16}, z ${x.z * 16}</small></td><td>${esc(x.type.replace('minecraft:', ''))}</td><td class="num">${x.count}</td><td class="num">${x.limit ?? ''}</td><td class="num">${x.remove}</td></tr>`).join('')}</tbody>`;

@@ -42,14 +42,17 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * Zip backups of the server folder in /data/backups. While the server runs, saving is paused for the
- * copy (save-off, save-all flush … save-on) so the world on disk is consistent. Region files and other
- * already-compressed files are stored as they are; everything else is compressed quickly.
+ * copy (save-off, save-all flush … save-on) so the world on disk is consistent. Region files go in with
+ * their unused space blanked (see {@link #packedRegion}), other already-compressed files as they are, and
+ * everything else is compressed quickly.
  */
 public final class Backups {
 	/** Settings in /data/panel/backups.json. */
 	public static final class Settings {
 		public List<String> exclude = new ArrayList<>(List.of("logs/**", "crash-reports/**", "debug/**", ".fabric/**", "libraries/**",
-				"versions/**", "**/session.lock", "mods/.nice-control-center.download"));
+				"versions/**", "**/session.lock", "mods/.nice-control-center.download", DISTANT_HORIZONS));
+		/** Which one-time changes to the defaults this file has had; null for files from before 1.14.0. */
+		public Integer revision = REVISION;
 		/** How many backups to keep (pinned ones and those an update still needs come on top). */
 		public int keepLast = 10;
 	}
@@ -60,7 +63,16 @@ public final class Backups {
 	private static final DateTimeFormatter NAME_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 	private static final Pattern NAME = Pattern.compile("backup-\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}(-[a-z0-9-]{1,40})?\\.zip");
 	private static final Pattern SAVED = Pattern.compile("Saved the game|Saved the world");
-	private static final Set<String> STORED = Set.of("mca", "mcc", "gz", "zip", "jar", "png", "jpg", "ogg", "zst", "xz", "7z", "dat_old");
+	private static final Set<String> STORED = Set.of("mca", "mcc", "gz", "zip", "jar", "png", "jpg", "ogg", "zst", "xz", "7z", "dat_old",
+			"sqlite", "sqlite-wal", "sqlite-shm");
+	/**
+	 * Distant Horizons' level-of-detail databases: often more than half the world folder, hardly compressible,
+	 * rebuilt from the world on their own, and copied mid-write they may not even open.
+	 */
+	static final String DISTANT_HORIZONS = "**/DistantHorizons.sqlite*";
+	private static final int REVISION = 2;
+	/** Bigger region files than this (never seen in practice) are stored as they are. */
+	private static final long PACK_MAX = 64L << 20;
 
 	private final Path serverDir;
 	private final Path backupDir;
@@ -87,9 +99,28 @@ public final class Backups {
 		this.zone = zone;
 		Settings loaded = null;
 		try {
-			if (Files.exists(settingsFile)) loaded = Json.GSON.fromJson(Files.readString(settingsFile), Settings.class);
+			if (Files.exists(settingsFile)) {
+				String text = Files.readString(settingsFile);
+				loaded = Json.GSON.fromJson(text, Settings.class);
+				// Gson keeps the field's default when the file has none, so look at the file itself.
+				if (loaded != null && !com.google.gson.JsonParser.parseString(text).getAsJsonObject().has("revision")) loaded.revision = null;
+			}
 		} catch (IOException | RuntimeException e) {
 			System.err.println("Could not read " + settingsFile + ", using defaults: " + e.getMessage());
+		}
+		if (loaded != null && (loaded.revision == null || loaded.revision < REVISION)) {
+			// 1.14.0: Distant Horizons' data is left out of backups (once; it can be taken out of the list again).
+			if (loaded.exclude == null) loaded.exclude = new ArrayList<>();
+			if (!loaded.exclude.contains(DISTANT_HORIZONS)) {
+				loaded.exclude = new ArrayList<>(loaded.exclude);
+				loaded.exclude.add(DISTANT_HORIZONS);
+			}
+			loaded.revision = REVISION;
+			try {
+				Files.writeString(settingsFile, Json.GSON.toJson(loaded), StandardCharsets.UTF_8);
+			} catch (IOException e) {
+				System.err.println("Could not update " + settingsFile + ": " + e.getMessage());
+			}
 		}
 		settings = loaded != null ? loaded : new Settings();
 	}
@@ -110,6 +141,7 @@ public final class Backups {
 			}
 		}
 		if (next.keepLast < 1 || next.keepLast > 1000) return "Keep at least 1 and at most 1000 backups.";
+		next.revision = REVISION;
 		Files.createDirectories(settingsFile.getParent());
 		Path tmp = settingsFile.resolveSibling(settingsFile.getFileName() + ".tmp");
 		Files.writeString(tmp, Json.GSON.toJson(next), StandardCharsets.UTF_8);
@@ -212,6 +244,19 @@ public final class Backups {
 					String rel = serverDir.relativize(file).toString().replace('\\', '/');
 					ZipEntry entry = new ZipEntry(rel);
 					entry.setTime(Files.getLastModifiedTime(file).toMillis());
+					byte[] packed = extension(rel).equals("mca") ? packedRegion(file) : null;
+					if (packed != null) {
+						try {
+							zip.setMethod(ZipOutputStream.DEFLATED);
+							zip.putNextEntry(entry);
+							zip.write(packed);
+							zip.closeEntry();
+						} catch (java.nio.file.NoSuchFileException e) {
+							// Gone meanwhile; skip it.
+						}
+						filesDone++;
+						continue;
+					}
 					boolean store = STORED.contains(extension(rel));
 					zip.setMethod(store ? ZipOutputStream.STORED : ZipOutputStream.DEFLATED);
 					if (store) {
@@ -301,6 +346,45 @@ public final class Backups {
 			}
 		});
 		return out;
+	}
+
+	/**
+	 * A region file (.mca: blocks, entities or points of interest) with everything the game doesn't read
+	 * set to zero: the space after each chunk up to its next 4 KB sector, and sectors no chunk uses any more.
+	 * Both still hold old chunk data, which doesn't compress; zeros do, so the backup gets about a third
+	 * smaller, and the file is still a valid region file that the game reads exactly as before. Null when the
+	 * file doesn't look like a region file, so it goes in byte for byte.
+	 */
+	static byte[] packedRegion(Path file) {
+		try {
+			long size = Files.size(file);
+			if (size < 8192 || size > PACK_MAX) return null;
+			byte[] in = Files.readAllBytes(file);
+			byte[] out = new byte[in.length];
+			// The location and timestamp tables.
+			System.arraycopy(in, 0, out, 0, 8192);
+			for (int i = 0; i < 1024; i++) {
+				int loc = readInt(in, i * 4);
+				if (loc == 0) continue;
+				long start = (long) (loc >>> 8) * 4096;
+				long sectors = (long) (loc & 0xFF) * 4096;
+				if (start < 8192 || start >= in.length) continue;
+				long end = Math.min(in.length, start + Math.max(sectors, 4096));
+				// [length][compression][data]: keep exactly that when the length makes sense, else all its sectors.
+				if (start + 4 <= in.length) {
+					long length = readInt(in, (int) start) & 0xFFFFFFFFL;
+					if (length >= 1 && start + 4 + length <= end) end = start + 4 + length;
+				}
+				System.arraycopy(in, (int) start, out, (int) start, (int) (end - start));
+			}
+			return out;
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
+	}
+
+	private static int readInt(byte[] b, int at) {
+		return ((b[at] & 0xFF) << 24) | ((b[at + 1] & 0xFF) << 16) | ((b[at + 2] & 0xFF) << 8) | (b[at + 3] & 0xFF);
 	}
 
 	private static boolean excluded(List<PathMatcher> matchers, Path rel) {

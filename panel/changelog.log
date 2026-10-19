@@ -1,3 +1,10 @@
+## 1.14.0
+- Backups: region files (blocks, entities, points of interest) go in with the unused space the game leaves in them blanked, so they compress: about 38 % smaller for blocks and 89 % for entities, measured on the live world. They're still ordinary region files, restores work as before
+- Backups: Distant Horizons' level-of-detail databases are left out (often more than half the world folder, barely compressible, rebuilt by the mod on its own, and copied mid-write they may not even open). Added once to the exclude list in Backup settings, where it can be removed again. Database files that are still backed up aren't compressed any more, which only cost time
+- Tuning: Clean up now has its own limit for "Mobs over … of one kind per chunk", independent of the mob limits above, since it's a one-time clear
+- Tuning: Saving and teleports: Smooth saving and Warm teleport targets (mod 1.15.0)
+- Tuning: lag protection's new order and the far-mob percentages as the lowest they go, explained (mod 1.15.0); the live line shows the far-mob step
+
 ## 1.13.4
 - Market and info page: colour and format codes in item names, enchantments and lore (like "Soul Speed §3III") are shown in their colours, like in game, instead of as text
 

@@ -608,7 +608,7 @@
     try { more = localStorage.getItem('np-charts-more') === '1'; } catch (e) { /* default */ }
     const apply = () => {
       document.body.classList.toggle('charts-more', more);
-      $('np-charts-more').textContent = more ? 'Fewer charts' : 'More charts: entities, chunks, players';
+      $('np-charts-more').textContent = more ? 'Fewer charts' : 'More charts: distances, entities, chunks, players';
       drawCharts();
     };
     $('np-charts-more').addEventListener('click', () => {

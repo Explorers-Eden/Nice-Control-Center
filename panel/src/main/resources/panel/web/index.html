@@ -430,7 +430,7 @@
 				<form id="pn-perf-form" autocomplete="off">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-graph-down-arrow"></i> Step down while it lags</h3>
-					<p class="np-card-intro">When ticks take longer than the target for a while, the server lowers the <span data-help="sim">simulation distance</span> one step every 10 seconds, then the mob caps, then (with <i>More steps first</i>) the activation ranges and how far players see mobs, and last the <span data-help="view">view distance</span>. Once it has been calm for a minute, it goes back up step by step. Nothing is saved: a restart starts from your normal settings.</p>
+					<p class="np-card-intro">When ticks take longer than the target, the server saves work step by step, what players notice least first: the ranges of <i>Tick less where nobody is</i> and <i>Lighter mob AI</i> shrink to the lowest you set below (three quick steps), then the mob cap and the <span data-help="sim">simulation distance</span> come down taking turns, then (with <i>More steps first</i>) how far players see mobs, and last the <span data-help="view">view distance</span>. A step every 10 seconds, every 5 while ticks take more than twice the target. Once it has been calm for a minute, it undoes its steps one by one in reverse, so the far-mob ranges come back last. Nothing is saved: a restart starts from your normal settings.</p>
 					<p class="pn-perf-live" id="pn-perf-live"></p>
 					<div class="np-form-grid" data-needs="dynamic.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="dynamic.enabled"><span></span></span></label>
@@ -440,7 +440,7 @@
 						<label class="np-form-row">Lowest mob cap (%)<input type="number" name="dynamic.mobCapMin" min="10" max="100" step="10"></label>
 						<label class="np-form-row">Also lower the view distance<span class="np-switch"><input type="checkbox" name="dynamic.view"><span></span></span></label>
 						<label class="np-form-row" data-needs="dynamic.view">Lowest view distance<input type="number" name="dynamic.viewMin" min="2" max="32"></label>
-						<label class="np-form-row"><span>More steps first <small class="pn-hint">halve the activation ranges, then show mobs from less far, before the view distance</small></span><span class="np-switch"><input type="checkbox" name="dynamic.extraSteps"><span></span></span></label>
+						<label class="np-form-row"><span>More steps first <small class="pn-hint">show mobs from less far (60 %) before lowering the view distance</small></span><span class="np-switch"><input type="checkbox" name="dynamic.extraSteps"><span></span></span></label>
 					</div>
 				</section>
 				<section class="np-card">
@@ -451,7 +451,7 @@
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
 						<div class="np-form-grid" data-needs="activation.enabled">
-							<p class="pn-hint">Ranges are a share of the simulation distance: never farther than it, and smaller while lag protection lowers it (at least 16 blocks).</p>
+							<p class="pn-hint">With lag protection on, these are the lowest ranges: without lag mobs tick normally across the whole simulation distance, and while it lags the ranges shrink down to these shares of the simulation distance at that moment (at least 16 blocks). With lag protection off they always apply.</p>
 							<label class="np-form-row">Monsters: active within (% of simulation distance)<input type="number" name="activation.monstersPercent" min="10" max="100"></label>
 							<label class="np-form-row">Animals: active within (% of simulation distance)<input type="number" name="activation.animalsPercent" min="10" max="100"></label>
 							<label class="np-form-row">Villagers: active within (% of simulation distance)<input type="number" name="activation.villagersPercent" min="10" max="100"></label>
@@ -465,7 +465,7 @@
 					<p class="np-card-intro">Mobs far from every player decide what to do next only every few ticks; what they're already doing keeps running (like Pufferfish). While the server lags, it also limits how many mobs may search a new path per tick; the others try again a moment later.</p>
 					<div class="np-form-grid" data-needs="ai.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="ai.enabled"><span></span></span></label>
-						<label class="np-form-row"><span>Far means more than (% of simulation distance) <small class="pn-hint">never farther than the simulation distance, at least 16 blocks</small></span><input type="number" name="ai.farPercent" min="10" max="100"></label>
+						<label class="np-form-row"><span>Far means more than (% of simulation distance) <small class="pn-hint">with lag protection on, the lowest it goes while it lags (without lag: the whole simulation distance); a share of the simulation distance at that moment, at least 16 blocks</small></span><input type="number" name="ai.farPercent" min="10" max="100"></label>
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
 						<div class="np-form-grid" data-needs="ai.enabled">
@@ -547,6 +547,14 @@
 					</div>
 				</section>
 				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-lightning-charge"></i> Saving and teleports</h3>
+					<p class="np-card-intro"><b>Smooth saving</b>: the autosave every 5 minutes writes changed chunks and player files over the next seconds instead of all in one tick, which removes its lag spike. <i>save-all</i>, stopping and backups still save everything at once. <b>Warm teleport targets</b>: places players teleport to three times in a day (hubs, homes, spawn) stay loaded, without ticking, so arriving there doesn't load them first. They're listed under Loaded chunks as <i>Teleport target</i>, at most 24.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row">Smooth saving<span class="np-switch"><input type="checkbox" name="smooth.saving"><span></span></span></label>
+						<label class="np-form-row">Warm teleport targets<span class="np-switch"><input type="checkbox" name="smooth.teleports"><span></span></span></label>
+					</div>
+				</section>
+				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-funnel"></i> Mob limits per chunk</h3>
 					<p class="np-card-intro">How many mobs of a kind may live in one chunk. Used by <b>Clean up now</b> below, by the <b>Clean up</b> step in Schedule and, when switched on, every few seconds on their own. Pick single mobs or groups (<i>all animals</i>, <i>all monsters</i>…); a single mob's limit wins over its group's. Named, tamed, leashed and persistent mobs are never removed.</p>
 					<div class="pn-rules" id="pn-rules"></div>
@@ -578,7 +586,7 @@
 						<button type="button" class="np-btn small danger" data-cleanup="items" data-run="1">Remove</button>
 					</div>
 					<div class="pn-cleanup-row">
-						<span class="pn-cleanup-label"><b>Mobs over their limit</b> <small class="pn-hint">(Mob limits per chunk above; save first)</small><span id="pn-cl-excess-note"></span></span>
+						<span class="pn-cleanup-label"><b>Mobs over <input type="number" id="pn-cl-per" class="pn-cl-per" min="1" max="500" value="24" aria-label="Mobs of one kind per chunk"> of one kind per chunk</b><span id="pn-cl-excess-note"></span></span>
 						<button type="button" class="np-btn small" data-cleanup="excess" data-run="0">Check</button>
 						<button type="button" class="np-btn small danger" data-cleanup="excess" data-run="1">Remove</button>
 					</div>

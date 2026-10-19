@@ -390,33 +390,31 @@ final class PetFollowers {
 		ParticleOptions type = particle(trail);
 		if (type == null) return;
 		ServerLevel level = player.level();
-		// Somewhere around the head, not inside it, and with no push of their own: they float where they appear.
-		// A little below its middle, so they don't drift up past the owner's eyes.
-		double spread = 0.2 + 0.25 * size;
-		double y = f.pos.y - 0.15 * size;
-		// The owner doesn't get them while the pet is right in front of their face (close to their eyes); everyone else does.
-		boolean ownerToo = f.pos.distanceToSqr(player.getEyePosition()) > 1.6 * 1.6;
+		// Close around the head, not inside it, and with no push of their own: they float where they appear.
+		// Placed by hand in a small box (sendParticles' spread is a bell curve, so a few always strayed far, often
+		// into the owner's face), a little below the head's middle and nudged to its side away from the owner.
+		double spread = 0.12 + 0.12 * size;
 		var r = player.getRandom();
+		Vec3 eyes = player.getEyePosition();
+		double ax = f.pos.x - eyes.x;
+		double az = f.pos.z - eyes.z;
+		double len = Math.sqrt(ax * ax + az * az);
+		double away = 0.1 * size;
+		double cx = f.pos.x + (len > 1e-3 ? ax / len * away : 0);
+		double cz = f.pos.z + (len > 1e-3 ? az / len * away : 0);
+		double x = cx + (r.nextDouble() - 0.5) * 2 * spread;
+		double y = f.pos.y - 0.15 * size + (r.nextDouble() - 0.5) * spread;
+		double z = cz + (r.nextDouble() - 0.5) * 2 * spread;
 		if (trail == Pets.Trail.NOTES) {
-			// A note's colour comes in the first of the three numbers, so it's placed by hand.
-			send(level, player, ownerToo, ParticleTypes.NOTE, f.pos.x + (r.nextDouble() - 0.5) * 2 * spread, y + r.nextDouble() * spread, f.pos.z + (r.nextDouble() - 0.5) * 2 * spread,
-					0, r.nextDouble(), 0, 0, 1);
+			// A note's colour comes in the first of the three numbers.
+			level.sendParticles(ParticleTypes.NOTE, x, y, z, 0, r.nextDouble(), 0, 0, 1);
 			return;
 		}
 		if (trail == Pets.Trail.AUTUMN_LEAVES || trail == Pets.Trail.LUSH_LEAVES) {
 			int[] colours = trail == Pets.Trail.AUTUMN_LEAVES ? AUTUMN : LUSH;
 			type = ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, 0xFF000000 | colours[r.nextInt(colours.length)]);
 		}
-		send(level, player, ownerToo, type, f.pos.x, y, f.pos.z, 1, spread, spread, spread, 0);
-	}
-
-	/** Particles for the players near the pet (like ServerLevel.sendParticles), with or without its owner. */
-	private static void send(ServerLevel level, ServerPlayer owner, boolean ownerToo, ParticleOptions type, double x, double y, double z, int count,
-			double dx, double dy, double dz, double speed) {
-		for (ServerPlayer p : level.players()) {
-			if (p == owner && !ownerToo) continue;
-			level.sendParticles(p, type, false, false, x, y, z, count, dx, dy, dz, speed);
-		}
+		level.sendParticles(type, x, y, z, 1, 0, 0, 0, 0);
 	}
 
 	/** Red, orange and yellow leaves; and lush greens. */

@@ -524,13 +524,15 @@ body.report .np-clock { display: none; }
 
 /* ── Charts ──────────────────────────────────────────────────────────────── */
 
+/* Six tracks: the main charts take two each (three a row), the extra ones three (two a row), so no row is left half empty. */
 .np-charts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 18px 22px;
 }
 
-.np-chart { margin: 0; min-width: 0; }
+.np-chart { margin: 0; min-width: 0; grid-column: span 2; }
+.np-chart--extra { grid-column: span 3; }
 .np-chart--wide { grid-column: 1 / -1; }
 .np-chart figcaption {
   display: flex;
@@ -966,6 +968,8 @@ body.report #np-window, body.report #np-monitor-toggle { display: none; }
 
 @media (max-width: 1100px) {
   .np-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .np-chart, .np-chart--extra { grid-column: span 1; }
+  .np-chart--last-main { grid-column: 1 / -1; }
   .np-columns { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -992,6 +996,7 @@ body.report #np-window, body.report #np-monitor-toggle { display: none; }
   .np-tab { padding: 8px 11px; }
   .np-tab span:not(.np-tab-badge) { display: none; }
   .np-charts { grid-template-columns: minmax(0, 1fr); }
+  .np-chart, .np-chart--extra, .np-chart--last-main { grid-column: auto; }
 }
 .np-btn[hidden] { display: none; }
 

@@ -49,6 +49,7 @@ public class NiceControlCenter implements ModInitializer {
 	public void onInitialize() {
 		LogCapture.install();
 		eu.explorerseden.nicecontrolcenter.core.Pregen.register();
+		eu.explorerseden.nicecontrolcenter.core.WarmTargets.register();
 		Migration.configFiles();
 		config = ControlCenterConfig.load();
 		ErrorWatcher.ignore(config.error_ignore);

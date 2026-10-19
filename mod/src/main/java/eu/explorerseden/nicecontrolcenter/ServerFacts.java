@@ -272,7 +272,8 @@ public final class ServerFacts {
 			rows.add(line("Back to normal below", d.recoverMspt + " ms per tick", "After a minute below this, everything goes back up step by step."));
 			rows.add(line("Lowest simulation distance", d.simulationMin + " chunks", "How far around players crops grow, mobs move and redstone runs."));
 			rows.add(line("Lowest mob cap", d.mobCapMin + " %", "Fewer mobs spawn naturally while it's lowered (100 % = vanilla)."));
-			if (d.extraSteps) rows.add(line("Then, before the view distance", "true", "Mobs far from players move less often, then they show up from a bit less far away."));
+			if (p.activation.enabled || p.ai.enabled) rows.add(line("First", "far mobs", "Mobs far from players move and think less often, down to the ranges below."));
+			if (d.extraSteps) rows.add(line("Then, before the view distance", "true", "Mobs show up from a bit less far away."));
 			rows.add(line("View distance lowered too", d.view ? "true" : "false", d.view ? "As a last step, down to " + d.viewMin + " chunks." : "How far you can see always stays the same."));
 			out.add(tweak("dynamic", "Lag protection", "bi-activity",
 					"When the server can't keep up, it lowers a few distances one step at a time instead of lagging, and raises them again once it's fine.", rows));
@@ -286,7 +287,8 @@ public final class ServerFacts {
 			rows.add(line("Villagers", share(a.villagersPercent), ""));
 			rows.add(line("Everything else", share(a.otherPercent), ""));
 			out.add(tweak("activation", "Mobs far from players", "bi-broadcast",
-					"Mobs that are far from every player are updated less often. " + tick
+					(p.dynamic.enabled ? "While the server lags, mobs far from every player are updated less often; the more it lags, the closer \"far\" gets, down to these ranges. "
+							: "Mobs that are far from every player are updated less often. ") + tick
 							+ " Items, projectiles, vehicles, bosses, mobs on a lead and mobs that were just hurt always update normally.", rows));
 		}
 		Performance.Breeding b = p.breeding;
@@ -306,7 +308,7 @@ public final class ServerFacts {
 		Performance.Ai ai = p.ai;
 		if (ai.enabled) {
 			out.add(tweak("ai", "Lighter mob AI", "bi-cpu",
-					"Mobs far from every player decide what to do next less often; what they're doing keeps running. While the server lags, only so many mobs can look for a new path at once, the others try again a moment later.",
+					(p.dynamic.enabled ? "While the server lags, mobs far from every player decide what to do next less often (the more it lags, the closer \"far\" gets)" : "Mobs far from every player decide what to do next less often") + "; what they're doing keeps running. While the server lags, only so many mobs can look for a new path at once, the others try again a moment later.",
 					List.of(line("Far from players means", "more than " + share(ai.farPercent), ""),
 							line("Far mobs decide every", ai.farGoalEvery + " ticks", "Vanilla: every tick or two."))));
 		}
