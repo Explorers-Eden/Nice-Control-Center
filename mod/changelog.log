@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.16.2
+- Reports: tick several reports (or Select all) to download them as one zip or delete them together
+- Tab list: the dimension is shown in front of the player's name instead of after it
+
 ## 1.16.1
 - /pets: the pet that's out is shown with its head
 

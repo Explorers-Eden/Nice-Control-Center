@@ -38,16 +38,17 @@ public final class AfkTabList {
 	private AfkTabList() {
 	}
 
-	/** For the tab list name mixin: the name with the dimension and AFK tag, else null (vanilla's name). */
+	/** For the tab list name mixin: the dimension, the name and the AFK tag, else null (vanilla's name). */
 	public static Component displayName(ServerPlayer player) {
 		Tweaks.TabList t = TweaksControl.settings().tabList;
 		boolean isAfk = afk.contains(player.getUUID());
 		if (!isAfk && !t.showDimension) return null;
-		MutableComponent out = Component.empty().append(PlayerTeam.formatNameForTeam(player.getTeam(), player.getName()));
+		MutableComponent out = Component.empty();
 		if (t.showDimension) {
 			Tweaks.Dimension d = Tweaks.dimension(t, dimension(player));
-			out.append(Component.literal(" " + d.name).withStyle(st -> st.withColor(TextColor.fromRgb(Integer.parseInt(d.color.substring(1), 16)))));
+			out.append(Component.literal(d.name + " ").withStyle(st -> st.withColor(TextColor.fromRgb(Integer.parseInt(d.color.substring(1), 16)))));
 		}
+		out.append(PlayerTeam.formatNameForTeam(player.getTeam(), player.getName()));
 		if (isAfk) out.append(Component.literal(" " + TweaksControl.settings().afk.tag).withStyle(ChatFormatting.GRAY));
 		return out;
 	}

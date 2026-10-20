@@ -2895,12 +2895,37 @@
   function renderReports(reports) {
     state.reports = reports;
     renderComparePickers(reports);
+    // Keep ticked boxes across refreshes, as long as the report is still there.
+    const picked = new Set(selectedReports());
     $('np-reports').innerHTML = reports.length
-      ? reports.map((r) => `<div class="np-report"><span><i class="bi bi-file-earmark-bar-graph"></i> ${esc(r.name)}${r.automatic ? ' <span class="np-chip gold">Automatic: lag</span>' : ''}<small>${dateTime(r.modified)} · ${bytes(r.size)}</small></span>
+      ? `<div class="np-report-bulk"><label class="np-check"><input type="checkbox" id="np-reports-all"> Select all</label>
+        <span class="np-report-actions"><span class="np-report-count" id="np-reports-count"></span>
+        <button type="button" class="np-btn" id="np-reports-download"><i class="bi bi-download"></i> Download</button>
+        <button type="button" class="np-btn danger" id="np-reports-delete"><i class="bi bi-trash"></i> Delete</button></span></div>` +
+        reports.map((r) => `<div class="np-report"><label class="np-report-name"><input type="checkbox" data-report-pick="${esc(r.name)}" ${picked.has(r.name) ? 'checked' : ''}>
+        <span><i class="bi bi-file-earmark-bar-graph"></i> ${esc(r.name)}${r.automatic ? ' <span class="np-chip gold">Automatic: lag</span>' : ''}<small>${dateTime(r.modified)} · ${bytes(r.size)}</small></span></label>
         <span class="np-report-actions"><a class="np-btn" href="reports/${encodeURIComponent(r.name)}" target="_blank" rel="noopener">Open</a>
         <a class="np-btn" href="reports/${encodeURIComponent(r.name)}?download=1">Download</a>
         <button type="button" class="np-btn danger" data-report-delete="${esc(r.name)}" title="Delete this report"><i class="bi bi-trash"></i></button></span></div>`).join('')
       : '<div class="np-empty">No reports yet.</div>';
+    updateReportBulk();
+  }
+
+  function selectedReports() {
+    return [...document.querySelectorAll('#np-reports [data-report-pick]:checked')].map((c) => c.dataset.reportPick);
+  }
+
+  /** "Select all" and the bulk buttons follow the ticked boxes. */
+  function updateReportBulk() {
+    const all = $('np-reports-all');
+    if (!all) return;
+    const boxes = document.querySelectorAll('#np-reports [data-report-pick]');
+    const n = selectedReports().length;
+    all.checked = n > 0 && n === boxes.length;
+    all.indeterminate = n > 0 && n < boxes.length;
+    $('np-reports-count').textContent = n ? `${n} selected` : '';
+    $('np-reports-download').disabled = !n;
+    $('np-reports-delete').disabled = !n;
   }
 
   async function loadReports() {
@@ -2911,7 +2936,39 @@
     } catch (e) { /* shown by the live indicator */ }
   }
 
+  $('np-reports').addEventListener('change', (e) => {
+    if (e.target.id === 'np-reports-all') {
+      document.querySelectorAll('#np-reports [data-report-pick]').forEach((c) => { c.checked = e.target.checked; });
+    }
+    updateReportBulk();
+  });
+
   $('np-reports').addEventListener('click', async (e) => {
+    if (e.target.closest('#np-reports-download')) {
+      const names = selectedReports();
+      if (names.length === 1) location.href = `reports/${encodeURIComponent(names[0])}?download=1`;
+      else if (names.length) location.href = 'reports.zip?names=' + encodeURIComponent(names.join(','));
+      return;
+    }
+    if (e.target.closest('#np-reports-delete')) {
+      const names = selectedReports();
+      if (!names.length || !confirm(names.length === 1 ? `Delete ${names[0]}?` : `Delete ${names.length} reports?`)) return;
+      $('np-reports-delete').disabled = true;
+      const errors = [];
+      let data = null;
+      for (const name of names) {
+        try {
+          data = await api('api/recording/delete?name=' + encodeURIComponent(name), { method: 'POST' });
+          if (data.error) errors.push(`${name}: ${data.error}`);
+        } catch (err) {
+          errors.push(`${name}: the server did not respond (${err.message})`);
+        }
+      }
+      if (errors.length) alert(errors.join('\n'));
+      if (data && data.reports) renderReports(data.reports);
+      else loadReports();
+      return;
+    }
     const b = e.target.closest('[data-report-delete]');
     if (!b) return;
     const name = b.dataset.reportDelete;

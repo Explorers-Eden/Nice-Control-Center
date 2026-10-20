@@ -743,7 +743,9 @@ public final class DashboardServer {
 				sendJson(exchange, recording());
 			}
 			default -> {
-				if (path.startsWith("/reports/")) {
+				if (path.equals("/reports.zip")) {
+					sendReportsZip(exchange, query.get("names"));
+				} else if (path.startsWith("/reports/")) {
 					sendReport(exchange, path.substring("/reports/".length()));
 				} else {
 					sendText(exchange, 404, "text/plain", "Not found");
@@ -837,6 +839,39 @@ public final class DashboardServer {
 		}
 		byte[] bytes = Files.readAllBytes(file);
 		exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+		exchange.sendResponseHeaders(200, bytes.length);
+		try (OutputStream out = exchange.getResponseBody()) {
+			out.write(bytes);
+		}
+	}
+
+	/** Several reports in one zip; names is a comma-separated list (report names never contain commas). */
+	private void sendReportsZip(HttpExchange exchange, String names) throws IOException {
+		Path dir = Recorder.reportsDir(minecraft);
+		List<Path> files = new ArrayList<>();
+		for (String name : names == null ? new String[0] : names.split(",")) {
+			if (!name.matches("[A-Za-z0-9._-]+\\.html")) {
+				sendText(exchange, 400, "text/plain", "Bad report name");
+				return;
+			}
+			Path file = dir.resolve(name);
+			if (Files.isRegularFile(file) && !files.contains(file)) files.add(file);
+		}
+		if (files.isEmpty()) {
+			sendText(exchange, 404, "text/plain", "Report not found");
+			return;
+		}
+		java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+		try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(buffer)) {
+			for (Path file : files) {
+				zip.putNextEntry(new java.util.zip.ZipEntry(file.getFileName().toString()));
+				Files.copy(file, zip);
+				zip.closeEntry();
+			}
+		}
+		byte[] bytes = buffer.toByteArray();
+		exchange.getResponseHeaders().add("Content-Disposition", "attachment; filename=\"nice-control-center-reports.zip\"");
+		exchange.getResponseHeaders().add("Content-Type", "application/zip");
 		exchange.sendResponseHeaders(200, bytes.length);
 		try (OutputStream out = exchange.getResponseBody()) {
 			out.write(bytes);

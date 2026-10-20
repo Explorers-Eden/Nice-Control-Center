@@ -114,7 +114,7 @@ public final class Tweaks {
 		public String footer = "§7TPS §a{tps} §8· §7Ping §a{ping} ms §8· §7{time}";
 		/** An empty line between the header/footer and the player list. */
 		public boolean gap = true;
-		/** Each player's dimension after their name. */
+		/** Each player's dimension in front of their name. */
 		public boolean showDimension = false;
 		/** Name and colour (#rrggbb) per dimension id; dimensions not listed show their id's name in grey. */
 		public Map<String, Dimension> dimensions = defaultDimensions();

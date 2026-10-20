@@ -951,6 +951,11 @@ body.report #np-packsettings-card { display: none; }
 }
 .np-report small { color: var(--faint); font-weight: 600; margin-left: 8px; }
 .np-report-actions { display: flex; gap: 8px; }
+.np-report-name { display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; }
+.np-report input[type="checkbox"], .np-report-bulk input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.np-report-bulk { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 4px 9px; }
+.np-report-bulk .np-check { margin-left: 0; gap: 10px; cursor: pointer; }
+.np-report-count { align-self: center; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 

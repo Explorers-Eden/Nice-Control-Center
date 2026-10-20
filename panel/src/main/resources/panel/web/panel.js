@@ -4939,7 +4939,7 @@
       return `<tr data-dim="${esc(d.id)}"><td><code>${esc(d.id)}</code></td>
         <td><input type="text" data-f="name" maxlength="32" value="${esc(v.name || '')}" placeholder="${esc(pretty(d.id))}" ${editable ? '' : 'disabled'}></td>
         <td><input type="color" data-f="color" value="${esc(color)}" ${editable ? '' : 'disabled'}></td>
-        <td><span class="pn-tw-dim-preview">Steve <span data-f="preview" style="color:${esc(color)}">${esc(v.name || pretty(d.id))}</span></span></td></tr>`;
+        <td><span class="pn-tw-dim-preview"><span data-f="preview" style="color:${esc(color)}">${esc(v.name || pretty(d.id))}</span> Steve</span></td></tr>`;
     }).join('') || '<tr><td colspan="4">No dimensions found yet: start the server once.</td></tr>';
     $('pn-tw-dims').querySelectorAll('tr[data-dim]').forEach((tr) => {
       const upd = () => {
