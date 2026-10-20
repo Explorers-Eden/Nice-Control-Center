@@ -5315,7 +5315,7 @@
       + `${pets.length} pet${pets.length === 1 ? '' : 's'}, ${listed.length} listed in the Server shop${retired.length ? `, ${retired.length} removed but still owned` : ''}.`;
     $('pn-pt-table').innerHTML = pets.length ? `<thead><tr><th>Pet</th><th>Description</th><th>Size</th><th>Perks</th><th>Players with it</th><th>Server shop</th><th></th></tr></thead><tbody>${pets.map((p) => `
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
-      <td>${esc(p.description || '')}</td><td>${Number(p.size || 0.8)}</td><td>${esc(ptPerkNames(p))}</td>
+      <td>${esc(p.description || '')}</td><td>${Number(p.size || 0.8)}</td><td>${ptPerkNames(p)}</td>
       <td>${Number(owners[p.id] || 0).toLocaleString()}</td><td>${ptInShop(p, sold)}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
         <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Remove"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
@@ -5458,16 +5458,19 @@
 
   // ── Pet perks (two per pet), bond levels, names and reactions ──
 
-  /** The pet's perks by name, for the table. */
+  /** The pet's perks by name for the table, each with what it does on hover (HTML). */
   function ptPerkNames(p) {
     const all = (ptData && ptData.perks) || [];
-    return (p.perks || []).map((id) => (all.find((k) => k.id === id) || { label: id }).label).join(', ');
+    return (p.perks || []).map((id) => {
+      const k = all.find((x) => x.id === id) || { label: id, description: '' };
+      return `<span class="pn-pk-name" title="${esc(k.description)}">${esc(k.label)}</span>`;
+    }).join(', ');
   }
 
   /** The perk lists in the pet editor, grouped. */
   function ptPerkOptions() {
     const all = ptData.perks || [];
-    const group = (g, label) => `<optgroup label="${label}">${all.filter((k) => k.group === g).map((k) => `<option value="${esc(k.id)}">${esc(k.label)}</option>`).join('')}</optgroup>`;
+    const group = (g, label) => `<optgroup label="${label}">${all.filter((k) => k.group === g).map((k) => `<option value="${esc(k.id)}" title="${esc(k.description)}">${esc(k.label)}</option>`).join('')}</optgroup>`;
     const html = '<option value="">None</option>' + group('HELPER', 'Helpers') + group('STRONG', 'Stronger');
     const f = $('pn-pt-edit');
     for (const sel of [f.perk1, f.perk2]) {
@@ -5478,6 +5481,8 @@
     const k = ptData.settings.perks;
     $('pn-pt-perk1-note').textContent = `Works from bond level ${k.slot1Level}`;
     $('pn-pt-perk2-note').textContent = `Works from bond level ${k.slot2Level}`;
+    const list = (g) => all.filter((x) => x.group === g).map((x) => `<li><b>${esc(x.label)}</b>: ${esc(x.description)}</li>`).join('');
+    $('pn-pk-list').innerHTML = `<h5>Helpers</h5><ul>${list('HELPER')}</ul><h5>Stronger</h5><ul>${list('STRONG')}</ul>`;
   }
 
   function ptPerkDesc() {

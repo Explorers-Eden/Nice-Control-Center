@@ -824,3 +824,9 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 /* Pets: gift items and reaction lines need room to read. */
 #pn-pk-gifts input[type="text"], .pn-pk-reactions input[type="text"] { width: 100%; min-width: 220px; }
 #pn-pk-gifts input[type="number"] { width: 80px; }
+.pn-pk-name { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.pn-pk-help { margin: 8px 0 4px; }
+.pn-pk-help summary { cursor: pointer; font-weight: 600; }
+.pn-pk-help h5 { margin: 10px 0 4px; }
+.pn-pk-help ul { margin: 0; padding-left: 18px; }
+.pn-pk-help li { margin: 2px 0; }
