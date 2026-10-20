@@ -73,6 +73,8 @@ final class PetFollowers {
 		final int phase;
 		/** After a head that couldn't be made, the next try waits until then (game time). */
 		long retryAt;
+		/** Which way it looks while roaming (turned a little each tick, never snapped). */
+		float roamYaw = Float.NaN;
 
 		Follower(int phase) {
 			this.phase = phase;
@@ -142,7 +144,9 @@ final class PetFollowers {
 			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
 			Pets.Behavior behavior = chosen == Pets.Behavior.RANDOM ? f.rolledMove : chosen;
 			// While the owner is AFK the pet roams around them on its own; its move comes back with them.
-			Target goal = eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAfk(player) ? roam(player, t * PACE, f) : target(player, behavior, t * PACE, f);
+			boolean afk = eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAfk(player);
+			if (!afk) f.roamYaw = Float.NaN;
+			Target goal = afk ? roam(player, t * PACE, f) : target(player, behavior, t * PACE, f);
 			if (!goal.stay) goal = new Target(clear(goal.offset, h, size, player.getYRot()), goal.yaw, goal.follow, false);
 			Vec3 want = base.add(goal.offset);
 			boolean fresh = f.display == null || f.display.isRemoved() || f.display.level() != player.level() || !texture.equals(f.texture) || size != f.size
@@ -328,17 +332,26 @@ final class PetFollowers {
 		return new Vec3(off.x / d * r, off.y, off.z / d * r);
 	}
 
-	/** AFK owner: the pet floats to a new spot a few blocks around them every few seconds, slowly, looking where it goes. */
+	/**
+	 * AFK owner: the pet floats to a new spot a few blocks around them every few seconds, slowly. It keeps
+	 * riding the player like every other move (the player stands still, so that's a fixed spot), which keeps
+	 * the glide smooth on clients. It looks where it goes and, once there, turns to its owner; the turn is
+	 * eased so it never spins.
+	 */
 	private static Target roam(ServerPlayer player, double t, Follower f) {
-		Vec3 base = player.position();
 		double h = player.getBbHeight();
 		long hop = (long) (t / 70) + f.phase;
 		double a = frac(Math.sin(hop * 12.9898) * 43758.5453) * Math.PI * 2;
 		double far = 1.6 + 2.0 * frac(Math.sin(hop * 39.346) * 11.135);
 		double up = h * (0.35 + 0.6 * frac(Math.sin(hop * 78.233) * 12543.123));
 		Vec3 spot = new Vec3(Math.cos(a) * far, up + 0.06 * Math.sin(t * 0.08), Math.sin(a) * far);
-		Vec3 at = f.pos == null ? base.add(spot) : f.pos;
-		return new Target(spot, heading(at, base.add(spot)), 0.03, true);
+		Vec3 now = f.offset == null ? spot : f.offset;
+		Vec3 eyes = new Vec3(0, player.getEyeHeight(), 0);
+		// On the way: where it goes. There (or nearly): its owner.
+		float want = now.distanceToSqr(spot) > 0.5 * 0.5 ? heading(now, spot) : heading(now, eyes);
+		if (Float.isNaN(f.roamYaw)) f.roamYaw = want;
+		f.roamYaw += net.minecraft.util.Mth.wrapDegrees(want - f.roamYaw) * 0.12f;
+		return new Target(spot, f.roamYaw, 0.03);
 	}
 
 	/** The part after the decimal point (0 to 1). */

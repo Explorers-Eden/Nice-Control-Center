@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.15.2
+- Pets: the wandering while their owner is AFK is smooth again. The head no longer leaves the player to be moved block by block (which clients only saw in jumps), and it no longer spins when it reaches a spot: it turns gently, looking where it goes and then at its owner
+
 ## 1.15.1
 - Dashboard: reports can be deleted (Reports tab), together with the recording they were made from
 
