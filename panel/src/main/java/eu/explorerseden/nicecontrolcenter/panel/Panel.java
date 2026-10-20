@@ -56,6 +56,9 @@ public final class Panel {
 		java.util.List<String> panelFlags = new java.util.ArrayList<>(dashboard.flags(publicUrl));
 		// The mod reaches the panel here for Discord login checks and game events.
 		panelFlags.add("-Dncc.panel.api=http://127.0.0.1:" + port);
+		// Players get the server resource pack from here (see PackMirror).
+		String packBase = PackMirror.publicBase();
+		if (!packBase.isEmpty()) panelFlags.add("-Dncc.panel.pack=" + packBase);
 		server.panelFlags(() -> panelFlags, dashboard.secret());
 		MapService map = new MapService(serverDir, Path.of(env("MAP_DIR", "/data/map")), dataDir.resolve("map.json"), server,
 				Integer.parseInt(env("DASHBOARD_PORT", "8765")), dashboard.secret());
@@ -340,6 +343,7 @@ public final class Panel {
 			claims.register(routes);
 			market.register(routes);
 			pets.register(routes);
+			new PackMirror(serverDir).register(routes);
 			new TweaksRoutes(serverDir, server, audit, map).register(routes);
 			Commands commandList = new Commands(dataDir, server, dashboard, audit);
 			commandList.register(routes);

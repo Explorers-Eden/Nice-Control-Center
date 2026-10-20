@@ -451,6 +451,10 @@ public final class DashboardServer {
 					sendJson(exchange, Map.of("error", "Use a https:// link, github:owner/repo (optionally @tag and #file name part) or modrinth:project."));
 					return;
 				}
+				if (UpdateManager.PANEL_PACK.matcher(source).matches()) {
+					sendJson(exchange, Map.of("error", "That's the panel's copy of the pack; use the link to where the pack comes from."));
+					return;
+				}
 				config.resource_pack_source = source;
 				config.save();
 				NiceControlCenter.LOGGER.info("Resource pack source set to \"{}\" from the dashboard", source);

@@ -119,22 +119,14 @@ public final class PetDialogs {
 		List<Pets.Owned> mine = owner == null ? List.of() : owner.pets;
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
+		List<ActionButton> buttons = new ArrayList<>();
 		if (mine.isEmpty()) {
 			body.add(text("You don't have a pet yet: a floating head that follows you around, just for looks. Get one in the pet shop.", ChatFormatting.GRAY));
 		} else {
-			for (Pets.Owned o : mine) {
-				// With Random pet, the one showing right now.
-				boolean out = owner.active != null && (owner.random ? o.pet.equals(PetFollowers.shownPet(player.getUUID())) : o.pet.equals(owner.active));
-				MutableComponent desc = Component.empty()
-						.append(Component.literal(PetStore.name(o)).withStyle(ChatFormatting.WHITE))
-						.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
-						.append(Component.literal("\n" + (PetStore.description(o).isEmpty() ? "" : PetStore.description(o) + "\n")).withStyle(ChatFormatting.GRAY))
-						.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
-								: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
-				body.add(headRow(player, PetStore.texture(o), desc));
-			}
+			Pets.Owned shown = shown(player, owner);
+			body.add(text(shown == null ? "No pet is out." : "Out now: " + PetStore.name(shown), ChatFormatting.GRAY));
+			buttons.add(button("Your pets (" + mine.size() + ")", "Take one out or put it away", "mine", args()));
 		}
-		List<ActionButton> buttons = new ArrayList<>();
 		if (mine.size() > 1) {
 			buttons.add(button("Random pet: " + (owner.random ? "on" : "off"), owner.random ? "Show the pet you take out instead"
 					: "A different one of your pets every time you teleport, die or take it out", "random", args()));
@@ -145,6 +137,35 @@ public final class PetDialogs {
 		}
 		buttons.add(button("Pet shop", "Pets you can get", "shop", args("page", "0")));
 		menu(player, "Pets", body, buttons, close());
+	}
+
+	/** The pet showing now (with Random pet, the one it rolled), or null. */
+	private static Pets.Owned shown(ServerPlayer player, Pets.Owner owner) {
+		if (owner == null || owner.active == null) return null;
+		return owner.owned(owner.random ? PetFollowers.shownPet(player.getUUID()) : owner.active);
+	}
+
+	/** The player's pets, each with Take out or Put away. */
+	private static void mine(ServerPlayer player, String notice) {
+		Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
+		if (owner == null || owner.pets.isEmpty()) {
+			home(player, notice);
+			return;
+		}
+		List<DialogBody> body = new ArrayList<>();
+		notice(player, body, notice);
+		Pets.Owned shown = shown(player, owner);
+		for (Pets.Owned o : owner.pets) {
+			boolean out = shown != null && o.pet.equals(shown.pet);
+			MutableComponent desc = Component.empty()
+					.append(Component.literal(PetStore.name(o)).withStyle(ChatFormatting.WHITE))
+					.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
+					.append(Component.literal("\n" + (PetStore.description(o).isEmpty() ? "" : PetStore.description(o) + "\n")).withStyle(ChatFormatting.GRAY))
+					.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
+							: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
+			body.add(headRow(player, PetStore.texture(o), desc));
+		}
+		menu(player, "Pets · Your pets", body, List.of(), button("Back", null, "home", args()));
 	}
 
 	private static void moves(ServerPlayer player, String notice) {
@@ -283,6 +304,7 @@ public final class PetDialogs {
 		Pets.Owned owned = owner == null ? null : owner.owned(str(in, "id"));
 		switch (what) {
 			case "home" -> home(player, null);
+			case "mine" -> mine(player, null);
 			case "shop" -> {
 				int page;
 				try {
@@ -299,14 +321,14 @@ public final class PetDialogs {
 			}
 			case "out" -> {
 				if (owned == null) {
-					home(player, "You don't have that pet any more.");
+					mine(player, "You don't have that pet any more.");
 					return;
 				}
 				owner.active = owned.pet;
 				// Picking one pet means that one, not a random one.
 				owner.random = false;
 				PetStore.changed();
-				home(player, "✔ " + PetStore.name(owned) + " is out.");
+				mine(player, "✔ " + PetStore.name(owned) + " is out.");
 			}
 			case "random" -> {
 				if (owner == null || owner.pets.size() < 2) {
@@ -322,7 +344,7 @@ public final class PetDialogs {
 			case "away" -> {
 				if (owner != null) owner.putAway();
 				PetStore.changed();
-				home(player, null);
+				mine(player, null);
 			}
 			case "moves", "view" -> {
 				if (owner == null || owner.pets.isEmpty()) home(player, null);

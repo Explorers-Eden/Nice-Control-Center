@@ -15,6 +15,8 @@ public final class PanelMode {
 	private static final String URL = System.getProperty("ncc.panel.url", "");
 	/** The panel's own API inside the container, for login checks and game events (Discord). */
 	private static final String API = System.getProperty("ncc.panel.api", "");
+	/** Where the panel hands out the server resource pack (the file name is added), for players' games. */
+	private static final String PACK = System.getProperty("ncc.panel.pack", "");
 
 	private PanelMode() {
 	}
@@ -42,6 +44,12 @@ public final class PanelMode {
 
 	public static String secret() {
 		return SECRET;
+	}
+
+	/** The public address of the panel's resource pack copies, without a trailing slash; empty if there is none. */
+	public static String pack() {
+		String pack = PACK.trim();
+		return !active() ? "" : pack.endsWith("/") ? pack.substring(0, pack.length() - 1) : pack;
 	}
 
 	/** The panel's address for links in chat, without a trailing slash; empty if the panel didn't say. */

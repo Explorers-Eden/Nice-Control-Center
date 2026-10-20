@@ -1,3 +1,7 @@
+## 1.15.0
+- Server resource pack: players download it from the panel (/info/pack/<sha1>.zip on the info page's host, or the panel's public address) instead of GitHub (mod 1.16.0). Public, also while the info page is switched off. Needs INFO_HOST or PANEL_PUBLIC_URL; without either, the pack stays where it is
+- Backups: the resource pack copies are left out (added once to the exclude list in Backup settings)
+
 ## 1.14.2
 - Tweaks: "Dispensers play goat horns" switch (mod 1.15.4)
 

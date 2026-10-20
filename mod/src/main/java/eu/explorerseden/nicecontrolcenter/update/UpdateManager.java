@@ -243,6 +243,11 @@ public final class UpdateManager {
 
 	// ── Server resource pack ────────────────────────────────────────────────
 
+	/** A link to the panel's copy of a pack ({@link #packLink}), not to where the pack comes from. */
+	public static final java.util.regex.Pattern PANEL_PACK = java.util.regex.Pattern.compile(".*/info/pack/[0-9a-f]{40}\\.zip");
+	/** How many pack copies are kept for the panel besides the ones in use or about to be. */
+	private static final int KEEP_PACKS = 3;
+
 	/** The configured source, or the link already in server.properties. Empty = nothing to watch. */
 	private static String packSource(ControlCenterConfig config) {
 		if (!config.resource_pack_source.isBlank()) {
@@ -250,7 +255,57 @@ public final class UpdateManager {
 		}
 		MinecraftServer current = server;
 		String link = current == null ? null : eu.explorerseden.nicecontrolcenter.server.PropertiesEditor.get(current, "resource-pack");
-		return link == null ? "" : link.trim();
+		link = link == null ? "" : link.trim();
+		if (PANEL_PACK.matcher(link).matches()) {
+			// The panel's copy: keep watching where it came from.
+			synchronized (UpdateManager.class) {
+				return state.pack == null || state.pack.source == null ? "" : state.pack.source;
+			}
+		}
+		return link;
+	}
+
+	/** Where the panel keeps the pack copies it hands out, or null when the panel doesn't. */
+	private static Path packCopies() {
+		return dedicated && !eu.explorerseden.nicecontrolcenter.web.PanelMode.pack().isEmpty() ? base.getParent().resolve("resourcepack") : null;
+	}
+
+	/** The link players get: the panel's copy (named by its SHA-1), or the pack's own link. */
+	private static String packLink(ResourcePack.Cache cache) {
+		String panel = eu.explorerseden.nicecontrolcenter.web.PanelMode.pack();
+		return packCopies() == null ? cache.url : panel + "/" + cache.sha1.toLowerCase(Locale.ROOT) + ".zip";
+	}
+
+	/** The host name of a link, for messages. */
+	private static String host(String link) {
+		try {
+			String host = java.net.URI.create(link).getHost();
+			return host == null ? link : host;
+		} catch (IllegalArgumentException e) {
+			return link;
+		}
+	}
+
+	/** Removes old pack copies; the newest few stay, and so do the ones linked now or at the next restart. */
+	private static void prunePackCopies(Path dir, Set<String> inUse) {
+		try (Stream<Path> files = Files.list(dir)) {
+			List<Path> copies = files.filter(f -> f.getFileName().toString().matches("[0-9a-f]{40}\\.zip(\\.part)?"))
+					.sorted(Comparator.comparingLong((Path f) -> f.toFile().lastModified()).reversed()).toList();
+			int kept = 0;
+			for (Path f : copies) {
+				String name = f.getFileName().toString();
+				if (inUse.contains(name)) {
+					continue;
+				}
+				if (!name.endsWith(".part") && kept < KEEP_PACKS) {
+					kept++;
+					continue;
+				}
+				Files.deleteIfExists(f);
+			}
+		} catch (IOException e) {
+			NiceControlCenter.LOGGER.warn("Could not clean up old resource pack copies: {}", e.getMessage());
+		}
 	}
 
 	private static void checkPack(ControlCenterConfig config) {
@@ -264,31 +319,48 @@ public final class UpdateManager {
 		try {
 			String url = eu.explorerseden.nicecontrolcenter.server.PropertiesEditor.get(current, "resource-pack");
 			String sha1 = eu.explorerseden.nicecontrolcenter.server.PropertiesEditor.get(current, "resource-pack-sha1").toLowerCase(Locale.ROOT);
+			String packId = eu.explorerseden.nicecontrolcenter.server.PropertiesEditor.get(current, "resource-pack-id");
 			ResourcePack.Cache cache;
 			synchronized (UpdateManager.class) {
 				cache = state.pack;
 			}
-			cache = ResourcePack.resolve(source, config.update_channels, cache, base.resolve("staged"));
+			Path copies = packCopies();
+			cache = ResourcePack.resolve(source, config.update_channels, cache, base.resolve("staged"), copies);
+			String link = packLink(cache);
+			if (copies != null && config.resource_pack_source.isBlank()) {
+				// server.properties is about to get the panel's link; keep where the pack comes from.
+				config.resource_pack_source = source;
+				config.save();
+				NiceControlCenter.LOGGER.info("Resource pack source set to \"{}\", the panel hands out copies of it", source);
+			}
+			// The panel's link changes with every pack; without a fixed id, games would keep each one as another pack.
+			String newId = copies != null && (packId == null || packId.isBlank())
+					? java.util.UUID.nameUUIDFromBytes(("nicecontrolcenter:" + source).getBytes(StandardCharsets.UTF_8)).toString()
+					: null;
 
 			Entry entry = new Entry();
 			entry.key = "resourcepack";
 			entry.kind = "resourcepack";
 			entry.name = "Server resource pack";
-			entry.file = cache.url;
+			entry.file = link;
 			entry.source = source.startsWith("github:") ? "github" : source.startsWith("modrinth:") ? "modrinth" : "url";
 			entry.projectUrl = cache.projectUrl;
 			entry.installedVersion = sha1.isEmpty() ? "no SHA-1 set" : "SHA-1 " + sha1.substring(0, Math.min(8, sha1.length()));
 			entry.latestVersion = cache.version + " · SHA-1 " + cache.sha1.substring(0, 8);
 			entry.latestVersionId = cache.sha1;
-			entry.latestFile = cache.url;
+			entry.latestFile = link;
 			entry.changelog = cache.changelog;
 			entry.published = cache.published;
-			boolean same = cache.sha1.equalsIgnoreCase(sha1) && cache.url.equals(url);
+			boolean same = cache.sha1.equalsIgnoreCase(sha1) && link.equals(url) && newId == null;
 			entry.status = same ? Status.UP_TO_DATE : Status.AVAILABLE;
-			if (!same && sha1.isEmpty() && cache.url.equals(url)) {
+			if (!same && sha1.isEmpty() && link.equals(url)) {
 				entry.reason = "server.properties has no resource-pack-sha1, so players download the pack on every join.";
-			} else if (!same && cache.url.equals(url)) {
+			} else if (!same && link.equals(url) && cache.sha1.equalsIgnoreCase(sha1)) {
+				entry.reason = "server.properties gets a fixed resource-pack-id at the restart.";
+			} else if (!same && link.equals(url)) {
 				entry.reason = "The pack behind the link changed; players get it after the restart.";
+			} else if (!same && copies != null && !PANEL_PACK.matcher(url).matches()) {
+				entry.reason = "From the restart on, players get the pack from the panel instead of " + host(cache.url) + ".";
 			} else if (!same) {
 				entry.reason = "server.properties gets the new link and SHA-1 at the restart.";
 			}
@@ -310,7 +382,8 @@ public final class UpdateManager {
 					entry.status = Status.SKIPPED;
 				} else if ("auto".equals(mode(config)) || "stage".equals(mode(config))) {
 					Pending existing = state.pending.stream().filter(p -> p.key.equals(entry.key)).findFirst().orElse(null);
-					if (existing == null || !cache.sha1.equals(existing.newVersionId) || !cache.url.equals(existing.newFile)) {
+					if (existing == null || !cache.sha1.equals(existing.newVersionId) || !link.equals(existing.newFile)
+							|| !java.util.Objects.equals(newId, existing.values == null ? null : existing.values.get("resource-pack-id"))) {
 						state.pending.removeIf(p -> p.key.equals(entry.key));
 						Pending pending = new Pending();
 						pending.type = "properties";
@@ -320,13 +393,16 @@ public final class UpdateManager {
 						pending.from = "";
 						pending.targetDir = eu.explorerseden.nicecontrolcenter.server.PropertiesEditor.file(current).toAbsolutePath().toString();
 						pending.removeFile = url;
-						pending.newFile = cache.url;
+						pending.newFile = link;
 						pending.oldVersion = entry.installedVersion;
 						pending.newVersion = entry.latestVersion;
 						pending.newVersionId = cache.sha1;
 						pending.values = new LinkedHashMap<>();
-						pending.values.put("resource-pack", cache.url);
+						pending.values.put("resource-pack", link);
 						pending.values.put("resource-pack-sha1", cache.sha1);
+						if (newId != null) {
+							pending.values.put("resource-pack-id", newId);
+						}
 						pending.approved = "auto".equals(mode(config));
 						state.pending.add(pending);
 						staged.add(entry.name + " → " + entry.latestVersion);
@@ -335,6 +411,13 @@ public final class UpdateManager {
 				}
 				packEntry = entry;
 				save();
+				if (copies != null) {
+					Set<String> inUse = new HashSet<>();
+					inUse.add(url.substring(url.lastIndexOf('/') + 1));
+					inUse.add(cache.sha1.toLowerCase(Locale.ROOT) + ".zip");
+					state.pending.stream().filter(p -> p.newFile != null).forEach(p -> inUse.add(p.newFile.substring(p.newFile.lastIndexOf('/') + 1)));
+					prunePackCopies(copies, inUse);
+				}
 			}
 			if (!staged.isEmpty()) {
 				NiceControlCenter.notifyAdmins(net.minecraft.network.chat.Component.literal("Nice Control Center · new server resource pack ("

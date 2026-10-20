@@ -23,7 +23,8 @@ import net.minecraft.server.packs.PackType;
  * <li>{@code github:owner/repo[@tag][#name]}: the .zip asset of the latest (or tagged) release</li>
  * <li>{@code modrinth:<slug or id>}: the newest version for this Minecraft version</li>
  * </ul>
- * Background threads only.
+ * With a folder to keep copies in (the panel hands them out), each pack found is also kept there as
+ * {@code <sha1>.zip}. Background threads only.
  */
 final class ResourcePack {
 	/** Clients refuse packs larger than this. */
@@ -48,34 +49,56 @@ final class ResourcePack {
 	private ResourcePack() {
 	}
 
-	/** Resolves the source; returns the cache, refreshed if the pack changed. */
-	static Cache resolve(String source, List<String> channels, Cache cache, Path stagingDir) throws IOException {
+	/**
+	 * Resolves the source; returns the cache, refreshed if the pack changed. {@code keepDir} (or null) gets a
+	 * copy of the pack; when the copy of the current one is missing, the pack is downloaded again.
+	 */
+	static Cache resolve(String source, List<String> channels, Cache cache, Path stagingDir, Path keepDir) throws IOException {
 		source = source.trim();
 		if (cache == null || !source.equals(cache.source)) {
 			cache = new Cache();
 			cache.source = source;
 		}
+		if (keepDir != null && cache.sha1 != null && !Files.isRegularFile(kept(keepDir, cache.sha1))) {
+			// Forget what was seen, so the unchanged pack is fetched (and kept) once more.
+			cache.marker = null;
+			cache.etag = null;
+			cache.lastModified = null;
+		}
 		if (source.startsWith("github:")) {
-			return github(source.substring(7), cache, stagingDir);
+			return github(source.substring(7), cache, stagingDir, keepDir);
 		}
 		if (source.startsWith("modrinth:")) {
-			return modrinth(source.substring(9), channels, cache, stagingDir);
+			return modrinth(source.substring(9), channels, cache, stagingDir, keepDir);
 		}
 		if (source.startsWith("https://") || source.startsWith("http://")) {
-			return url(source, cache, stagingDir);
+			return url(source, cache, stagingDir, keepDir);
 		}
 		throw new IOException("resource_pack_source must be a https:// link, github:owner/repo or modrinth:project");
 	}
 
-	private static Cache url(String url, Cache cache, Path stagingDir) throws IOException {
+	/** Where the copy of the pack with this SHA-1 is kept. */
+	static Path kept(Path keepDir, String sha1) {
+		return keepDir.resolve(sha1.toLowerCase(java.util.Locale.ROOT) + ".zip");
+	}
+
+	private static Cache url(String url, Cache cache, Path stagingDir, Path keepDir) throws IOException {
 		Path temp = temp(stagingDir);
-		Sources.Fetched fetched = Sources.downloadIfChanged(url, url.equals(cache.url) ? cache.etag : null,
-				url.equals(cache.url) ? cache.lastModified : null, temp);
+		Sources.Fetched fetched;
+		try {
+			fetched = Sources.downloadIfChanged(url, url.equals(cache.url) ? cache.etag : null,
+					url.equals(cache.url) ? cache.lastModified : null, temp);
+		} catch (IOException | RuntimeException e) {
+			Files.deleteIfExists(temp);
+			throw e;
+		}
 		if (fetched.status() == 304 && cache.sha1 != null) {
+			Files.deleteIfExists(temp);
 			return cache;
 		}
 		try {
 			inspect(temp, cache);
+			keep(temp, cache.sha1, keepDir);
 		} finally {
 			Files.deleteIfExists(temp);
 		}
@@ -87,7 +110,7 @@ final class ResourcePack {
 		return cache;
 	}
 
-	private static Cache github(String spec, Cache cache, Path stagingDir) throws IOException {
+	private static Cache github(String spec, Cache cache, Path stagingDir, Path keepDir) throws IOException {
 		String name = null;
 		String tag = null;
 		int hash = spec.indexOf('#');
@@ -123,7 +146,7 @@ final class ResourcePack {
 			return cache;
 		}
 		String url = str(asset, "browser_download_url");
-		download(url, cache, stagingDir);
+		download(url, cache, stagingDir, keepDir);
 		cache.marker = marker;
 		cache.url = url;
 		cache.version = str(release, "tag_name") + " · " + str(asset, "updated_at").replace('T', ' ').replace("Z", "");
@@ -133,7 +156,7 @@ final class ResourcePack {
 		return cache;
 	}
 
-	private static Cache modrinth(String project, List<String> channels, Cache cache, Path stagingDir) throws IOException {
+	private static Cache modrinth(String project, List<String> channels, Cache cache, Path stagingDir, Path keepDir) throws IOException {
 		String gameVersion = SharedConstants.getCurrentVersion().name();
 		JsonObject chosen = null;
 		for (JsonElement element : Sources.modrinthVersions(project, "minecraft", gameVersion)) {
@@ -161,7 +184,7 @@ final class ResourcePack {
 			return cache;
 		}
 		String url = str(file, "url");
-		download(url, cache, stagingDir);
+		download(url, cache, stagingDir, keepDir);
 		String expected = file.getAsJsonObject("hashes").get("sha1").getAsString();
 		if (!expected.equalsIgnoreCase(cache.sha1)) {
 			throw new IOException("checksum doesn't match Modrinth's");
@@ -175,14 +198,30 @@ final class ResourcePack {
 		return cache;
 	}
 
-	private static void download(String url, Cache cache, Path stagingDir) throws IOException {
+	private static void download(String url, Cache cache, Path stagingDir, Path keepDir) throws IOException {
 		Path temp = temp(stagingDir);
 		try {
 			Sources.download(url, temp);
 			inspect(temp, cache);
+			keep(temp, cache.sha1, keepDir);
 		} finally {
 			Files.deleteIfExists(temp);
 		}
+	}
+
+	/** Copies a checked download into the keep folder (written whole, then renamed). */
+	private static void keep(Path file, String sha1, Path keepDir) throws IOException {
+		if (keepDir == null) {
+			return;
+		}
+		Files.createDirectories(keepDir);
+		Path target = kept(keepDir, sha1);
+		if (Files.isRegularFile(target) && Files.size(target) == Files.size(file)) {
+			return;
+		}
+		Path part = keepDir.resolve(target.getFileName() + ".part");
+		Files.copy(file, part, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+		Files.move(part, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
 	}
 
 	/** Hashes and checks a downloaded zip; fills sha1, size and warning. */

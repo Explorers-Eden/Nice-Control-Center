@@ -50,7 +50,7 @@ public final class Backups {
 	/** Settings in /data/panel/backups.json. */
 	public static final class Settings {
 		public List<String> exclude = new ArrayList<>(List.of("logs/**", "crash-reports/**", "debug/**", ".fabric/**", "libraries/**",
-				"versions/**", "**/session.lock", "mods/.nice-control-center.download", DISTANT_HORIZONS));
+				"versions/**", "**/session.lock", "mods/.nice-control-center.download", DISTANT_HORIZONS, RESOURCE_PACKS));
 		/** Which one-time changes to the defaults this file has had; null for files from before 1.14.0. */
 		public Integer revision = REVISION;
 		/** How many backups to keep (pinned ones and those an update still needs come on top). */
@@ -70,7 +70,9 @@ public final class Backups {
 	 * rebuilt from the world on their own, and copied mid-write they may not even open.
 	 */
 	static final String DISTANT_HORIZONS = "**/DistantHorizons.sqlite*";
-	private static final int REVISION = 2;
+	/** The mod's copies of the server resource pack that the panel hands out; downloaded again when missing. */
+	static final String RESOURCE_PACKS = "nicecontrolcenter/resourcepack/**";
+	private static final int REVISION = 3;
 	/** Bigger region files than this (never seen in practice) are stored as they are. */
 	private static final long PACK_MAX = 64L << 20;
 
@@ -109,12 +111,13 @@ public final class Backups {
 			System.err.println("Could not read " + settingsFile + ", using defaults: " + e.getMessage());
 		}
 		if (loaded != null && (loaded.revision == null || loaded.revision < REVISION)) {
-			// 1.14.0: Distant Horizons' data is left out of backups (once; it can be taken out of the list again).
+			// Left out of backups once each (they can be taken out of the list again): Distant Horizons' data
+			// (1.14.0) and the resource pack copies (1.15.0).
 			if (loaded.exclude == null) loaded.exclude = new ArrayList<>();
-			if (!loaded.exclude.contains(DISTANT_HORIZONS)) {
-				loaded.exclude = new ArrayList<>(loaded.exclude);
-				loaded.exclude.add(DISTANT_HORIZONS);
-			}
+			loaded.exclude = new ArrayList<>(loaded.exclude);
+			int from = loaded.revision == null ? 0 : loaded.revision;
+			if (from < 2 && !loaded.exclude.contains(DISTANT_HORIZONS)) loaded.exclude.add(DISTANT_HORIZONS);
+			if (from < 3 && !loaded.exclude.contains(RESOURCE_PACKS)) loaded.exclude.add(RESOURCE_PACKS);
 			loaded.revision = REVISION;
 			try {
 				Files.writeString(settingsFile, Json.GSON.toJson(loaded), StandardCharsets.UTF_8);
