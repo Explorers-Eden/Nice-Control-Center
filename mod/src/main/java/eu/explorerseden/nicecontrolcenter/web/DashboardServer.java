@@ -719,6 +719,15 @@ public final class DashboardServer {
 				String error = onServerThread(() -> Recorder.start(minecraft, minutes, "web dashboard", config.max_recording_hours));
 				sendJson(exchange, error == null ? recording() : Map.of("error", error));
 			}
+			case "/api/recording/delete" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				String error = Recorder.delete(minecraft, query.get("name"));
+				Map<String, Object> result = recording();
+				if (error != null) result.put("error", error);
+				sendJson(exchange, result);
+			}
 			case "/api/recording/stop" -> {
 				if (!requirePost(exchange)) {
 					return;

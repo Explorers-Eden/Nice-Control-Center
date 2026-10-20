@@ -48,6 +48,7 @@ final class DashboardProxy {
 			// Harmless tools anyone who can see the dashboard may use.
 			Map.entry("/api/recording/start", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/recording/stop", Permissions.DASHBOARD_VIEW),
+			Map.entry("/api/recording/delete", Permissions.SETTINGS_SERVER),
 			Map.entry("/api/bloat/run", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/monitor", Permissions.DASHBOARD_VIEW),
 			Map.entry("/api/pregen/start", Permissions.WORLD_TRIM),

@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.15.1
+- Dashboard: reports can be deleted (Reports tab), together with the recording they were made from
+
 ## 1.15.0
 - Smooth saving (on by default): the autosave every 5 minutes no longer writes the whole world in one tick. That tick only notes what changed; chunks are then written a few per tick (at most 1.5 ms of each) and player files one per tick. On the live server that tick caused more than half of all lag spikes (about 190 ms each). save-all, stopping and backups still save everything at once
 - Warm teleport targets (on by default): places players teleport to three times in a day (hubs, homes, spawn) stay loaded without ticking, so a teleport there doesn't load the chunks first. At most 24; they show under Loaded chunks as "Teleport target" and can be released there

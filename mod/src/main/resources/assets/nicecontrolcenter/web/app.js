@@ -2898,7 +2898,8 @@
     $('np-reports').innerHTML = reports.length
       ? reports.map((r) => `<div class="np-report"><span><i class="bi bi-file-earmark-bar-graph"></i> ${esc(r.name)}${r.automatic ? ' <span class="np-chip gold">Automatic: lag</span>' : ''}<small>${dateTime(r.modified)} · ${bytes(r.size)}</small></span>
         <span class="np-report-actions"><a class="np-btn" href="reports/${encodeURIComponent(r.name)}" target="_blank" rel="noopener">Open</a>
-        <a class="np-btn" href="reports/${encodeURIComponent(r.name)}?download=1">Download</a></span></div>`).join('')
+        <a class="np-btn" href="reports/${encodeURIComponent(r.name)}?download=1">Download</a>
+        <button type="button" class="np-btn danger" data-report-delete="${esc(r.name)}" title="Delete this report"><i class="bi bi-trash"></i></button></span></div>`).join('')
       : '<div class="np-empty">No reports yet.</div>';
   }
 
@@ -2909,6 +2910,22 @@
       renderReports(data.reports);
     } catch (e) { /* shown by the live indicator */ }
   }
+
+  $('np-reports').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-report-delete]');
+    if (!b) return;
+    const name = b.dataset.reportDelete;
+    if (!confirm(`Delete ${name}?`)) return;
+    b.disabled = true;
+    try {
+      const data = await api('api/recording/delete?name=' + encodeURIComponent(name), { method: 'POST' });
+      if (data.error) alert(data.error);
+      if (data.reports) renderReports(data.reports);
+    } catch (err) {
+      alert('The server did not respond: ' + err.message);
+      b.disabled = false;
+    }
+  });
 
   async function recordingAction(path) {
     try {

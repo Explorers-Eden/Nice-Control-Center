@@ -1,3 +1,6 @@
+## 1.14.1
+- Dashboard: deleting reports needs the server settings permission (mod 1.15.1)
+
 ## 1.14.0
 - Backups: region files (blocks, entities, points of interest) go in with the unused space the game leaves in them blanked, so they compress: about 38 % smaller for blocks and 89 % for entities, measured on the live world. They're still ordinary region files, restores work as before
 - Backups: Distant Horizons' level-of-detail databases are left out (often more than half the world folder, barely compressible, rebuilt by the mod on its own, and copied mid-write they may not even open). Added once to the exclude list in Backup settings, where it can be removed again. Database files that are still backed up aren't compressed any more, which only cost time

@@ -297,6 +297,30 @@ public final class Recorder {
 		});
 	}
 
+	/**
+	 * Deletes a report and the recording it was made from. Returns an error, or null. The recording that is
+	 * still running has no report yet, so it can't be hit by this.
+	 */
+	public static String delete(MinecraftServer server, String report) {
+		if (report == null || !report.matches("nice-control-center-[A-Za-z0-9._-]+\\.html")) return "Not a report.";
+		Path file = reportsDir(server).resolve(report);
+		// nice-control-center-<stamp>.html came from recording-<stamp>.ndjson, nice-control-center-lag-<stamp>.html from lag-<stamp>.ndjson.
+		String stamp = report.substring("nice-control-center-".length(), report.length() - ".html".length());
+		Path source = baseDir(server).resolve("recordings").resolve((stamp.startsWith(AUTO_PREFIX) ? "" : "recording-") + stamp + ".ndjson");
+		Path running;
+		synchronized (Recorder.class) {
+			running = current == null ? null : current.file;
+		}
+		try {
+			if (!Files.deleteIfExists(file)) return "That report is already gone.";
+			if (!source.equals(running)) Files.deleteIfExists(source);
+			NiceControlCenter.LOGGER.info("Deleted report {}", report);
+			return null;
+		} catch (IOException e) {
+			return "Could not delete it: " + e.getMessage();
+		}
+	}
+
 	public static List<ReportFile> reports(MinecraftServer server) {
 		List<ReportFile> files = new ArrayList<>();
 		Path dir = reportsDir(server);
