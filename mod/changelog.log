@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.17.0
+- Pets: bond levels and perks. A pet's bond grows while it's out with its owner and they aren't AFK; each pet can have up to two perks (set per pet in the panel) that unlock at bond levels from the settings: Lantern, Night Eyes, Fetch (brings what dropped from blocks you broke and mobs you killed; never thrown items), Truffle Nose, Fishing (fish and junk, never treasure), Gardener, Torch Bearer (your own torches), Miner (visible natural ore, and natural stone next to where you're mining; never player-placed blocks), Wood Chopper (the natural tree you started on), Small Gifts, Second Wind, Nipper (picks targets like a wolf; never players, creepers, bosses, named or tamed mobs) and Shield. Perks pause while AFK or in creative mode and respect claims. Players switch single perks off in /pets
+- Pets: names. Players name each pet and pick a colour (like claims); the name floats above the pet, hidden while its owner sneaks; owners can hide it altogether in /pets (Name above pet). Admins can clear a name from the player card
+- Pets: reactions. Every pet reacts to what happens (eating, sleeping, advancements, snow, the Nether, rain, other pets, a pat: sneak twice while looking at it…) with a move, particles and sometimes a speech bubble, and warns its owner (tool about to break, low health, food or air, a hissing creeper or a mob behind you, fire or lava, inventory full). Players switch reactions off in /pets
+- Ore and natural stone placed from now on are remembered per chunk, so the Miner leaves them alone; blocks placed before this version count as natural
+
 ## 1.16.2
 - Reports: tick several reports (or Select all) to download them as one zip or delete them together
 - Tab list: the dimension is shown in front of the player's name instead of after it

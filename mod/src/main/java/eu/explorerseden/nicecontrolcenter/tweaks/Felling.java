@@ -225,6 +225,24 @@ public final class Felling {
 		return out;
 	}
 
+	public static boolean isLog(BlockState state) {
+		return TweaksControl.isLog(state);
+	}
+
+	/**
+	 * For the pets' Wood Chopper: the logs of a natural tree from this log up (it included), by the same rules
+	 * as felling (enough natural leaves, so a build of logs and placed leaves never counts); null when it isn't one.
+	 */
+	public static List<BlockPos> naturalTree(ServerLevel level, BlockPos origin) {
+		BlockState state = level.getBlockState(origin);
+		if (!isLog(state)) return null;
+		Tree tree = findTree(level, origin, state, TweaksControl.settings().felling);
+		if (tree == null) return null;
+		List<BlockPos> logs = new ArrayList<>(tree.logs());
+		logs.add(origin);
+		return logs;
+	}
+
 	/** The logs of the tree around a broken log (without it), its wart blocks, roots and leaves; null when it isn't a tree. */
 	private static Tree findTree(ServerLevel level, BlockPos origin, BlockState originState, Tweaks.Felling fel) {
 		int maxScan = Math.max(fel.maxLogs * 4, 64);

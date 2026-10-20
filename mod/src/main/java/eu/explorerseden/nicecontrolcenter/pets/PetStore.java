@@ -55,7 +55,10 @@ public final class PetStore {
 	public static void register() {
 		net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((d, a, e) -> command(d));
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(PetStore::load);
+		PlacedBlocks.register();
+		PetReactions.register();
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> {
+			PetPerks.removeAll();
 			PetFollowers.removeAll();
 			save();
 			file = null;
@@ -181,6 +184,9 @@ public final class PetStore {
 		int tick = s.getTickCount();
 		if (tick % 100 == 0) reloadSettings();
 		PetFollowers.tick(s);
+		PetPerks.tick(s);
+		PetReactions.tick(s);
+		PlayerDrops.tick();
 		if (dirty && tick % 100 == 50) save();
 	}
 
@@ -243,6 +249,31 @@ public final class PetStore {
 		return p != null ? p.texture : owned.texture;
 	}
 
+	/** The pet's perks from the shop (also while retired), in slot order. */
+	static List<Pets.Perk> perks(Pets.Owned owned) {
+		Pets.Pet p = settings.pet(owned.pet);
+		List<Pets.Perk> out = new java.util.ArrayList<>();
+		if (p != null) for (String n : p.perks) {
+			Pets.Perk k = Pets.Perk.of(n);
+			if (k != null) out.add(k);
+		}
+		return out;
+	}
+
+	/** The perks working now: unlocked by the bond level and not switched off by the owner. */
+	static List<Pets.Perk> activePerks(Pets.Owner owner, Pets.Owned owned) {
+		List<Pets.Perk> all = perks(owned);
+		int open = Math.min(all.size(), Pets.unlockedSlots(Pets.level(owned.bond, settings.perks), settings.perks));
+		List<Pets.Perk> out = new java.util.ArrayList<>();
+		for (int i = 0; i < open; i++) if (!owner.perksOff.contains(all.get(i).name())) out.add(all.get(i));
+		return out;
+	}
+
+	/** What the pet is called in messages: the name its owner gave it, else its shop name. */
+	static String displayName(Pets.Owned owned) {
+		return owned.nickname != null && !owned.nickname.isEmpty() ? owned.nickname : name(owned);
+	}
+
 	/** The pet's name: the shop's current one if it's still there, else the one from when it was bought. */
 	static String name(Pets.Owned owned) {
 		Pets.Pet p = settings.pet(owned.pet);
@@ -277,12 +308,16 @@ public final class PetStore {
 			m.put("since", p.since);
 			m.put("active", p.pet.equals(o.active));
 			m.put("inShop", settings.pet(p.pet) != null);
+			m.put("nickname", p.nickname);
+			m.put("nameColor", p.nameColor);
+			m.put("level", Pets.level(p.bond, settings.perks));
 			owned.add(m);
 		}
 		out.put("owned", owned);
 		out.put("behavior", Pets.Behavior.of(o == null ? null : o.behavior).name());
 		out.put("trail", Pets.Trail.of(o == null ? null : o.trail).name());
 		out.put("particles", settings.particles);
+		out.put("perksEnabled", settings.perks.enabled);
 		List<Map<String, Object>> trails = new java.util.ArrayList<>();
 		for (Pets.Trail t : Pets.Trail.values()) if (PetFollowers.available(t)) trails.add(Map.of("id", t.name(), "label", t.label));
 		out.put("trails", trails);
@@ -296,7 +331,8 @@ public final class PetStore {
 	}
 
 	/**
-	 * An admin changes a player's pets: give, take (away), out, away, move (how), trail (how). Returns an error,
+	 * An admin changes a player's pets: give, take (away), out, away, move (how), trail (how), rename (clears the
+	 * name the player gave it). Returns an error,
 	 * or null.
 	 */
 	public static String adminAction(MinecraftServer server, String uuid, String playerName, String action, String pet, String how, String by) {
@@ -332,6 +368,11 @@ public final class PetStore {
 				if (o == null) return "They don't have a pet.";
 				o.behavior = Pets.Behavior.of(how).name();
 				what = "set their pet to " + Pets.Behavior.of(how).label;
+			}
+			case "rename" -> {
+				if (owned == null) return "They don't have that pet.";
+				owned.nickname = "";
+				what = "cleared the name of their " + name(owned);
 			}
 			case "trail" -> {
 				if (o == null) return "They don't have a pet.";

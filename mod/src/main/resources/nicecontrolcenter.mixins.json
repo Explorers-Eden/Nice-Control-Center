@@ -7,6 +7,11 @@
 		"defaultRequire": 1
 	},
 	"mixins": [
+		"PlacedBlockMixin",
+		"DropCauseGameModeMixin",
+		"DropCauseInteractMixin",
+		"DropCauseDeathMixin",
+		"TextDisplayAccessor",
 		"AnimalBreedingMixin",
 		"QuickActionsMixin",
 		"GrindstoneMenuAccessor",

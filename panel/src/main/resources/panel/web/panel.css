@@ -820,3 +820,7 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-memory dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: var(--fs-sm); }
 .pn-memory dt { color: var(--muted); }
 .pn-memory dd { margin: 0; }
+
+/* Pets: gift items and reaction lines need room to read. */
+#pn-pk-gifts input[type="text"], .pn-pk-reactions input[type="text"] { width: 100%; min-width: 220px; }
+#pn-pk-gifts input[type="number"] { width: 80px; }

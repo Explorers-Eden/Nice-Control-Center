@@ -1913,10 +1913,12 @@
     const rows = pets.owned.map((x) => `<div class="np-pet-card${x.active ? ' is-out' : ''}" data-pet="${esc(x.id)}">
         ${head(x.head)}
         <b title="${esc(x.name)}">${esc(x.name)}</b>
-        <small class="np-loc-sub">${x.active ? '<span class="np-pet-out">out</span> · ' : ''}since ${esc(new Date(x.since).toLocaleDateString([], { dateStyle: 'medium' }))}</small>
+        ${x.nickname ? `<small class="np-loc-sub">named <span style="color:${esc(x.nameColor || '#FFFFFF')}">${esc(x.nickname)}</span></small>` : ''}
+        <small class="np-loc-sub">${x.active ? '<span class="np-pet-out">out</span> · ' : ''}since ${esc(new Date(x.since).toLocaleDateString([], { dateStyle: 'medium' }))}${pets.perksEnabled ? ` · bond level ${x.level}` : ''}</small>
         ${x.inShop ? '' : '<small class="np-loc-sub">removed from the shop</small>'}
         ${edit ? `<div class="np-pet-actions">
           <button type="button" class="np-btn small" data-pet-act="${x.active ? 'away' : 'out'}">${x.active ? 'Put away' : 'Take out'}</button>
+          ${x.nickname ? '<button type="button" class="np-btn small" data-pet-act="rename" title="Clear the name the player gave it">Reset name</button>' : ''}
           <button type="button" class="np-btn small danger" data-pet-act="take" title="Take it away"><i class="bi bi-trash"></i></button></div>` : ''}
       </div>`).join('');
     const label = (list, id) => (list.find((b) => b.id === id) || {}).label || '';

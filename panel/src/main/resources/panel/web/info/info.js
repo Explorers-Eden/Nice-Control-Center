@@ -232,10 +232,11 @@
     const petTiles = (cur, coin) => (d.pets || []).map((p) => `<div class="in-tile" data-search="${esc((p.name + ' ' + (p.description || '')).toLowerCase())} pet">
           <span class="in-slot">${p.head ? `<img class="in-head" src="heads/${esc(p.head)}" alt="" loading="lazy">` : '<i class="bi bi-emoji-smile"></i>'}</span>
           <span class="in-tile__text"><b>${esc(p.name)}</b>${p.description ? `<small class="in-tile__extra">${esc(p.description)}</small>` : ''}
+            ${(p.perks || []).length ? `<small class="in-tile__extra"><i class="bi bi-stars"></i> ${p.perks.map((k) => esc(k.label) + (k.level > 0 ? ` (bond level ${Number(k.level)})` : '')).join(' · ')}</small>` : ''}
             <span class="in-tile__price">${p.price ? `${coin}${Number(p.price).toLocaleString()} <small>${esc(p.price === 1 ? cur : cur + 's')}</small>` : 'Free'}</span>
             ${p.until || p.left > 0 ? `<small class="in-tile__seller"><i class="bi bi-clock"></i> ${[p.until ? 'on sale until ' + new Date(p.until).toLocaleDateString([], { dateStyle: 'medium' }) : '', p.left > 0 ? Number(p.left).toLocaleString() + ' left' : ''].filter(Boolean).join(' · ')}</small>` : ''}</span></div>`).join('');
-    const petChild = (cur, coin = '') => ({ id: 'pets', title: 'Pets', icon: 'bi-emoji-smile', sub: 'floating heads that follow you, only for looks', wide: true,
-      desc: 'Type /pets in game to get one (it stays yours for good) and pick how it moves (float, orbit, halo, spiral, wander and more) and a particle trail. Everyone near you sees it.',
+    const petChild = (cur, coin = '') => ({ id: 'pets', title: 'Pets', icon: 'bi-emoji-smile', sub: 'floating heads that follow you', wide: true,
+      desc: 'Type /pets in game to get one (it stays yours for good), name it and pick how it moves (float, orbit, halo, spiral, wander and more) and a particle trail. Everyone near you sees it, and it reacts to what you do. Some pets have perks that unlock as your bond grows.',
       body: d.pets.length ? `<div class="in-tiles">${petTiles(cur, coin)}</div>` : '<p class="in-empty">No pets for sale right now.</p>' });
     if (!d.market && d.pets) {
       const cur = titleCase(String(d.petCurrency || 'minecraft:diamond').replace(/^[^:]+:/, '').replace(/_/g, ' '));

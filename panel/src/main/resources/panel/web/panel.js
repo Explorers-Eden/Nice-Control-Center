@@ -5287,8 +5287,12 @@
     if (!edit) { ptOpen(null); ptlOpen(null); }
     const cur = ptData.currency.replace(/^minecraft:/, '').replace(/_/g, ' ');
     $('pn-pt-currency').textContent = `In ${cur}s (the market's currency); 0 makes it free`;
+    ptPerkOptions();
     renderPets();
     Dirty.reset('pets');
+    pkFill();
+    $('pn-pk-form').querySelectorAll('input, button, select').forEach((el) => { el.disabled = !edit; });
+    Dirty.reset('petperks');
   }
 
   function ptInShop(p, sold) {
@@ -5309,9 +5313,9 @@
     // The Pets page: every pet.
     $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: counts are from the last save. ')
       + `${pets.length} pet${pets.length === 1 ? '' : 's'}, ${listed.length} listed in the Server shop${retired.length ? `, ${retired.length} removed but still owned` : ''}.`;
-    $('pn-pt-table').innerHTML = pets.length ? `<thead><tr><th>Pet</th><th>Description</th><th>Size</th><th>Players with it</th><th>Server shop</th><th></th></tr></thead><tbody>${pets.map((p) => `
+    $('pn-pt-table').innerHTML = pets.length ? `<thead><tr><th>Pet</th><th>Description</th><th>Size</th><th>Perks</th><th>Players with it</th><th>Server shop</th><th></th></tr></thead><tbody>${pets.map((p) => `
       <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
-      <td>${esc(p.description || '')}</td><td>${Number(p.size || 0.8)}</td>
+      <td>${esc(p.description || '')}</td><td>${Number(p.size || 0.8)}</td><td>${esc(ptPerkNames(p))}</td>
       <td>${Number(owners[p.id] || 0).toLocaleString()}</td><td>${ptInShop(p, sold)}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
         <button type="button" class="np-btn small" data-delete="${esc(p.id)}" title="Remove"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`).join('')}</tbody>`
@@ -5345,6 +5349,10 @@
     f.description.value = pet ? pet.description || '' : '';
     f.size.value = pet && pet.size ? pet.size : 0.8;
     f.texture.value = pet ? pet.texture : '';
+    const perks = pet && pet.perks ? pet.perks : [];
+    f.perk1.value = perks[0] || '';
+    f.perk2.value = perks[1] || '';
+    ptPerkDesc();
     $('pn-pt-edit-title').textContent = pet ? (pet.retired ? 'Name and head of ' : 'Edit ') + pet.name : 'Add a pet';
     $('pn-pt-add').innerHTML = pet ? '<i class="bi bi-check2"></i> Save pet' : '<i class="bi bi-plus-lg"></i> Add pet';
     f.hidden = !pet;
@@ -5389,7 +5397,8 @@
     const before = ptData.settings.pets.find((p) => p.id === ptEditing);
     // The listing stays as it was; a new pet isn't for sale until it's listed in the Server shop.
     const pet = { ...(before || { price: 0, saleEnds: 0, stock: 0, forSale: false }), id: ptEditing || undefined, name: f.name.value.trim(),
-      description: f.description.value.trim(), size: Number(f.size.value) || 0.8, texture: f.texture.value.trim() };
+      description: f.description.value.trim(), size: Number(f.size.value) || 0.8, texture: f.texture.value.trim(),
+      perks: [f.perk1.value, f.perk2.value].filter(Boolean) };
     const pets = ptData.settings.pets.map((p) => (p.id === ptEditing ? pet : p));
     if (!ptEditing) pets.push(pet);
     const wasEditing = ptEditing;
@@ -5446,6 +5455,136 @@
     }
   });
   ptOpen(null);
+
+  // ── Pet perks (two per pet), bond levels, names and reactions ──
+
+  /** The pet's perks by name, for the table. */
+  function ptPerkNames(p) {
+    const all = (ptData && ptData.perks) || [];
+    return (p.perks || []).map((id) => (all.find((k) => k.id === id) || { label: id }).label).join(', ');
+  }
+
+  /** The perk lists in the pet editor, grouped. */
+  function ptPerkOptions() {
+    const all = ptData.perks || [];
+    const group = (g, label) => `<optgroup label="${label}">${all.filter((k) => k.group === g).map((k) => `<option value="${esc(k.id)}">${esc(k.label)}</option>`).join('')}</optgroup>`;
+    const html = '<option value="">None</option>' + group('HELPER', 'Helpers') + group('STRONG', 'Stronger');
+    const f = $('pn-pt-edit');
+    for (const sel of [f.perk1, f.perk2]) {
+      const v = sel.value;
+      sel.innerHTML = html;
+      sel.value = v;
+    }
+    const k = ptData.settings.perks;
+    $('pn-pt-perk1-note').textContent = `Works from bond level ${k.slot1Level}`;
+    $('pn-pt-perk2-note').textContent = `Works from bond level ${k.slot2Level}`;
+  }
+
+  function ptPerkDesc() {
+    const f = $('pn-pt-edit');
+    const all = (ptData && ptData.perks) || [];
+    const lines = [f.perk1.value, f.perk2.value].filter(Boolean).map((id) => all.find((k) => k.id === id)).filter(Boolean).map((k) => `${k.label}: ${k.description}.`);
+    const clash = f.perk1.value && f.perk2.value && f.perk1.value === f.perk2.value ? ' Pick two different perks.' : '';
+    const lamp = [f.perk1.value, f.perk2.value].includes('LANTERN') && [f.perk1.value, f.perk2.value].includes('NIGHT_EYES') ? ' Night Eyes already is a lantern: pick one of the two.' : '';
+    $('pn-pt-perk-desc').textContent = lines.join(' ') + clash + lamp;
+  }
+  $('pn-pt-edit').perk1.addEventListener('change', ptPerkDesc);
+  $('pn-pt-edit').perk2.addEventListener('change', ptPerkDesc);
+
+  /** The perks' strength fields: name, label, comment, min, max, step. */
+  const PK_FIELDS = [
+    ['lanternLevel', 'Lantern light', 'Light level around the pet (a torch is 14)', 1, 15, 1],
+    ['nightEyesLevel', 'Night Eyes light deep down', 'Night Eyes is as bright as Lantern, and this bright where no daylight reaches', 1, 15, 1],
+    ['fetchRadius', 'Fetch reaches (blocks)', '', 1, 10, 1],
+    ['truffleRadius', 'Truffle Nose sniffs (blocks)', '', 1, 16, 1],
+    ['fishingMinutes', 'Fishing every (minutes)', 'Of being out together, near water', 1, 1440, 1],
+    ['gardenerSeconds', 'Gardener every (seconds)', 'One growth step for a crop', 5, 86400, 1],
+    ['torchSeconds', 'Torch Bearer waits (seconds)', 'Between two torches', 1, 3600, 1],
+    ['minerSeconds', 'Miner waits (seconds)', 'Between two blocks', 1, 3600, 1],
+    ['chopperSeconds', 'Wood Chopper waits (seconds)', 'Between two logs', 1, 3600, 1],
+    ['giftMinutes', 'Small Gifts every (minutes)', 'Of being out together, not AFK', 1, 10080, 1],
+    ['secondWindMinutes', 'Second Wind waits (minutes)', 'Regeneration for 5 seconds at 2 hearts or less', 1, 10080, 1],
+    ['nipperDamage', 'Nipper damage', '2 is one heart; a wolf does 4', 0.5, 20, 0.5],
+    ['nipperSeconds', 'Nipper bites every (seconds)', '', 0.5, 60, 0.5],
+    ['shieldSeconds', 'Shield pushes every (seconds)', '', 1, 600, 1],
+  ];
+  $('pn-pk-tuning').innerHTML = PK_FIELDS.map(([name, label, comment, min, max, step]) => `<label class="np-form-row"><span>${esc(label)}${comment ? `<small class="pn-comment">${esc(comment)}</small>` : ''}</span><input type="number" name="${name}" min="${min}" max="${max}" step="${step}" required></label>`).join('');
+
+  /** "Level 1 after 30 min, level 2 after 1 h 30 min…" for the levels that matter. */
+  function pkLevels() {
+    const f = $('pn-pk-form');
+    const per = Number(f.levelMinutes.value) || 0;
+    const max = Number(f.maxLevel.value) || 0;
+    if (per < 1 || max < 1) return;
+    const time = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+    const at = (n) => time(per * n * (n + 1) / 2);
+    const s1 = Number(f.slot1Level.value);
+    const s2 = Number(f.slot2Level.value);
+    $('pn-pk-levels').textContent = `Out together: level 1 after ${at(1)}, the first perk (level ${s1}) after ${s1 > 0 ? at(s1) : 'no time'}, the second (level ${s2}) after ${s2 > 0 ? at(s2) : 'no time'}, the highest (level ${max}) after ${at(max)}.`;
+  }
+  ['levelMinutes', 'maxLevel', 'slot1Level', 'slot2Level'].forEach((n) => $('pn-pk-form')[n].addEventListener('input', pkLevels));
+
+  function pkGiftRow(g) {
+    return `<tr data-gift><td><input type="text" data-g="item" value="${esc(g.item || '')}" placeholder="minecraft:bone_meal" required></td>
+      <td><input type="number" data-g="min" min="1" max="64" value="${Number(g.min) || 1}" required></td>
+      <td><input type="number" data-g="max" min="1" max="64" value="${Number(g.max) || 1}" required></td>
+      <td><input type="number" data-g="weight" min="1" max="1000" value="${Number(g.weight) || 1}" required></td>
+      <td><button type="button" class="np-btn small" data-gift-del title="Remove"><i class="bi bi-trash"></i></button></td></tr>`;
+  }
+
+  function pkFill() {
+    const s = ptData.settings;
+    const k = s.perks;
+    const f = $('pn-pk-form');
+    f.enabled.checked = k.enabled;
+    for (const n of ['slot1Level', 'slot2Level', 'levelMinutes', 'maxLevel', ...PK_FIELDS.map((x) => x[0])]) f[n].value = k[n];
+    pkLevels();
+    $('pn-pk-gifts').innerHTML = `<thead><tr><th>Item</th><th>Fewest</th><th>Most</th><th>Weight</th><th></th></tr></thead><tbody>${k.gifts.map(pkGiftRow).join('')}</tbody>`;
+    f.names.checked = s.names;
+    const colors = { ...ptData.defaults.nameColors, ...s.nameColors };
+    $('pn-pk-colors').innerHTML = Object.entries(colors).map(([n, c]) => `<label class="np-check"><input type="checkbox" name="nameColor" value="${esc(n)}" data-hex="${esc(c)}" ${n in s.nameColors ? 'checked' : ''}>
+      <span class="pn-cl-dot" style="background:${esc(c)}"></span>${esc(n)}</label>`).join('');
+    f.reactionsOn.checked = s.reactions.enabled;
+    f.gapSeconds.value = s.reactions.gapSeconds;
+    $('pn-pk-reactions').innerHTML = `<thead><tr><th>Reaction</th><th>On</th><th>Bubble lines (separated by |)</th></tr></thead><tbody>${(ptData.reactions || []).map((r) => {
+      const e = s.reactions.list[r.id] || { on: true, lines: r.lines };
+      return `<tr data-reaction="${esc(r.id)}"><td>${esc(r.label)}${r.warning ? ' <span class="np-tag">warning</span>' : ''}</td>
+        <td><span class="np-switch"><input type="checkbox" data-r="on" ${e.on ? 'checked' : ''}><span></span></span></td>
+        <td><input type="text" data-r="lines" value="${esc(e.lines.join(' | '))}" placeholder="${esc(r.lines.join(' | '))}"></td></tr>`;
+    }).join('')}</tbody>`;
+  }
+
+  $('pn-pk-gift-add').addEventListener('click', () => {
+    $('pn-pk-gifts').querySelector('tbody').insertAdjacentHTML('beforeend', pkGiftRow({ item: '', min: 1, max: 1, weight: 1 }));
+  });
+  $('pn-pk-gifts').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-gift-del]');
+    if (del) del.closest('tr').remove();
+  });
+
+  $('pn-pk-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const perks = { ...ptData.settings.perks, enabled: f.enabled.checked };
+    for (const n of ['slot1Level', 'slot2Level', 'levelMinutes', 'maxLevel', ...PK_FIELDS.map((x) => x[0])]) perks[n] = Number(f[n].value);
+    perks.gifts = [...$('pn-pk-gifts').querySelectorAll('tr[data-gift]')].map((tr) => ({
+      item: tr.querySelector('[data-g=item]').value.trim(), min: Number(tr.querySelector('[data-g=min]').value),
+      max: Number(tr.querySelector('[data-g=max]').value), weight: Number(tr.querySelector('[data-g=weight]').value) }));
+    const nameColors = Object.fromEntries([...f.querySelectorAll('input[name=nameColor]:checked')].map((i) => [i.value, i.dataset.hex]));
+    if (!Object.keys(nameColors).length) return formMsg('pn-pk-msg', 'Pick at least one name colour.', false);
+    const list = {};
+    $('pn-pk-reactions').querySelectorAll('tr[data-reaction]').forEach((tr) => {
+      list[tr.dataset.reaction] = { on: tr.querySelector('[data-r=on]').checked, lines: tr.querySelector('[data-r=lines]').value.split('|').map((l) => l.trim()).filter(Boolean) };
+    });
+    const body = { perks, names: f.names.checked, nameColors, reactions: { enabled: f.reactionsOn.checked, gapSeconds: Number(f.gapSeconds.value), list } };
+    try {
+      const res = await api('api/pets/settings', body);
+      formMsg('pn-pk-msg', res.running ? 'Saved, applies within a few seconds.' : 'Saved; applies when the server starts.', true);
+      loadPets();
+    } catch (err) {
+      formMsg('pn-pk-msg', err.message, false);
+    }
+  });
 
   // ── Server shop → Pet listings: price, last day and how many ──
 
@@ -5545,6 +5684,7 @@
   Dirty.track('servershop', $('pn-ss-form'), { reload: loadMarket });
   Dirty.track('ssmax', $('pn-ss-max'), { reload: loadMarket });
   Dirty.track('pets', $('pn-pt-form'), { reload: loadPets });
+  Dirty.track('petperks', $('pn-pk-form'), { reload: loadPets });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });
 

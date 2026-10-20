@@ -1297,7 +1297,7 @@
 				<div class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-emoji-smile"></i> Pets</h3>
-					<p class="np-card-intro">Floating player heads that follow their owner, only for looks (no effects), and everyone nearby sees them. Add pets here, then sell them under <b>Market → Server shop → Pet listings</b> or give them with <code>/pets grant &lt;player&gt; &lt;pet&gt;</code>. Players keep their pets for good and pick how theirs moves and, if you allow it, a particle trail. Changes to a pet's name or head reach the players who have it.</p>
+					<p class="np-card-intro">Floating player heads that follow their owner, and everyone nearby sees them. Add pets here, then sell them under <b>Market → Server shop → Pet listings</b> or give them with <code>/pets grant &lt;player&gt; &lt;pet&gt;</code>. Players keep their pets for good, name them and pick how theirs moves and, if you allow it, a particle trail. Each pet can have up to two perks that unlock as its bond grows (see Bond &amp; perks below). Changes to a pet's name or head reach the players who have it.</p>
 					<form id="pn-pt-form" autocomplete="off">
 						<div class="np-form-grid">
 							<label class="np-form-row"><b>Pets on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
@@ -1323,7 +1323,10 @@
 						</div>
 						<div class="np-form-grid">
 							<label class="np-form-row"><span>Head size<small class="pn-comment">1 is a normal player head (half a block); 0.8 is the usual</small></span><input type="number" name="size" min="0.3" max="2" step="0.1" required></label>
+							<label class="np-form-row"><span>First perk<small class="pn-comment" id="pn-pt-perk1-note"></small></span><select name="perk1"></select></label>
+							<label class="np-form-row"><span>Second perk<small class="pn-comment" id="pn-pt-perk2-note"></small></span><select name="perk2"></select></label>
 						</div>
+						<p class="pn-hint" id="pn-pt-perk-desc"></p>
 						<div class="np-form-actions">
 							<button type="submit" class="np-btn primary" id="pn-pt-add"><i class="bi bi-plus-lg"></i> Add pet</button>
 							<button type="button" class="np-btn" id="pn-pt-cancel">Cancel</button>
@@ -1336,6 +1339,47 @@
 						<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-pt-retired"></table></div>
 					</div>
 				</section>
+				<form id="pn-pk-form" autocomplete="off" class="pn-stack">
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-stars"></i> Bond &amp; perks</h3>
+					<p class="np-card-intro">Each pet can have up to two perks (pick them when you add or edit a pet). A pet's bond grows while it's out with its owner and they aren't AFK; its first perk works from one bond level, its second from a higher one. Perks never work while the owner is AFK or in creative mode, and never where their claim rights don't reach. Players can switch single perks off in /pets.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Perks on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+						<label class="np-form-row"><span>First perk from bond level<small class="pn-comment">0: right away</small></span><input type="number" name="slot1Level" min="0" max="100" step="1" required></label>
+						<label class="np-form-row"><span>Second perk from bond level</span><input type="number" name="slot2Level" min="0" max="100" step="1" required></label>
+						<label class="np-form-row"><span>Minutes per level<small class="pn-comment">Level n takes this many minutes × n more, out together</small></span><input type="number" name="levelMinutes" min="1" max="10000" step="1" required></label>
+						<label class="np-form-row"><span>Highest bond level</span><input type="number" name="maxLevel" min="1" max="100" step="1" required></label>
+					</div>
+					<p class="pn-hint" id="pn-pk-levels"></p>
+					<h4 class="pn-pt-subhead">How strong each perk is</h4>
+					<div class="np-form-grid" id="pn-pk-tuning"></div>
+					<h4 class="pn-pt-subhead">Small Gifts</h4>
+					<p class="pn-hint">What a pet with Small Gifts can find for its owner; a higher weight comes more often.</p>
+					<div class="np-table-wrap"><table class="np-table" id="pn-pk-gifts"></table></div>
+					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-pk-gift-add"><i class="bi bi-plus-lg"></i> Add gift</button></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-tag"></i> Pet names</h3>
+					<p class="np-card-intro">Players name their pets in /pets (up to 16 characters, plain text) and pick one of these colours or their own. The name floats above the pet for everyone nearby, hidden while its owner sneaks. Clear a name from the player's card under Players.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Names on</b><span class="np-switch"><input type="checkbox" name="names"><span></span></span></label>
+					</div>
+					<div class="pn-field"><span>Colours players can pick</span><div class="pn-cl-flags pn-cs-colors" id="pn-pk-colors"></div></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-chat-heart"></i> Reactions</h3>
+					<p class="np-card-intro">Every pet reacts to what happens: a short move, particles and sometimes a speech bubble everyone nearby sees (one of the lines, picked at random; no lines, no bubble). Warnings also tell the owner above their hotbar. Players can switch reactions off for their pets in /pets. Lines are up to 32 characters; {level} is the new bond level.</p>
+					<div class="np-form-grid">
+						<label class="np-form-row"><b>Reactions on</b><span class="np-switch"><input type="checkbox" name="reactionsOn"><span></span></span></label>
+						<label class="np-form-row"><span>Seconds between reactions<small class="pn-comment">Per pet; warnings and once-only reactions don't wait</small></span><input type="number" name="gapSeconds" min="0" max="3600" step="1" required></label>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-pk-reactions" id="pn-pk-reactions"></table></div>
+				</section>
+				<div class="pn-sticky-save">
+					<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+					<span class="np-form-msg" id="pn-pk-msg"></span>
+				</div>
+				</form>
 				</div>
 			</div>
 

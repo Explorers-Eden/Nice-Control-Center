@@ -119,6 +119,14 @@ final class PetsService {
 			if (p.saleEnds != 0) m.put("until", p.saleEnds);
 			m.put("left", left);
 			m.put("head", Pets.skinHash(p.texture));
+			if (s.perks.enabled && !p.perks.isEmpty()) {
+				List<Map<String, Object>> perks = new ArrayList<>();
+				for (int i = 0; i < p.perks.size(); i++) {
+					Pets.Perk k = Pets.Perk.of(p.perks.get(i));
+					if (k != null) perks.add(Map.of("label", k.label, "description", k.description, "level", Pets.slotLevel(i, s.perks)));
+				}
+				m.put("perks", perks);
+			}
 			out.add(m);
 		}
 		return out;
@@ -253,6 +261,12 @@ final class PetsService {
 			out.put("settings", s);
 			out.put("heads", heads(s));
 			out.put("defaults", new Pets.Settings().fill());
+			List<Map<String, Object>> perks = new ArrayList<>();
+			for (Pets.Perk k : Pets.Perk.values()) perks.add(Map.of("id", k.name(), "label", k.label, "description", k.description, "group", k.group.name()));
+			out.put("perks", perks);
+			List<Map<String, Object>> reactions = new ArrayList<>();
+			for (Pets.Reaction r : Pets.Reaction.values()) reactions.add(Map.of("id", r.name(), "label", r.label, "warning", r.warning, "cooldown", r.cooldown, "lines", r.lines));
+			out.put("reactions", reactions);
 			out.put("currency", Market.read(serverDir.resolve("config").resolve(Market.FILE)).currency);
 			out.put("running", server.state() == Supervisor.State.RUNNING);
 			Object purchases = state.get("purchases");
@@ -265,9 +279,14 @@ final class PetsService {
 			json(ctx, out);
 		}));
 		routes.post("/api/pets/settings", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			Pets.Settings before = settings();
 			Pets.Settings next;
 			try {
-				next = Json.GSON.fromJson(ctx.body(), Pets.Settings.class);
+				// Parts a page doesn't send (each page edits its own) stay as they are.
+				JsonObject in = com.google.gson.JsonParser.parseString(ctx.body()).getAsJsonObject();
+				JsonObject now = Json.GSON.toJsonTree(before).getAsJsonObject();
+				for (Map.Entry<String, com.google.gson.JsonElement> e : now.entrySet()) if (!in.has(e.getKey())) in.add(e.getKey(), e.getValue());
+				next = Json.GSON.fromJson(in, Pets.Settings.class);
 			} catch (RuntimeException e) {
 				next = null;
 			}
@@ -276,7 +295,6 @@ final class PetsService {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);
 				return;
 			}
-			Pets.Settings before = settings();
 			Pets.write(settingsFile(), next);
 			String what = before.enabled != next.enabled ? (next.enabled ? "on" : "off") : next.pets.size() + " pets";
 			audit.log(me.name(), "pets.settings", what, clientIp(ctx));

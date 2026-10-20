@@ -27,4 +27,10 @@ public interface DisplayAccessor {
 
 	@Invoker("setShadowStrength")
 	void nicecontrolcenter$setShadowStrength(float strength);
+
+	@Invoker("setBillboardConstraints")
+	void nicecontrolcenter$setBillboard(Display.BillboardConstraints billboard);
+
+	@Invoker("setViewRange")
+	void nicecontrolcenter$setViewRange(float range);
 }

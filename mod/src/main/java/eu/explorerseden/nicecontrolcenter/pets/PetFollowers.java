@@ -6,6 +6,10 @@ import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import eu.explorerseden.nicecontrolcenter.Pets;
 import eu.explorerseden.nicecontrolcenter.mixin.DisplayAccessor;
 import eu.explorerseden.nicecontrolcenter.mixin.ItemDisplayAccessor;
+import eu.explorerseden.nicecontrolcenter.mixin.TextDisplayAccessor;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.core.particles.ParticleTypes;
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.particles.ColorParticleOption;
@@ -35,9 +39,10 @@ import java.util.UUID;
 
 /**
  * The pets that are out: a player head on an item display that the server moves next to its owner every
- * tick (clients smooth the movement). Display entities can't be hit, pushed or collided with, so a pet is
- * only for looks, and every player nearby sees it. The displays are tagged and never outlive their owner's
- * session (also not a crash: leftovers are removed when their chunk loads).
+ * tick (clients smooth the movement), with a text display above it for its name and speech bubbles. Display
+ * entities can't be hit, pushed or collided with, and every player nearby sees them. The displays are tagged
+ * and never outlive their owner's session (also not a crash: leftovers are removed when their chunk loads).
+ * Perks send a pet on short outings (fly somewhere, do something, come back); reactions play short moves.
  */
 final class PetFollowers {
 	static final String TAG = "nicecontrolcenter_pet";
@@ -50,9 +55,54 @@ final class PetFollowers {
 	private static final int GLIDE = 2;
 	/** How fast the moves play: the animation clock runs at this share of game time. */
 	private static final double PACE = 0.6;
+	/** Ticks of the owner's movement the name tag runs ahead (it glides GLIDE ticks behind where it's sent). */
+	private static final double LEAD = 2;
+
+	/** Short moves pets make when they react to something. */
+	enum Move { HOP, BOUNCE, SPIN, DROOP, SHIVER, WIGGLE, LOOK_UP, CURL, FLINCH, LOOK_AT }
+
+	/** A trip away from the owner and back (perks). */
+	private static final class Outing {
+		final java.util.function.Supplier<Vec3> target;
+		final double reach;
+		final int hold;
+		final Runnable arrive;
+		final java.util.function.Consumer<Vec3> each;
+		final java.util.function.Consumer<Boolean> done;
+		final long until;
+		boolean arrived;
+		boolean back;
+		long holdUntil;
+
+		Outing(java.util.function.Supplier<Vec3> target, double reach, int hold, Runnable arrive, java.util.function.Consumer<Vec3> each,
+				java.util.function.Consumer<Boolean> done, long until) {
+			this.target = target;
+			this.reach = reach;
+			this.hold = hold;
+			this.arrive = arrive;
+			this.each = each;
+			this.done = done;
+			this.until = until;
+		}
+	}
 
 	private static final class Follower {
 		Display.ItemDisplay display;
+		/** Name and speech bubble above the head (only while there is something to show), and its text. */
+		Display.TextDisplay label;
+		Component labelText;
+		/** The pet shown (after Random pet's pick). */
+		Pets.Owned owned;
+		Outing outing;
+		Move move;
+		long moveStart;
+		long moveUntil;
+		Vec3 lookAt;
+		String bubble;
+		long bubbleUntil;
+		/** Put away: it says bye and goes at this game time (0: staying). */
+		long leaveAt;
+		boolean greeted;
 		String texture;
 		double size;
 		/** Where the pet is, and where it sits around the player (from their feet). */
@@ -111,12 +161,24 @@ final class PetFollowers {
 			Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
 			Pets.Owned owned = shown(player) ? PetStore.active(player) : null;
 			Follower f = followers.get(player.getUUID());
+			boolean leaving = false;
 			if (owned == null || owner == null) {
-				if (f != null) {
+				if (f == null) continue;
+				// Put away (not hidden or gone): it says bye before it goes.
+				if (f.leaveAt == 0 && owner != null && shown(player) && f.display != null && !f.display.isRemoved() && f.owned != null
+						&& PetReactions.bye(player)) {
+					f.leaveAt = time + 30;
+					endOuting(f, false);
+				}
+				if (f.leaveAt == 0 || time >= f.leaveAt || f.owned == null || owner == null) {
 					discard(f, player);
 					followers.remove(player.getUUID());
+					continue;
 				}
-				continue;
+				owned = f.owned;
+				leaving = true;
+			} else if (f != null) {
+				f.leaveAt = 0;
 			}
 			if (f == null) {
 				f = new Follower(player.getRandom().nextInt(1000));
@@ -130,15 +192,19 @@ final class PetFollowers {
 			Vec3 seat = base.add(0, h, 0);
 			// A teleport (or another dimension): Random picks again.
 			Vec3 moved = f.lastPlayer == null ? Vec3.ZERO : base.subtract(f.lastPlayer);
-			if (f.lastPlayer != null && (moved.lengthSqr() > 9 || f.level != player.level())) roll(f, player);
+			if (f.lastPlayer != null && (moved.lengthSqr() > 9 || f.level != player.level())) {
+				endOuting(f, false);
+				roll(f, player);
+			}
 			f.lastPlayer = base;
 			f.level = player.level();
-			if (owner.random) {
+			if (owner.random && !leaving) {
 				// Picked again if the rolled one was taken away (or Random was just switched on).
 				if (f.rolledPet == null || owner.owned(f.rolledPet) == null) rollPet(f, owner, player);
 				Pets.Owned pick = f.rolledPet == null ? null : owner.owned(f.rolledPet);
 				if (pick != null) owned = pick;
 			}
+			f.owned = owned;
 			String texture = PetStore.texture(owned);
 			double size = PetStore.size(owned);
 			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
@@ -148,9 +214,40 @@ final class PetFollowers {
 			if (!afk) f.roamYaw = Float.NaN;
 			Target goal = afk ? roam(player, t * PACE, f) : target(player, behavior, t * PACE, f);
 			if (!goal.stay) goal = new Target(clear(goal.offset, h, size, player.getYRot()), goal.yaw, goal.follow, false);
+			if (f.outing != null && time > f.outing.until) endOuting(f, false);
+			float pitch = 0;
+			if (f.outing != null && f.pos != null) {
+				goal = outing(f, f.outing, base, goal, player, time);
+			} else if (f.move != null && time < f.moveUntil) {
+				double a = time - f.moveStart;
+				Vec3 off = goal.offset;
+				float yaw = goal.yaw;
+				switch (f.move) {
+					case HOP -> off = off.add(0, 0.45 * Math.abs(Math.sin(a * 0.3)), 0);
+					case BOUNCE -> off = off.add(0, 0.3 * Math.abs(Math.sin(a * 0.5)), 0);
+					case SPIN -> yaw += (float) (a * 30);
+					case DROOP -> {
+						off = off.add(0, -0.3, 0);
+						pitch = 30;
+					}
+					case SHIVER -> off = off.add(0.06 * Math.sin(a * 2.7), 0, 0.06 * Math.cos(a * 3.1));
+					case WIGGLE -> yaw += (float) (30 * Math.sin(a * 0.7));
+					case LOOK_UP -> pitch = -40;
+					case CURL -> {
+						off = new Vec3(off.x * 0.8, 0.35, off.z * 0.8);
+						pitch = 20;
+					}
+					case FLINCH -> off = off.add(0, 0.5 * Math.max(0, 1 - a / 10), 0);
+					case LOOK_AT -> {
+						if (f.lookAt != null) yaw = heading(base.add(off), f.lookAt);
+					}
+				}
+				goal = new Target(off, yaw, Math.max(goal.follow, 0.6), goal.stay);
+			}
 			Vec3 want = base.add(goal.offset);
+			// Far away means a teleport; an outing may take the pet further (teleports end outings anyway).
 			boolean fresh = f.display == null || f.display.isRemoved() || f.display.level() != player.level() || !texture.equals(f.texture) || size != f.size
-					|| f.pos == null || f.pos.distanceToSqr(want) > JUMP * JUMP;
+					|| f.pos == null || f.outing == null && f.pos.distanceToSqr(want) > JUMP * JUMP;
 			if (fresh) {
 				if (time < f.retryAt) continue;
 				discard(f, player);
@@ -165,7 +262,11 @@ final class PetFollowers {
 					f.retryAt = time + 1200;
 					continue;
 				}
-				pose(f, goal.stay ? Vec3.ZERO : goal.offset.subtract(0, h, 0), goal.yaw, size, 0);
+				pose(f, goal.stay ? Vec3.ZERO : goal.offset.subtract(0, h, 0), goal.yaw, pitch, size, 0);
+				if (!f.greeted) {
+					f.greeted = true;
+					PetReactions.hello(player);
+				}
 				continue;
 			}
 			if (goal.stay) {
@@ -174,7 +275,7 @@ final class PetFollowers {
 				f.pos = f.pos.add(want.subtract(f.pos).scale(goal.follow));
 				f.offset = f.pos.subtract(base);
 				f.display.setPos(f.pos);
-				pose(f, Vec3.ZERO, goal.yaw, size, GLIDE);
+				pose(f, Vec3.ZERO, goal.yaw, pitch, size, GLIDE);
 			} else {
 				// Gliding there may cut through the player; it goes around them instead.
 				f.offset = clear(f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow)), h, size, player.getYRot());
@@ -183,20 +284,171 @@ final class PetFollowers {
 				if (!f.riding || time - f.ridingSent >= (time - f.spawned < 40 ? 5 : 20)) ride(f, player, true, time);
 				// The entity itself stays on the seat, for the server's tracking and for clients not told yet.
 				if (f.display.position().distanceToSqr(seat) > 0.09) f.display.setPos(seat);
-				pose(f, f.offset.subtract(0, h, 0), goal.yaw, size, GLIDE);
+				pose(f, f.offset.subtract(0, h, 0), goal.yaw, pitch, size, GLIDE);
 			}
+			// The name moves on the server, so it leads by the owner's movement to keep up with the head (which rides them).
+			Vec3 lead = goal.stay || moved.lengthSqr() > 9 ? Vec3.ZERO : moved.scale(LEAD);
+			label(f, player, owner, size, time, lead);
 			Pets.Trail trail = Pets.Trail.of(owner.trail);
 			trail(player, trail == Pets.Trail.RANDOM ? f.rolledTrail : trail, f, t, size);
 		}
 	}
 
-	/** The head's spot (from where the entity is) and the way it looks, which clients glide to in ticks. */
-	private static void pose(Follower f, Vec3 at, float yaw, double size, int ticks) {
+	/** Where an outing takes the pet now (a spot in the world), running its steps on the way. */
+	private static Target outing(Follower f, Outing o, Vec3 base, Target home, ServerPlayer player, long time) {
+		Vec3 homeAt = base.add(home.offset);
+		Vec3 dest = null;
+		if (!o.back) {
+			dest = o.target.get();
+			if (dest == null) {
+				o.back = true;
+			} else if (!o.arrived && f.pos.distanceToSqr(dest) < o.reach * o.reach) {
+				o.arrived = true;
+				o.holdUntil = time + o.hold;
+				if (o.arrive != null) o.arrive.run();
+				// The step may have ended it (or sent the pet off again).
+				if (f.outing != o) return home;
+			}
+			if (o.arrived && time >= o.holdUntil) o.back = true;
+		}
+		if (o.back) {
+			dest = homeAt;
+			if (f.pos.distanceToSqr(homeAt) < 0.6 * 0.6) {
+				f.outing = null;
+				if (o.done != null) o.done.accept(true);
+				return home;
+			}
+		}
+		if (o.each != null) o.each.accept(f.pos);
+		// On the way: where it goes; there: its owner.
+		float yaw = o.arrived && !o.back ? heading(f.pos, player.getEyePosition()) : heading(f.pos, dest);
+		return new Target(dest.subtract(base), yaw, 0.2, true);
+	}
+
+	private static void endOuting(Follower f, boolean ok) {
+		Outing o = f.outing;
+		if (o == null) return;
+		f.outing = null;
+		if (o.done != null) o.done.accept(ok);
+	}
+
+	// ---------------------------------------------------------------- for perks and reactions
+
+	/** The pet shown for the player now (not one saying bye), or null. */
+	static Pets.Owned shownOwned(UUID player) {
+		Follower f = followers.get(player);
+		return f == null || f.display == null || f.display.isRemoved() || f.leaveAt != 0 ? null : f.owned;
+	}
+
+	/** Where the player's pet is (the middle of its head), or null. */
+	static Vec3 position(UUID player) {
+		Follower f = followers.get(player);
+		return f == null || f.display == null ? null : f.pos;
+	}
+
+	static boolean onOuting(UUID player) {
+		Follower f = followers.get(player);
+		return f != null && f.outing != null;
+	}
+
+	/**
+	 * Sends the pet to target (followed while it moves; null: come back), runs arrive once it's within reach,
+	 * waits there hold ticks, comes back and calls done(true); done(false) when cut short (teleport, timeout,
+	 * put away). each gets the pet's position every tick. False when it has no pet out or is on another outing.
+	 */
+	static boolean startOuting(ServerPlayer player, java.util.function.Supplier<Vec3> target, double reach, int hold, Runnable arrive,
+			java.util.function.Consumer<Vec3> each, java.util.function.Consumer<Boolean> done, int timeout) {
+		Follower f = followers.get(player.getUUID());
+		if (f == null || f.display == null || f.pos == null || f.leaveAt != 0 || f.outing != null) return false;
+		f.outing = new Outing(target, reach, hold, arrive, each, done, player.level().getServer().getTickCount() + timeout);
+		return true;
+	}
+
+	static void cancelOuting(UUID player) {
+		Follower f = followers.get(player);
+		if (f != null) endOuting(f, false);
+	}
+
+	/** A short move (lookAt: where LOOK_AT looks). */
+	static void animate(UUID player, Move move, int ticks, Vec3 lookAt) {
+		Follower f = followers.get(player);
+		if (f == null || f.display == null) return;
+		long now = f.display.level().getServer().getTickCount();
+		f.move = move;
+		f.moveStart = now;
+		f.moveUntil = now + ticks;
+		f.lookAt = lookAt;
+	}
+
+	/** A speech bubble above the pet for a while. */
+	static void bubble(UUID player, String text, int ticks) {
+		Follower f = followers.get(player);
+		if (f == null || f.display == null) return;
+		f.bubble = text;
+		f.bubbleUntil = f.display.level().getServer().getTickCount() + ticks;
+	}
+
+	/** The name (hidden while the owner sneaks) and bubble above the pet; no entity while there's neither. */
+	private static void label(Follower f, ServerPlayer player, Pets.Owner owner, double size, long time, Vec3 lead) {
+		String nick = PetStore.settings().names && owner.showName && f.owned != null && !player.isShiftKeyDown() ? f.owned.nickname : "";
+		boolean bubble = f.bubble != null && time < f.bubbleUntil;
+		if (!bubble && (nick == null || nick.isEmpty())) {
+			removeLabel(f);
+			return;
+		}
+		MutableComponent text = Component.empty();
+		if (bubble) text.append(Component.literal(f.bubble).withStyle(ChatFormatting.WHITE));
+		if (nick != null && !nick.isEmpty()) {
+			if (bubble) text.append("\n");
+			int rgb = eu.explorerseden.nicecontrolcenter.Claims.parseColor(f.owned.nameColor);
+			text.append(Component.literal(nick).withColor(rgb < 0 ? 0xFFFFFF : rgb));
+		}
+		Vec3 at = f.pos.add(lead).add(0, 0.25 * size + 0.12, 0);
+		if (f.label == null || f.label.isRemoved() || f.label.level() != player.level()) {
+			removeLabel(f);
+			f.label = spawnLabel(player.level(), at);
+			if (f.label == null) return;
+		} else if (f.label.position().distanceToSqr(at) > 1e-4) {
+			f.label.setPos(at);
+		}
+		if (!text.equals(f.labelText)) {
+			((TextDisplayAccessor) f.label).nicecontrolcenter$setText(text);
+			f.labelText = text;
+		}
+	}
+
+	private static Display.TextDisplay spawnLabel(ServerLevel level, Vec3 at) {
+		@SuppressWarnings("unchecked")
+		EntityType<Display.TextDisplay> type = (EntityType<Display.TextDisplay>) BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("text_display"));
+		Display.TextDisplay d = new Display.TextDisplay(type, level);
+		d.setPos(at);
+		d.addTag(TAG);
+		DisplayAccessor a = (DisplayAccessor) d;
+		a.nicecontrolcenter$setBillboard(Display.BillboardConstraints.CENTER);
+		a.nicecontrolcenter$setMoveDuration(GLIDE);
+		a.nicecontrolcenter$setViewRange(0.5f);
+		((TextDisplayAccessor) d).nicecontrolcenter$setLineWidth(200);
+		spawning = true;
+		try {
+			return level.addFreshEntity(d) ? d : null;
+		} finally {
+			spawning = false;
+		}
+	}
+
+	private static void removeLabel(Follower f) {
+		if (f.label != null) f.label.discard();
+		f.label = null;
+		f.labelText = null;
+	}
+
+	/** The head's spot (from where the entity is) and the way it looks (pitch: nods down), which clients glide to in ticks. */
+	private static void pose(Follower f, Vec3 at, float yaw, float pitch, double size, int ticks) {
 		float s = (float) size;
 		// A head item is drawn below the display's spot; lift it so the spot is its middle.
 		Vector3f move = new Vector3f((float) at.x, (float) at.y + 0.25f * s, (float) at.z);
 		// The same turn a display with this yaw gets (the entity's own yaw stays 0).
-		Quaternionf turn = new Quaternionf().rotationY((float) Math.toRadians(-(yaw + FACE)));
+		Quaternionf turn = new Quaternionf().rotationY((float) Math.toRadians(-(yaw + FACE))).rotateX((float) Math.toRadians(pitch));
 		DisplayAccessor d = (DisplayAccessor) f.display;
 		d.nicecontrolcenter$setTransformation(new Transformation(move, turn, new Vector3f(s, s, s), new Quaternionf()));
 		d.nicecontrolcenter$setInterpolationDuration(ticks);
@@ -218,6 +470,8 @@ final class PetFollowers {
 
 	/** Removes the head (and tells clients it no longer rides the player). */
 	private static void discard(Follower f, ServerPlayer player) {
+		endOuting(f, false);
+		removeLabel(f);
 		if (f.display == null) return;
 		if (f.riding && player != null) ride(f, player, false, 0);
 		f.riding = false;
@@ -523,6 +777,7 @@ final class PetFollowers {
 
 	/** A pet display of ours from a session that's over: gone. */
 	static boolean leftOver(Entity e) {
-		return !spawning && e instanceof Display.ItemDisplay && e.entityTags().contains(TAG) && followers.values().stream().noneMatch(f -> f.display == e);
+		return !spawning && (e instanceof Display.ItemDisplay || e instanceof Display.TextDisplay) && e.entityTags().contains(TAG)
+				&& followers.values().stream().noneMatch(f -> f.display == e || f.label == e);
 	}
 }

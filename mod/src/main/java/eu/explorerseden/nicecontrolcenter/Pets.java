@@ -21,9 +21,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Pets: floating player heads that follow their owner (/pets), only for looks. The panel puts pets in the
- * pet shop (a price in the market's currency, how long the shop sells it, how many can be sold); players
- * buy them from /market or /pets, keep them for good and pick how theirs moves.
+ * Pets: floating player heads that follow their owner (/pets). The panel puts pets in the pet shop (a price
+ * in the market's currency, how long the shop sells it, how many can be sold); players buy them from
+ * /market or /pets, keep them for good, name them and pick how theirs moves. Each pet can have up to two
+ * perks (small helps) that unlock as its bond with its owner grows, and every pet reacts to what happens.
  *
  * Settings in config/nicecontrolcenter-pets.json (written by the panel), who owns what in the world folder
  * (nicecontrolcenter-pets.json). Minecraft-free.
@@ -127,6 +128,231 @@ public final class Pets {
 		}
 	}
 
+	/** Small helps a pet can have (two per pet, set in the panel; they unlock with the pet's bond level). */
+	public enum Perk {
+		LANTERN("Lantern", "Glows and lights up the dark around you", Group.HELPER),
+		NIGHT_EYES("Night Eyes", "Glows, and brighter still deep underground", Group.HELPER),
+		FETCH("Fetch", "Brings you what dropped from blocks you broke and mobs you killed", Group.HELPER),
+		TRUFFLE("Truffle Nose", "Sniffs out suspicious sand and gravel nearby", Group.HELPER),
+		FISHING("Fishing", "Now and then dips into water nearby and brings you a catch", Group.HELPER),
+		GARDENER("Gardener", "Now and then helps a crop next to you grow", Group.HELPER),
+		TORCHES("Torch Bearer", "Places one of your torches where it's dark enough for monsters", Group.HELPER),
+		MINER("Miner", "Mines ore you can see and widens your tunnel, with your pickaxe", Group.HELPER),
+		CHOPPER("Wood Chopper", "Helps chop the tree you started on, with your axe", Group.HELPER),
+		GIFTS("Small Gifts", "Now and then finds something small for you", Group.STRONG),
+		SECOND_WIND("Second Wind", "Heals you a little when you're nearly dead, now and then", Group.STRONG),
+		NIPPER("Nipper", "Nips monsters that hurt you or that you attack, like a wolf", Group.STRONG),
+		SHIELD("Shield", "Pushes monsters back that come too close", Group.STRONG);
+
+		public enum Group { HELPER, STRONG }
+
+		public final String label;
+		public final String description;
+		public final Group group;
+
+		Perk(String label, String description, Group group) {
+			this.label = label;
+			this.description = description;
+			this.group = group;
+		}
+
+		/** Null when it isn't one. */
+		public static Perk of(String name) {
+			if (name != null) for (Perk p : values()) if (p.name().equalsIgnoreCase(name)) return p;
+			return null;
+		}
+	}
+
+	/**
+	 * What pets react to: a short move, particles, a sound and maybe a speech bubble (one of the lines, which
+	 * admins can change). Warnings also tell the owner on their screen.
+	 */
+	public enum Reaction {
+		TOOL("Tool about to break", true, 60, "It's breaking!", "Careful with that!"),
+		HEALTH("Low health", true, 60, "Careful…", "Ouch…", "Heal up!"),
+		HUNGER("Hungry", true, 120, "Food?", "Snack time?", "*rumble*"),
+		DANGER("Danger", true, 30, "Behind you!", "Look out!", "!!"),
+		AIR("Low air", true, 20, "Air!", "Up, up!"),
+		INVENTORY("Inventory full", true, 120, "Full!", "No room!"),
+		FIRE("Fire or lava", true, 30, "Hot hot!", "Fire!"),
+		HURT("Owner hurt", false, 10, "!", "Hey!"),
+		NIGHTFALL("Nightfall", false, 600, "☾", "Night's coming…"),
+		UNDERWATER("Under water", false, 120, "blub", "o o o"),
+		NETHER("Into the Nether", false, 60, "Hot!", "So warm…"),
+		END("Into the End", false, 60, "…?", "Whoa…"),
+		FISH("Fish caught", false, 10, "!", "Fish!", "Yum!"),
+		HARVEST("Harvest", false, 60, "Nice!", "Crops!"),
+		DEEP("Deep down", false, 600, "Dig dig", "So deep…"),
+		SNOW("Snow", false, 600, "Brr", "Cold!"),
+		HELLO("Taken out", false, 0, "Hi!", "Hello!", "Let's go!"),
+		BYE("Put away", false, 0, "Bye!", "See you!"),
+		JOIN("Owner joins", false, 0, "Missed you!", "You're back!"),
+		EAT("Eating", false, 30, "Yum!", "Share?"),
+		SLEEP("Sleeping", false, 60, "zZz"),
+		MORNING("Morning", false, 600, "☀", "Morning!"),
+		RESPAWN("Owner died", false, 0, "…", "Don't do that again…"),
+		ADVANCEMENT("Advancement", false, 5, "★", "Well done!", "Woo!"),
+		LEVEL30("Level 30", false, 60, "Whoa!", "So much XP!"),
+		SHINY("Rare find", false, 10, "Shiny!", "Ooh!"),
+		RAIN("Rain", false, 600, "☂", "Rain…"),
+		THUNDER("Thunder", false, 120, "!!", "Eek!"),
+		FLYING("Flying or falling", false, 30, "Wheee!", "Whoosh!"),
+		RIDING("Riding", false, 60, "Giddy up!", "♪"),
+		TRADE("Trading", false, 60, "$", "Good deal!"),
+		BREED("Breeding", false, 60, "♥", "Babies!"),
+		MEET("Meeting another pet", false, 600, "♥", "Hi friend!"),
+		IDLE("Owner idle", false, 300, "…", "Bored…"),
+		AFK("Owner AFK", false, 60, "zZz"),
+		PAT("Pat", false, 3, "♥", "Hehe"),
+		LEVEL_UP("Bond level up", false, 0, "Level {level}!", "Yay!"),
+		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦");
+
+		public final String label;
+		/** Also tells the owner on their screen (and doesn't wait for the gap between reactions). */
+		public final boolean warning;
+		/** The least time between two of these for one pet. */
+		public final int cooldown;
+		public final List<String> lines;
+
+		Reaction(String label, boolean warning, int cooldown, String... lines) {
+			this.label = label;
+			this.warning = warning;
+			this.cooldown = cooldown;
+			this.lines = List.of(lines);
+		}
+
+		public static Reaction of(String name) {
+			if (name != null) for (Reaction r : values()) if (r.name().equalsIgnoreCase(name)) return r;
+			return null;
+		}
+	}
+
+	/** A reaction as the panel set it: on or off, and its bubble lines (none: no bubble). */
+	public static final class ReactionEntry {
+		public boolean on = true;
+		public List<String> lines = new ArrayList<>();
+	}
+
+	public static final class ReactionSettings {
+		public boolean enabled = true;
+		/** The least time between two reactions of one pet (warnings don't wait). */
+		public int gapSeconds = 20;
+		public Map<String, ReactionEntry> list = new LinkedHashMap<>();
+
+		public ReactionSettings fill() {
+			if (list == null) list = new LinkedHashMap<>();
+			list.keySet().removeIf(k -> Reaction.of(k) == null);
+			for (Reaction r : Reaction.values()) {
+				ReactionEntry e = list.get(r.name());
+				if (e == null) {
+					e = new ReactionEntry();
+					e.lines = new ArrayList<>(r.lines);
+					list.put(r.name(), e);
+				}
+				if (e.lines == null) e.lines = new ArrayList<>();
+				e.lines.replaceAll(l -> l == null ? "" : l.replaceAll("\\s+", " ").strip());
+				e.lines.removeIf(String::isEmpty);
+			}
+			return this;
+		}
+
+		public ReactionEntry entry(Reaction r) {
+			ReactionEntry e = list.get(r.name());
+			return e != null ? e : new ReactionEntry();
+		}
+	}
+
+	/** Something Small Gifts can find. */
+	public static final class Gift {
+		public String item;
+		public int min = 1;
+		public int max = 1;
+		public int weight = 1;
+
+		public Gift() {
+		}
+
+		public Gift(String item, int min, int max, int weight) {
+			this.item = item;
+			this.min = min;
+			this.max = max;
+			this.weight = weight;
+		}
+	}
+
+	/** Bond levels and how strong each perk is. */
+	public static final class PerkSettings {
+		public boolean enabled = false;
+		/** A pet's first and second perk work from these bond levels on (0: right away). */
+		public int slot1Level = 2;
+		public int slot2Level = 5;
+		/** Level n takes this many minutes × n of the pet being out with its owner active (30: level 1 after 30 min, level 5 after 7.5 h). */
+		public int levelMinutes = 30;
+		public int maxLevel = 10;
+		public int lanternLevel = 10;
+		public int nightEyesLevel = 14;
+		public int fetchRadius = 8;
+		public int truffleRadius = 8;
+		public int fishingMinutes = 5;
+		public int gardenerSeconds = 120;
+		public int torchSeconds = 20;
+		public int minerSeconds = 10;
+		public int chopperSeconds = 10;
+		public int giftMinutes = 30;
+		public List<Gift> gifts = defaultGifts();
+		public int secondWindMinutes = 30;
+		/** Damage per nip (2 = one heart) and the time between nips. */
+		public double nipperDamage = 2;
+		public double nipperSeconds = 1.5;
+		public int shieldSeconds = 5;
+
+		public PerkSettings fill() {
+			if (gifts == null) gifts = defaultGifts();
+			gifts.removeIf(g -> g == null || g.item == null || g.item.isBlank());
+			for (Gift g : gifts) {
+				g.item = g.item.strip().toLowerCase(Locale.ROOT);
+				if (!g.item.contains(":")) g.item = "minecraft:" + g.item;
+			}
+			return this;
+		}
+	}
+
+	public static List<Gift> defaultGifts() {
+		return new ArrayList<>(List.of(new Gift("minecraft:bone_meal", 1, 3, 4), new Gift("minecraft:wheat_seeds", 2, 5, 3),
+				new Gift("minecraft:string", 1, 3, 3), new Gift("minecraft:bone", 1, 2, 2), new Gift("minecraft:stick", 2, 4, 2),
+				new Gift("minecraft:feather", 1, 2, 2), new Gift("minecraft:flint", 1, 1, 1)));
+	}
+
+	/** The total active minutes a pet needs for this bond level. */
+	public static long minutesFor(int level, PerkSettings s) {
+		return (long) s.levelMinutes * level * (level + 1) / 2;
+	}
+
+	/** The bond level for this many ticks of being out with its owner active. */
+	public static int level(long bondTicks, PerkSettings s) {
+		long minutes = bondTicks / 1200;
+		int level = 0;
+		while (level < s.maxLevel && minutesFor(level + 1, s) <= minutes) level++;
+		return level;
+	}
+
+	/** How many of a pet's perks work at this bond level (0 to 2). */
+	public static int unlockedSlots(int level, PerkSettings s) {
+		return (level >= s.slot1Level ? 1 : 0) + (level >= s.slot2Level ? 1 : 0);
+	}
+
+	/** The bond level a perk slot (0 or 1) unlocks at. */
+	public static int slotLevel(int slot, PerkSettings s) {
+		return slot == 0 ? s.slot1Level : s.slot2Level;
+	}
+
+	/** A pet's name from its owner: plain text, at most 16 characters (empty: none). */
+	public static String nickname(String in) {
+		if (in == null) return "";
+		String t = in.replaceAll("§.?", "").replaceAll("[\\p{Cntrl}]", "").replaceAll("\\s+", " ").strip();
+		return t.length() > 16 ? t.substring(0, 16).strip() : t;
+	}
+
 	/** A pet in the shop. */
 	public static final class Pet {
 		public String id;
@@ -143,6 +369,8 @@ public final class Pets {
 		public long saleEnds;
 		/** How many can be sold in all; 0 is no limit. */
 		public int stock;
+		/** Up to two perks: the first unlocks at bond level {@link PerkSettings#slot1Level}, the second at slot2Level. */
+		public List<String> perks = new ArrayList<>();
 		/** Off keeps the pet (and the ones players own) but stops selling it. */
 		public boolean forSale = true;
 		/**
@@ -172,15 +400,33 @@ public final class Pets {
 		/** Players may give their pet a particle trail. */
 		public boolean particles = true;
 		public List<Pet> pets = new ArrayList<>();
+		public PerkSettings perks = new PerkSettings();
+		/** Players may name their pets (shown above them). */
+		public boolean names = true;
+		/** Colours offered for pet names (name → #RRGGBB). */
+		public Map<String, String> nameColors = Claims.defaultColors();
+		public ReactionSettings reactions = new ReactionSettings();
 
 		public Settings fill() {
 			if (pets == null) pets = new ArrayList<>();
 			pets.removeIf(p -> p == null);
+			if (perks == null) perks = new PerkSettings();
+			perks.fill();
+			if (nameColors == null || nameColors.isEmpty()) nameColors = Claims.defaultColors();
+			if (reactions == null) reactions = new ReactionSettings();
+			reactions.fill();
 			for (Pet p : pets) {
 				if (p.id == null || p.id.isBlank()) p.id = UUID.randomUUID().toString().substring(0, 8);
 				if (p.name != null) p.name = p.name.strip();
 				if (!(p.size > 0)) p.size = size >= 0.3 && size <= 2 ? size : DEFAULT_SIZE;
 				p.description = p.description == null ? "" : p.description.replaceAll("\\s+", " ").strip();
+				if (p.perks == null) p.perks = new ArrayList<>();
+				List<String> perks = new ArrayList<>();
+				for (String n : p.perks) {
+					Perk k = Perk.of(n);
+					if (k != null && !perks.contains(k.name())) perks.add(k.name());
+				}
+				p.perks = perks;
 				String t = texture(p.texture);
 				if (t != null) p.texture = t;
 			}
@@ -208,6 +454,41 @@ public final class Pets {
 			if (p.price < 0 || p.price > 10_000_000) return "The price of " + p.name + " is 0 to 10,000,000.";
 			if (p.saleEnds < 0 || p.saleEnds > System.currentTimeMillis() + 3660 * 86_400_000L) return "The sale of " + p.name + " ends within ten years, or never.";
 			if (p.stock < 0 || p.stock > 1_000_000) return "The amount of " + p.name + " is 0 (no limit) to 1,000,000.";
+			if (p.perks.size() > 2) return p.name + " has more than two perks.";
+			if (p.perks.contains(Perk.LANTERN.name()) && p.perks.contains(Perk.NIGHT_EYES.name())) return p.name + ": Night Eyes already is a lantern; pick one of the two.";
+		}
+		PerkSettings k = s.perks;
+		if (k.maxLevel < 1 || k.maxLevel > 100) return "The highest bond level is 1 to 100.";
+		if (k.slot1Level < 0 || k.slot1Level > k.maxLevel) return "The first perk unlocks at level 0 to " + k.maxLevel + ".";
+		if (k.slot2Level < k.slot1Level || k.slot2Level > k.maxLevel) return "The second perk unlocks at level " + k.slot1Level + " to " + k.maxLevel + ".";
+		if (k.levelMinutes < 1 || k.levelMinutes > 10_000) return "Minutes per level are 1 to 10,000.";
+		if (k.lanternLevel < 1 || k.lanternLevel > 15 || k.nightEyesLevel < 1 || k.nightEyesLevel > 15) return "Lantern light is 1 to 15.";
+		if (k.fetchRadius < 1 || k.fetchRadius > 10) return "Fetch reaches 1 to 10 blocks.";
+		if (k.truffleRadius < 1 || k.truffleRadius > 16) return "Truffle Nose sniffs 1 to 16 blocks.";
+		if (k.fishingMinutes < 1 || k.fishingMinutes > 1440) return "Fishing is every 1 to 1440 minutes.";
+		if (k.gardenerSeconds < 5 || k.gardenerSeconds > 86_400) return "Gardener is every 5 to 86,400 seconds.";
+		if (k.torchSeconds < 1 || k.torchSeconds > 3600) return "Torch Bearer waits 1 to 3600 seconds.";
+		if (k.minerSeconds < 1 || k.minerSeconds > 3600 || k.chopperSeconds < 1 || k.chopperSeconds > 3600) return "Miner and Wood Chopper wait 1 to 3600 seconds.";
+		if (k.giftMinutes < 1 || k.giftMinutes > 10_080) return "Small Gifts come every 1 to 10,080 minutes.";
+		if (k.secondWindMinutes < 1 || k.secondWindMinutes > 10_080) return "Second Wind waits 1 to 10,080 minutes.";
+		if (!(k.nipperDamage >= 0.5 && k.nipperDamage <= 20)) return "Nipper does 0.5 to 20 damage.";
+		if (!(k.nipperSeconds >= 0.5 && k.nipperSeconds <= 60)) return "Nipper nips every 0.5 to 60 seconds.";
+		if (k.shieldSeconds < 1 || k.shieldSeconds > 600) return "Shield pushes every 1 to 600 seconds.";
+		if (k.gifts.size() > 50) return "At most 50 gifts.";
+		for (Gift g : k.gifts) {
+			if (!g.item.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + g.item + "\" isn't an item id (like minecraft:bone_meal).";
+			if (g.min < 1 || g.max < g.min || g.max > 64) return "Gift amounts are 1 to 64, the most at least the fewest.";
+			if (g.weight < 1 || g.weight > 1000) return "Gift weights are 1 to 1000.";
+		}
+		if (s.nameColors.size() > 32) return "At most 32 name colours.";
+		for (Map.Entry<String, String> e : s.nameColors.entrySet()) {
+			if (e.getKey() == null || e.getKey().isBlank() || e.getKey().length() > 24) return "Colour names are 1 to 24 characters.";
+			if (Claims.parseColor(e.getValue()) < 0) return "\"" + e.getValue() + "\" isn't a #RRGGBB colour.";
+		}
+		if (s.reactions.gapSeconds < 0 || s.reactions.gapSeconds > 3600) return "The time between reactions is 0 to 3600 seconds.";
+		for (Map.Entry<String, ReactionEntry> e : s.reactions.list.entrySet()) {
+			if (e.getValue().lines.size() > 10) return Reaction.of(e.getKey()).label + ": at most 10 lines.";
+			for (String l : e.getValue().lines) if (l.length() > 32) return Reaction.of(e.getKey()).label + ": lines are up to 32 characters.";
 		}
 		return null;
 	}
@@ -274,6 +555,11 @@ public final class Pets {
 		public long since;
 		/** Before 1.13.0's release each pet had its own way of moving; now it's the owner's ({@link Owner#behavior}). */
 		public String behavior;
+		/** Ticks it was out with its owner active: its bond (see {@link #level}). */
+		public long bond;
+		/** The name its owner gave it (empty: none) and its colour (#RRGGBB). */
+		public String nickname = "";
+		public String nameColor = "#FFFFFF";
 	}
 
 	public static final class Owner {
@@ -288,6 +574,15 @@ public final class Pets {
 		public boolean random;
 		/** The pet that was out last, for /pets on. */
 		public String last;
+		/** Perks the owner switched off for their pets. */
+		public Set<String> perksOff = new HashSet<>();
+		/** Their pets react to what happens (moves, particles, bubbles). */
+		public boolean reactions = true;
+		/** The name they gave their pet floats above it (false: nobody sees it). */
+		public boolean showName = true;
+		/** Active ticks towards the next Small Gift, and when Second Wind can help again (epoch ms). */
+		public long giftTicks;
+		public long secondWindAt;
 
 		/** Puts the pet away, remembering it for /pets on. */
 		public void putAway() {
@@ -332,6 +627,11 @@ public final class Pets {
 			for (Owner o : owners.values()) {
 				if (o.pets == null) o.pets = new ArrayList<>();
 				o.pets.removeIf(p -> p == null || p.pet == null || p.texture == null);
+				if (o.perksOff == null) o.perksOff = new HashSet<>();
+				for (Owned p : o.pets) {
+					p.nickname = nickname(p.nickname);
+					if (Claims.parseColor(p.nameColor) < 0) p.nameColor = "#FFFFFF";
+				}
 				if (o.behavior == null) {
 					Owned out = o.active == null ? null : o.owned(o.active);
 					o.behavior = Behavior.of(out != null ? out.behavior : null).name();

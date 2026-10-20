@@ -1,3 +1,9 @@
+## 1.16.0
+- Community → Pets: two perks per pet, and new cards for bond levels and perk strength (with Small Gifts' finds), pet name colours, and reactions (on/off and bubble lines for each) (mod 1.17.0)
+- Info page: pet tiles list their perks and the bond levels they unlock at
+- Players: the pets on a player card show their name and bond level, with "Reset name"
+- Saving one part of the pet settings no longer resets the others
+
 ## 1.15.1
 - Tweaks → Tab list: the dimension preview shows it in front of the name, like the game now does (mod 1.16.2)
 
