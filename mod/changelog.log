@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.16.1
+- /pets: the pet that's out is shown with its head
+
 ## 1.16.0
 - Server resource pack from the panel: on a server run by the Nice Control Center Panel, the updater keeps a copy of each pack it finds and links players to the panel's copy (named by its SHA-1) instead of GitHub or wherever the pack comes from. Players who can reach the game can reach the pack, and the link and its SHA-1 always match, so a pack published between restarts no longer fails the hash check for everyone joining. The change happens at the next restart like any pack update. Where the pack comes from is kept as the resource pack source, and server.properties gets a fixed resource-pack-id so games replace the old pack instead of keeping each one. Without the panel nothing changes
 - /pets: your pets have their own page ("Your pets" button), so the menu's buttons are right there instead of below a long list; the menu shows which pet is out. Take out and Put away keep you on that page

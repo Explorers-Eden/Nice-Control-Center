@@ -124,7 +124,9 @@ public final class PetDialogs {
 			body.add(text("You don't have a pet yet: a floating head that follows you around, just for looks. Get one in the pet shop.", ChatFormatting.GRAY));
 		} else {
 			Pets.Owned shown = shown(player, owner);
-			body.add(text(shown == null ? "No pet is out." : "Out now: " + PetStore.name(shown), ChatFormatting.GRAY));
+			if (shown == null) body.add(text("No pet is out.", ChatFormatting.GRAY));
+			else body.add(headRow(player, PetStore.texture(shown), Component.literal("Out now: ").withStyle(ChatFormatting.GRAY)
+					.append(Component.literal(PetStore.name(shown)).withStyle(ChatFormatting.WHITE))));
 			buttons.add(button("Your pets (" + mine.size() + ")", "Take one out or put it away", "mine", args()));
 		}
 		if (mine.size() > 1) {
