@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.15.4
+- Gameplay tweak: dispensers play goat horns. A powered dispenser with a horn in it blows the horn and keeps it, as loud and far as a player would, and sculk sensors hear it. Data pack horns (like Fabled Roots' horns) play their own sound. Afterwards the dispenser waits as long as a player would have to (the horn's time or its cooldown), so a redstone clock can't keep it blaring; meanwhile it only clicks. Off by default
+
 ## 1.15.3
 - Market: item icons show a single item instead of a stack; the amount is in the text next to it
 - Market: changing "For how many" to a lot size that doesn't split what's listed (1,700 per 16) offers ways out instead of just refusing: keep that lot size and get the spare items back in your mailbox, or take the nearest lot sizes that fit (each button says the resulting price)

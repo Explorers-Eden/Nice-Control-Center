@@ -224,6 +224,8 @@ public final class Tweaks {
 	public static final class Dispensers {
 		/** Dispensers place block items in front of them instead of dropping them (droppers still drop). */
 		public boolean placeBlocks = false;
+		/** Dispensers blow goat horns they hold (keeping them), with a player's cooldown. */
+		public boolean goatHorns = false;
 	}
 
 	public static final class Villagers {

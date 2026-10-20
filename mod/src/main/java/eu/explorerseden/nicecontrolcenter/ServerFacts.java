@@ -157,6 +157,9 @@ public final class ServerFacts {
 		if (t.dispensers.placeBlocks) {
 			out.add(tweak("dispensers", "Dispensers place blocks", "bi-box-arrow-right", "A dispenser places blocks in front of it instead of dropping them (droppers still drop).", List.of()));
 		}
+		if (t.dispensers.goatHorns) {
+			out.add(tweak("horns", "Dispensers play goat horns", "bi-megaphone", "Power a dispenser with a goat horn in it and it blows the horn (and keeps it), as loud as a player would. Then it rests as long as a player has to.", List.of()));
+		}
 		if (t.crops.rainGrowth) {
 			out.add(tweak("rain", "Crops love rain", "bi-cloud-rain", "Crops grow " + t.crops.rainBoost + " % faster while rain falls on them.", List.of()));
 		}
