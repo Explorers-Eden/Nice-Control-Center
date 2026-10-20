@@ -109,8 +109,7 @@ public final class MarketDialogs {
 	private static Optional<DialogBody> itemRow(ServerPlayer player, Market.Item item, int count, Component description) {
 		ItemStack stack = MarketStore.stack(player.level().getServer(), item, 1);
 		if (stack.isEmpty()) return Optional.empty();
-		// Over the item's stack size the dialog can't be sent and the player gets kicked.
-		stack.setCount(Math.max(1, Math.min(count, stack.getMaxStackSize())));
+		// One item: the amount is in the text (a stack of 64 on a listing sold 16 at a time only confused).
 		return Optional.of(new ItemBody(ItemStackTemplate.fromNonEmptyStack(light(stack)), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), true, true, 16, 16));
 	}
 
@@ -289,6 +288,11 @@ public final class MarketDialogs {
 
 	/** done: a note that something worked (green), notice: what went wrong (red). */
 	private static void view(ServerPlayer player, Market.Listing l, String notice, String done) {
+		view(player, l, notice, done, List.of(), null);
+	}
+
+	/** ways: buttons before the usual ones (ways out of a lot size that doesn't fit); typed: what the seller typed, kept in the fields. */
+	private static void view(ServerPlayer player, Market.Listing l, String notice, String done, List<ActionButton> ways, CompoundTag typed) {
 		ItemStack stack = MarketStore.stack(player.level().getServer(), l.item, 1);
 		boolean own = l.seller.equals(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();
@@ -317,9 +321,10 @@ public final class MarketDialogs {
 			body.add(text("Your listing · " + days + (days == 1 ? " day" : " days") + " left. Change the price below, add more of the item"
 					+ (carried > 0 ? " (you carry " + String.format(Locale.ROOT, "%,d", carried) + ")" : "") + ", or take it back into your mailbox.", ChatFormatting.GRAY));
 			List<Input> inputs = List.of(
-					new Input("price", new TextInput(120, Component.literal("Price"), true, String.valueOf(l.price), 9, Optional.empty())),
-					new Input("per", new TextInput(120, Component.literal("For how many"), true, String.valueOf(l.lot()), 9, Optional.empty())),
+					new Input("price", new TextInput(120, Component.literal("Price"), true, typed == null ? String.valueOf(l.price) : str(typed, "price"), 9, Optional.empty())),
+					new Input("per", new TextInput(120, Component.literal("For how many"), true, typed == null ? String.valueOf(l.lot()) : str(typed, "per"), 9, Optional.empty())),
 					new Input("more", new TextInput(120, Component.literal("Add more"), true, "", 9, Optional.empty())));
+			buttons.addAll(ways);
 			buttons.add(button("Save price", "Price and how many at a time", "edit", args("id", l.id)));
 			buttons.add(button("Add more", "From your inventory; runs " + MarketStore.settings().listingDays + " days again", "restock", args("id", l.id)));
 			buttons.add(button("Take it back", "Into your mailbox", "cancel", args("id", l.id)));
@@ -590,7 +595,7 @@ public final class MarketDialogs {
 					.append(Component.literal(k.getHoverName().getString()).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", MarketStore.count(player, k)) + (selling ? " · you sell these  " : "  ")).withStyle(ChatFormatting.GRAY))
 					.append(link("Sell", selling ? "List more or add them to your listing" : "Set the price and amount", "sellitem", args("slot", String.valueOf(i), "kinds", sig), ChatFormatting.GREEN));
-			ItemStack shown = light(k.copyWithCount(Math.max(1, Math.min(MarketStore.count(player, k), k.getMaxStackSize()))));
+			ItemStack shown = light(k.copyWithCount(1));
 			body.add(new ItemBody(ItemStackTemplate.fromNonEmptyStack(shown), Optional.of(new PlainMessage(desc, TEXT_WIDTH - 30)), true, true, 16, 16));
 		}
 		menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));
@@ -621,7 +626,7 @@ public final class MarketDialogs {
 			body.add(text(notice, ChatFormatting.RED));
 			Plop.play(player);
 		}
-		ItemStack shown = like.copyWithCount(Math.max(1, Math.min(have, like.getMaxStackSize())));
+		ItemStack shown = like.copyWithCount(1);
 		body.add(new ItemBody(ItemStackTemplate.fromNonEmptyStack(shown), Optional.of(new PlainMessage(Component.literal(like.getHoverName().getString()).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
 				.append(Component.literal("\nYou carry " + String.format(Locale.ROOT, "%,d", have)).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY))), TEXT_WIDTH - 30)), true, true, 16, 16));
 		body.add(text("The price is in " + MarketStore.currencyName() + " for as many items as \"For how many\" says (1: per item); buyers buy that many at a time. More than a stack is fine.", ChatFormatting.GRAY));
@@ -629,9 +634,10 @@ public final class MarketDialogs {
 		if (existing != null) body.add(text("You already sell these for " + price(existing) + " (" + String.format(Locale.ROOT, "%,d", existing.amount) + " left): "
 				+ "\"Add to my listing\" puts the amount there at that price.", ChatFormatting.GOLD));
 		List<Input> inputs = List.of(
-				new Input("amount", new TextInput(120, Component.literal("How many"), true, String.valueOf(have), 9, Optional.empty())),
-				new Input("price", new TextInput(120, Component.literal("Price"), true, existing == null ? "" : String.valueOf(existing.price), 9, Optional.empty())),
-				new Input("per", new TextInput(120, Component.literal("For how many"), true, existing == null ? "1" : String.valueOf(existing.lot()), 9, Optional.empty())));
+				// Shown again after a mistake: what was typed stays.
+				new Input("amount", new TextInput(120, Component.literal("How many"), true, in.contains("amount") ? str(in, "amount") : String.valueOf(have), 9, Optional.empty())),
+				new Input("price", new TextInput(120, Component.literal("Price"), true, in.contains("price") ? str(in, "price") : existing == null ? "" : String.valueOf(existing.price), 9, Optional.empty())),
+				new Input("per", new TextInput(120, Component.literal("For how many"), true, in.contains("per") ? str(in, "per") : existing == null ? "1" : String.valueOf(existing.lot()), 9, Optional.empty())));
 		CompoundTag pick = args("slot", String.valueOf(slot), "kinds", str(in, "kinds"));
 		List<ActionButton> buttons = new ArrayList<>();
 		buttons.add(button("List it", "A new listing", "list", pick));
@@ -701,6 +707,7 @@ public final class MarketDialogs {
 			case "sellitem" -> sellItem(player, in, null);
 			case "restock" -> restock(player, in);
 			case "edit" -> edit(player, in);
+			case "editfix" -> editFix(player, in);
 			case "mine" -> mine(player);
 			case "mail" -> mail(player);
 			case "view" -> {
@@ -821,7 +828,11 @@ public final class MarketDialogs {
 			return;
 		}
 		if (amount % per != 0) {
-			sellItem(player, in, "Sell a multiple of " + per + ": they're bought " + per + " at a time.");
+			int fits = amount / per * per;
+			CompoundTag again = in.copy();
+			again.putString("amount", String.valueOf(fits));
+			sellItem(player, again, String.format(Locale.ROOT, "They're bought %d at a time, so %,d doesn't fit: \"How many\" is now %,d, the %d left over stay with you. List it again to confirm.",
+					per, amount, fits, amount - fits));
 			return;
 		}
 		Market.Item item = MarketStore.store(player, like);
@@ -898,13 +909,66 @@ public final class MarketDialogs {
 			home(player, "That listing is gone.");
 			return;
 		}
-		String err = data.edit(l, num(in, "price"), num(in, "per"), MarketStore.settings());
+		int price = num(in, "price");
+		int per = num(in, "per");
+		Market.Settings s = MarketStore.settings();
+		if (price >= 1 && price <= s.maxPrice && per >= 1 && per <= l.amount && l.amount % per != 0) {
+			// Doesn't fit what's left: offer the nearest lot sizes that do, or this one with the spare items back.
+			int spare = l.amount % per;
+			int lower = per;
+			while (l.amount % lower != 0) lower--;
+			int higher = per;
+			while (higher <= l.amount && l.amount % higher != 0) higher++;
+			List<ActionButton> ways = new ArrayList<>();
+			String money = money(price);
+			ways.add(button("Per " + per + ", " + spare + " back", money + " per " + per + "; the " + spare + " left over go to your mailbox", "editfix",
+					args("id", l.id, "setprice", String.valueOf(price), "setper", String.valueOf(per), "spare", String.valueOf(spare))));
+			if (lower > 1 || per <= 2) ways.add(button("Per " + lower + " instead", money + (lower == 1 ? " each" : " per " + lower) + ", all " + l.amount + " stay listed", "editfix",
+					args("id", l.id, "setprice", String.valueOf(price), "setper", String.valueOf(lower), "spare", "0")));
+			if (higher <= l.amount && higher <= per * 2) ways.add(button("Per " + higher + " instead", money + " per " + higher + ", all " + l.amount + " stay listed", "editfix",
+					args("id", l.id, "setprice", String.valueOf(price), "setper", String.valueOf(higher), "spare", "0")));
+			view(player, l, String.format(Locale.ROOT, "%,d are listed, which doesn't split into lots of %d (%d would be left over). Pick one below.", l.amount, per, spare),
+					null, ways, in);
+			return;
+		}
+		String err = data.edit(l, price, per, s);
+		if (err != null) {
+			view(player, l, err, null, List.of(), in);
+			return;
+		}
+		MarketStore.saveNow();
+		view(player, l, null, "Now " + price(l) + ".");
+	}
+
+	/** One of the ways out offered by edit: another lot size, or this one with the spare items sent back. */
+	private static void editFix(ServerPlayer player, CompoundTag in) {
+		Market.Data data = MarketStore.data();
+		Market.Listing l = data.listings.get(str(in, "id"));
+		if (l == null || !l.seller.equals(player.getStringUUID())) {
+			home(player, "That listing is gone.");
+			return;
+		}
+		int price = num(in, "setprice");
+		int per = num(in, "setper");
+		int spare = Math.max(0, num(in, "spare"));
+		// Someone bought meanwhile: the numbers don't fit any more, so it starts over.
+		if (per < 1 || spare >= l.amount || (l.amount - spare) % per != 0 || (spare > 0 && l.amount % per != spare)) {
+			view(player, l, "The listing changed meanwhile: try again.");
+			return;
+		}
+		Market.Settings s = MarketStore.settings();
+		if (price < 1 || price > s.maxPrice) {
+			view(player, l, "The price is 1 to " + s.maxPrice + ".");
+			return;
+		}
+		if (spare > 0) data.trim(l, spare);
+		String err = data.edit(l, price, per, s);
 		if (err != null) {
 			view(player, l, err);
 			return;
 		}
 		MarketStore.saveNow();
-		view(player, l, null, "Now " + price(l) + ".");
+		view(player, l, null, "Now " + price(l) + "." + (spare > 0 ? " " + spare + " went to your mailbox." : ""));
 	}
 
 	private static void collect(ServerPlayer player) {

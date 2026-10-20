@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.15.3
+- Market: item icons show a single item instead of a stack; the amount is in the text next to it
+- Market: changing "For how many" to a lot size that doesn't split what's listed (1,700 per 16) offers ways out instead of just refusing: keep that lot size and get the spare items back in your mailbox, or take the nearest lot sizes that fit (each button says the resulting price)
+- Market: selling an amount that doesn't split into the lot size rounds it down to the nearest that does (the rest stays with you) and asks to confirm; what was typed stays in the fields after a mistake
+
 ## 1.15.2
 - Pets: the wandering while their owner is AFK is smooth again. The head no longer leaves the player to be moved block by block (which clients only saw in jumps), and it no longer spins when it reaches a spot: it turns gently, looking where it goes and then at its owner
 

@@ -415,6 +415,19 @@ public final class Market {
 			return sale;
 		}
 
+		/** Sends some of a listing back to the seller's mailbox (the spare items when the lot size changes). */
+		public void trim(Listing l, int spare) {
+			if (spare <= 0 || spare >= l.amount) return;
+			l.amount -= spare;
+			Mailbox m = mailbox(l.seller, l.sellerName);
+			Parcel p = new Parcel();
+			p.item = l.item;
+			p.amount = spare;
+			m.parcels.add(p);
+			m.rev = bump();
+			l.rev = bump();
+		}
+
 		/** Takes a listing off the market; what's left goes back to the seller's mailbox. */
 		public void withdraw(Listing l) {
 			if (l.amount > 0) {
