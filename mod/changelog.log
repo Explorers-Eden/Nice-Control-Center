@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.15.5
+- Dispensers play goat horns: the wait is exactly a player's, for the horn's whole cooldown group (all goat horns wait together, Fabled Roots' horns together; a horn's use_cooldown replaces its own time, like for players). With several horns inside, one whose group is still waiting gives way to one that's ready; all of them stay in the dispenser
+
 ## 1.15.4
 - Gameplay tweak: dispensers play goat horns. A powered dispenser with a horn in it blows the horn and keeps it, as loud and far as a player would, and sculk sensors hear it. Data pack horns (like Fabled Roots' horns) play their own sound. Afterwards the dispenser waits as long as a player would have to (the horn's time or its cooldown), so a redstone clock can't keep it blaring; meanwhile it only clicks. Off by default
 
