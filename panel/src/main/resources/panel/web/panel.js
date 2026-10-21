@@ -3295,6 +3295,7 @@
       worldDims = data.dimensions;
       worldBorders = data.borders || {};
       renderBorders();
+      renderWilds(data.wilds || {});
       renderTrim(data);
     } catch (err) {
       formMsg('pn-borders-msg', err.message, false);
@@ -3361,6 +3362,32 @@
       formMsg('pn-borders-msg', 'Saved. A running server picks the hard border up within a few seconds.', true);
     } catch (err) {
       formMsg('pn-borders-msg', err.message, false);
+    }
+  });
+
+  function renderWilds(w) {
+    const f = $('pn-wilds-form');
+    for (const k of ['enabled', 'sound', 'postEffect']) f.elements[k].checked = !!w[k];
+    for (const k of ['enteredText', 'enteredColor', 'exitedText', 'exitedColor', 'postEffectId']) f.elements[k].value = w[k] ?? '';
+    f.elements.postEffectId.disabled = !w.postEffect;
+    Dirty.reset('wilds');
+  }
+
+  $('pn-wilds-form').addEventListener('change', (e) => {
+    if (e.target.name === 'postEffect') e.currentTarget.elements.postEffectId.disabled = !e.target.checked;
+  });
+
+  $('pn-wilds-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const w = { enabled: f.elements.enabled.checked, sound: f.elements.sound.checked, postEffect: f.elements.postEffect.checked };
+    for (const k of ['enteredText', 'enteredColor', 'exitedText', 'exitedColor', 'postEffectId']) w[k] = f.elements[k].value;
+    try {
+      const res = await api('api/borders/wilds', w);
+      renderWilds(res.wilds);
+      formMsg('pn-wilds-msg', 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-wilds-msg', err.message, false);
     }
   });
 
@@ -5700,6 +5727,7 @@
     extra: () => [...exSet].sort() });
   Dirty.track('logs', $('pn-cleanup-save').closest('section'), { saveButtons: [$('pn-cleanup-save')], reload: loadCleanup });
   Dirty.track('borders', $('pn-borders-save').closest('section'), { saveButtons: [$('pn-borders-save')], reload: renderBorders });
+  Dirty.track('wilds', $('pn-wilds-form'), { reload: loadWorld });
   Dirty.track('discord', $('pn-discord-form'), { reload: loadDiscord });
   Dirty.track('map', $('pn-map-form'), { reload: loadMap });
   Dirty.track('maintenance', $('pn-mt-form'), { reload: loadMaintenance, extra: () => [...mtStaff].sort() });

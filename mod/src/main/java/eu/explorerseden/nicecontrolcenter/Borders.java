@@ -19,6 +19,7 @@ import java.util.Map;
 public final class Borders {
 	public static final String FILE = "nicecontrolcenter-borders.json";
 	public static final int MAX_RADIUS = 1_000_000;
+	public static final String WILDS_FILE = "nicecontrolcenter-wilds.json";
 
 	public static final class Border {
 		/** "square" or "circle". */
@@ -58,7 +59,54 @@ public final class Borders {
 		}
 	}
 
+	/** What players get when they cross the soft border (config/nicecontrolcenter-wilds.json). */
+	public static final class Wilds {
+		public boolean enabled = false;
+		public String enteredText = "- Entered Outer Wilds -";
+		public String enteredColor = "#FF4A4A";
+		public String exitedText = "- Exited Outer Wilds -";
+		public String exitedColor = "#4AFF77";
+		/** The chicken-egg plop with the message. */
+		public boolean sound = true;
+		/** Shows a post effect from the server resource pack while in the outer wilds (Minecraft 26.3+). */
+		public boolean postEffect = false;
+		public String postEffectId = "";
+		/** Post effects used before (newest last), taken off players who still have one saved. Kept by the panel. */
+		public java.util.List<String> previousIds = new java.util.ArrayList<>();
+	}
+
 	private Borders() {
+	}
+
+	/** Returns an error, or null. */
+	public static String validate(Wilds w) {
+		if (w == null) return "No settings.";
+		if (w.enteredText == null || w.exitedText == null || w.enteredText.length() > 200 || w.exitedText.length() > 200) return "Messages are at most 200 characters.";
+		if (Claims.parseColor(w.enteredColor) < 0 || Claims.parseColor(w.exitedColor) < 0) return "Colours are #RRGGBB.";
+		if (w.postEffectId == null) w.postEffectId = "";
+		w.postEffectId = w.postEffectId.strip();
+		if (!w.postEffectId.isEmpty() && !w.postEffectId.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+")) return "The post effect is an id like eden:outer_wilds_warning.";
+		if (w.postEffect && w.postEffectId.isEmpty()) return "Enter the post effect's id, or switch it off.";
+		if (w.previousIds == null) w.previousIds = new java.util.ArrayList<>();
+		return null;
+	}
+
+	/** Defaults when the file is missing or unreadable. */
+	public static Wilds readWilds(Path file) {
+		try {
+			if (!Files.exists(file)) return new Wilds();
+			Wilds w = Json.GSON.fromJson(Files.readString(file), Wilds.class);
+			return w == null || validate(w) != null ? new Wilds() : w;
+		} catch (IOException | RuntimeException e) {
+			return new Wilds();
+		}
+	}
+
+	public static void writeWilds(Path file, Wilds w) throws IOException {
+		Files.createDirectories(file.getParent());
+		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+		Files.writeString(tmp, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(w), StandardCharsets.UTF_8);
+		Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 	}
 
 	/** Returns an error, or null. */

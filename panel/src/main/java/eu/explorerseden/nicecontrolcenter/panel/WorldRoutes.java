@@ -53,6 +53,7 @@ final class WorldRoutes {
 			Map<String, Object> out = new LinkedHashMap<>(trimmer.status());
 			out.put("dimensions", trimmer.dimensions());
 			out.put("borders", trimmer.borders());
+			out.put("wilds", trimmer.wilds());
 			json(ctx, out);
 		}));
 
@@ -65,6 +66,16 @@ final class WorldRoutes {
 				return;
 			}
 			json(ctx, Map.of("ok", true, "borders", trimmer.borders()));
+		}));
+
+		routes.post("/api/borders/wilds", guard(Permissions.WORLD_TRIM, (ctx, me) -> {
+			Borders.Wilds w = Json.GSON.fromJson(body(ctx), Borders.Wilds.class);
+			String error = trimmer.saveWilds(w, me.name());
+			if (error != null) {
+				error(ctx, HttpStatus.BAD_REQUEST, error);
+				return;
+			}
+			json(ctx, Map.of("ok", true, "wilds", trimmer.wilds()));
 		}));
 
 		routes.post("/api/trim/preview", guard(Permissions.WORLD_TRIM, (ctx, me) -> {

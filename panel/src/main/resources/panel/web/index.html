@@ -1248,6 +1248,26 @@
 					</div>
 				</section>
 				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-signpost-split"></i> Outer wilds message</h3>
+					<p class="np-card-intro">When players cross a soft border above, they see a message in the action bar. While they're in the outer wilds they can also see a post effect from the server resource pack (Minecraft 26.3 or newer). Changes reach a running server within a few seconds.</p>
+					<form id="pn-wilds-form" autocomplete="off">
+						<label class="np-form-row">Show the message<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+						<div class="np-form-grid">
+							<label class="np-form-row">Entering the outer wilds<input type="text" name="enteredText" maxlength="200" placeholder="(no message)"></label>
+							<label class="np-form-row">Colour<input type="color" name="enteredColor"></label>
+							<label class="np-form-row">Back in the permanent area<input type="text" name="exitedText" maxlength="200" placeholder="(no message)"></label>
+							<label class="np-form-row">Colour<input type="color" name="exitedColor"></label>
+						</div>
+						<label class="np-form-row">Plop sound with the message<span class="np-switch"><input type="checkbox" name="sound"><span></span></span></label>
+						<label class="np-form-row">Post effect while in the outer wilds<span class="np-switch"><input type="checkbox" name="postEffect"><span></span></span></label>
+						<label class="np-form-row">Post effect id<input type="text" name="postEffectId" maxlength="100" placeholder="eden:outer_wilds_warning"></label>
+						<div class="pn-sticky-save">
+							<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+							<span class="np-form-msg" id="pn-wilds-msg"></span>
+						</div>
+					</form>
+				</section>
+				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-grid-3x3-gap"></i> Pregenerate</h3>
 					<p class="np-card-intro">Generates every chunk up to the hard border (or the soft border without one) in each dimension with Pregen ticked, one dimension after another, so players don't wait for terrain and the map is complete. It runs on its own thread in the mod, only as fast as the server has room for, keeps going with nobody online and carries on after a restart.</p>
 					<div class="pn-backup-status" id="pn-pregen-status"></div>

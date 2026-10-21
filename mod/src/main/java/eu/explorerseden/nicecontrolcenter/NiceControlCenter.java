@@ -70,6 +70,8 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.pets.PetStore.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.HardBorder::tick);
+		// The outer wilds message and post effect when players cross the soft border.
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.OuterWilds::tick);
 		// Performance and maintenance settings from the panel (config files, read again when they change).
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.START_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.PerfControl::tick);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(eu.explorerseden.nicecontrolcenter.core.MaintenanceControl::tick);
@@ -101,6 +103,7 @@ public class NiceControlCenter implements ModInitializer {
 			eu.explorerseden.nicecontrolcenter.players.ClientInfo.forget(handler.player.getUUID());
 			eu.explorerseden.nicecontrolcenter.players.Seen.left(handler.player.getUUID());
 			eu.explorerseden.nicecontrolcenter.core.HardBorder.forget(handler.player.getUUID());
+			eu.explorerseden.nicecontrolcenter.core.OuterWilds.forget(handler.player.getUUID());
 		});
 	}
 

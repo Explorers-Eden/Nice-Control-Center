@@ -59,6 +59,7 @@ public final class Trimmer {
 	private final List<String> log = new CopyOnWriteArrayList<>();
 	private volatile String result;
 	private final Path bordersFile;
+	private final Path wildsFile;
 	private volatile Notifier notifier = Notifier.NONE;
 
 	void useNotifier(Notifier n) {
@@ -71,6 +72,7 @@ public final class Trimmer {
 		this.server = server;
 		this.audit = audit;
 		this.bordersFile = serverDir.resolve("config").resolve(Borders.FILE);
+		this.wildsFile = serverDir.resolve("config").resolve(Borders.WILDS_FILE);
 	}
 
 	// ── Borders ────────────────────────────────────────────────────────────
@@ -92,6 +94,26 @@ public final class Trimmer {
 		Borders.write(bordersFile, all);
 		audit.log(by, "world.borders", b == null ? dimension + ": removed"
 				: dimension + ": " + b.shape + " around " + b.x + ", " + b.z + ", soft " + b.soft + ", hard " + (b.hard == 0 ? "none" : b.hard), null);
+		return null;
+	}
+
+	public Borders.Wilds wilds() {
+		return Borders.readWilds(wildsFile);
+	}
+
+	/** Saves the outer wilds message. Returns an error, or null. */
+	public synchronized String saveWilds(Borders.Wilds w, String by) throws IOException {
+		String problem = Borders.validate(w);
+		if (problem != null) return problem;
+		// Remember ids no longer used, so the mod takes them off players who log in with one saved.
+		Borders.Wilds old = wilds();
+		List<String> previous = new ArrayList<>(old.previousIds);
+		if (!old.postEffectId.isEmpty()) previous.add(old.postEffectId);
+		previous.remove(w.postEffectId);
+		w.previousIds = new ArrayList<>(new java.util.LinkedHashSet<>(previous.reversed())).reversed();
+		if (w.previousIds.size() > 20) w.previousIds = new ArrayList<>(w.previousIds.subList(w.previousIds.size() - 20, w.previousIds.size()));
+		Borders.writeWilds(wildsFile, w);
+		audit.log(by, "world.wilds", (w.enabled ? "on" : "off") + ", post effect " + (w.postEffect ? w.postEffectId : "off"), null);
 		return null;
 	}
 

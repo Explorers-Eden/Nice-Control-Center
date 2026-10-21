@@ -1,3 +1,6 @@
+## 1.19.0
+- World → Borders & reset: Outer wilds message card for mod 1.20.0 (on/off, entering and leaving text and colour, plop sound, post effect on/off and its id)
+
 ## 1.18.0
 - Claims → Settings: Waypoint hubs card for mod 1.19.0 (hubs only in the permanent area, owner menu, dimensions without hubs); works with claims off
 
