@@ -3,7 +3,9 @@ package eu.explorerseden.nicecontrolcenter.tweaks;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -34,8 +36,20 @@ public final class AntiXray {
 	private AntiXray() {
 	}
 
+	/**
+	 * Which blocks of a section were found covered (packed y<<8 | z<<4 | x), per real section (weak keys: dropped with
+	 * the chunk). Only the positions are kept: every send copies the live section and covers a position only if an ore
+	 * is still there, so nothing but the expensive search is reused. Cleared around every block change, and whole when
+	 * the settings change.
+	 */
+	private static final Map<LevelChunkSection, short[]> cache = Collections.synchronizedMap(new WeakHashMap<>());
+	private static final short[] NOTHING = new short[0];
+	/** Above this many cached sections the cache starts over. */
+	private static final int CACHE_MAX = 50_000;
+
 	/** After the settings are read: the blocks to hide, from the ids and #tags. */
 	static void rebuild(Tweaks.Settings s, List<TweaksControl.Match<Block>> blocks) {
+		cache.clear();
 		if (!s.antiXray.enabled) {
 			hidden = Set.of();
 			return;
@@ -71,7 +85,13 @@ public final class AntiXray {
 				int baseY = chunk.getSectionYFromSectionIndex(i) << 4;
 				if (overworldLike && baseY > maxY) continue;
 				if (!section.maybeHas(state -> hide.contains(state.getBlock()))) continue;
-				LevelChunkSection copy = hideIn(level, chunk, real, i, baseY, overworldLike ? maxY : Integer.MAX_VALUE, hide);
+				short[] covered = cache.get(section);
+				if (covered == null) {
+					covered = coveredIn(level, chunk, real, i, baseY, overworldLike ? maxY : Integer.MAX_VALUE, hide);
+					if (cache.size() >= CACHE_MAX) cache.clear();
+					cache.put(section, covered);
+				}
+				LevelChunkSection copy = hideAt(level, section, covered, hide);
 				if (copy != null) {
 					if (out == real) out = real.clone();
 					out[i] = copy;
@@ -88,20 +108,34 @@ public final class AntiXray {
 		return out;
 	}
 
-	/** A copy of the section with its covered ores replaced, or null when there's nothing to hide. */
-	private static LevelChunkSection hideIn(ServerLevel level, LevelChunk chunk, LevelChunkSection[] sections, int index, int baseY, int maxY, Set<Block> hide) {
+	/** The section's ores that nothing shows (packed y<<8 | z<<4 | x); the expensive part, so it's cached. */
+	private static short[] coveredIn(ServerLevel level, LevelChunk chunk, LevelChunkSection[] sections, int index, int baseY, int maxY, Set<Block> hide) {
 		LevelChunkSection section = sections[index];
-		LevelChunkSection copy = null;
+		short[] found = new short[64];
+		int n = 0;
 		int top = Math.min(15, maxY - baseY);
 		for (int y = 0; y <= top; y++) {
 			for (int z = 0; z < 16; z++) {
 				for (int x = 0; x < 16; x++) {
 					BlockState state = section.getBlockState(x, y, z);
 					if (!hide.contains(state.getBlock()) || exposed(level, chunk, sections, index, x, y, z)) continue;
-					if (copy == null) copy = section.copy();
-					copy.setBlockState(x, y, z, cover(level, state), false);
+					if (n == found.length) found = java.util.Arrays.copyOf(found, n * 2);
+					found[n++] = (short) (y << 8 | z << 4 | x);
 				}
 			}
+		}
+		return n == 0 ? NOTHING : java.util.Arrays.copyOf(found, n);
+	}
+
+	/** A copy of the live section with the covered ores that are still there replaced, or null when there's nothing to hide. */
+	private static LevelChunkSection hideAt(ServerLevel level, LevelChunkSection section, short[] covered, Set<Block> hide) {
+		LevelChunkSection copy = null;
+		for (short p : covered) {
+			int x = p & 15, z = p >> 4 & 15, y = p >> 8 & 15;
+			BlockState state = section.getBlockState(x, y, z);
+			if (!hide.contains(state.getBlock())) continue;
+			if (copy == null) copy = section.copy();
+			copy.setBlockState(x, y, z, cover(level, state), false);
 		}
 		return copy;
 	}
@@ -135,6 +169,15 @@ public final class AntiXray {
 		return false;
 	}
 
+	private static void forget(ServerLevel level, BlockPos pos) {
+		if (cache.isEmpty() || !level.isLoaded(pos)) return;
+		LevelChunk chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+		if (chunk == null) return;
+		int index = chunk.getSectionIndex(pos.getY());
+		LevelChunkSection[] sections = chunk.getSections();
+		if (index >= 0 && index < sections.length && sections[index] != null) cache.remove(sections[index]);
+	}
+
 	/** What a hidden ore looks like: the stone around it. */
 	private static BlockState cover(ServerLevel level, BlockState ore) {
 		if (level.dimension().equals(Level.NETHER)) return Blocks.NETHERRACK.defaultBlockState();
@@ -149,6 +192,9 @@ public final class AntiXray {
 	public static void changed(ServerLevel level, BlockPos pos) {
 		Set<Block> hide = hidden;
 		if (hide.isEmpty()) return;
+		// What's covered may have changed in this section and the ones touching the block.
+		forget(level, pos);
+		for (Direction d : Direction.values()) forget(level, pos.relative(d));
 		for (Direction d : Direction.values()) {
 			BlockPos next = pos.relative(d);
 			// Never load a chunk for this.

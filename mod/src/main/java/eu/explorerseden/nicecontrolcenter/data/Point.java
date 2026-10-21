@@ -19,5 +19,9 @@ public record Point(
 		boolean paused,
 		/** View and simulation distance in chunks (lowered while lagging when dynamic distances are on). */
 		int view,
-		int sim) {
+		int sim,
+		/** Of each 1000 ms: ticks, work between ticks, and the part of both the server thread spent off the CPU (waiting, blocked, no core). */
+		double tickMs,
+		double betweenMs,
+		double offCpuMs) {
 }

@@ -427,6 +427,12 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="tuning" hidden>
+				<section class="np-card" id="pn-profiles-card">
+					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Profiles</h3>
+					<p class="np-card-intro">Ready-made sets of the settings below. Applying one changes only what it lists; frozen chunks, mob limits and item lists stay. Every setting stays editable afterwards. Not sure? <b>Test against current</b> runs an A/B trial (about 40 minutes, best while players are on) and shows the result in Dashboard → Reports.</p>
+					<div class="pn-perf-profiles" id="pn-profiles"></div>
+					<p class="np-form-msg" id="pn-profiles-msg"></p>
+				</section>
 				<form id="pn-perf-form" autocomplete="off">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-graph-down-arrow"></i> Step down while it lags</h3>
@@ -537,6 +543,16 @@
 					<div class="np-form-grid" data-needs="hoppers.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="hoppers.enabled"><span></span></span></label>
 						<label class="np-form-row">Idle hoppers wait (ticks)<input type="number" name="hoppers.idleCooldown" min="1" max="40"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-hourglass-split"></i> Spawn less often</h3>
+					<p class="np-card-intro">Vanilla tries to spawn monsters, water mobs and bats in every chunk near players every tick (animals only every 20 seconds). Trying every few ticks instead (like Paper's <i>ticks-per spawns</i>) costs much less; caps still fill up, only a little slower. Each dimension tries on its own ticks. Needs mod 1.23.0.</p>
+					<div class="np-form-grid" data-needs="spawning.enabled">
+						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="spawning.enabled"><span></span></span></label>
+						<label class="np-form-row">Monsters every (ticks)<input type="number" name="spawning.monstersEvery" min="1" max="40"></label>
+						<label class="np-form-row">Water mobs every (ticks)<input type="number" name="spawning.waterEvery" min="1" max="40"></label>
+						<label class="np-form-row">Bats every (ticks)<input type="number" name="spawning.ambientEvery" min="1" max="40"></label>
 					</div>
 				</section>
 				<section class="np-card">

@@ -830,3 +830,12 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-pk-help h5 { margin: 10px 0 4px; }
 .pn-pk-help ul { margin: 0; padding-left: 18px; }
 .pn-pk-help li { margin: 2px 0; }
+
+/* ── Performance profiles ─────────────────────────────────────────────── */
+.pn-perf-profiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pn-perf-profile { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--card-border); border-radius: 10px; }
+.pn-perf-profile.active { border-color: var(--accent); }
+.pn-perf-profile h4 { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pn-perf-profile .pn-hint { flex: 1; margin: 0; }
+.pn-perf-profile-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pn-badge.good { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good); }

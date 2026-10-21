@@ -50,6 +50,11 @@ public final class Tracker {
 	private static volatile long lastTickEnd;
 	private static long waitedNs;
 	private static volatile boolean waiting;
+	/** The server thread's CPU time when the tick started and when the last one ended (-1: not supported). */
+	private static long tickStartCpu;
+	private static long lastTickEndCpu = -1;
+	private static final java.lang.management.ThreadMXBean THREADS = java.lang.management.ManagementFactory.getThreadMXBean();
+	private static final boolean CPU_TIME = cpuTimeSupported();
 	/** Stats that got time in the current tick, to name the culprits of a lag spike. */
 	private static int tickId;
 	private static Stat[] touched = new Stat[256];
@@ -61,6 +66,21 @@ public final class Tracker {
 	public static long spikeThresholdNs = 100_000_000L;
 
 	private Tracker() {
+	}
+
+	private static boolean cpuTimeSupported() {
+		try {
+			if (!THREADS.isCurrentThreadCpuTimeSupported()) return false;
+			if (!THREADS.isThreadCpuTimeEnabled()) THREADS.setThreadCpuTimeEnabled(true);
+			return THREADS.getCurrentThreadCpuTime() >= 0;
+		} catch (RuntimeException e) {
+			return false;
+		}
+	}
+
+	/** CPU time of the calling thread in ns, or -1. */
+	private static long cpuNow() {
+		return CPU_TIME ? THREADS.getCurrentThreadCpuTime() : -1;
 	}
 
 	public static void start(MinecraftServer minecraftServer) {
@@ -231,6 +251,7 @@ public final class Tracker {
 			depth = 0;
 			currentPhase = null;
 			lastTickEnd = 0;
+			lastTickEndCpu = -1;
 			waitedNs = 0;
 		}
 		return enabled;
@@ -244,6 +265,7 @@ public final class Tracker {
 		currentPhase = null;
 		Arrays.fill(tickPhaseNs, 0);
 		inTick = true;
+		tickStartCpu = cpuNow();
 		tickStart = System.nanoTime();
 		// What the server did since the last tick: waiting for the next one, or working on queued tasks.
 		long end = lastTickEnd;
@@ -252,6 +274,9 @@ public final class Tracker {
 			long waited = Math.min(gap, waitedNs);
 			bucket.betweenIdleNs += waited;
 			bucket.betweenBusyNs += gap - waited;
+			// Running on a core, of the time it wasn't waiting for the next tick (parking takes next to no CPU).
+			if (tickStartCpu >= 0 && lastTickEndCpu >= 0) bucket.betweenCpuNs += Math.min(gap - waited, Math.max(0, tickStartCpu - lastTickEndCpu));
+			else bucket.betweenCpuNs += gap - waited;
 		}
 		lastTickEnd = 0;
 		waitedNs = 0;
@@ -275,8 +300,10 @@ public final class Tracker {
 
 	public static void endTick() {
 		long tickEnd = System.nanoTime();
+		long tickEndCpu = cpuNow();
 		long tickNs = tickEnd - tickStart;
 		inTick = false;
+		lastTickEndCpu = tickEndCpu;
 		// From here on it counts as between ticks (Nice Control Center's own once-a-second work below included).
 		lastTickEnd = tickEnd;
 		depth = 0;
@@ -289,6 +316,8 @@ public final class Tracker {
 		} else {
 			b.ticks++;
 			b.tickNsSum += tickNs;
+			if (tickEndCpu >= 0 && tickStartCpu >= 0) b.tickCpuNs += Math.min(tickNs, tickEndCpu - tickStartCpu);
+			else b.tickCpuNs += tickNs;
 			b.tickNsMax = Math.max(b.tickNsMax, tickNs);
 			b.tickNsMin = Math.min(b.tickNsMin, tickNs);
 			b.msptHistogram[TickHistogram.bin(tickNs)]++;

@@ -63,6 +63,7 @@ public final class MarketStore {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(MarketStore::load);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> {
 			save();
+			eu.explorerseden.nicecontrolcenter.core.AsyncFiles.flush();
 			file = null;
 			server = null;
 		});
@@ -115,7 +116,7 @@ public final class MarketStore {
 		Path f = settingsFile();
 		long now;
 		try {
-			now = Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0;
+			now = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(f);
 		} catch (IOException e) {
 			return;
 		}
@@ -128,7 +129,7 @@ public final class MarketStore {
 		dirty = true;
 	}
 
-	/** Right away: items players handed over must never be lost to a crash. */
+	/** Right away (handed to the file writer at once, on disk within moments): items players handed over must never be lost to a crash. */
 	public static void saveNow() {
 		dirty = true;
 		save();
@@ -137,12 +138,9 @@ public final class MarketStore {
 	private static void save() {
 		Path f = file;
 		if (f == null || !dirty) return;
-		try {
-			Market.writeData(f, data);
-			dirty = false;
-		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't save {}: {}", f, e.toString());
-		}
+		// Turned into text here (the data only changes on this thread), written to disk in the background.
+		eu.explorerseden.nicecontrolcenter.core.AsyncFiles.write(f, eu.explorerseden.nicecontrolcenter.Json.GSON.toJson(data));
+		dirty = false;
 	}
 
 	// ---------------------------------------------------------------- items

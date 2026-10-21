@@ -55,6 +55,15 @@ public final class MapExport {
 		}
 		out.put("dimensions", dims);
 
+		out.put("players", players(server));
+		out.put("claims", claims(server, root));
+		out.put("hubs", hubs(server, storageId));
+		out.put("time", System.currentTimeMillis());
+		return out;
+	}
+
+	/** Where players are (spectators left out), for the map's live dots. */
+	public static List<Map<String, Object>> players(MinecraftServer server) {
 		List<Map<String, Object>> players = new ArrayList<>();
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			if (p.isSpectator()) {
@@ -69,11 +78,7 @@ public final class MapExport {
 			m.put("z", (int) Math.floor(p.getZ()));
 			players.add(m);
 		}
-		out.put("players", players);
-		out.put("claims", claims(server, root));
-		out.put("hubs", hubs(server, storageId));
-		out.put("time", System.currentTimeMillis());
-		return out;
+		return players;
 	}
 
 	private static List<Map<String, Object>> claims(MinecraftServer server, Path root) {

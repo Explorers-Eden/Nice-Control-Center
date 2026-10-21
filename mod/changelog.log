@@ -1,4 +1,16 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.23.0
+- Monitoring: splits the server thread's busy time into running on a core and waiting (blocked on a lock, waiting for another thread or the disk, or not given a core by the host). New "Server thread" chart, off-CPU numbers in Between ticks, and a "Where it waited" table naming the lock and the thread that holds it
+- Monitoring: Machine & threads card with CPU taken by the host (steal), container CPU limit and throttling, I/O wait, pressure (Linux), and CPU per group of threads (C2ME workers, Netty, GC…)
+- Diagnosis: "The server thread is waiting, not working", "The host takes CPU away from the server", "The disk is slow to answer" and busy thread groups, each saying whether the fix is on the host or in the game
+- A/B trials: /ncc trial start <a> <b> [minutes] [rounds] (and Dashboard → Reports) switches between two sets of performance settings or distances in turns (A B B A …) and gives a verdict that only counts differences bigger than the spread between turns. Sides: current, off, balanced, aggressive, a feature or no-feature, sim6, view8, joined with +. Changes are temporary; lag protection pauses meanwhile
+- Performance profiles (Off, Balanced, Aggressive) shared with the panel
+- Spawn less often (Performance → Spawning): monsters, water mobs and bats try to spawn every few ticks, each dimension on its own ticks (off by default; on in Balanced and Aggressive)
+- Less work on the server thread: pets, claims and market files are written to disk in the background; settings files are checked for changes by a background thread; pet bond progress is saved every 5 minutes and when the player leaves (was every minute)
+- Anti-xray remembers each section's hidden copy until a block next to it changes, so chunks sent again cost nothing
+- Waypoint teleports: the target's chunks start loading in the background during the warm-up, so the teleport doesn't load them on the spot (with Warm teleport targets on)
+- Idle hoppers spread their next look over 4 ticks; panel map data: claims, hubs and dimensions are worked out once a minute (player positions every request); panel data is turned into JSON on the server thread so it can't change while being sent
+
 ## 1.22.0
 - Pets: nods, flips, dances and other head turns turn the head in place instead of swinging it around its top
 - Tab list: {tps} shows the ticks that really ran in the last 5 seconds, so short lag shows up (it stayed at 20 until the average tick went over 50 ms)

@@ -70,7 +70,7 @@ public final class MaintenanceControl {
 		Path file = file();
 		long now;
 		try {
-			now = Files.exists(file) ? Files.getLastModifiedTime(file).toMillis() : 0;
+			now = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(file);
 		} catch (java.io.IOException e) {
 			return;
 		}

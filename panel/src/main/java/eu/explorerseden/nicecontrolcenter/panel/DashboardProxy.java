@@ -54,6 +54,9 @@ final class DashboardProxy {
 			Map.entry("/api/pregen/start", Permissions.WORLD_TRIM),
 			Map.entry("/api/pregen/stop", Permissions.WORLD_TRIM),
 			Map.entry("/api/cleanup/run", Permissions.SETTINGS_SERVER),
+			// A/B trials switch performance settings for a while.
+			Map.entry("/api/trial/start", Permissions.SETTINGS_SERVER),
+			Map.entry("/api/trial/stop", Permissions.SETTINGS_SERVER),
 			Map.entry("/api/loadedchunks/release", Permissions.SETTINGS_SERVER));
 	/** Reads that show more than the dashboard view: the console and the chat. */
 	private static final Map<String, String> GET_PERMISSIONS = Map.of("/api/console", Permissions.CONSOLE_READ, "/api/chat", Permissions.CONSOLE_READ);

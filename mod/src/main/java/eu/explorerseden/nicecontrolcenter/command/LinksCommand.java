@@ -65,7 +65,7 @@ public final class LinksCommand {
 		Path f = file();
 		long now;
 		try {
-			now = Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0;
+			now = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(f);
 		} catch (IOException e) {
 			return;
 		}

@@ -70,7 +70,7 @@ public final class ReportWriter {
 		for (int i = 0; i < points.size(); i += group) {
 			List<Point> part = points.subList(i, Math.min(points.size(), i + group));
 			int n = part.size();
-			double tps = 0, mspt = 0, msptMax = 0, cpuP = 0, cpuS = 0;
+			double tps = 0, mspt = 0, msptMax = 0, cpuP = 0, cpuS = 0, tickMs = 0, betweenMs = 0, offCpuMs = 0;
 			boolean paused = true;
 			long heap = 0, heapMax = 0, heapLive = 0, gc = 0;
 			int entities = 0, blockEntities = 0, chunks = 0, players = 0;
@@ -85,13 +85,17 @@ public final class ReportWriter {
 				heapMax = Math.max(heapMax, p.heapMax());
 				heapLive = Math.max(heapLive, p.heapLive());
 				gc += p.gcMs();
+				tickMs += p.tickMs();
+				betweenMs += p.betweenMs();
+				offCpuMs += p.offCpuMs();
 				entities = Math.max(entities, p.entities());
 				blockEntities = Math.max(blockEntities, p.blockEntities());
 				chunks = Math.max(chunks, p.chunks());
 				players = Math.max(players, p.players());
 			}
 			result.add(new Point(part.get(0).t(), tps / n, mspt / n, msptMax, heap / n, heapMax, heapLive, cpuP / n, cpuS / n,
-					entities, blockEntities, chunks, players, gc, paused, part.get(part.size() - 1).view(), part.get(part.size() - 1).sim()));
+					entities, blockEntities, chunks, players, gc, paused, part.get(part.size() - 1).view(), part.get(part.size() - 1).sim(),
+					tickMs / n, betweenMs / n, offCpuMs / n));
 		}
 		return result;
 	}

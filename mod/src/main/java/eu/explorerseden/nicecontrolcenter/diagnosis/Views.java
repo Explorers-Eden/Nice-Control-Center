@@ -78,7 +78,23 @@ public final class Views {
 	 * plus ticks fill the second, ticks are late and TPS drops even though each tick is quick.
 	 */
 	public record BetweenView(double busyMsPerSecond, double idleMsPerSecond, double tickMsPerSecond, double busyPercent, long samples,
-			List<BetweenTaskView> tasks) {
+			List<BetweenTaskView> tasks, double offCpuMsPerSecond, double tickOffCpuMsPerSecond, double betweenOffCpuMsPerSecond) {
+	}
+
+	/** Where the server thread waited instead of running (in ticks or between them); ms is per second of real time. */
+	public record WaitView(String where, String what, String frame, String mod, double msPerSecond, double percent) {
+	}
+
+	/** CPU used by a group of threads, in cores (1 = one core busy all the time). */
+	public record ThreadView(String name, int threads, double cores) {
+	}
+
+	/**
+	 * What the machine did to the server: CPU taken away (steal, container limit), I/O wait, pressure. Each
+	 * value is -1 when it couldn't be read (not Linux, or not available in this container).
+	 */
+	public record HostView(double stealPercent, double iowaitPercent, double cpuLimitCores, double throttledMsPerSecond,
+			double throttledPercent, double psiCpu, double psiIo, double psiMemory, double processCores, List<ThreadView> threads) {
 	}
 
 	public record BlockUpdateView(String dimension, int x, int y, int z, String block, double perSecond, double activePercent) {
@@ -304,7 +320,7 @@ public final class Views {
 	public static BetweenView between(Breakdown b) {
 		double seconds = b.wallMs / 1000.0;
 		if (seconds <= 0) {
-			return new BetweenView(0, 0, 0, 0, 0, List.of());
+			return new BetweenView(0, 0, 0, 0, 0, List.of(), 0, 0, 0);
 		}
 		double busy = b.betweenBusyNs / 1e6 / seconds;
 		double idle = b.betweenIdleNs / 1e6 / seconds;
@@ -322,7 +338,59 @@ public final class Views {
 			});
 		}
 		tasks.sort(Comparator.comparingDouble(BetweenTaskView::msPerSecond).reversed());
-		return new BetweenView(busy, idle, ticks, busy / 10.0, b.betweenSamples, limit(tasks, 15));
+		double tickOff = Math.max(0, b.tickNsSum - b.tickCpuNs) / 1e6 / seconds;
+		double betweenOff = Math.max(0, b.betweenBusyNs - b.betweenCpuNs) / 1e6 / seconds;
+		return new BetweenView(busy, idle, ticks, busy / 10.0, b.betweenSamples, limit(tasks, 15), tickOff + betweenOff, tickOff, betweenOff);
+	}
+
+	public static List<WaitView> waits(Breakdown b) {
+		List<WaitView> result = new ArrayList<>();
+		double seconds = b.wallMs / 1000.0;
+		if (seconds <= 0 || b.waits == null) {
+			return result;
+		}
+		double tickMs = b.tickNsSum / 1e6 / seconds;
+		double betweenMs = b.betweenBusyNs / 1e6 / seconds;
+		String sep = String.valueOf(eu.explorerseden.nicecontrolcenter.sampler.StackSampler.SEP);
+		b.waits.forEach((key, count) -> {
+			String[] parts = key.split(sep, -1);
+			if (parts.length < 4) {
+				return;
+			}
+			boolean tick = parts[0].equals(eu.explorerseden.nicecontrolcenter.sampler.StackSampler.TICK);
+			long of = tick ? b.samples : b.betweenSamples;
+			if (of <= 0) {
+				return;
+			}
+			double share = count / (double) of;
+			String mod = parts[3].isEmpty() ? null : SourceIndex.mod(parts[3]).name();
+			result.add(new WaitView(tick ? "In ticks" : "Between ticks", parts[1], parts[2], mod, share * (tick ? tickMs : betweenMs), share * 100));
+		});
+		result.sort(Comparator.comparingDouble(WaitView::msPerSecond).reversed());
+		return limit(result, 12);
+	}
+
+	public static HostView host(Breakdown b) {
+		Breakdown.Host h = b.host == null ? new Breakdown.Host() : b.host;
+		double steal = h.procSeconds > 0 ? h.stealPercent / h.procSeconds : -1;
+		double iowait = h.procSeconds > 0 ? h.iowaitPercent / h.procSeconds : -1;
+		double throttledMs = h.cgroupSeconds > 0 ? h.throttledUs / 1000.0 / h.cgroupSeconds : -1;
+		double throttledPct = h.periods > 0 ? h.throttledPeriods * 100.0 / h.periods : h.cgroupSeconds > 0 ? 0 : -1;
+		double psiCpu = h.psiSeconds > 0 ? h.psiCpu / h.psiSeconds : -1;
+		double psiIo = h.psiSeconds > 0 ? h.psiIo / h.psiSeconds : -1;
+		double psiMem = h.psiSeconds > 0 ? h.psiMemory / h.psiSeconds : -1;
+		List<ThreadView> threads = new ArrayList<>();
+		double wallNs = b.wallMs * 1e6;
+		double total = 0;
+		if (b.threads != null && wallNs > 0) {
+			for (Map.Entry<String, Breakdown.ThreadRow> e : b.threads.entrySet()) {
+				double cores = e.getValue().cpuNs / wallNs;
+				total += cores;
+				threads.add(new ThreadView(e.getKey(), e.getValue().countMax, cores));
+			}
+		}
+		threads.sort(Comparator.comparingDouble(ThreadView::cores).reversed());
+		return new HostView(steal, iowait, h.cpuLimitCores, throttledMs, throttledPct, psiCpu, psiIo, psiMem, total, limit(threads, 12));
 	}
 
 	static String betweenLabel(String kind) {
@@ -353,6 +421,8 @@ public final class Views {
 		view.put("hotspots", hotspots(b));
 		view.put("spikes", spikes(b));
 		view.put("between", between(b));
+		view.put("waits", waits(b));
+		view.put("host", host(b));
 		view.put("blockUpdates", blockUpdates(b));
 		view.put("worldgen", worldgen(b));
 		view.put("players", players(b));

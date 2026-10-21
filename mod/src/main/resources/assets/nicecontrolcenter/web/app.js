@@ -516,7 +516,8 @@
       table.innerHTML = '<tr><td class="np-empty">Not measured in this window (older recording or no data yet).</td></tr>';
       return;
     }
-    summary.innerHTML = `Per second: ticks <b>${fixed(b.tickMsPerSecond, 0)} ms</b> · work between ticks <b>${fixed(b.busyMsPerSecond, 0)} ms</b> · waiting <b>${fixed(b.idleMsPerSecond, 0)} ms</b>`;
+    summary.innerHTML = `Per second: ticks <b>${fixed(b.tickMsPerSecond, 0)} ms</b> · work between ticks <b>${fixed(b.busyMsPerSecond, 0)} ms</b> · idle until the next tick <b>${fixed(b.idleMsPerSecond, 0)} ms</b>` +
+      (b.offCpuMsPerSecond >= 1 ? `<br>Of the ticks and the work, <b>${fixed(b.offCpuMsPerSecond, 0)} ms</b> the server thread was off the CPU (blocked, waiting for the disk or another thread, or not given a core by the host): ${fixed(b.tickOffCpuMsPerSecond, 0)} ms in ticks, ${fixed(b.betweenOffCpuMsPerSecond, 0)} ms between them.` : '');
     if (!b.tasks.length) {
       table.innerHTML = '<tr><td class="np-empty">Nothing sampled between ticks.</td></tr>';
       return;
@@ -526,6 +527,46 @@
         <td>${t.mod ? esc(t.mod) : '–'}</td>
         <td class="num">${fixed(t.msPerSecond, 1)}</td>
         <td class="num">${fixed(t.percent, 0)}%</td></tr>`).join('') + '</tbody>';
+  }
+
+  function renderWaits(rows) {
+    const table = $('np-waits');
+    if (!rows || !rows.length) {
+      table.innerHTML = '<tr><td class="np-empty">No waiting seen (or an older recording).</td></tr>';
+      return;
+    }
+    table.innerHTML = '<thead><tr><th>Waiting for</th><th>Where</th><th>Mod</th><th class="num">ms/s</th></tr></thead><tbody>' +
+      rows.map((w) => `<tr><td class="name">${esc(w.what)}<small>${esc(w.frame)}</small></td>
+        <td>${esc(w.where)}</td>
+        <td>${w.mod ? esc(w.mod) : '–'}</td>
+        <td class="num">${fixed(w.msPerSecond, 1)}</td></tr>`).join('') + '</tbody>';
+  }
+
+  function renderHost(h) {
+    const box = $('np-host');
+    const table = $('np-threads');
+    if (!h) {
+      box.innerHTML = '';
+      table.innerHTML = '<tr><td class="np-empty">Not measured in this window (older recording).</td></tr>';
+      return;
+    }
+    const known = (v) => v != null && v >= 0;
+    const bits = [];
+    if (known(h.stealPercent)) bits.push(`CPU taken by the host (steal) <b>${fixed(h.stealPercent, 1)}%</b>`);
+    if (known(h.iowaitPercent)) bits.push(`waiting for the disk (I/O wait) <b>${fixed(h.iowaitPercent, 1)}%</b>`);
+    if (h.cpuLimitCores > 0) bits.push(`container CPU limit <b>${fixed(h.cpuLimitCores, 1)} cores</b>`);
+    if (known(h.throttledMsPerSecond)) bits.push(`held back by the limit <b>${fixed(h.throttledMsPerSecond, 0)} ms/s</b> (${fixed(h.throttledPercent, 0)}% of periods)`);
+    if (known(h.psiCpu)) bits.push(`pressure: CPU <b>${fixed(h.psiCpu, 1)}%</b> · disk <b>${fixed(h.psiIo, 1)}%</b> · memory <b>${fixed(h.psiMemory, 1)}%</b>`);
+    bits.push(`all server threads together <b>${fixed(h.processCores, 2)} cores</b>`);
+    const line = bits.join(' · ');
+    box.innerHTML = `<p class="np-card-intro">${line.charAt(0).toUpperCase() + line.slice(1)}</p>` +
+      (known(h.stealPercent) ? '' : '<p class="np-card-intro">Host readings need Linux; only the thread table is available here.</p>');
+    if (!h.threads || !h.threads.length) {
+      table.innerHTML = '<tr><td class="np-empty">No thread readings yet (they come every 5 seconds).</td></tr>';
+      return;
+    }
+    table.innerHTML = '<thead><tr><th>Threads</th><th class="num">Count</th><th class="num">Cores</th></tr></thead><tbody>' +
+      h.threads.map((t) => `<tr><td class="name">${esc(t.name)}</td><td class="num">${num(t.threads)}</td><td class="num">${fixed(t.cores, 2)}</td></tr>`).join('') + '</tbody>';
   }
 
   function renderView(view) {
@@ -549,6 +590,8 @@
         renderTypes('np-block-entities', view.blockEntities, k);
         renderSpikes(view.spikes, k);
         renderBetween(view.between);
+        renderWaits(view.waits);
+        renderHost(view.host);
         break;
       case 'world':
         renderWorldgen(view.worldgen);
@@ -732,6 +775,9 @@
         gcMs: part.reduce((a, p) => a + p.gcMs, 0),
         // The lowest distance in the slot: a step down shows even when it was short.
         view: Math.min(...src.map((p) => p.view || 0)), sim: Math.min(...src.map((p) => p.sim || 0)),
+        tickMs: src.reduce((a, p) => a + (p.tickMs || 0), 0) / src.length,
+        betweenMs: src.reduce((a, p) => a + (p.betweenMs || 0), 0) / src.length,
+        offCpuMs: src.reduce((a, p) => a + (p.offCpuMs || 0), 0) / src.length,
       });
     };
     for (const p of points) {
@@ -811,6 +857,11 @@
         base: (max) => (max >= 1073741824 ? 1073741824 : 1048576),
         unit: (v) => (v >= 1073741824 ? fixed(v / 1073741824, v % 1073741824 ? 1 : 0) + ' GB' : v ? fixed(v / 1048576, 0) + ' MB' : '0'),
         tip: (b) => `<b>${bytes(b.heapLive || b.heapUsed)}</b> after GC · ${bytes(b.heapUsed)} incl. garbage · of ${bytes(b.heapMax)}${b.gcMs ? ` · GC ${num(b.gcMs)} ms` : ''}<br><span class="t">${rangeText(b)}</span>`,
+      },
+      thread: {
+        lines: [{ field: 'tickMs', color: COLORS.accent, fill: true }, { field: 'betweenMs', color: COLORS.gold, width: 2 }, { field: 'offCpuMs', color: COLORS.poor, width: 1.5 }],
+        guide: 1000, max: () => 1050, fixedMax: true, unit: (v) => fixed(v, 0) + ' ms',
+        tip: (b) => `Ticks <b>${fixed(b.tickMs, 0)} ms</b> · between ticks <b>${fixed(b.betweenMs, 0)} ms</b> · off the CPU <span style="color:${COLORS.poor}">${fixed(b.offCpuMs, 0)} ms</span> of each second<br><span class="t">${rangeText(b)}</span>`,
       },
       distances: {
         lines: [{ field: 'view', color: COLORS.accent, step: true, width: 2 }, { field: 'sim', color: COLORS.gold, step: true, width: 2 }],
@@ -3007,6 +3058,84 @@
     }
   });
 
+  // ── A/B trials ─────────────────────────────────────────────────────────
+
+  const TRIAL_LABELS = {
+    current: 'Current settings', off: 'Off profile', balanced: 'Balanced profile', aggressive: 'Aggressive profile',
+  };
+
+  function trialOptions(tokens, selected) {
+    const extra = ['sim4', 'sim6', 'sim8', 'sim10', 'view6', 'view8', 'view10', 'view12'];
+    return [...tokens, ...extra].map((t) => `<option value="${esc(t)}"${t === selected ? ' selected' : ''}>${esc(TRIAL_LABELS[t] || t.replace(/^no-/, 'without ').replace(/^sim/, 'simulation distance ').replace(/^view/, 'view distance '))}</option>`).join('');
+  }
+
+  function renderTrial(data) {
+    const box = $('np-trial');
+    const st = data.status || {};
+    if (st.active) {
+      const left = Math.max(0, Math.round((st.endsAt - Date.now()) / 60000));
+      const turnLeft = Math.max(0, Math.round((st.segmentEndsAt - Date.now()) / 1000));
+      box.innerHTML = `<p class="np-card-intro"><b>Running</b> (started by ${esc(st.startedBy)}): A = ${esc(st.a)} · B = ${esc(st.b)}<br>
+        Turn ${num(st.segment)} of ${num(st.segments)}, now <b>${esc(st.current)}</b>, ${num(turnLeft)} s left in this turn · about ${num(left)} min in all.</p>
+        ${trialSegments(st.done || [])}
+        <button type="button" class="np-btn" id="np-trial-stop"><i class="bi bi-stop-fill"></i> Stop and show the result so far</button>`;
+    } else {
+      const tokens = data.tokens || ['current', 'off', 'balanced', 'aggressive'];
+      box.innerHTML = `<div class="np-compare-pick">
+        <label>A <select id="np-trial-a">${trialOptions(tokens, 'current')}</select></label>
+        <label>B <select id="np-trial-b">${trialOptions(tokens, 'balanced')}</select></label>
+        <label>Minutes per turn <input type="number" id="np-trial-minutes" min="2" max="60" value="5"></label>
+        <label>Rounds <input type="number" id="np-trial-rounds" min="1" max="12" value="4"></label>
+        <button type="button" class="np-btn primary" id="np-trial-start"><i class="bi bi-play-fill"></i> Start trial</button></div>
+        <p class="np-card-intro">Best while players are on. 4 rounds of 5 minutes take 40 minutes. Lag protection pauses during the trial.</p>`;
+    }
+    const results = data.results || [];
+    $('np-trial-results').innerHTML = results.length ? '<h4 class="np-subhead">Results</h4>' + results.map(trialResult).join('') : '';
+  }
+
+  function trialSegments(segs) {
+    if (!segs.length) return '';
+    return `<div class="np-table-wrap"><table class="np-table"><thead><tr><th>Turn</th><th>Side</th><th class="num">Busy ms/s</th><th class="num">TPS</th><th class="num">Players</th><th></th></tr></thead><tbody>` +
+      segs.map((g, i) => `<tr><td>${i + 1}</td><td>${esc(g.side)}</td><td class="num">${fixed(g.values.busy, 0)}</td><td class="num">${fixed(g.values.tps, 1)}</td>
+        <td class="num">${fixed(g.players, 1)}</td><td>${g.valid ? '' : `<small>not counted: ${esc(g.note)}</small>`}</td></tr>`).join('') + '</tbody></table></div>';
+  }
+
+  function trialResult(r) {
+    const rows = (r.metrics || []).map((m) => {
+      const better = m.clear && (m.lowerIsBetter ? m.meanB < m.meanA : m.meanB > m.meanA);
+      const worse = m.clear && !better;
+      return `<tr><td class="name">${esc(m.label)}</td>
+        <td class="num">${fixed(m.meanA, 1)} <small>±${fixed(m.spreadA, 1)}</small></td>
+        <td class="num">${fixed(m.meanB, 1)} <small>±${fixed(m.spreadB, 1)}</small></td>
+        <td class="num" style="${better ? 'color:var(--good)' : worse ? 'color:var(--poor)' : ''}">${m.change > 0 ? '+' : ''}${fixed(m.change, 0)}%${m.clear ? '' : ' <small>(within spread)</small>'}</td></tr>`;
+    }).join('');
+    const turns = (r.segments || []).filter((g) => g.valid).length;
+    return `<details class="np-trial-result"><summary><b>${esc(r.verdict)}</b><br><small>${clock(r.started)} · A = ${esc(r.a)} · B = ${esc(r.b)} · ${num(turns)} turns counted · by ${esc(r.startedBy)}</small></summary>
+      <div class="np-table-wrap"><table class="np-table"><thead><tr><th>Measure</th><th class="num">A</th><th class="num">B</th><th class="num">B vs A</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${trialSegments(r.segments || [])}</details>`;
+  }
+
+  let trialTimer = null;
+  async function loadTrial() {
+    try {
+      const data = await api('api/trial');
+      renderTrial(data);
+      clearTimeout(trialTimer);
+      if (data.status && data.status.active) trialTimer = setTimeout(loadTrial, 10000);
+    } catch (e) { /* shown by the live indicator */ }
+  }
+
+  async function trialAction(path) {
+    try {
+      const data = await api(path, { method: 'POST' });
+      if (data.error) alert(data.error);
+      renderTrial(data);
+      if (data.status && data.status.active) loadTrial();
+    } catch (e) {
+      alert('The server did not respond: ' + e.message);
+    }
+  }
+
   async function recordingAction(path) {
     try {
       const data = await api(path, { method: 'POST' });
@@ -3381,6 +3510,13 @@
       if (e.target.closest('#np-rec-stop')) {
         recordingAction('api/recording/stop');
       }
+      if (e.target.closest('#np-trial-start')) {
+        const q = new URLSearchParams({ a: $('np-trial-a').value, b: $('np-trial-b').value, minutes: $('np-trial-minutes').value, rounds: $('np-trial-rounds').value });
+        trialAction('api/trial/start?' + q);
+      }
+      if (e.target.closest('#np-trial-stop')) {
+        if (confirm('Stop the trial? The result uses the turns done so far.')) trialAction('api/trial/stop');
+      }
     });
   }
 
@@ -3437,6 +3573,7 @@
     pollWindow();
     loadReports();
     setInterval(loadReports, 30000);
+    loadTrial();
     api('api/bloat').then((d) => (d.running ? runBloat() : renderBloat(d.result))).catch(() => {});
     loadUpdates();
 

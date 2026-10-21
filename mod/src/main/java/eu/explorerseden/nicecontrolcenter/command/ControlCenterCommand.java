@@ -43,11 +43,12 @@ public final class ControlCenterCommand {
 	public static final String PERMISSION_WEB = "nicecontrolcenter.command.web";
 	public static final String PERMISSION_MONITOR = "nicecontrolcenter.command.monitor";
 	public static final String PERMISSION_RECORD = "nicecontrolcenter.command.record";
+	public static final String PERMISSION_TRIAL = "nicecontrolcenter.command.trial";
 	public static final String PERMISSION_UPDATES = "nicecontrolcenter.command.updates";
 	/** Receives "report ready" messages. */
 	public static final String PERMISSION_NOTIFY = "nicecontrolcenter.notify";
 	private static final PermissionLevel DEFAULT_LEVEL = PermissionLevel.GAMEMASTERS;
-	private static final String[] COMMAND_NODES = {PERMISSION_STATUS, PERMISSION_WEB, PERMISSION_MONITOR, PERMISSION_RECORD, PERMISSION_UPDATES};
+	private static final String[] COMMAND_NODES = {PERMISSION_STATUS, PERMISSION_WEB, PERMISSION_MONITOR, PERMISSION_RECORD, PERMISSION_UPDATES, PERMISSION_TRIAL};
 
 	private static final TextColor ACCENT = TextColor.fromRgb(0xb6c8ff);
 	private static final TextColor GOLD = TextColor.fromRgb(0xffd18b);
@@ -135,7 +136,76 @@ public final class ControlCenterCommand {
 								.then(Commands.argument("minutes", IntegerArgumentType.integer(1, 24 * 60))
 										.executes(ctx -> recordStart(ctx, IntegerArgumentType.getInteger(ctx, "minutes")))))
 						.then(Commands.literal("stop").executes(ControlCenterCommand::recordStop))
-						.then(Commands.literal("status").executes(ControlCenterCommand::recordStatus)));
+						.then(Commands.literal("status").executes(ControlCenterCommand::recordStatus)))
+				.then(Commands.literal("trial")
+						.requires(Permissions.require(PERMISSION_TRIAL, DEFAULT_LEVEL))
+						.executes(ControlCenterCommand::trialStatus)
+						.then(Commands.literal("start")
+								.then(Commands.argument("a", StringArgumentType.word()).suggests(ControlCenterCommand::suggestSides)
+										.then(Commands.argument("b", StringArgumentType.word()).suggests(ControlCenterCommand::suggestSides)
+												.executes(ctx -> trialStart(ctx, 5, 4))
+												.then(Commands.argument("minutes", IntegerArgumentType.integer(2, 60))
+														.executes(ctx -> trialStart(ctx, IntegerArgumentType.getInteger(ctx, "minutes"), 4))
+														.then(Commands.argument("rounds", IntegerArgumentType.integer(1, 12))
+																.executes(ctx -> trialStart(ctx, IntegerArgumentType.getInteger(ctx, "minutes"),
+																		IntegerArgumentType.getInteger(ctx, "rounds"))))))))
+						.then(Commands.literal("stop").executes(ControlCenterCommand::trialStop))
+						.then(Commands.literal("status").executes(ControlCenterCommand::trialStatus)));
+	}
+
+	private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestSides(CommandContext<CommandSourceStack> ctx,
+			com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+		String typed = builder.getRemaining().toLowerCase(Locale.ROOT);
+		for (String t : eu.explorerseden.nicecontrolcenter.core.Trials.tokens()) {
+			if (t.startsWith(typed)) builder.suggest(t);
+		}
+		for (String t : List.of("sim4", "sim6", "sim8", "view6", "view8", "view10")) {
+			if (t.startsWith(typed)) builder.suggest(t);
+		}
+		return builder.buildFuture();
+	}
+
+	private static int trialStart(CommandContext<CommandSourceStack> ctx, int minutes, int rounds) {
+		String by = ctx.getSource().getTextName();
+		// Trials measure with the monitor.
+		if (!eu.explorerseden.nicecontrolcenter.core.Tracker.enabled()) NiceControlCenter.setMonitoring(true);
+		String error = eu.explorerseden.nicecontrolcenter.core.Trials.start(ctx.getSource().getServer(), StringArgumentType.getString(ctx, "a"),
+				StringArgumentType.getString(ctx, "b"), minutes, rounds, by);
+		if (error != null) {
+			ctx.getSource().sendFailure(Component.literal(error));
+			return 0;
+		}
+		var status = eu.explorerseden.nicecontrolcenter.core.Trials.status();
+		ctx.getSource().sendSuccess(() -> header("Trial started").append("\n").append(muted(String.format(Locale.ROOT,
+				"A = %s, B = %s. %d turns of %d min, about %d min in all. The verdict appears in the dashboard (Reports) and the log.",
+				status.a(), status.b(), status.segments(), minutes, status.segments() * minutes))), true);
+		return 1;
+	}
+
+	private static int trialStop(CommandContext<CommandSourceStack> ctx) {
+		var result = eu.explorerseden.nicecontrolcenter.core.Trials.stop(ctx.getSource().getServer(), "stopped by " + ctx.getSource().getTextName());
+		if (result == null) {
+			ctx.getSource().sendFailure(Component.literal("No trial is running."));
+			return 0;
+		}
+		ctx.getSource().sendSuccess(() -> header("Trial stopped").append("\n").append(muted(result.verdict())), true);
+		return 1;
+	}
+
+	private static int trialStatus(CommandContext<CommandSourceStack> ctx) {
+		var status = eu.explorerseden.nicecontrolcenter.core.Trials.status();
+		MutableComponent message = header("Trial");
+		if (!status.active()) {
+			message.append("\n").append(muted("No trial running. Start one with /ncc trial start <a> <b> [minutes] [rounds], e.g. current balanced."));
+			var last = eu.explorerseden.nicecontrolcenter.core.Trials.results(ctx.getSource().getServer(), 1);
+			if (!last.isEmpty()) message.append("\n").append(muted("Last verdict: " + last.get(0).verdict()));
+		} else {
+			long left = Math.max(0, status.endsAt() - System.currentTimeMillis()) / 60_000;
+			message.append("\n").append(muted(String.format(Locale.ROOT, "A = %s, B = %s. Turn %d of %d (%s now), about %d min left.",
+					status.a(), status.b(), status.segment(), status.segments(), status.current(), left)));
+		}
+		ctx.getSource().sendSystemMessage(message);
+		return 1;
 	}
 
 	private static LiteralArgumentBuilder<CommandSourceStack> top(String what, Function<Breakdown, List<Component>> lines) {

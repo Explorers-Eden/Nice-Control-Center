@@ -188,6 +188,7 @@ public class NiceControlCenter implements ModInitializer {
 		sampler = new StackSampler(config.sampler_interval_ms);
 		Snapshotter.sampler(sampler);
 		sampler.start();
+		eu.explorerseden.nicecontrolcenter.core.HostMetrics.start();
 
 		Recorder.announcer(message -> notifyAdmins(ControlCenterCommand.reportReady(message), message));
 		Recorder.cleanUp(server);
@@ -291,6 +292,8 @@ public class NiceControlCenter implements ModInitializer {
 		Tracker.stop();
 		BossBarMonitor.stop();
 		NiceControlCenter.server = null;
+		eu.explorerseden.nicecontrolcenter.core.HostMetrics.stop();
+		eu.explorerseden.nicecontrolcenter.core.Trials.reset();
 		if (sampler != null) {
 			sampler.stop();
 			sampler = null;

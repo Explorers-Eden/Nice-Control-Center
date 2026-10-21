@@ -1,3 +1,9 @@
+## 1.21.0
+- Performance → Tuning: Profiles card (Off / Balanced, recommended / Aggressive) shows which one your settings match, applies one (only what it lists; frozen chunks, mob limits and item lists stay) and starts an A/B trial "current vs profile" for mod 1.23.0
+- Performance → Tuning: Spawn less often card (monsters, water mobs and bats try to spawn every few ticks) for mod 1.23.0
+- Dashboard: A/B trial start and stop need the server settings permission and are audited
+- Audit entries for performance changes list every switched-on feature
+
 ## 1.20.0
 - Market → Server shop: a listing whose icon is minecraft:player_head gets a Head texture field (minecraft-heads.com "Value" or a textures.minecraft.net link) for mod 1.21.0; the face shows in the listing tables, the editor preview and on the info page
 

@@ -26,7 +26,10 @@ public abstract class HopperMixin {
 		boolean moved = original.call(level, pos, state, hopper, action);
 		int idle = PerfControl.hopperIdle();
 		// Locked hoppers stay as vanilla, so redstone that unlocks them keeps its timing.
-		if (!moved && idle > 0 && state.getValue(HopperBlock.ENABLED)) ((HopperAccessor) hopper).nicecontrolcenter$setCooldownTime(idle);
+		// 0-3 ticks more by position, so a row of idle hoppers doesn't look again in the same tick.
+		if (!moved && idle > 0 && state.getValue(HopperBlock.ENABLED)) {
+			((HopperAccessor) hopper).nicecontrolcenter$setCooldownTime(idle + Math.floorMod(pos.getX() + pos.getZ() * 3 + pos.getY() * 7, 4));
+		}
 		return moved;
 	}
 }

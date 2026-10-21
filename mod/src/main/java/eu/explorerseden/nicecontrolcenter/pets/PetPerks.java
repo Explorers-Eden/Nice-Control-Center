@@ -147,7 +147,8 @@ public final class PetPerks {
 				levelUp(player, owned, st.level, level, s.perks);
 				st.level = level;
 			}
-			if (time - st.bondSaved >= 1200) {
+			// Bond progress is saved every 5 minutes (and when the player leaves); a crash loses at most that.
+			if (time - st.bondSaved >= 6000) {
 				st.bondSaved = time;
 				PetStore.changed();
 			}

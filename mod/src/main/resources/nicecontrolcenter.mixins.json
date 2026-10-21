@@ -82,6 +82,7 @@
 		"PlayerListInvoker",
 		"SmoothSaveMixin",
 		"SmoothSaveServerMixin",
+		"SpawnCadenceMixin",
 		"TeleportWarmMixin",
 		"MobAiMixin",
 		"MobCapGlobalMixin",

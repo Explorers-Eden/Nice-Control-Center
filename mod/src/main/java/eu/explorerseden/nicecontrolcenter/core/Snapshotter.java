@@ -66,6 +66,8 @@ public final class Snapshotter {
 		b.spikes.addAll(bucket.spikes);
 		b.betweenBusyNs = bucket.betweenBusyNs;
 		b.betweenIdleNs = bucket.betweenIdleNs;
+		b.tickCpuNs = bucket.tickCpuNs;
+		b.betweenCpuNs = bucket.betweenCpuNs;
 
 		bucket.forEachPhase((key, stat) -> {
 			Breakdown.Row row = new Breakdown.Row();
@@ -117,6 +119,8 @@ public final class Snapshotter {
 		b.gcCount = system.gcCount();
 		b.gcBackgroundMs = system.gcBackgroundMs();
 
+		HostMetrics.drainInto(b);
+
 		StackSampler s = sampler;
 		if (s != null) {
 			StackSampler.Drained drained = s.drain();
@@ -125,18 +129,31 @@ public final class Snapshotter {
 			b.mods.putAll(drained.rows());
 			b.betweenTasks.putAll(drained.between());
 			b.betweenSamples = drained.betweenSamples();
+			b.waits.putAll(drained.waits());
 		}
 
 		Point point = new Point(now, b.tps(1000.0 / Math.max(1e-3, b.targetMspt)), b.msptAvg(), b.tickNsMax / 1e6,
 				system.heapUsed(), system.heapMax(), system.heapLive(), system.cpuProcess(), system.cpuSystem(),
 				b.latest.entities, b.latest.blockEntities, b.latest.chunks, b.latest.players, system.gcTimeMs(), paused,
-				server.getPlayerList().getViewDistance(), server.getPlayerList().getSimulationDistance());
+				server.getPlayerList().getViewDistance(), server.getPlayerList().getSimulationDistance(),
+				perSecond(b, b.tickNsSum), perSecond(b, b.betweenBusyNs), perSecond(b, offCpuNs(b)));
 		History.add(b, point);
+		Trials.onSecond(server, b);
 		AlertWatcher.onSecond(server, b);
 		Advisor.maybeRun(server);
 		BossBarMonitor.update(server);
 		WorldClock.update(server);
 		Recorder.onSecond(server, b, point);
+	}
+
+	/** ns measured in this second, as ms of 1000 (a slow second stretches past 1000 ms of wall time). */
+	private static double perSecond(Breakdown b, long ns) {
+		return b.wallMs <= 0 ? 0 : ns / 1e6 * 1000.0 / b.wallMs;
+	}
+
+	/** Time the server thread was busy (in a tick or working between ticks) but not running on a core. */
+	public static long offCpuNs(Breakdown b) {
+		return Math.max(0, b.tickNsSum - b.tickCpuNs) + Math.max(0, b.betweenBusyNs - b.betweenCpuNs);
 	}
 
 	private static final int BLOCK_CLUSTERS_PER_SECOND = 20;

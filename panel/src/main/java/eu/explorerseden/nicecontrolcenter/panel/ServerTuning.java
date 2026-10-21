@@ -227,6 +227,35 @@ final class ServerTuning {
 			audit.log(me.name(), "performance.settings", summary(next), clientIp(ctx));
 			json(ctx, Map.of("ok", true));
 		}));
+		// Ready-made profiles: which one the settings match, and laying one over them.
+		routes.get("/api/perf/profiles", guard(Permissions.DASHBOARD_VIEW, (ctx, me) -> {
+			Performance.Settings now = Performance.read(perfFile());
+			List<Map<String, Object>> list = new ArrayList<>();
+			for (String name : Performance.PROFILES) {
+				Map<String, Object> p = new LinkedHashMap<>();
+				p.put("name", name);
+				p.put("matches", Performance.matches(now, name));
+				p.put("recommended", name.equals(Performance.RECOMMENDED));
+				list.add(p);
+			}
+			json(ctx, Map.of("profiles", list));
+		}));
+		routes.post("/api/perf/profile", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			String name = str(body(ctx), "name");
+			if (!Performance.PROFILES.contains(name)) {
+				error(ctx, HttpStatus.BAD_REQUEST, "Unknown profile.");
+				return;
+			}
+			Performance.Settings next = Performance.patched(Performance.read(perfFile()), Performance.profile(name));
+			String problem = Performance.validate(next);
+			if (problem != null) {
+				error(ctx, HttpStatus.BAD_REQUEST, problem);
+				return;
+			}
+			Performance.write(perfFile(), next);
+			audit.log(me.name(), "performance.profile", name + " profile: " + summary(next), clientIp(ctx));
+			json(ctx, Map.of("ok", true, "settings", next));
+		}));
 		routes.post("/api/perf/freeze", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			JsonObject b = body(ctx);
 			String dim = str(b, "dimension");
@@ -417,6 +446,13 @@ final class ServerTuning {
 		if (s.merge.enabled) on.add("merge radius");
 		if (s.breeding.enabled) on.add("breeding caps");
 		if (s.villagers.lobotomize) on.add("villager brains");
+		if (s.ai.enabled) on.add("lighter mob AI");
+		if (s.hoppers.enabled) on.add("hopper cooldown");
+		if (s.collisions.enabled) on.add("collision cap");
+		if (s.despawn.enabled) on.add("junk despawn");
+		if (s.saveLimits.enabled) on.add("save limits");
+		if (s.autoCaps.enabled) on.add("auto caps");
+		if (s.spawning.enabled) on.add("spawning every " + s.spawning.monstersEvery + " ticks");
 		return on.isEmpty() ? "all off" : String.join(", ", on);
 	}
 }

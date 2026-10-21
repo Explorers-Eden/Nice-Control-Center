@@ -61,13 +61,18 @@ public final class PetStore {
 			PetPerks.removeAll();
 			PetFollowers.removeAll();
 			save();
+			eu.explorerseden.nicecontrolcenter.core.AsyncFiles.flush();
 			file = null;
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(PetStore::tick);
 		// A dropped connection fires this on a network thread: the pet's entity goes on the server thread.
 		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((h, s) -> {
 			java.util.UUID id = h.player.getUUID();
-			s.execute(() -> PetFollowers.remove(id));
+			s.execute(() -> {
+				PetFollowers.remove(id);
+				// Their bond progress since the last save.
+				changed();
+			});
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((e, level) -> {
 			if (PetFollowers.leftOver(e)) e.discard();
@@ -203,7 +208,7 @@ public final class PetStore {
 		Path f = settingsFile();
 		long now;
 		try {
-			now = Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0;
+			now = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(f);
 		} catch (IOException e) {
 			return;
 		}
@@ -212,7 +217,7 @@ public final class PetStore {
 		settings = Pets.read(f);
 	}
 
-	/** Right away: what players paid for must never be lost to a crash. */
+	/** Right away (handed to the file writer at once, on disk within moments): what players paid for must never be lost to a crash. */
 	public static void saveNow() {
 		dirty = true;
 		save();
@@ -225,12 +230,9 @@ public final class PetStore {
 	private static void save() {
 		Path f = file;
 		if (f == null || !dirty) return;
-		try {
-			Pets.writeData(f, data);
-			dirty = false;
-		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't save {}: {}", f, e.toString());
-		}
+		// Turned into text here (the data only changes on this thread), written to disk in the background.
+		eu.explorerseden.nicecontrolcenter.core.AsyncFiles.write(f, eu.explorerseden.nicecontrolcenter.Json.GSON.toJson(data));
+		dirty = false;
 	}
 
 	/** The pet that's out for the player, or null. */

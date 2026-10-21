@@ -30,6 +30,9 @@ public final class LiveBucket {
 	/** Time the server thread worked between ticks, and waited there. */
 	public long betweenBusyNs;
 	public long betweenIdleNs;
+	/** Of the tick time and the work between ticks: how much the server thread really ran on a core. */
+	public long tickCpuNs;
+	public long betweenCpuNs;
 
 	public final Map<Object, Stat> entities = new IdentityHashMap<>();
 	public final Map<Object, Stat> blockEntities = new IdentityHashMap<>();

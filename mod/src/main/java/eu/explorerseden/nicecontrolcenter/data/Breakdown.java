@@ -59,9 +59,20 @@ public final class Breakdown {
 	/** Time the server thread worked between ticks (queued tasks: player packets, chunk work, mods' tasks), and waited there. */
 	public long betweenBusyNs;
 	public long betweenIdleNs;
+	/**
+	 * Of the tick time and the work between ticks: how much the server thread really ran on a core. The rest it
+	 * was off the CPU: blocked on a lock, waiting for the disk or another thread, or not given a core by the host.
+	 */
+	public long tickCpuNs;
+	public long betweenCpuNs;
 	/** Stack samples taken while it worked between ticks, by what it was doing. */
 	public Map<String, Long> betweenTasks = new HashMap<>();
 	public long betweenSamples;
+	/** Samples (in ticks and between them) where the server thread waited instead of running, keyed where␟what␟frame␟mod. */
+	public Map<String, Long> waits = new HashMap<>();
+	/** What the machine did to the server (Linux), and CPU per group of threads. */
+	public Host host = new Host();
+	public Map<String, ThreadRow> threads = new HashMap<>();
 	/** Keyed "dimension|x|z". */
 	public Map<String, Hotspot> hotspots = new HashMap<>();
 	public List<Spike> spikes = new ArrayList<>();
@@ -70,6 +81,54 @@ public final class Breakdown {
 	public Worldgen worldgen = new Worldgen();
 	/** Online players, keyed by UUID: latest position/ping, new chunks summed. */
 	public Map<String, PlayerRow> players = new HashMap<>();
+
+	/** Host readings, summed over the seconds they were read in (divide by the matching seconds). */
+	public static final class Host {
+		/** Seconds with /proc/stat readings, and steal and I/O wait in percent of all CPU time, summed per second. */
+		public int procSeconds;
+		public double stealPercent;
+		public double iowaitPercent;
+		/** Seconds with container CPU readings: time held back by the CPU limit, and scheduler periods (all / throttled). */
+		public int cgroupSeconds;
+		public long throttledUs;
+		public long periods;
+		public long throttledPeriods;
+		/** The container's CPU limit in cores (0: none), latest. */
+		public double cpuLimitCores;
+		/** Pressure stall "some avg10" in percent, summed per second it was read. */
+		public int psiSeconds;
+		public double psiCpu;
+		public double psiIo;
+		public double psiMemory;
+
+		public void add(Host o) {
+			procSeconds += o.procSeconds;
+			stealPercent += o.stealPercent;
+			iowaitPercent += o.iowaitPercent;
+			cgroupSeconds += o.cgroupSeconds;
+			throttledUs += o.throttledUs;
+			periods += o.periods;
+			throttledPeriods += o.throttledPeriods;
+			if (o.cpuLimitCores > 0) cpuLimitCores = o.cpuLimitCores;
+			psiSeconds += o.psiSeconds;
+			psiCpu += o.psiCpu;
+			psiIo += o.psiIo;
+			psiMemory += o.psiMemory;
+		}
+	}
+
+	/** CPU time used by a group of threads (numbered ones grouped), and how many there were. */
+	public static final class ThreadRow {
+		public long cpuNs;
+		public int count;
+		public int countMax;
+
+		public void add(ThreadRow o) {
+			cpuNs += o.cpuNs;
+			count = o.count;
+			countMax = Math.max(countMax, o.countMax);
+		}
+	}
 
 	public static final class Counts {
 		public int entities;
@@ -343,12 +402,32 @@ public final class Breakdown {
 		samplerIntervalMs = Math.max(samplerIntervalMs, other.samplerIntervalMs);
 		betweenBusyNs += other.betweenBusyNs;
 		betweenIdleNs += other.betweenIdleNs;
+		tickCpuNs += other.tickCpuNs;
+		betweenCpuNs += other.betweenCpuNs;
 		betweenSamples += other.betweenSamples;
 		if (other.betweenTasks != null) {
 			if (betweenTasks == null) {
 				betweenTasks = new HashMap<>();
 			}
 			other.betweenTasks.forEach((k, v) -> betweenTasks.merge(k, v, Long::sum));
+		}
+		if (other.host != null) {
+			if (host == null) {
+				host = new Host();
+			}
+			host.add(other.host);
+		}
+		if (other.threads != null) {
+			if (threads == null) {
+				threads = new HashMap<>();
+			}
+			other.threads.forEach((k, v) -> threads.computeIfAbsent(k, x -> new ThreadRow()).add(v));
+		}
+		if (other.waits != null) {
+			if (waits == null) {
+				waits = new HashMap<>();
+			}
+			other.waits.forEach((k, v) -> waits.merge(k, v, Long::sum));
 		}
 		other.hotspots.forEach((k, v) -> hotspots.merge(k, v, (a, b) -> {
 			Hotspot merged = copy(a);

@@ -160,6 +160,17 @@ public final class Performance {
 		public boolean armorStands = false;
 	}
 
+	/**
+	 * Paper's ticks-per spawns: monsters, water mobs and bats try to spawn only every so many ticks (vanilla: every
+	 * tick; animals already only every 400). Each dimension tries on its own ticks, so they don't all spawn at once.
+	 */
+	public static final class Spawning {
+		public boolean enabled = false;
+		public int monstersEvery = 2;
+		public int waterEvery = 2;
+		public int ambientEvery = 4;
+	}
+
 	/** Lag spikes from saving and teleporting, smoothed out. */
 	public static final class Smooth {
 		/** Autosave writes the world over the next seconds instead of all in one tick. */
@@ -201,6 +212,7 @@ public final class Performance {
 		public Hoppers hoppers = new Hoppers();
 		public Decor decor = new Decor();
 		public Smooth smooth = new Smooth();
+		public Spawning spawning = new Spawning();
 
 		/** Missing parts (older file, partial JSON) get their defaults. */
 		public Settings fill() {
@@ -229,6 +241,10 @@ public final class Performance {
 			if (hoppers == null) hoppers = new Hoppers();
 			if (decor == null) decor = new Decor();
 			if (smooth == null) smooth = new Smooth();
+			if (spawning == null) spawning = new Spawning();
+			spawning.monstersEvery = Math.max(1, Math.min(40, spawning.monstersEvery));
+			spawning.waterEvery = Math.max(1, Math.min(40, spawning.waterEvery));
+			spawning.ambientEvery = Math.max(1, Math.min(40, spawning.ambientEvery));
 			return this;
 		}
 	}
@@ -292,6 +308,81 @@ public final class Performance {
 		if (ai.pathBudget < 5 || ai.pathBudget > 1000) return "The path budget is 5 to 1000 per tick.";
 		if (s.hoppers.idleCooldown < 1 || s.hoppers.idleCooldown > 40) return "Idle hoppers wait 1 to 40 ticks.";
 		return null;
+	}
+
+	// ── Profiles ────────────────────────────────────────────────────────────
+
+	/** Ready-made sets of the switches and numbers above; anything a profile doesn't name stays as it is. */
+	public static final List<String> PROFILES = List.of("off", "balanced", "aggressive");
+	public static final String RECOMMENDED = "balanced";
+
+	/** What a profile changes, as a partial settings object (frozen chunks, mob rules and item lists are never touched). */
+	public static com.google.gson.JsonObject profile(String name) {
+		String json = switch (name) {
+			case "off" -> """
+					{"dynamic":{"enabled":false},"activation":{"enabled":false},"ai":{"enabled":false},"hoppers":{"enabled":false},
+					 "merge":{"enabled":false},"collisions":{"enabled":false},"despawn":{"enabled":false},"saveLimits":{"enabled":false},
+					 "decor":{"armorStands":false},"villagers":{"lobotomize":false},"breeding":{"enabled":false},"autoCaps":{"enabled":false},
+					 "spawning":{"enabled":false},"smooth":{"saving":true,"teleports":true}}""";
+			case "balanced" -> """
+					{"dynamic":{"enabled":true,"targetMspt":40,"recoverMspt":30,"simulationMin":5,"viewMin":8,"mobCapMin":50,"view":true,"extraSteps":true},
+					 "activation":{"enabled":true,"monstersPercent":25,"animalsPercent":25,"villagersPercent":25,"otherPercent":15,"every":4},
+					 "ai":{"enabled":true,"farPercent":40,"farGoalEvery":4,"pathBudget":40,"whenLagging":true},
+					 "hoppers":{"enabled":true,"idleCooldown":8},"merge":{"enabled":true,"items":2.5,"xp":4},"collisions":{"enabled":true,"max":8},
+					 "despawn":{"enabled":true},"saveLimits":{"enabled":true},"decor":{"armorStands":true},
+					 "villagers":{"lobotomize":true,"every":20},"breeding":{"enabled":false},"autoCaps":{"enabled":false},
+					 "spawning":{"enabled":true,"monstersEvery":2,"waterEvery":2,"ambientEvery":4},"smooth":{"saving":true,"teleports":true}}""";
+			case "aggressive" -> """
+					{"dynamic":{"enabled":true,"targetMspt":35,"recoverMspt":25,"simulationMin":4,"viewMin":6,"mobCapMin":40,"view":true,"extraSteps":true},
+					 "activation":{"enabled":true,"monstersPercent":20,"animalsPercent":20,"villagersPercent":20,"otherPercent":10,"every":6},
+					 "ai":{"enabled":true,"farPercent":30,"farGoalEvery":6,"pathBudget":25,"whenLagging":false},
+					 "hoppers":{"enabled":true,"idleCooldown":16},"merge":{"enabled":true,"items":3,"xp":5},"collisions":{"enabled":true,"max":6},
+					 "despawn":{"enabled":true},"saveLimits":{"enabled":true},"decor":{"armorStands":true},
+					 "villagers":{"lobotomize":true,"every":30},"breeding":{"enabled":true},"autoCaps":{"enabled":true},
+					 "spawning":{"enabled":true,"monstersEvery":4,"waterEvery":4,"ambientEvery":8},"smooth":{"saving":true,"teleports":true}}""";
+			default -> "{}";
+		};
+		return com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+	}
+
+	/** A copy of base with the patch's values laid over it (objects merge, everything else replaces). */
+	public static Settings patched(Settings base, com.google.gson.JsonObject patch) {
+		com.google.gson.JsonObject tree = Json.GSON.toJsonTree(base).getAsJsonObject();
+		merge(tree, patch);
+		Settings s = Json.GSON.fromJson(tree, Settings.class);
+		return s == null ? new Settings() : s.fill();
+	}
+
+	private static void merge(com.google.gson.JsonObject into, com.google.gson.JsonObject patch) {
+		for (Map.Entry<String, com.google.gson.JsonElement> e : patch.entrySet()) {
+			com.google.gson.JsonElement old = into.get(e.getKey());
+			if (old != null && old.isJsonObject() && e.getValue().isJsonObject()) {
+				merge(old.getAsJsonObject(), e.getValue().getAsJsonObject());
+			} else {
+				into.add(e.getKey(), e.getValue().deepCopy());
+			}
+		}
+	}
+
+	/** Whether the settings already match everything the profile sets. */
+	public static boolean matches(Settings s, String profile) {
+		com.google.gson.JsonObject tree = Json.GSON.toJsonTree(s).getAsJsonObject();
+		return contains(tree, profile(profile));
+	}
+
+	private static boolean contains(com.google.gson.JsonObject tree, com.google.gson.JsonObject patch) {
+		for (Map.Entry<String, com.google.gson.JsonElement> e : patch.entrySet()) {
+			com.google.gson.JsonElement have = tree.get(e.getKey());
+			if (have == null) return false;
+			if (e.getValue().isJsonObject()) {
+				if (!have.isJsonObject() || !contains(have.getAsJsonObject(), e.getValue().getAsJsonObject())) return false;
+			} else if (e.getValue().isJsonPrimitive() && have.isJsonPrimitive() && e.getValue().getAsJsonPrimitive().isNumber()) {
+				if (Math.abs(have.getAsDouble() - e.getValue().getAsDouble()) > 1e-9) return false;
+			} else if (!have.equals(e.getValue())) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** The settings in the file; defaults when it's missing or unreadable. */

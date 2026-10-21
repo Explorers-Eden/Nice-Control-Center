@@ -49,6 +49,10 @@ public final class WarmTargets {
 	}
 
 	private static TicketType ticket;
+	/** Loads a waypoint teleport's target while the player waits out the warm-up; expires 10 s after the last renewal. */
+	private static TicketType warmup;
+	private static final String WARMUP_TAG = "wawo.waypoint_hub.warmup.active";
+	private static final String WARMUP_SCORE = "wawo.waypoint_hub.warmup.id";
 	private static final Map<Place, Seen> seen = new HashMap<>();
 	private static int warmCount;
 
@@ -59,6 +63,38 @@ public final class WarmTargets {
 	public static void register() {
 		ticket = Registry.register(BuiltInRegistries.TICKET_TYPE, Identifier.fromNamespaceAndPath(NiceControlCenter.MOD_ID, "warm"),
 				new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING));
+		warmup = Registry.register(BuiltInRegistries.TICKET_TYPE, Identifier.fromNamespaceAndPath(NiceControlCenter.MOD_ID, "warmup"),
+				new TicketType(200, TicketType.FLAG_LOADING));
+	}
+
+	/**
+	 * Once a second: players waiting out a Warping Wonders teleport warm-up get their target's chunks requested now, so
+	 * the chunk system loads them in the background (C2ME's threads) and the teleport finds them ready instead of
+	 * loading them on the spot. Renewed every second while the warm-up lasts; the ticket runs out by itself.
+	 */
+	private static void warmups(MinecraftServer server) {
+		if (warmup == null || !PerfControl.settings().smooth.teleports) return;
+		net.minecraft.world.scores.Objective objective = null;
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			if (!player.entityTags().contains(WARMUP_TAG)) continue;
+			if (objective == null) objective = server.getScoreboard().getObjective(WARMUP_SCORE);
+			if (objective == null) return;
+			net.minecraft.world.scores.ReadOnlyScoreInfo score = server.getScoreboard().getPlayerScoreInfo(player, objective);
+			if (score == null) continue;
+			net.minecraft.nbt.CompoundTag hub = eu.explorerseden.nicecontrolcenter.hubs.Hubs.hub(server, score.value());
+			net.minecraft.nbt.CompoundTag pos = hub == null ? null : hub.getCompoundOrEmpty("pos");
+			if (pos == null || pos.isEmpty()) continue;
+			Identifier dim = Identifier.tryParse(pos.getStringOr("dimension", "minecraft:overworld"));
+			ServerLevel level = dim == null ? null : server.getLevel(ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, dim));
+			if (level == null) continue;
+			double x = number(pos.get("x"));
+			double z = number(pos.get("z"));
+			level.getChunkSource().addTicketWithRadius(warmup, new ChunkPos(((int) Math.floor(x)) >> 4, ((int) Math.floor(z)) >> 4), 1);
+		}
+	}
+
+	private static double number(net.minecraft.nbt.Tag tag) {
+		return tag instanceof net.minecraft.nbt.NumericTag n ? n.doubleValue() : 0;
 	}
 
 	/** Before a player is teleported to an absolute spot. */
@@ -93,6 +129,7 @@ public final class WarmTargets {
 
 	/** Once a minute: places not visited for a day cool down; ones released under Loaded chunks are forgotten. */
 	public static void tick(MinecraftServer server) {
+		if (server.getTickCount() % 20 == 10) warmups(server);
 		if (server.getTickCount() % 1200 != 0 || seen.isEmpty()) return;
 		boolean on = PerfControl.settings().smooth.teleports;
 		long now = System.currentTimeMillis();

@@ -65,6 +65,8 @@ public final class Diagnoser {
 		explorers(b, findings);
 		spikes(b, findings);
 		between(b, findings);
+		offCpu(b, findings);
+		host(b, findings);
 		memory(b, findings);
 		cpu(b, findings);
 
@@ -548,6 +550,80 @@ public final class Diagnoser {
 		out.add(new Finding(severity, "Memory", "Memory pressure", 0, 0, reason,
 				"The server really needs most of its memory. Give it more (-Xmx), or reduce loaded chunks and entities. "
 						+ "Little free memory left after collections leads to frequent GC pauses, which players notice as lag spikes."));
+	}
+
+	/**
+	 * The server thread was busy (in a tick or working between ticks) but not running on a core: blocked on a
+	 * lock, waiting for another thread or the disk, or not given a core by the host. Says which it was.
+	 */
+	private static void offCpu(Breakdown b, List<Finding> out) {
+		Views.BetweenView v = Views.between(b);
+		double busy = v.tickMsPerSecond() + v.busyMsPerSecond();
+		double off = v.offCpuMsPerSecond();
+		if (busy <= 0 || off < 50 || off / busy < 0.2) {
+			return;
+		}
+		Views.Kpi kpi = Views.kpi(b);
+		boolean lagging = kpi.tps() < kpi.targetTps() * 0.95;
+		StringBuilder reason = new StringBuilder(String.format(Locale.ROOT,
+				"Of %.0f ms the server thread was busy each second, it spent %.0f ms (%.0f%%) not running: %.0f ms in ticks, %.0f ms between them.",
+				busy, off, off * 100 / busy, v.tickOffCpuMsPerSecond(), v.betweenOffCpuMsPerSecond()));
+		List<Views.WaitView> waits = Views.waits(b);
+		List<String> top = new ArrayList<>();
+		for (Views.WaitView w : waits) {
+			if (top.size() == 3 || w.msPerSecond() < 5) break;
+			top.add(String.format(Locale.ROOT, "%s (%.0f ms/s, %s, at %s%s)", w.what(), w.msPerSecond(), w.where().toLowerCase(Locale.ROOT),
+					code(w.frame()), w.mod() == null ? "" : " from " + w.mod()));
+		}
+		if (!top.isEmpty()) {
+			reason.append(" Seen waiting for: ").append(String.join("; ", top)).append('.');
+		}
+		Views.HostView h = Views.host(b);
+		boolean hostCpu = h.stealPercent() >= 5 || h.throttledMsPerSecond() >= 20;
+		boolean disk = h.iowaitPercent() >= 10 || h.psiIo() >= 10 || !waits.isEmpty() && waits.get(0).what().equals("disk I/O");
+		String hint;
+		if (hostCpu) {
+			hint = "The host takes CPU time away (see Machine & threads). That can't be fixed in the game: give the container more CPU or move to a plan without shared cores.";
+		} else if (disk) {
+			hint = "The server waits for the disk. Faster storage (local SSD, no network drive) helps; check what writes a lot at the same time (backups, map renders, Distant Horizons).";
+		} else if (!top.isEmpty()) {
+			hint = "The thread waits for another thread or a lock. The mod or thread named above is where to look: its settings, or test without it.";
+		} else {
+			hint = "Not running without a clear reason seen: often the host scheduling other work first. Compare with CPU steal and pressure in Machine & threads.";
+		}
+		out.add(new Finding(lagging ? (off / busy >= 0.4 ? Severity.POOR : Severity.WARN) : Severity.INFO, "Server thread",
+				"The server thread is waiting, not working", off / Math.max(1, kpi.targetTps()), Views.percentOf(b, off / Math.max(1, kpi.targetTps())),
+				reason.toString(), hint));
+	}
+
+	/** CPU taken away by the host, a slow disk, or a thread group that uses whole cores. */
+	private static void host(Breakdown b, List<Finding> out) {
+		Views.HostView h = Views.host(b);
+		if (h.stealPercent() >= 5 || h.throttledMsPerSecond() >= 20) {
+			StringBuilder reason = new StringBuilder();
+			if (h.stealPercent() >= 5) {
+				reason.append(String.format(Locale.ROOT, "The virtual machine's host took %.1f%% of the CPU time (steal). ", h.stealPercent()));
+			}
+			if (h.throttledMsPerSecond() >= 20) {
+				reason.append(String.format(Locale.ROOT, "The container's CPU limit%s held the server back %.0f ms of every second (%.0f%% of scheduling periods). ",
+						h.cpuLimitCores() > 0 ? String.format(Locale.ROOT, " (%.1f cores)", h.cpuLimitCores()) : "", h.throttledMsPerSecond(), h.throttledPercent()));
+			}
+			out.add(new Finding(Severity.WARN, "Host", "The host takes CPU away from the server", 0, 0, reason.toString().trim(),
+					"No game setting fixes this. Raise or remove the container's CPU limit (Docker/Portainer), or use a server plan with dedicated cores."));
+		}
+		if (h.psiIo() >= 10 || h.iowaitPercent() >= 10) {
+			out.add(new Finding(Severity.WARN, "Host", "The disk is slow to answer", 0, 0,
+					String.format(Locale.ROOT, "Tasks waited for the disk %.0f%% of the time (pressure)%s.", Math.max(0, h.psiIo()),
+							h.iowaitPercent() >= 0 ? String.format(Locale.ROOT, ", I/O wait %.1f%%", h.iowaitPercent()) : ""),
+					"Saving, chunk loading and backups all wait for it. Use local SSD storage and avoid backups or renders during play."));
+		}
+		int cores = eu.explorerseden.nicecontrolcenter.core.SystemMetrics.cores();
+		for (Views.ThreadView t : h.threads()) {
+			if (t.name().equals("Server thread") || t.cores() < 0.9) continue;
+			out.add(new Finding(Severity.INFO, "Threads", t.name() + " uses " + String.format(Locale.ROOT, "%.1f", t.cores()) + " cores", 0, 0,
+					String.format(Locale.ROOT, "%d thread%s named like this used %.1f of the %d cores on average.", t.threads(), t.threads() == 1 ? "" : "s", t.cores(), cores),
+					"Fine while cores are free; with a CPU limit or few cores it competes with the server thread."));
+		}
 	}
 
 	private static void cpu(Breakdown b, List<Finding> out) {

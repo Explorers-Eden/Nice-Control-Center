@@ -48,6 +48,8 @@ import java.util.WeakHashMap;
  */
 public final class PerfControl {
 	private static volatile Performance.Settings settings = new Performance.Settings();
+	/** What the file says; {@link #settings} is this with a running trial's changes laid over it. */
+	private static Performance.Settings fileSettings = new Performance.Settings();
 	private static long modified = -1;
 	/** Frozen chunks by dimension id. */
 	private static Map<String, LongSet> frozen = Map.of();
@@ -147,6 +149,8 @@ public final class PerfControl {
 			}
 		}
 		if (tick % 20 == 0) dynamic(server);
+		// A trial moves on with the monitor's measurements; without them it would never end.
+		if (tick % 20 == 0 && Trials.active() && !Tracker.enabled()) Trials.stop(server, "monitoring was switched off");
 		Performance.AutoCaps caps = settings.autoCaps;
 		if (caps.enabled && tick > 0 && tick % (caps.intervalSeconds * 20) == 0) autoCaps(server, caps);
 	}
@@ -172,14 +176,21 @@ public final class PerfControl {
 		Path file = file();
 		long now;
 		try {
-			now = Files.exists(file) ? Files.getLastModifiedTime(file).toMillis() : 0;
+			now = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(file);
 		} catch (java.io.IOException e) {
 			return;
 		}
 		if (now == modified) return;
 		boolean first = modified < 0;
 		modified = now;
-		Performance.Settings next = Performance.read(file);
+		fileSettings = Performance.read(file);
+		apply(server);
+		if (!first || now != 0) NiceControlCenter.LOGGER.info("Performance settings loaded ({})", summary(settings));
+	}
+
+	/** The file's settings with a running trial's changes over them (also called when a trial switches sides). */
+	public static void apply(MinecraftServer server) {
+		Performance.Settings next = Trials.effective(fileSettings);
 		Map<String, LongSet> map = new HashMap<>();
 		for (Performance.Chunk c : next.frozen) map.computeIfAbsent(c.dimension, k -> new LongOpenHashSet()).add(ChunkPos.pack(c.x, c.z));
 		frozen = map;
@@ -197,8 +208,12 @@ public final class PerfControl {
 		saveLimits = save;
 		limits = new Cleanup.Limits(next.rules);
 		settings = next;
-		if (!next.dynamic.enabled) restore(server, "dynamic distances switched off");
-		if (!first || now != 0) NiceControlCenter.LOGGER.info("Performance settings loaded ({})", summary(next));
+		if (!next.dynamic.enabled && !Trials.active()) restore(server, "dynamic distances switched off");
+	}
+
+	/** The settings as the file has them (without a trial's changes). */
+	public static Performance.Settings fileSettings() {
+		return fileSettings;
 	}
 
 	private static String summary(Performance.Settings s) {
@@ -215,6 +230,7 @@ public final class PerfControl {
 		if (s.ai.enabled) b.append("lighter mob AI, ");
 		if (s.hoppers.enabled) b.append("hopper cooldown, ");
 		if (s.decor.armorStands) b.append("armor stands still, ");
+		if (s.spawning.enabled) b.append("less frequent spawning, ");
 		if (s.smooth.saving) b.append("smooth saving, ");
 		if (s.smooth.teleports) b.append("warm teleport targets, ");
 		if (!s.frozen.isEmpty()) b.append(s.frozen.size()).append(" frozen chunks, ");
@@ -238,6 +254,8 @@ public final class PerfControl {
 	private static void dynamic(MinecraftServer server) {
 		Performance.Dynamic d = settings.dynamic;
 		if (!d.enabled) return;
+		// A trial sets the distances itself; stepping now would mix up its two sides.
+		if (Trials.active()) return;
 		var list = server.getPlayerList();
 		if (baseSim < 0) {
 			baseSim = sim = list.getSimulationDistance();
@@ -370,6 +388,39 @@ public final class PerfControl {
 		NiceControlCenter.LOGGER.info("Distances back to normal ({})", why);
 		lastChange = "Back to normal (" + why + ")";
 		baseSim = baseView = sim = view = -1;
+	}
+
+	// ── Spawning ────────────────────────────────────────────────────────
+
+	private static final java.util.Map<ServerLevel, Object[]> spawnLists = new java.util.WeakHashMap<>();
+
+	/**
+	 * The mob categories this level tries to spawn this tick: monsters, water mobs and bats only every so many ticks,
+	 * each dimension on its own ticks. Worked out once per tick and level (every chunk gets the same list).
+	 */
+	public static java.util.List<net.minecraft.world.entity.MobCategory> spawnCategories(ServerLevel level, java.util.List<net.minecraft.world.entity.MobCategory> all) {
+		Performance.Spawning sp = settings.spawning;
+		if (!sp.enabled || all.isEmpty()) return all;
+		long time = level.getGameTime();
+		Object[] cached = spawnLists.get(level);
+		if (cached != null && (long) cached[0] == time && cached[1] == all) {
+			@SuppressWarnings("unchecked")
+			java.util.List<net.minecraft.world.entity.MobCategory> list = (java.util.List<net.minecraft.world.entity.MobCategory>) cached[2];
+			return list;
+		}
+		long t = time + (level.dimension().identifier().hashCode() & 0xff);
+		java.util.List<net.minecraft.world.entity.MobCategory> out = new java.util.ArrayList<>(all.size());
+		for (net.minecraft.world.entity.MobCategory c : all) {
+			int every = switch (c.getName()) {
+				case "monster" -> sp.monstersEvery;
+				case "water_creature", "underground_water_creature", "water_ambient", "axolotls" -> sp.waterEvery;
+				case "ambient" -> sp.ambientEvery;
+				default -> 1;
+			};
+			if (every <= 1 || t % every == 0) out.add(c);
+		}
+		spawnLists.put(level, new Object[] {time, all, out});
+		return out;
 	}
 
 	/** For the dashboard and the panel: the current level of the dynamic controller. */

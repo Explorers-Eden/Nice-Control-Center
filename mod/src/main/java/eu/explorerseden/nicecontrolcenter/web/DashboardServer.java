@@ -642,7 +642,9 @@ public final class DashboardServer {
 				sendJson(exchange, Map.of("ok", true));
 			}
 			// Land claims: the panel copies changes into its database and edits through here.
-			case "/api/claims/changes" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.changes(parseLong(query.get("since"), 0))));
+			// Turned into JSON on the server thread: the live objects may change while the answer is written.
+			case "/api/claims/changes" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.Json.GSON.toJsonTree(
+					eu.explorerseden.nicecontrolcenter.claims.ClaimApi.changes(parseLong(query.get("since"), 0)))));
 			case "/api/claims/action" -> {
 				if (!requirePost(exchange)) {
 					return;
@@ -653,7 +655,8 @@ public final class DashboardServer {
 			}
 			case "/api/market/changes" -> sendJson(exchange, onServerThread(() -> {
 				eu.explorerseden.nicecontrolcenter.market.MarketStore.reloadSettings();
-				return eu.explorerseden.nicecontrolcenter.market.MarketStore.data().changes(parseLong(query.get("since"), 0));
+				return eu.explorerseden.nicecontrolcenter.Json.GSON.toJsonTree(
+						eu.explorerseden.nicecontrolcenter.market.MarketStore.data().changes(parseLong(query.get("since"), 0)));
 			}));
 			case "/api/market/remove" -> {
 				if (!requirePost(exchange)) {
@@ -680,7 +683,8 @@ public final class DashboardServer {
 				if (hud != null) topic.put("hud", hud.getName().getString().strip());
 				return topic;
 			}));
-			case "/api/pets/state" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.pets.PetStore::state));
+			case "/api/pets/state" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.Json.GSON.toJsonTree(
+					eu.explorerseden.nicecontrolcenter.pets.PetStore.state())));
 			case "/api/claims/goml" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, false)));
 			case "/api/claims/goml/import" -> {
 				if (!requirePost(exchange)) {
@@ -690,8 +694,18 @@ public final class DashboardServer {
 			}
 			// For the panel's web map (it renders the tiles itself).
 			case "/api/map" -> {
-				Map<String, Object> map = new LinkedHashMap<>(onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
-				map.put("landClaims", onServerThread(eu.explorerseden.nicecontrolcenter.claims.ClaimApi::mapClaims));
+				// Claims, hubs and dimensions change rarely: worked out once a minute; player positions every time.
+				long now = System.currentTimeMillis();
+				Map<String, Object> fixed = mapStatic;
+				if (fixed == null || now - mapStaticAt > 60_000) {
+					fixed = new LinkedHashMap<>(onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.overlays(minecraft, config.players_storage)));
+					fixed.put("landClaims", onServerThread(eu.explorerseden.nicecontrolcenter.claims.ClaimApi::mapClaims));
+					mapStatic = fixed;
+					mapStaticAt = now;
+				}
+				Map<String, Object> map = new LinkedHashMap<>(fixed);
+				map.put("players", onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.MapExport.players(minecraft)));
+				map.put("time", now);
 				// The in-game date and time (Nice Actions calendar) for the map's status card.
 				map.put("clock", eu.explorerseden.nicecontrolcenter.core.WorldClock.current());
 				sendJson(exchange, map);
@@ -731,6 +745,32 @@ public final class DashboardServer {
 				Map<String, Object> result = recording();
 				if (error != null) result.put("error", error);
 				sendJson(exchange, result);
+			}
+			case "/api/trial" -> sendJson(exchange, trial());
+			case "/api/trial/start" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				String a = query.getOrDefault("a", "");
+				String b = query.getOrDefault("b", "");
+				int minutes = (int) parseLong(query.get("minutes"), 5);
+				int rounds = (int) parseLong(query.get("rounds"), 4);
+				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
+				if (!Tracker.enabled()) {
+					NiceControlCenter.setMonitoring(true);
+				}
+				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Trials.start(minecraft, a, b, minutes, rounds,
+						by == null ? "web dashboard" : by));
+				Map<String, Object> result = trial();
+				if (error != null) result.put("error", error);
+				sendJson(exchange, result);
+			}
+			case "/api/trial/stop" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Trials.stop(minecraft, "stopped in the dashboard"));
+				sendJson(exchange, trial());
 			}
 			case "/api/recording/stop" -> {
 				if (!requirePost(exchange)) {
@@ -791,6 +831,18 @@ public final class DashboardServer {
 		map.put("error", BloatCheck.lastError());
 		map.put("result", BloatCheck.last());
 		return map;
+	}
+
+	/** The map's slow-changing parts and when they were worked out. */
+	private volatile Map<String, Object> mapStatic;
+	private volatile long mapStaticAt;
+
+	private Map<String, Object> trial() {
+		Map<String, Object> result = new LinkedHashMap<>();
+		result.put("status", eu.explorerseden.nicecontrolcenter.core.Trials.status());
+		result.put("results", eu.explorerseden.nicecontrolcenter.core.Trials.results(minecraft, 10));
+		result.put("tokens", eu.explorerseden.nicecontrolcenter.core.Trials.tokens());
+		return result;
 	}
 
 	private Map<String, Object> recording() {

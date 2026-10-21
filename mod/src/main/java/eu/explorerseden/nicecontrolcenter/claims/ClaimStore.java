@@ -120,6 +120,7 @@ public final class ClaimStore {
 		MinecraftServer s = server;
 		if (s != null) for (var p : s.getPlayerList().getPlayers()) if (ClaimMode.active(p)) ClaimMode.exit(p, null);
 		save();
+		eu.explorerseden.nicecontrolcenter.core.AsyncFiles.flush();
 		file = null;
 		server = null;
 	}
@@ -141,7 +142,7 @@ public final class ClaimStore {
 		Path f = settingsFile();
 		long now;
 		try {
-			now = Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0;
+			now = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(f);
 		} catch (IOException e) {
 			return;
 		}
@@ -167,7 +168,7 @@ public final class ClaimStore {
 		dirty = true;
 	}
 
-	/** Saves right away (claim mode keeps an item of the player's: it must not wait for the next save). */
+	/** Saves right away (handed to the file writer at once; claim mode keeps an item of the player's: it must not wait for the next save). */
 	public static void saveNow() {
 		dirty = true;
 		save();
@@ -176,12 +177,9 @@ public final class ClaimStore {
 	public static void save() {
 		Path f = file;
 		if (f == null || !dirty) return;
-		try {
-			Claims.writeData(f, data);
-			dirty = false;
-		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't save {}: {}", f, e.toString());
-		}
+		// Turned into text here (the data only changes on this thread), written to disk in the background.
+		eu.explorerseden.nicecontrolcenter.core.AsyncFiles.write(f, eu.explorerseden.nicecontrolcenter.Json.GSON.toJson(data));
+		dirty = false;
 	}
 
 	/** Replaces everything (the panel imported or restored claims). */

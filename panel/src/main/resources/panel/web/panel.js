@@ -3628,7 +3628,58 @@
   }
   $('pn-perf-form').addEventListener('change', perfNeeds);
 
+  const PROFILE_INFO = {
+    off: { label: 'Off', icon: 'bi-toggle-off', text: 'Vanilla behaviour: every tuning off (smooth saving and warm teleport targets stay on).' },
+    balanced: { label: 'Balanced', icon: 'bi-speedometer2', text: 'Lag protection (40/30 ms, view ≥ 8), less ticking and lighter AI far from players, hopper cooldown, wider merging, collision cap, junk despawn, save limits, still armor stands, villager brains in trading cells. Players hardly notice it.' },
+    aggressive: { label: 'Aggressive', icon: 'bi-lightning-charge', text: 'Everything in Balanced, tighter (35/25 ms, view ≥ 6, mob cap ≥ 40 %, smaller ranges, AI budget always on), plus breeding caps and auto caps. For a server that still struggles.' },
+  };
+
+  async function loadProfiles() {
+    let d;
+    try {
+      d = await api('api/perf/profiles');
+    } catch (e) {
+      return;
+    }
+    const manage = can('settings.server');
+    $('pn-profiles').innerHTML = d.profiles.map((p) => {
+      const info = PROFILE_INFO[p.name] || { label: p.name, icon: 'bi-sliders', text: '' };
+      return `<div class="pn-perf-profile${p.matches ? ' active' : ''}">
+        <h4><i class="bi ${info.icon}"></i> ${esc(info.label)}${p.recommended ? ' <span class="pn-badge good">Recommended</span>' : ''}${p.matches ? ' <span class="pn-badge">Your settings</span>' : ''}</h4>
+        <p class="pn-hint">${esc(info.text)}</p>
+        ${manage ? `<div class="pn-perf-profile-actions"><button type="button" class="np-btn small${p.recommended ? ' primary' : ''}" data-profile-apply="${esc(p.name)}"${p.matches ? ' disabled' : ''}>Apply</button>
+        <button type="button" class="np-btn small" data-profile-test="${esc(p.name)}"${p.matches ? ' disabled' : ''}><i class="bi bi-shuffle"></i> Test against current</button></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  $('pn-profiles').addEventListener('click', async (e) => {
+    const apply = e.target.closest('[data-profile-apply]');
+    const test = e.target.closest('[data-profile-test]');
+    if (apply) {
+      const name = apply.dataset.profileApply;
+      if (!confirm(`Apply the ${PROFILE_INFO[name]?.label || name} profile? The server picks it up within 5 seconds.`)) return;
+      try {
+        await api('api/perf/profile', { name });
+        formMsg('pn-profiles-msg', 'Applied.', true);
+        loadTuning();
+      } catch (err) {
+        formMsg('pn-profiles-msg', err.message, false);
+      }
+    } else if (test) {
+      const name = test.dataset.profileTest;
+      try {
+        const r = await api('dashboard/api/trial/start?' + new URLSearchParams({ a: 'current', b: name, minutes: 5, rounds: 4 }), {});
+        if (r.error) throw new Error(r.error);
+        formMsg('pn-profiles-msg', 'Trial started: current settings vs ' + (PROFILE_INFO[name]?.label || name) + '. Follow it in Dashboard → Reports (about 40 minutes).', true);
+      } catch (err) {
+        formMsg('pn-profiles-msg', err.message === 'Bad Gateway' || err.message === 'Service Unavailable' ? 'The server needs to be running for a trial.' : err.message, false);
+      }
+    }
+  });
+
   async function loadTuning() {
+    loadProfiles();
     try {
       perfSettings = await api('api/perf/settings');
       fillPerf(perfSettings);

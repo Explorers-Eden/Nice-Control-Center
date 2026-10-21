@@ -34,6 +34,9 @@ public final class StackSampler implements Runnable {
 	/** Between ticks: samples by {@link #betweenKey} of what the server was doing. */
 	private Map<String, Long> between = new HashMap<>();
 	private long betweenSamples;
+	/** Samples where the server thread was waiting instead of running, by {@link #waitKey}. */
+	private Map<String, Long> waits = new HashMap<>();
+	private static final java.lang.management.ThreadMXBean THREADS = java.lang.management.ManagementFactory.getThreadMXBean();
 
 	public StackSampler(int intervalMs) {
 		this.intervalMs = Math.max(5, intervalMs);
@@ -59,15 +62,16 @@ public final class StackSampler implements Runnable {
 
 	/** Hands over the samples collected since the last call. */
 	public synchronized Drained drain() {
-		Drained drained = new Drained(rows, samples, between, betweenSamples);
+		Drained drained = new Drained(rows, samples, between, betweenSamples, waits);
 		rows = new HashMap<>();
 		samples = 0;
 		between = new HashMap<>();
 		betweenSamples = 0;
+		waits = new HashMap<>();
 		return drained;
 	}
 
-	public record Drained(Map<String, ModRow> rows, long samples, Map<String, Long> between, long betweenSamples) {
+	public record Drained(Map<String, ModRow> rows, long samples, Map<String, Long> between, long betweenSamples, Map<String, Long> waits) {
 	}
 
 	@Override
@@ -89,15 +93,27 @@ public final class StackSampler implements Runnable {
 				continue;
 			}
 			try {
-				StackTraceElement[] stack = target.getStackTrace();
+				// Like getStackTrace, plus the thread's state and the lock it waits for (and who holds it).
+				java.lang.management.ThreadInfo info = THREADS.getThreadInfo(target.getId(), Integer.MAX_VALUE);
+				if (info == null) {
+					continue;
+				}
+				StackTraceElement[] stack = info.getStackTrace();
 				if (stack.length == 0) {
 					continue;
 				}
+				String wait = waitOf(info, stack);
 				// Only kept when the thread was still doing the same kind of thing after the stack was taken.
 				if (tick && Tracker.inTick()) {
 					record(stack);
+					if (wait != null) {
+						recordWait(TICK, wait, stack);
+					}
 				} else if (!tick && Tracker.betweenTicks()) {
 					recordBetween(stack);
+					if (wait != null) {
+						recordWait(BETWEEN, wait, stack);
+					}
 				}
 			} catch (RuntimeException e) {
 				NiceControlCenter.LOGGER.debug("Sampling failed", e);
@@ -232,6 +248,77 @@ public final class StackSampler implements Runnable {
 			task = entry;
 		}
 		return kind + SEP + task + SEP + (mod == null ? "" : mod);
+	}
+
+	public static final String TICK = "tick";
+	public static final String BETWEEN = "between";
+
+	/**
+	 * What the thread was waiting for instead of running, or null when it was running: a lock someone holds,
+	 * a result from another thread (a future, a park), or the disk (file I/O shows as running in native code).
+	 */
+	static String waitOf(java.lang.management.ThreadInfo info, StackTraceElement[] stack) {
+		Thread.State state = info.getThreadState();
+		String owner = info.getLockOwnerName();
+		String held = owner == null ? "" : " held by " + owner;
+		switch (state) {
+			case BLOCKED:
+				return "lock " + shortLock(info.getLockName()) + held;
+			case WAITING:
+			case TIMED_WAITING: {
+				String lock = shortLock(info.getLockName());
+				if (lock.startsWith("CompletableFuture")) {
+					return "a result from another thread (future)" + held;
+				}
+				return lock.isEmpty() ? "parked" + held : "waiting on " + lock + held;
+			}
+			case RUNNABLE:
+				return isDiskIo(stack[0]) ? "disk I/O" : null;
+			default:
+				return null;
+		}
+	}
+
+	private static boolean isDiskIo(StackTraceElement top) {
+		String c = top.getClassName();
+		return c.startsWith("sun.nio.ch.File") || c.startsWith("sun.nio.ch.UnixFileDispatcher") || c.startsWith("sun.nio.fs.")
+				|| c.equals("java.io.RandomAccessFile") || c.equals("java.io.FileInputStream") || c.equals("java.io.FileOutputStream")
+				|| c.equals("java.io.UnixFileSystem") || c.equals("sun.nio.ch.IOUtil") && top.getMethodName().startsWith("fdatasync");
+	}
+
+	/** "java.util.concurrent.locks.ReentrantLock$NonfairSync@5a2" → "ReentrantLock$NonfairSync". */
+	private static String shortLock(String name) {
+		if (name == null) {
+			return "";
+		}
+		int at = name.indexOf('@');
+		String c = at < 0 ? name : name.substring(0, at);
+		return c.substring(c.lastIndexOf('.') + 1);
+	}
+
+	private void recordWait(String where, String wait, StackTraceElement[] stack) {
+		// Who waits: the innermost frame that isn't the JDK itself, and the innermost mod on the stack.
+		String frame = "";
+		String mod = "";
+		for (StackTraceElement f : stack) {
+			String owner = resolver.owner(f);
+			if (owner.equals(ModResolver.JVM) || ModResolver.isPassThrough(f)) {
+				continue;
+			}
+			if (frame.isEmpty()) {
+				frame = describe(f);
+			}
+			if (!owner.equals(ModResolver.MINECRAFT)) {
+				mod = owner;
+				break;
+			}
+		}
+		String key = where + SEP + wait + SEP + frame + SEP + mod;
+		synchronized (this) {
+			if (waits.size() < 200 || waits.containsKey(key)) {
+				waits.merge(key, 1L, Long::sum);
+			}
+		}
 	}
 
 	/** The server's own loop between ticks: running queued tasks and waiting for the next tick. */
