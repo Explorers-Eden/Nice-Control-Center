@@ -119,8 +119,42 @@ public final class PetDialogs {
 		Plop.play(player);
 	}
 
-	/** "Perks: Lantern from level 2 · Fetch from level 5" (empty when perks are off or it has none). */
+	/**
+	 * "Perks: Lantern from bond level 2 (about 1 h 30 min out together) · Fetch from level 5 (…)" for the shop; with an
+	 * owned pet, how long is left until each perk unlocks, or that it works already. Empty when perks are off or it has none.
+	 */
 	private static String perkLine(Pets.Pet pet) {
+		return perkLine(pet, null);
+	}
+
+	private static String perkLine(Pets.Pet pet, Pets.Owned owned) {
+		Pets.PerkSettings k = PetStore.settings().perks;
+		if (pet == null || !k.enabled || pet.perks.isEmpty()) return "";
+		StringBuilder b = new StringBuilder("Perks: ");
+		int level = owned == null ? 0 : Pets.level(owned.bond, k);
+		for (int i = 0; i < pet.perks.size(); i++) {
+			Pets.Perk perk = Pets.Perk.of(pet.perks.get(i));
+			if (perk == null) continue;
+			if (i > 0) b.append(" · ");
+			b.append(perk.label);
+			int at = Pets.slotLevel(i, k);
+			if (at <= 0) {
+				if (owned == null) b.append(" right away");
+				continue;
+			}
+			if (owned == null) {
+				b.append(i == 0 ? " from bond level " : " from level ").append(at).append(" (about ").append(minutes(Pets.minutesFor(at, k))).append(" out together)");
+			} else if (level >= at) {
+				b.append(" ✔");
+			} else {
+				b.append(" in ").append(minutes(Math.max(1, Pets.minutesFor(at, k) - owned.bond / 1200))).append(" (level ").append(at).append(")");
+			}
+		}
+		return b.toString();
+	}
+
+	/** "Perks: Lantern from level 2 · Fetch from level 5", for list rows. */
+	private static String shortPerkLine(Pets.Pet pet) {
 		Pets.PerkSettings k = PetStore.settings().perks;
 		if (pet == null || !k.enabled || pet.perks.isEmpty()) return "";
 		StringBuilder b = new StringBuilder("Perks: ");
@@ -135,6 +169,11 @@ public final class PetDialogs {
 		return b.toString();
 	}
 
+	/** "1 h 30 min", "45 min". */
+	private static String minutes(long m) {
+		return (m >= 60 ? m / 60 + " h " + (m % 60 > 0 ? m % 60 + " min" : "") : m + " min").strip();
+	}
+
 	/** "Bond level 3 · 1 h 20 min to level 4" (empty when perks are off). */
 	private static String levelLine(Pets.Owned o) {
 		Pets.PerkSettings k = PetStore.settings().perks;
@@ -142,7 +181,7 @@ public final class PetDialogs {
 		int level = Pets.level(o.bond, k);
 		if (level >= k.maxLevel) return "Bond level " + level + " (the highest)";
 		long left = Math.max(1, Pets.minutesFor(level + 1, k) - o.bond / 1200);
-		return "Bond level " + level + " · " + (left >= 60 ? left / 60 + " h " + (left % 60 > 0 ? left % 60 + " min" : "") : left + " min").strip() + " out together to level " + (level + 1);
+		return "Bond level " + level + " · " + minutes(left) + " out together to level " + (level + 1);
 	}
 
 	private static List<Pets.Pet> shopPets() {
@@ -211,7 +250,7 @@ public final class PetDialogs {
 		Pets.Owned shown = shown(player, owner);
 		for (Pets.Owned o : owner.pets) {
 			boolean out = shown != null && o.pet.equals(shown.pet);
-			String extra = String.join("\n", java.util.stream.Stream.of(PetStore.description(o), levelLine(o), perkLine(PetStore.settings().pet(o.pet)))
+			String extra = String.join("\n", java.util.stream.Stream.of(PetStore.description(o), levelLine(o), perkLine(PetStore.settings().pet(o.pet), o))
 					.filter(x -> !x.isEmpty()).toList());
 			MutableComponent title = petTitle(o);
 			MutableComponent desc = Component.empty()
@@ -245,12 +284,13 @@ public final class PetDialogs {
 			int at = Pets.slotLevel(i, k);
 			boolean open = level >= at;
 			boolean off = owner.perksOff.contains(perk.name());
-			MutableComponent row = Component.empty()
-					.append(Component.literal(perk.label).withStyle(open ? ChatFormatting.WHITE : ChatFormatting.GRAY))
-					.append(Component.literal(open ? (off ? "  off" : "  on") : "  from bond level " + at).withStyle(open && !off ? ChatFormatting.GREEN : ChatFormatting.GRAY))
-					.append(Component.literal("\n" + perk.describe(k) + "  ").withStyle(ChatFormatting.GRAY));
+			MutableComponent row = Component.empty();
+			// First on the row, so wrapping never splits the label.
 			if (open) row.append(off ? link("Switch on", "Let it help with this again", "perk", args("perk", perk.name()), ChatFormatting.GREEN)
-					: link("Switch off", "It stops helping with this (for all your pets)", "perk", args("perk", perk.name()), ChatFormatting.YELLOW));
+					: link("Switch off", "It stops helping with this (for all your pets)", "perk", args("perk", perk.name()), ChatFormatting.YELLOW)).append(Component.literal("  "));
+			row.append(Component.literal(perk.label).withStyle(open ? ChatFormatting.WHITE : ChatFormatting.GRAY))
+					.append(Component.literal(open ? (off ? "  off" : "  on") : "  from bond level " + at).withStyle(open && !off ? ChatFormatting.GREEN : ChatFormatting.GRAY))
+					.append(Component.literal("\n" + perk.describe(k)).withStyle(ChatFormatting.GRAY));
 			body.add(new PlainMessage(row, TEXT_WIDTH));
 		}
 		menu(player, "Pets · " + PetStore.displayName(out) + "'s perks", body, List.of(), button("Back", "Back to the pets menu", "home", args()));
@@ -315,12 +355,13 @@ public final class PetDialogs {
 		Component desc = Component.empty()
 				.append(Component.literal(pet.name).withStyle(ChatFormatting.WHITE))
 				.append(have ? Component.literal("  yours").withStyle(ChatFormatting.GREEN) : Component.empty())
-				.append(Component.literal("\n" + (pet.price == 0 ? "Free" : amount(pet.price))).withStyle(ChatFormatting.GOLD))
-				.append(Component.literal((saleLine(pet) != null ? " · until " + Pets.date(pet.saleEnds) : "") + (left > 0 ? " · " + left + " left" : "") + "  ").withStyle(ChatFormatting.GRAY))
-				.append(perkLine(pet).isEmpty() ? Component.empty() : Component.literal("\n" + perkLine(pet) + "  ").withStyle(ChatFormatting.GRAY))
-				// Like the market's listings: Buy, or View for one you already have.
+				.append(Component.literal("\n"))
+				// Like the market's listings: Buy, or View for one you already have; first on its line, so it never splits.
 				.append(have ? link("View", "You have it already", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.AQUA)
-						: link("Buy", "See it and buy", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.GREEN));
+						: link("Buy", "See it and buy", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.GREEN))
+				.append(Component.literal("  " + (pet.price == 0 ? "Free" : amount(pet.price))).withStyle(ChatFormatting.GOLD))
+				.append(Component.literal((saleLine(pet) != null ? " · until " + Pets.date(pet.saleEnds) : "") + (left > 0 ? " · " + left + " left" : "")).withStyle(ChatFormatting.GRAY))
+				.append(shortPerkLine(pet).isEmpty() ? Component.empty() : Component.literal("\n" + shortPerkLine(pet)).withStyle(ChatFormatting.GRAY));
 		return headRow(player, pet.texture, desc);
 	}
 
@@ -377,7 +418,7 @@ public final class PetDialogs {
 		if (left > 0) facts.append(Component.literal("   Left ").withStyle(ChatFormatting.GRAY)).append(Component.literal(String.valueOf(left)).withStyle(ChatFormatting.WHITE));
 		body.add(new PlainMessage(facts, TEXT_WIDTH));
 		if (!perkLine(pet).isEmpty()) {
-			body.add(text(perkLine(pet) + " (bond levels grow while it's out with you)", ChatFormatting.GRAY));
+			body.add(text(perkLine(pet) + ". Bond levels grow while it's out with you.", ChatFormatting.GRAY));
 			for (String n : pet.perks) {
 				Pets.Perk perk = Pets.Perk.of(n);
 				if (perk != null) body.add(text("· " + perk.label + ": " + perk.describe(PetStore.settings().perks), ChatFormatting.GRAY));

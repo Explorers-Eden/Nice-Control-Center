@@ -48,12 +48,22 @@ final class PetFollowers {
 	/** A head item on a display faces the other way than an entity with the same yaw. */
 	private static final float FACE = 180;
 
-	/** Ticks the clients take to glide the pet and its name to a new spot, and the head to a new turn. */
-	private static final int GLIDE = 2;
+	/**
+	 * Clients are sent a keyframe (spot and turn of the pet and its name) every KEY ticks and glide to it over GLIDE
+	 * ticks. A glide is a bit longer than the gap, so it's always running at an even pace: ticks and packets never
+	 * arrive perfectly evenly (and not at all on time while the server lags), and gliding to a new spot every single
+	 * tick turned that unevenness into jitter, even with the pet barely moving.
+	 */
+	private static final int KEY = 3;
+	private static final int GLIDE = 4;
 	/** How fast the moves play: the animation clock runs at this share of game time. */
 	private static final double PACE = 0.6;
-	/** Ticks of the owner's movement the pet and its name run ahead (they glide GLIDE ticks behind where they're sent). */
-	private static final double LEAD = 2;
+	/** Ticks of the owner's movement the pet and its name run ahead (they arrive about this far behind where they're sent). */
+	private static final double LEAD = (KEY + GLIDE) / 2.0;
+	/** Ticks a reaction move fades in and out over. */
+	private static final double FADE = 5;
+	/** Share of the way the shown turn moves to the wanted one each tick (any jump in where it looks becomes a quick turn). */
+	private static final double TURN_EASE = 0.45;
 	/** Share of the way the evened-out movement moves to this tick's each tick. */
 	private static final double PACE_EASE = 0.3;
 
@@ -112,6 +122,11 @@ final class PetFollowers {
 		Component labelText;
 		/** The owner's movement per tick, evened out (it reaches the server in uneven steps), for the name's lead. */
 		Vec3 pace = Vec3.ZERO;
+		/** Where the last keyframe put the pet (its name sits above that). */
+		Vec3 shown;
+		/** The turn it shows, eased toward the wanted one. */
+		float yawShown = Float.NaN;
+		float pitchShown;
 		/** The pet shown (after Random pet's pick). */
 		Pets.Owned owned;
 		Outing outing;
@@ -240,16 +255,20 @@ final class PetFollowers {
 				double p = Math.min(1, a / Math.max(1, f.moveUntil - f.moveStart));
 				Vec3 off = goal.offset;
 				float yaw = goal.yaw;
+				Vec3 off0 = off;
+				float yaw0 = yaw;
 				double ownerYaw = Math.toRadians(player.getYRot());
 				switch (f.move) {
 					case HOP -> off = off.add(0, 0.45 * Math.abs(Math.sin(a * 0.3)), 0);
-					case BOUNCE -> off = off.add(0, 0.3 * Math.abs(Math.sin(a * 0.5)), 0);
-					case SPIN -> yaw += (float) (a * 30);
+					case BOUNCE -> off = off.add(0, 0.3 * Math.abs(Math.sin(a * 0.3)), 0);
+					// Whole turns, eased, so it ends facing where it started.
+					case SPIN -> yaw += (float) (720 * ease(p));
 					case DROOP -> {
 						off = off.add(0, -0.3, 0);
 						pitch = 30;
 					}
-					case SHIVER -> off = off.add(0.06 * Math.sin(a * 2.7), 0, 0.06 * Math.cos(a * 3.1));
+					// Slow enough for keyframes every few ticks (faster just looked like random jumps).
+					case SHIVER -> off = off.add(0.05 * Math.sin(a * 0.9), 0, 0.05 * Math.cos(a * 1.1));
 					case WIGGLE -> yaw += (float) (30 * Math.sin(a * 0.7));
 					case LOOK_UP -> pitch = -40;
 					case CURL -> {
@@ -277,7 +296,7 @@ final class PetFollowers {
 						double turn = 2.4 * Math.PI * ease(p);
 						double cos = Math.cos(turn), sin = Math.sin(turn);
 						off = new Vec3(off.x * cos - off.z * sin, off.y + 0.3 * Math.abs(Math.sin(a * 0.4)), off.x * sin + off.z * cos);
-						yaw += (float) (a * 14);
+						yaw += (float) (1080 * ease(p));
 					}
 					case FLIP -> {
 						off = off.add(0, 0.6 * Math.sin(Math.PI * p), 0);
@@ -294,8 +313,8 @@ final class PetFollowers {
 						pitch = (float) (10 * Math.sin(a * 0.8));
 					}
 					case SHAKE_OFF -> {
-						yaw += (float) (35 * Math.sin(a * 2.2) * (1 - p));
-						off = off.add(0, 0.08 * Math.abs(Math.sin(a * 1.1)) * (1 - p), 0);
+						yaw += (float) (35 * Math.sin(a * 0.9) * (1 - p));
+						off = off.add(0, 0.08 * Math.abs(Math.sin(a * 0.5)) * (1 - p), 0);
 					}
 					case LOOK_AROUND -> {
 						yaw += (float) (70 * Math.sin(a * 0.1));
@@ -305,6 +324,15 @@ final class PetFollowers {
 					case HEAD_SHAKE -> yaw += (float) (30 * Math.sin(a * 0.9) * (1 - p));
 				}
 				sparkle(player, f, a);
+				// Fades in over the first ticks and out over the last, so starting or ending a move never jumps. Whole
+				// turns (spin, cheer, party, flip) start and end at their usual angle by themselves.
+				double env = ease(Math.min(1, a / FADE)) * ease(Math.min(1, (f.moveUntil - time) / FADE));
+				off = off0.add(off.subtract(off0).scale(env));
+				boolean turns = f.move == Move.SPIN || f.move == Move.CHEER || f.move == Move.PARTY || f.move == Move.FLIP;
+				if (!turns) {
+					yaw = yaw0 + (float) (net.minecraft.util.Mth.wrapDegrees(yaw - yaw0) * env);
+					pitch = (float) (pitch * env);
+				}
 				goal = new Target(off, yaw, Math.max(goal.follow, 0.6), goal.stay);
 			}
 			Vec3 want = base.add(goal.offset);
@@ -326,6 +354,9 @@ final class PetFollowers {
 					continue;
 				}
 				pose(f, goal.yaw, pitch, size, 0);
+				f.shown = want;
+				f.yawShown = goal.yaw;
+				f.pitchShown = pitch;
 				if (!f.greeted) {
 					f.greeted = true;
 					PetReactions.hello(player);
@@ -341,13 +372,22 @@ final class PetFollowers {
 				f.offset = clear(f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow)), h, size, player.getYRot());
 				f.pos = base.add(f.offset);
 			}
-			// Clients glide the pet and its name GLIDE ticks behind, so both lead by the owner's movement to keep up with them.
+			// Clients glide the pet and its name behind where they're sent, so both lead by the owner's movement to keep up.
 			f.pace = moved.lengthSqr() > 9 ? Vec3.ZERO : f.pace.add(moved.subtract(f.pace).scale(PACE_EASE));
 			Vec3 lead = goal.stay ? Vec3.ZERO : f.pace.scale(LEAD);
 			Vec3 shown = f.pos.add(lead);
-			if (f.display.position().distanceToSqr(shown) > 1e-6) f.display.setPos(shown);
-			pose(f, goal.yaw, pitch, size, GLIDE);
-			label(f, player, owner, size, time, shown);
+			// A keyframe every KEY ticks (each pet on its own ticks); in between, clients carry on gliding.
+			boolean key = (time + f.phase) % KEY == 0;
+			// The turn is eased every tick (the shortest way round), so switching what it does never snaps its head.
+			if (Float.isNaN(f.yawShown)) f.yawShown = goal.yaw;
+			f.yawShown += (float) (net.minecraft.util.Mth.wrapDegrees(goal.yaw - f.yawShown) * TURN_EASE);
+			f.pitchShown += (float) (net.minecraft.util.Mth.wrapDegrees(pitch - f.pitchShown) * TURN_EASE);
+			if (key) {
+				if (f.display.position().distanceToSqr(shown) > 1e-6) f.display.setPos(shown);
+				pose(f, f.yawShown, f.pitchShown, size, GLIDE);
+				f.shown = shown;
+			}
+			label(f, player, owner, size, time, f.shown == null ? shown : f.shown);
 			Pets.Trail trail = Pets.Trail.of(owner.trail);
 			trail(player, trail == Pets.Trail.RANDOM ? f.rolledTrail : trail, f, t, size);
 		}

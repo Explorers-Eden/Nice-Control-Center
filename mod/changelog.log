@@ -1,4 +1,11 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.24.1
+- Pets move smoothly: their spot and turn (and their name) are sent as keyframes every 3 ticks that players' games glide through over 4, instead of a new spot every tick, which jittered even when the pet barely moved and more so while the server lagged
+- Pet animations no longer jump when they start, end or switch: reaction moves fade in and out, spins are whole eased turns that end facing where they started, the head's turn is eased the short way round, and fast wiggles (shiver, shake off, bounce) are slowed down so they show smoothly
+- Market and pet menus: the [ Buy ], [ View ], [ Sell ] and [ Switch on/off ] labels come first on their line, so wrapping can't split them into "[" and "Buy ]" any more
+- Server shop: buying claim blocks or command listings asks "How many" in a text field, like player listings (up to 64 at once; a wrong number says so)
+- Pets in the market: a pet's page says how long each perk takes to unlock ("from bond level 2, about 1 h 30 min out together"); your own pets show how long is left until each perk works, or ✔ when it does
+
 ## 1.24.0
 - A/B trials removed (/ncc trial and the Reports card)
 - Performance presets: five built-ins (Off, Light, Balanced, Farm friendly, Aggressive) that each set every switch and number; saved presets file (config/nicecontrolcenter-performance-presets.json) for the panel
