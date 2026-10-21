@@ -76,6 +76,12 @@ public final class Claims {
 		public int inactiveDays = 0;
 		/** Players may only claim inside the permanent area (the soft border) where one is set. */
 		public boolean onlyPermanentArea = true;
+		/** Warping Wonders' waypoint hubs can only be placed inside the permanent area too (works with claims off). */
+		public boolean hubsOnlyPermanentArea = true;
+		/** Right-clicking your own hub opens a menu to rename it, make it private and trust players, with a button to the waypoint list. */
+		public boolean hubsOwnerMenu = true;
+		/** Dimensions where hubs can't be placed at all. */
+		public List<String> hubsDeniedDimensions = new ArrayList<>();
 
 		public Settings fill() {
 			toolItem = itemId(toolItem, "minecraft:golden_hoe");
@@ -86,6 +92,9 @@ public final class Claims {
 			visualSelection = visualId(visualSelection, "minecraft:diamond_block");
 			if (dimensions == null) dimensions = new ArrayList<>();
 			dimensions = dimensions.stream().filter(d -> d != null && !d.isBlank()).map(d -> d.strip().toLowerCase(Locale.ROOT))
+					.map(d -> d.contains(":") ? d : "minecraft:" + d).distinct().toList();
+			if (hubsDeniedDimensions == null) hubsDeniedDimensions = new ArrayList<>();
+			hubsDeniedDimensions = hubsDeniedDimensions.stream().filter(d -> d != null && !d.isBlank()).map(d -> d.strip().toLowerCase(Locale.ROOT))
 					.map(d -> d.contains(":") ? d : "minecraft:" + d).distinct().toList();
 			if (defaultFlags == null) defaultFlags = new Flags();
 			if (colors == null || colors.isEmpty()) colors = defaultColors();

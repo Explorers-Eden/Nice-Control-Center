@@ -191,7 +191,7 @@ public final class MapExport {
 	 * Plain text from a name or description as data packs store it: a string, a text component, or a
 	 * string holding a component in SNBT (what a macro makes of an item's custom name).
 	 */
-	static String text(MinecraftServer server, net.minecraft.nbt.Tag tag) {
+	public static String text(MinecraftServer server, net.minecraft.nbt.Tag tag) {
 		if (tag == null) return "";
 		if (tag instanceof net.minecraft.nbt.StringTag(String value)) {
 			String t = value.strip();

@@ -124,7 +124,7 @@
       { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
         { tab: 'claims', label: 'Claims', perm: 'claims.view', desc: 'Land players have claimed: who owns it, who may do what, and where.' },
         { tab: 'claimblocks', label: 'Claim blocks', perm: 'claims.view', desc: 'How many claim blocks each player has earned, bought and used.' },
-        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks and the claim tool.' },
+        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks, the claim tool and where waypoint hubs may go.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
         { tab: 'market', label: 'Player market', perm: 'server.view', desc: 'The player market (/market): settings, what players sell and what sold.' },
@@ -4795,7 +4795,7 @@
   const CS_NUM = ['startingBlocks', 'blocksPerHour', 'maxAccruedBlocks', 'afkMinutes', 'minWidth', 'minArea', 'maxClaims', 'inactiveDays',
     'visualSpacing', 'visualRange', 'visualSeconds'];
   const CS_TEXT = ['toolItem', 'visualCorner', 'visualEdge', 'visualSubCorner', 'visualSubEdge', 'visualSelection'];
-  const CS_BOOL = ['enabled', 'accrueWhileDisabled', 'onlyPermanentArea'];
+  const CS_BOOL = ['enabled', 'accrueWhileDisabled', 'onlyPermanentArea', 'hubsOnlyPermanentArea', 'hubsOwnerMenu'];
   const CS_FLAGS = [['access', 'Use doors, buttons and levers'], ['containers', 'Open chests and interact with entities'], ['pvp', 'Fight (PvP)'],
     ['explosions', 'Explosions break blocks'], ['fireSpread', 'Fire spreads'], ['mobGriefing', 'Mobs change blocks']];
 
@@ -4812,6 +4812,8 @@
     CS_TEXT.forEach((k) => { f[k].value = s[k]; });
     $('pn-cs-dims').innerHTML = csData.dimensions.map((d) => `<label class="np-check"><input type="checkbox" name="dim" value="${esc(d.id)}" ${s.dimensions.includes(d.id) ? 'checked' : ''}>
       ${esc(d.name)}${d.missing ? ' <small class="pn-hint">(not in this world)</small>' : ''}</label>`).join('');
+    const hubDenied = s.hubsDeniedDimensions || [];
+    $('pn-cs-hubdims').innerHTML = csData.dimensions.map((d) => `<label class="np-check"><input type="checkbox" name="hubdim" value="${esc(d.id)}" ${hubDenied.includes(d.id) ? 'checked' : ''}> ${esc(d.name)}</label>`).join('');
     $('pn-cs-flags').innerHTML = CS_FLAGS.map(([k, l]) => `<label class="np-check"><input type="checkbox" name="df-${k}" ${s.defaultFlags[k] ? 'checked' : ''}> ${esc(l)}</label>`).join('');
     // The usual palette plus colours added in the file by hand.
     const colors = { ...csData.defaults.colors, ...s.colors };
@@ -4834,6 +4836,7 @@
     CS_NUM.forEach((k) => { body[k] = Number(f[k].value) || 0; });
     CS_TEXT.forEach((k) => { body[k] = f[k].value.trim(); });
     body.dimensions = [...f.querySelectorAll('input[name=dim]:checked')].map((i) => i.value);
+    body.hubsDeniedDimensions = [...f.querySelectorAll('input[name=hubdim]:checked')].map((i) => i.value);
     body.defaultFlags = Object.fromEntries(CS_FLAGS.map(([k]) => [k, f['df-' + k].checked]));
     body.colors = Object.fromEntries([...f.querySelectorAll('input[name=color]:checked')].map((i) => [i.value, i.dataset.hex]));
     if (!Object.keys(body.colors).length) return formMsg('pn-cs-msg', 'Pick at least one colour.', false);

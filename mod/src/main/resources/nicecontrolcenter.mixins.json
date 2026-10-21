@@ -24,6 +24,8 @@
 		"GrindstoneSlot3Mixin",
 		"SaplingReplantMixin",
 		"SpawnerPlaceMixin",
+		"WaypointHubMenuMixin",
+		"WaypointHubPlaceMixin",
 		"ThrownTridentAccessor",
 		"TridentVoidMixin",
 		"DispenserPlaceMixin",
