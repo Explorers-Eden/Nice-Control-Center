@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.23.1
+- Waypoint hubs: the dimension list is now where hubs are allowed (like claims) instead of where they aren't; until it's saved once in the panel, the old setting keeps working
+
 ## 1.23.0
 - Monitoring: splits the server thread's busy time into running on a core and waiting (blocked on a lock, waiting for another thread or the disk, or not given a core by the host). New "Server thread" chart, off-CPU numbers in Between ticks, and a "Where it waited" table naming the lock and the thread that holds it
 - Monitoring: Machine & threads card with CPU taken by the host (steal), container CPU limit and throttling, I/O wait, pressure (Linux), and CPU per group of threads (C2ME workers, Netty, GC…)

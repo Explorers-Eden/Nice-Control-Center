@@ -4890,8 +4890,10 @@
     CS_TEXT.forEach((k) => { f[k].value = s[k]; });
     $('pn-cs-dims').innerHTML = csData.dimensions.map((d) => `<label class="np-check"><input type="checkbox" name="dim" value="${esc(d.id)}" ${s.dimensions.includes(d.id) ? 'checked' : ''}>
       ${esc(d.name)}${d.missing ? ' <small class="pn-hint">(not in this world)</small>' : ''}</label>`).join('');
-    const hubDenied = s.hubsDeniedDimensions || [];
-    $('pn-cs-hubdims').innerHTML = csData.dimensions.map((d) => `<label class="np-check"><input type="checkbox" name="hubdim" value="${esc(d.id)}" ${hubDenied.includes(d.id) ? 'checked' : ''}> ${esc(d.name)}</label>`).join('');
+    // Allowed list; older settings only had a "not allowed" list, so until saved once that's turned around.
+    const hubAllowed = (id) => (s.hubsDimensions ? s.hubsDimensions.includes(id) : !(s.hubsDeniedDimensions || []).includes(id));
+    $('pn-cs-hubdims').innerHTML = csData.dimensions.map((d) => `<label class="np-check"><input type="checkbox" name="hubdim" value="${esc(d.id)}" ${hubAllowed(d.id) ? 'checked' : ''}>
+      ${esc(d.name)}${d.missing ? ' <small class="pn-hint">(not in this world)</small>' : ''}</label>`).join('');
     $('pn-cs-flags').innerHTML = CS_FLAGS.map(([k, l]) => `<label class="np-check"><input type="checkbox" name="df-${k}" ${s.defaultFlags[k] ? 'checked' : ''}> ${esc(l)}</label>`).join('');
     // The usual palette plus colours added in the file by hand.
     const colors = { ...csData.defaults.colors, ...s.colors };
@@ -4914,7 +4916,8 @@
     CS_NUM.forEach((k) => { body[k] = Number(f[k].value) || 0; });
     CS_TEXT.forEach((k) => { body[k] = f[k].value.trim(); });
     body.dimensions = [...f.querySelectorAll('input[name=dim]:checked')].map((i) => i.value);
-    body.hubsDeniedDimensions = [...f.querySelectorAll('input[name=hubdim]:checked')].map((i) => i.value);
+    body.hubsDimensions = [...f.querySelectorAll('input[name=hubdim]:checked')].map((i) => i.value);
+    body.hubsDeniedDimensions = [];
     body.defaultFlags = Object.fromEntries(CS_FLAGS.map(([k]) => [k, f['df-' + k].checked]));
     body.colors = Object.fromEntries([...f.querySelectorAll('input[name=color]:checked')].map((i) => [i.value, i.dataset.hex]));
     if (!Object.keys(body.colors).length) return formMsg('pn-cs-msg', 'Pick at least one colour.', false);

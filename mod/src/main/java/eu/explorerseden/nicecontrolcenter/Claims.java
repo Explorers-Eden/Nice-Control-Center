@@ -80,7 +80,9 @@ public final class Claims {
 		public boolean hubsOnlyPermanentArea = true;
 		/** Right-clicking your own hub opens a menu to rename it, make it private and trust players, with a button to the waypoint list. */
 		public boolean hubsOwnerMenu = true;
-		/** Dimensions where hubs can't be placed at all. */
+		/** Dimensions where hubs can be placed (like {@link #dimensions} for claims); null until saved once with this list. */
+		public List<String> hubsDimensions;
+		/** Older setting: dimensions where hubs can't be placed. Only used while {@link #hubsDimensions} isn't set yet. */
 		public List<String> hubsDeniedDimensions = new ArrayList<>();
 
 		public Settings fill() {
@@ -93,6 +95,10 @@ public final class Claims {
 			if (dimensions == null) dimensions = new ArrayList<>();
 			dimensions = dimensions.stream().filter(d -> d != null && !d.isBlank()).map(d -> d.strip().toLowerCase(Locale.ROOT))
 					.map(d -> d.contains(":") ? d : "minecraft:" + d).distinct().toList();
+			if (hubsDimensions != null) {
+				hubsDimensions = hubsDimensions.stream().filter(d -> d != null && !d.isBlank()).map(d -> d.strip().toLowerCase(Locale.ROOT))
+						.map(d -> d.contains(":") ? d : "minecraft:" + d).distinct().toList();
+			}
 			if (hubsDeniedDimensions == null) hubsDeniedDimensions = new ArrayList<>();
 			hubsDeniedDimensions = hubsDeniedDimensions.stream().filter(d -> d != null && !d.isBlank()).map(d -> d.strip().toLowerCase(Locale.ROOT))
 					.map(d -> d.contains(":") ? d : "minecraft:" + d).distinct().toList();
@@ -103,6 +109,11 @@ public final class Claims {
 
 		public boolean dimensionAllowed(String dim) {
 			return dimensions.contains(dim);
+		}
+
+		/** Whether hubs may be placed in this dimension (until the list is saved once: everywhere the old setting didn't forbid). */
+		public boolean hubsAllowed(String dim) {
+			return hubsDimensions != null ? hubsDimensions.contains(dim) : !hubsDeniedDimensions.contains(dim);
 		}
 	}
 

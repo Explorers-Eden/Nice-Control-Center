@@ -99,7 +99,7 @@ public final class Hubs {
 		var settings = ClaimStore.settings();
 		String dim = level.dimension().identifier().toString();
 		String why = null;
-		if (settings.hubsDeniedDimensions.contains(dim)) {
+		if (!settings.hubsAllowed(dim)) {
 			why = "You can't place Waypoint Hubs in this dimension!";
 		} else if (settings.hubsOnlyPermanentArea) {
 			Borders.Border b = HardBorder.borders().get(dim);

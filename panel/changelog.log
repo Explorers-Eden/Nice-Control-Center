@@ -1,3 +1,6 @@
+## 1.21.1
+- Claims → Settings → Waypoint hubs: "Allowed in" dimensions (ticked = hubs may be placed), like the claims list; the old "Not allowed in" choices are shown turned around until saved (mod 1.23.1)
+
 ## 1.21.0
 - Performance → Tuning: Profiles card (Off / Balanced, recommended / Aggressive) shows which one your settings match, applies one (only what it lists; frozen chunks, mob limits and item lists stay) and starts an A/B trial "current vs profile" for mod 1.23.0
 - Performance → Tuning: Spawn less often card (monsters, water mobs and bats try to spawn every few ticks) for mod 1.23.0
