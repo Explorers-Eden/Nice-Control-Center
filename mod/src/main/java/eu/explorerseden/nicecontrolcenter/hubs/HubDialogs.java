@@ -137,22 +137,30 @@ public final class HubDialogs {
 				: "Private: only you" + (trusted.isEmpty() ? "" : " and the players you trust") + " can travel here.", ChatFormatting.GRAY));
 		List<ActionButton> buttons = new ArrayList<>();
 		buttons.add(button("Waypoints", "Open the list of hubs to travel to", "list", args(id)));
-		buttons.add(button("Name & description", "How the hub is shown above it and in the waypoint list", "edit", args(id)));
+		buttons.add(button("Name & colour", "Name, description and colour, shown above the hub and in the waypoint list", "edit", args(id)));
 		buttons.add(Hubs.isPublic(hub) ? button("Make private", "Only you and the players you trust can travel here", "access", args(id))
 				: button("Make public", "Everyone can travel here", "access", args(id)));
 		buttons.add(button("Trusted players (" + trusted.size() + ")", "Who may travel here while the hub is private", "trust", args(id)));
+		buttons.add(Hubs.announces(hub) ? button("Arrival message: on", "You hear and read who teleports here. Switching it off puts wool under the hub", "announce", args(id))
+				: button("Arrival message: off", "Switch it on to hear and read who teleports here (the wool under the hub goes away)", "announce", args(id)));
 		menu(player, title(server, hub), body, List.of(), buttons, close());
 	}
 
 	private static void edit(ServerPlayer player, int id, CompoundTag hub, String notice) {
 		MinecraftServer server = player.level().getServer();
 		List<DialogBody> body = new ArrayList<>();
-		body.add(text("The name floats above the hub; both show in everyone's waypoint list.", ChatFormatting.GRAY));
+		body.add(text("The name floats above the hub in its colour; all three show in everyone's waypoint list.", ChatFormatting.GRAY));
 		notice(body, player, notice);
+		String current = Hubs.dye(hub);
+		List<SingleOptionInput.Entry> colors = new ArrayList<>();
+		if (current == null) colors.add(new SingleOptionInput.Entry("", Optional.of(Component.literal("■ Current").withColor(Hubs.color(hub))), true));
+		Hubs.COLORS.forEach((dye, hex) -> colors.add(new SingleOptionInput.Entry(dye,
+				Optional.of(Component.literal("■ " + Character.toUpperCase(dye.charAt(0)) + dye.substring(1).replace('_', ' ')).withColor(Integer.parseInt(hex.substring(1), 16))), dye.equals(current))));
 		List<Input> inputs = List.of(
 				new Input("name", new TextInput(250, Component.literal("Name"), true, Hubs.clean(Hubs.name(server, hub)), Hubs.MAX_TEXT, Optional.empty())),
-				new Input("description", new TextInput(250, Component.literal("Description"), true, Hubs.clean(Hubs.description(server, hub)), Hubs.MAX_TEXT, Optional.empty())));
-		List<ActionButton> buttons = List.of(button("Save", "Save the name and description", "edit_save", args(id)),
+				new Input("description", new TextInput(250, Component.literal("Description"), true, Hubs.clean(Hubs.description(server, hub)), Hubs.MAX_TEXT, Optional.empty())),
+				new Input("color", new SingleOptionInput(250, colors, Component.literal("Colour"), true)));
+		List<ActionButton> buttons = List.of(button("Save", "Save the name, description and colour", "edit_save", args(id)),
 				button("Back", "Back to the hub, without saving", "main", args(id)));
 		menu(player, title(server, hub), body, inputs, buttons, null);
 	}
@@ -252,7 +260,14 @@ public final class HubDialogs {
 				}
 				if (!name.equals(Hubs.name(server, hub))) Hubs.rename(player, id, marker, name);
 				if (!description.equals(Hubs.description(server, hub))) Hubs.describe(player, id, description);
+				String dye = in.getStringOr("color", "");
+				if (Hubs.COLORS.containsKey(dye) && !dye.equals(Hubs.dye(hub))) Hubs.recolor(player, id, marker, dye);
 				player.level().playSound(null, marker.blockPosition(), SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.PLAYERS, 1f, 1f);
+				main(player, id);
+			}
+			case "announce" -> {
+				String problem = Hubs.setAnnounces(player, id, marker, !Hubs.announces(hub));
+				if (problem != null) ClaimTool.tell(player, problem, ChatFormatting.RED);
 				main(player, id);
 			}
 			case "access" -> {

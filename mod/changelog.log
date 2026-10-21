@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.19.1
+- Waypoint hubs: the owner menu's "Name & colour" also picks the title colour, from the same colours the dyes give
+- Waypoint hubs: the owner menu switches the arrival message (the chat line and sound when someone teleports to your hub) on or off. Off puts wool in the hub's colour under the hub, as Warping Wonders expects; on puts back the block that was there (wool placed by hand drops as an item)
+
 ## 1.19.0
 - Waypoint hubs (Warping Wonders): hubs can only be placed in the permanent area (inside the soft border), like claims; in the outer wilds the hub item drops again. Uses the borders set in the panel instead of the pack's own fixed check, which Warping Wonders 4.2 drops. Admins in claim bypass mode can place them anywhere
 - Waypoint hubs: right-clicking your own hub opens an owner menu: rename it, change its description, make it public or private and trust or untrust players, with a Waypoints button to the usual list. Everyone else still gets the list right away. Both can be switched off in the panel (Claims → Settings → Waypoint hubs), where dimensions without any hubs can be picked too

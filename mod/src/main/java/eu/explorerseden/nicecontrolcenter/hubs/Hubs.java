@@ -49,6 +49,38 @@ public final class Hubs {
 	private static final String ID_SCORE = "wawo.waypoint_hub.id";
 	/** Names and descriptions go into the pack's dialog JSON through macros, so these would break its menu. */
 	public static final int MAX_TEXT = 50;
+	/** The pack's colours (one per dye), as its dyes set them. */
+	public static final java.util.Map<String, String> COLORS = colors();
+	/** The block that was under the hub before the menu put wool there, to put back when the arrival message is switched on again. */
+	private static final String UNDER = "nicecontrolcenter_under";
+
+	private static java.util.Map<String, String> colors() {
+		java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+		m.put("white", "#FFFFFF");
+		m.put("light_gray", "#d9d9d9");
+		m.put("gray", "#979797");
+		m.put("black", "#1c1c22");
+		m.put("brown", "#895836");
+		m.put("red", "#be3030");
+		m.put("orange", "#f4b33f");
+		m.put("yellow", "#e4e229");
+		m.put("lime", "#83d41c");
+		m.put("green", "#577a22");
+		m.put("cyan", "#3889aa");
+		m.put("light_blue", "#8fb9f4");
+		m.put("blue", "#142eaf");
+		m.put("purple", "#b064d8");
+		m.put("magenta", "#db7ad5");
+		m.put("pink", "#f2aed1");
+		return java.util.Collections.unmodifiableMap(m);
+	}
+
+	/** The dye whose colour the hub has, or null for a colour that isn't in the list. */
+	public static String dye(CompoundTag hub) {
+		String c = hub.getStringOr("color", "#ffffff");
+		for (var e : COLORS.entrySet()) if (e.getValue().equalsIgnoreCase(c)) return e.getKey();
+		return null;
+	}
 
 	private Hubs() {
 	}
@@ -183,14 +215,19 @@ public final class Hubs {
 		hub.putString("waypoint_name", name);
 		save(server, database);
 		marker.setCustomName(Component.literal(name));
-		AABB around = marker.getBoundingBox().inflate(3);
-		Display.TextDisplay text = player.level().getEntitiesOfClass(Display.TextDisplay.class, around, d -> d.entityTags().contains(DISPLAY)).stream()
-				.min(java.util.Comparator.comparingDouble(d -> d.distanceToSqr(marker))).orElse(null);
+		Display.TextDisplay text = textDisplay(player, marker);
 		if (text != null) {
 			TextDisplayAccessor acc = (TextDisplayAccessor) text;
 			Component old = acc.nicecontrolcenter$getText();
 			acc.nicecontrolcenter$setText(Component.literal(name).withStyle(old == null ? net.minecraft.network.chat.Style.EMPTY : old.getStyle()));
 		}
+	}
+
+	/** The hub's floating name, the text display closest to its marker. */
+	private static Display.TextDisplay textDisplay(ServerPlayer player, Marker marker) {
+		AABB around = marker.getBoundingBox().inflate(3);
+		return player.level().getEntitiesOfClass(Display.TextDisplay.class, around, d -> d.entityTags().contains(DISPLAY)).stream()
+				.min(java.util.Comparator.comparingDouble(d -> d.distanceToSqr(marker))).orElse(null);
 	}
 
 	/** Like a renamed book (empty = no description). */
@@ -202,6 +239,62 @@ public final class Hubs {
 		if (description.isEmpty()) hub.remove("waypoint_description");
 		else hub.putString("waypoint_description", description + "\n\n");
 		save(server, database);
+	}
+
+	/** Like a dye: storage and the floating name's colour. */
+	public static void recolor(ServerPlayer player, int id, Marker marker, String dye) {
+		String hex = COLORS.get(dye);
+		MinecraftServer server = player.level().getServer();
+		CompoundTag database = database(server);
+		CompoundTag hub = hubIn(database, id);
+		if (hub == null || hex == null) return;
+		hub.putString("color", hex);
+		save(server, database);
+		Display.TextDisplay text = textDisplay(player, marker);
+		if (text != null) {
+			TextDisplayAccessor acc = (TextDisplayAccessor) text;
+			Component old = acc.nicecontrolcenter$getText();
+			Component now = old == null ? Component.literal(name(server, hub)) : old;
+			acc.nicecontrolcenter$setText(now.copy().withColor(Integer.parseInt(hex.substring(1), 16)));
+		}
+	}
+
+	/** Whether the owner hears and reads who teleports to the hub. */
+	public static boolean announces(CompoundTag hub) {
+		return !"disabled".equals(hub.getStringOr("announcement", "enabled"));
+	}
+
+	/**
+	 * The pack decides the arrival message from the block under the hub every 2 seconds (wool = no
+	 * message), so the switch puts wool there (in the hub's colour) or takes it away again, putting
+	 * back what was there before. Returns a problem, or null.
+	 */
+	public static String setAnnounces(ServerPlayer player, int id, Marker marker, boolean on) {
+		ServerLevel level = player.level();
+		MinecraftServer server = level.getServer();
+		CompoundTag database = database(server);
+		CompoundTag hub = hubIn(database, id);
+		if (hub == null) return null;
+		net.minecraft.core.BlockPos below = marker.blockPosition().below();
+		var state = level.getBlockState(below);
+		boolean wool = state.is(net.minecraft.tags.BlockTags.WOOL);
+		if (on && wool) {
+			if (hub.get(UNDER) instanceof CompoundTag before) {
+				level.setBlock(below, net.minecraft.nbt.NbtUtils.readBlockState(level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BLOCK), before), 3);
+			} else {
+				level.destroyBlock(below, true);
+			}
+		} else if (!on && !wool) {
+			if (level.getBlockEntity(below) != null) return "There's a container or similar under the hub; put a wool block there yourself.";
+			String dye = dye(hub);
+			var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace((dye == null ? "white" : dye) + "_wool"));
+			hub.put(UNDER, net.minecraft.nbt.NbtUtils.writeBlockState(state));
+			level.setBlock(below, block.defaultBlockState(), 3);
+		}
+		if (on) hub.remove(UNDER);
+		hub.putString("announcement", on ? "enabled" : "disabled");
+		save(server, database);
+		return null;
 	}
 
 	/** Like the waypoint lock. */
