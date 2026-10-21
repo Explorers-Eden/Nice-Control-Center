@@ -141,8 +141,8 @@ public final class HubDialogs {
 		buttons.add(Hubs.isPublic(hub) ? button("Make private", "Only you and the players you trust can travel here", "access", args(id))
 				: button("Make public", "Everyone can travel here", "access", args(id)));
 		buttons.add(button("Trusted players (" + trusted.size() + ")", "Who may travel here while the hub is private", "trust", args(id)));
-		buttons.add(Hubs.announces(hub) ? button("Arrival message: on", "You hear and read who teleports here. Switching it off puts wool under the hub", "announce", args(id))
-				: button("Arrival message: off", "Switch it on to hear and read who teleports here (the wool under the hub goes away)", "announce", args(id)));
+		buttons.add(Hubs.announces(hub) ? button("Arrival message: on", "You hear and read who teleports here. Click to switch it off", "announce", args(id))
+				: button("Arrival message: off", "Click to hear and read who teleports here", "announce", args(id)));
 		menu(player, title(server, hub), body, List.of(), buttons, close());
 	}
 

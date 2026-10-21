@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.19.2
+- Waypoint hubs: the owner menu's arrival message switch no longer puts wool under the hub; it switches the message directly. Switched off in the menu, it stays off whatever is under the hub; it can't be switched on while wool is under the hub (the menu says why). Wool the 1.19.1 menu placed is swapped back for the original block when the message is switched on again
+
 ## 1.19.1
 - Waypoint hubs: the owner menu's "Name & colour" also picks the title colour, from the same colours the dyes give
 - Waypoint hubs: the owner menu switches the arrival message (the chat line and sound when someone teleports to your hub) on or off. Off puts wool in the hub's colour under the hub, as Warping Wonders expects; on puts back the block that was there (wool placed by hand drops as an item)

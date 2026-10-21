@@ -51,8 +51,10 @@ public final class Hubs {
 	public static final int MAX_TEXT = 50;
 	/** The pack's colours (one per dye), as its dyes set them. */
 	public static final java.util.Map<String, String> COLORS = colors();
-	/** The block that was under the hub before the menu put wool there, to put back when the arrival message is switched on again. */
+	/** The block that was under the hub before 1.19.1's menu put wool there. */
 	private static final String UNDER = "nicecontrolcenter_under";
+	/** Set when the owner switched the arrival message off in the menu: the wool check then leaves the hub alone. */
+	private static final String CHOSEN = "nicecontrolcenter_announcement";
 
 	private static java.util.Map<String, String> colors() {
 		java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
@@ -265,9 +267,10 @@ public final class Hubs {
 	}
 
 	/**
-	 * The pack decides the arrival message from the block under the hub every 2 seconds (wool = no
-	 * message), so the switch puts wool there (in the hub's colour) or takes it away again, putting
-	 * back what was there before. Returns a problem, or null.
+	 * Switches the arrival message straight in storage. Off is remembered as the owner's choice, so
+	 * the pack's check of the block under the hub (wool = no message, every 2 seconds) leaves the hub
+	 * alone (see {@link #ownerChoseAnnouncement}); on hands the hub back to that check, so it can't
+	 * be switched on over wool. Returns why not, or null.
 	 */
 	public static String setAnnounces(ServerPlayer player, int id, Marker marker, boolean on) {
 		ServerLevel level = player.level();
@@ -275,26 +278,34 @@ public final class Hubs {
 		CompoundTag database = database(server);
 		CompoundTag hub = hubIn(database, id);
 		if (hub == null) return null;
-		net.minecraft.core.BlockPos below = marker.blockPosition().below();
-		var state = level.getBlockState(below);
-		boolean wool = state.is(net.minecraft.tags.BlockTags.WOOL);
-		if (on && wool) {
-			if (hub.get(UNDER) instanceof CompoundTag before) {
+		if (on) {
+			net.minecraft.core.BlockPos below = marker.blockPosition().below();
+			boolean wool = level.getBlockState(below).is(net.minecraft.tags.BlockTags.WOOL);
+			if (wool && hub.get(UNDER) instanceof CompoundTag before) {
+				// 1.19.1's menu put this wool there: put back what was there.
 				level.setBlock(below, net.minecraft.nbt.NbtUtils.readBlockState(level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BLOCK), before), 3);
-			} else {
-				level.destroyBlock(below, true);
+			} else if (wool) {
+				return "There's wool under the hub, and wool switches the arrival message off. Take it away to switch the message on.";
 			}
-		} else if (!on && !wool) {
-			if (level.getBlockEntity(below) != null) return "There's a container or similar under the hub; put a wool block there yourself.";
-			String dye = dye(hub);
-			var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace((dye == null ? "white" : dye) + "_wool"));
-			hub.put(UNDER, net.minecraft.nbt.NbtUtils.writeBlockState(state));
-			level.setBlock(below, block.defaultBlockState(), 3);
+			hub.remove(UNDER);
+			hub.remove(CHOSEN);
+		} else {
+			hub.putString(CHOSEN, "disabled");
 		}
-		if (on) hub.remove(UNDER);
 		hub.putString("announcement", on ? "enabled" : "disabled");
 		save(server, database);
 		return null;
+	}
+
+	/** The marker belongs to a hub whose arrival message was switched off in the owner menu (so the pack's wool check must not turn it on again). */
+	public static boolean ownerChoseAnnouncement(Entity entity) {
+		if (!(entity instanceof Marker marker) || !marker.entityTags().contains(MARKER)) return false;
+		var scoreboard = marker.level().getScoreboard();
+		Objective objective = scoreboard.getObjective(ID_SCORE);
+		ReadOnlyScoreInfo score = objective == null ? null : scoreboard.getPlayerScoreInfo(marker, objective);
+		if (score == null || !(marker.level() instanceof ServerLevel level)) return false;
+		CompoundTag hub = hub(level.getServer(), score.value());
+		return hub != null && hub.contains(CHOSEN);
 	}
 
 	/** Like the waypoint lock. */
