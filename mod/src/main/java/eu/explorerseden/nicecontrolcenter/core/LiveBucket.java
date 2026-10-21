@@ -27,6 +27,9 @@ public final class LiveBucket {
 	public long tickNsMax;
 	public long tickNsMin = Long.MAX_VALUE;
 	public final int[] msptHistogram = new int[TickHistogram.BINS];
+	/** Time the server thread worked between ticks, and waited there. */
+	public long betweenBusyNs;
+	public long betweenIdleNs;
 
 	public final Map<Object, Stat> entities = new IdentityHashMap<>();
 	public final Map<Object, Stat> blockEntities = new IdentityHashMap<>();

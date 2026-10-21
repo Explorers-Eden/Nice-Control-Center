@@ -4,6 +4,7 @@ import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.Tweaks;
 import eu.explorerseden.nicecontrolcenter.core.PlayerActivity;
 import eu.explorerseden.nicecontrolcenter.core.WorldClock;
+import eu.explorerseden.nicecontrolcenter.data.History;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -104,7 +105,10 @@ public final class AfkTabList {
 	private static Component text(MinecraftServer server, ServerPlayer player, String template) {
 		if (template.isBlank()) return Component.empty();
 		double mspt = server.getAverageTickTimeNanos() / 1_000_000.0;
-		double tps = Math.min(server.tickRateManager().tickrate(), mspt > 0 ? 1000.0 / mspt : 20);
+		// Ticks that really ran in the last seconds (1000 / mspt only drops once the average tick is over budget).
+		double target = server.tickRateManager().tickrate();
+		History.Recent recent = History.recent(5);
+		double tps = recent.wallMs() > 0 ? Math.min(target, recent.ticks() * 1000.0 / recent.wallMs()) : Math.min(target, mspt > 0 ? 1000.0 / mspt : 20);
 		WorldClock.Clock clock = WorldClock.current();
 		String t = template.replace("\\n", "\n")
 				.replace("{players}", String.valueOf(server.getPlayerCount()))

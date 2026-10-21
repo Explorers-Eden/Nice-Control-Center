@@ -64,6 +64,8 @@ public final class Snapshotter {
 		System.arraycopy(bucket.msptHistogram, 0, b.msptHistogram, 0, b.msptHistogram.length);
 		b.targetMspt = server.tickRateManager().millisecondsPerTick();
 		b.spikes.addAll(bucket.spikes);
+		b.betweenBusyNs = bucket.betweenBusyNs;
+		b.betweenIdleNs = bucket.betweenIdleNs;
 
 		bucket.forEachPhase((key, stat) -> {
 			Breakdown.Row row = new Breakdown.Row();
@@ -121,6 +123,8 @@ public final class Snapshotter {
 			b.samples = drained.samples();
 			b.samplerIntervalMs = s.intervalMs();
 			b.mods.putAll(drained.rows());
+			b.betweenTasks.putAll(drained.between());
+			b.betweenSamples = drained.betweenSamples();
 		}
 
 		Point point = new Point(now, b.tps(1000.0 / Math.max(1e-3, b.targetMspt)), b.msptAvg(), b.tickNsMax / 1e6,

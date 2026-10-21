@@ -158,10 +158,9 @@ final class PetFollowers {
 	}
 
 	/*
-	 * How a pet follows: clients are told that the head rides its owner (the server itself can't make anything
-	 * ride a player), so every client keeps it on the player each frame, smooth and never behind. Its spot
-	 * around the player and the way it looks are its transformation, which clients glide between. Lazy stays
-	 * put in the world, so that one doesn't ride and moves on its own.
+	 * How a pet follows: the server places the head (and its name) each tick, a little ahead by the owner's
+	 * movement, and clients glide to each spot. The way it looks is its transformation, which clients turn
+	 * between. Reaction moves add to its spot and turn. Lazy stays put in the world instead of around the owner.
 	 */
 	static void tick(MinecraftServer server) {
 		boolean on = PetStore.enabled();
@@ -558,10 +557,11 @@ final class PetFollowers {
 	/** The way the head looks (pitch: nods down), which clients turn to in ticks. */
 	private static void pose(Follower f, float yaw, float pitch, double size, int ticks) {
 		float s = (float) size;
-		// A head item is drawn below the display's spot; lift it so the spot is its middle.
-		Vector3f move = new Vector3f(0, 0.25f * s, 0);
 		// The same turn a display with this yaw gets (the entity's own yaw stays 0).
 		Quaternionf turn = new Quaternionf().rotationY((float) Math.toRadians(-(yaw + FACE))).rotateX((float) Math.toRadians(pitch));
+		// A head item is drawn below the display's spot (it turns around its top face); lift it, turned the same way,
+		// so the spot is its middle and nods and flips turn it in place instead of swinging it around.
+		Vector3f move = turn.transform(new Vector3f(0, 0.25f * s, 0));
 		DisplayAccessor d = (DisplayAccessor) f.display;
 		d.nicecontrolcenter$setTransformation(new Transformation(move, turn, new Vector3f(s, s, s), new Quaternionf()));
 		d.nicecontrolcenter$setInterpolationDuration(ticks);

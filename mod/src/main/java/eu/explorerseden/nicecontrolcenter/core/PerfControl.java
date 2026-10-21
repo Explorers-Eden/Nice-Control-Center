@@ -244,7 +244,11 @@ public final class PerfControl {
 			baseView = view = list.getViewDistance();
 			taken.clear();
 		}
+		// Tick time plus the work between ticks (packets, chunk loading results, mods' tasks): the next tick waits for
+		// both, so TPS drops when they add up past the budget even though each tick on its own is quick.
 		double ms = server.getAverageTickTimeNanos() / 1_000_000.0;
+		eu.explorerseden.nicecontrolcenter.data.History.Recent recent = eu.explorerseden.nicecontrolcenter.data.History.recent(5);
+		if (recent.ticks() > 0) ms += recent.betweenBusyNs() / 1e6 / recent.ticks();
 		long now = System.currentTimeMillis();
 		if (ms > d.targetMspt) {
 			calmSince = -1;

@@ -508,6 +508,26 @@
       ${(s.top || []).length ? `<span class="np-spike-top">${s.top.map((t) => `<span>${esc(t.name)} <b>${fixed(t.ms, 1)} ms</b></span>`).join('')}</span>` : ''}</div>`).join('');
   }
 
+  function renderBetween(b) {
+    const table = $('np-between');
+    const summary = $('np-between-summary');
+    if (!b || !(b.busyMsPerSecond + b.idleMsPerSecond + b.tickMsPerSecond)) {
+      summary.textContent = '';
+      table.innerHTML = '<tr><td class="np-empty">Not measured in this window (older recording or no data yet).</td></tr>';
+      return;
+    }
+    summary.innerHTML = `Per second: ticks <b>${fixed(b.tickMsPerSecond, 0)} ms</b> · work between ticks <b>${fixed(b.busyMsPerSecond, 0)} ms</b> · waiting <b>${fixed(b.idleMsPerSecond, 0)} ms</b>`;
+    if (!b.tasks.length) {
+      table.innerHTML = '<tr><td class="np-empty">Nothing sampled between ticks.</td></tr>';
+      return;
+    }
+    table.innerHTML = '<thead><tr><th>What</th><th>Mod</th><th class="num">ms/s</th><th class="num">Share</th></tr></thead><tbody>' +
+      b.tasks.map((t) => `<tr><td class="name">${esc(t.task)}<small>${esc(t.label)}</small></td>
+        <td>${t.mod ? esc(t.mod) : '–'}</td>
+        <td class="num">${fixed(t.msPerSecond, 1)}</td>
+        <td class="num">${fixed(t.percent, 0)}%</td></tr>`).join('') + '</tbody>';
+  }
+
   function renderView(view) {
     state.view = view;
     const k = view.kpi;
@@ -528,6 +548,7 @@
         renderTypes('np-entities', view.entities, k);
         renderTypes('np-block-entities', view.blockEntities, k);
         renderSpikes(view.spikes, k);
+        renderBetween(view.between);
         break;
       case 'world':
         renderWorldgen(view.worldgen);

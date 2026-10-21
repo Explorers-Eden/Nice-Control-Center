@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.22.0
+- Pets: nods, flips, dances and other head turns turn the head in place instead of swinging it around its top
+- Tab list: {tps} shows the ticks that really ran in the last 5 seconds, so short lag shows up (it stayed at 20 until the average tick went over 50 ms)
+- Monitoring: measures what the server does between ticks (player packets, finishing chunk loads, tasks mods queue). That time isn't in the tick times, but the next tick waits for it, so TPS could drop while every tick looked quick. New "Between ticks" card in Performance and a "Work between ticks" finding naming what it was
+- Lag protection also counts the work between ticks, so it steps in when TPS drops even though ticks are quick (it only looked at tick times before)
+
 ## 1.21.1
 - Pets: perk descriptions show the numbers set in the panel (how far, how often, how much) on a pet's page in the shop, in /pets and in the "Perk unlocked" message
 

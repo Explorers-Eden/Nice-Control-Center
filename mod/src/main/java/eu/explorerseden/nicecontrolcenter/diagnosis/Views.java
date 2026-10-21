@@ -69,6 +69,18 @@ public final class Views {
 			int hotX, int hotZ, int chunksLoaded) {
 	}
 
+	/** One kind of work the server did between ticks; ms is per second of real time. */
+	public record BetweenTaskView(String kind, String label, String task, String mod, double msPerSecond, double percent) {
+	}
+
+	/**
+	 * Between ticks, per second of real time: work on queued tasks, waiting, and the ticks themselves. When work
+	 * plus ticks fill the second, ticks are late and TPS drops even though each tick is quick.
+	 */
+	public record BetweenView(double busyMsPerSecond, double idleMsPerSecond, double tickMsPerSecond, double busyPercent, long samples,
+			List<BetweenTaskView> tasks) {
+	}
+
 	public record BlockUpdateView(String dimension, int x, int y, int z, String block, double perSecond, double activePercent) {
 	}
 
@@ -289,6 +301,39 @@ public final class Views {
 		return limit(result, 10);
 	}
 
+	public static BetweenView between(Breakdown b) {
+		double seconds = b.wallMs / 1000.0;
+		if (seconds <= 0) {
+			return new BetweenView(0, 0, 0, 0, 0, List.of());
+		}
+		double busy = b.betweenBusyNs / 1e6 / seconds;
+		double idle = b.betweenIdleNs / 1e6 / seconds;
+		double ticks = b.tickNsSum / 1e6 / seconds;
+		List<BetweenTaskView> tasks = new ArrayList<>();
+		Map<String, Long> counts = b.betweenTasks == null ? Map.of() : b.betweenTasks;
+		if (b.betweenSamples > 0) {
+			counts.forEach((key, count) -> {
+				String[] parts = key.split(String.valueOf(eu.explorerseden.nicecontrolcenter.sampler.StackSampler.SEP), -1);
+				String kind = parts[0];
+				String task = parts.length > 1 ? parts[1] : "";
+				String mod = parts.length > 2 && !parts[2].isEmpty() ? (parts[2].equals("minecraft") ? null : SourceIndex.mod(parts[2]).name()) : null;
+				double share = count / (double) b.betweenSamples;
+				tasks.add(new BetweenTaskView(kind, betweenLabel(kind), task, mod, busy * share, share * 100));
+			});
+		}
+		tasks.sort(Comparator.comparingDouble(BetweenTaskView::msPerSecond).reversed());
+		return new BetweenView(busy, idle, ticks, busy / 10.0, b.betweenSamples, limit(tasks, 15));
+	}
+
+	static String betweenLabel(String kind) {
+		return switch (kind) {
+			case eu.explorerseden.nicecontrolcenter.sampler.StackSampler.PACKETS -> "Player packets";
+			case eu.explorerseden.nicecontrolcenter.sampler.StackSampler.CHUNKS -> "Chunk work";
+			case eu.explorerseden.nicecontrolcenter.sampler.StackSampler.MOD -> "Mod task";
+			default -> "Other server task";
+		};
+	}
+
 	public static List<Breakdown.Spike> spikes(Breakdown b) {
 		List<Breakdown.Spike> result = new ArrayList<>(b.spikes);
 		result.sort(Comparator.comparingDouble((Breakdown.Spike s) -> s.ms).reversed());
@@ -307,6 +352,7 @@ public final class Views {
 		view.put("blockEntities", blockEntities(b));
 		view.put("hotspots", hotspots(b));
 		view.put("spikes", spikes(b));
+		view.put("between", between(b));
 		view.put("blockUpdates", blockUpdates(b));
 		view.put("worldgen", worldgen(b));
 		view.put("players", players(b));

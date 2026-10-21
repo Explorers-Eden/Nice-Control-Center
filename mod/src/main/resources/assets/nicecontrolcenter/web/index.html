@@ -138,6 +138,12 @@
 				<h3 class="np-card-title"><i class="bi bi-lightning"></i> Lag spikes</h3>
 				<div id="np-spikes"></div>
 			</section>
+			<section class="np-card">
+				<h3 class="np-card-title"><i class="bi bi-hourglass-split"></i> Between ticks</h3>
+				<p class="np-card-intro">What the server thread does outside the ticks: player packets, finishing chunk loads, tasks mods queue. It isn't in the tick times, but the next tick waits for it, so TPS can drop while ticks look quick.</p>
+				<p class="np-card-intro" id="np-between-summary"></p>
+				<div class="np-table-wrap"><table class="np-table" id="np-between"></table></div>
+			</section>
 		</section>
 		<section class="np-tab-panel" id="tab-world" data-tab="world" role="tabpanel" hidden>
 			<p class="np-tab-intro">Where things happen: new terrain, crowded chunks, busy redstone and what is loaded around players.</p>

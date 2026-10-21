@@ -31,6 +31,9 @@ public final class StackSampler implements Runnable {
 
 	private Map<String, ModRow> rows = new HashMap<>();
 	private long samples;
+	/** Between ticks: samples by {@link #betweenKey} of what the server was doing. */
+	private Map<String, Long> between = new HashMap<>();
+	private long betweenSamples;
 
 	public StackSampler(int intervalMs) {
 		this.intervalMs = Math.max(5, intervalMs);
@@ -56,13 +59,15 @@ public final class StackSampler implements Runnable {
 
 	/** Hands over the samples collected since the last call. */
 	public synchronized Drained drain() {
-		Drained drained = new Drained(rows, samples);
+		Drained drained = new Drained(rows, samples, between, betweenSamples);
 		rows = new HashMap<>();
 		samples = 0;
+		between = new HashMap<>();
+		betweenSamples = 0;
 		return drained;
 	}
 
-	public record Drained(Map<String, ModRow> rows, long samples) {
+	public record Drained(Map<String, ModRow> rows, long samples, Map<String, Long> between, long betweenSamples) {
 	}
 
 	@Override
@@ -76,13 +81,23 @@ public final class StackSampler implements Runnable {
 				}
 			}
 			Thread target = Tracker.serverThread();
-			if (target == null || !Tracker.inTick()) {
+			if (target == null) {
+				continue;
+			}
+			boolean tick = Tracker.inTick();
+			if (!tick && !Tracker.betweenTicks()) {
 				continue;
 			}
 			try {
 				StackTraceElement[] stack = target.getStackTrace();
-				if (stack.length > 0 && Tracker.inTick()) {
+				if (stack.length == 0) {
+					continue;
+				}
+				// Only kept when the thread was still doing the same kind of thing after the stack was taken.
+				if (tick && Tracker.inTick()) {
 					record(stack);
+				} else if (!tick && Tracker.betweenTicks()) {
+					recordBetween(stack);
 				}
 			} catch (RuntimeException e) {
 				NiceControlCenter.LOGGER.debug("Sampling failed", e);
@@ -133,6 +148,113 @@ public final class StackSampler implements Runnable {
 				row(owner).total++;
 			}
 		}
+	}
+
+	/** Separates the parts of a between-ticks key: kind, task, mod id (may be empty). */
+	public static final char SEP = '\u001f';
+	public static final String PACKETS = "packets";
+	public static final String CHUNKS = "chunks";
+	public static final String MOD = "mod";
+	public static final String OTHER = "other";
+
+	private void recordBetween(StackTraceElement[] stack) {
+		String key = betweenKey(stack);
+		synchronized (this) {
+			betweenSamples++;
+			if (between.size() < 200 || between.containsKey(key)) {
+				between.merge(key, 1L, Long::sum);
+			}
+		}
+	}
+
+	/**
+	 * What a stack taken between ticks was doing: a player packet being handled (by its handler method), chunk
+	 * work (loading, generation results, ticket updates), or another queued task, named by the first method
+	 * the server's task loop called; plus the innermost mod on the stack.
+	 */
+	private String betweenKey(StackTraceElement[] stack) {
+		String packet = null;
+		String entry = null;
+		boolean chunks = false;
+		String mod = null;
+		String modFrame = null;
+		String self = null;
+		// Outermost first: past the server's own loop, then into the task.
+		for (int i = stack.length - 1; i >= 0; i--) {
+			StackTraceElement frame = stack[i];
+			String owner = resolver.owner(frame);
+			if (owner.equals(ModResolver.JVM) || ModResolver.isPassThrough(frame)) {
+				continue;
+			}
+			String className = frame.getClassName();
+			if (entry == null) {
+				if (isTaskLoop(className, frame.getMethodName())) {
+					continue;
+				}
+				entry = describe(frame);
+			}
+			if (packet == null && className.endsWith("PacketListenerImpl") && frame.getMethodName().startsWith("handle")) {
+				packet = frame.getMethodName();
+			}
+			if (!chunks && isChunkCode(className)) {
+				chunks = true;
+			}
+			if (owner.equals(ModResolver.SELF)) {
+				self = describe(frame);
+			}
+			if (!owner.equals(ModResolver.MINECRAFT)) {
+				// Keeps going: the innermost mod wins.
+				mod = owner;
+				modFrame = describe(frame);
+			}
+		}
+		if (entry == null) {
+			entry = "the server's task loop";
+		}
+		String kind;
+		String task;
+		if (packet != null) {
+			kind = PACKETS;
+			task = packet;
+		} else if (self != null) {
+			// Nice Control Center's own work (its once-a-second measurements read chunks and entities too).
+			kind = MOD;
+			task = self;
+			mod = ModResolver.SELF;
+		} else if (chunks) {
+			kind = CHUNKS;
+			task = entry;
+		} else if (mod != null) {
+			kind = MOD;
+			task = modFrame;
+		} else {
+			kind = OTHER;
+			task = entry;
+		}
+		return kind + SEP + task + SEP + (mod == null ? "" : mod);
+	}
+
+	/** The server's own loop between ticks: running queued tasks and waiting for the next tick. */
+	private static boolean isTaskLoop(String className, String method) {
+		return switch (className) {
+			case "net.minecraft.server.MinecraftServer", "net.minecraft.server.dedicated.DedicatedServer" ->
+					method.equals("runServer") || method.equals("processPacketsAndTick") || method.equals("waitUntilNextTick") || method.equals("managedBlock") || method.equals("pollTask")
+							|| method.equals("pollTaskInternal") || method.equals("doRunTask") || method.startsWith("lambda$spin")
+							|| method.startsWith("lambda$waitUntilNextTick") || method.equals("runAllTasks");
+			case "net.minecraft.util.thread.BlockableEventLoop", "net.minecraft.util.thread.ReentrantBlockableEventLoop" ->
+					method.equals("pollTask") || method.equals("managedBlock") || method.equals("doRunTask") || method.equals("runAllTasks");
+			case "net.minecraft.server.TickTask" -> method.equals("run");
+			case "net.minecraft.server.level.ServerChunkCache" -> method.equals("pollTask");
+			case "net.minecraft.server.level.ServerChunkCache$MainThreadExecutor" -> true;
+			default -> false;
+		};
+	}
+
+	private static boolean isChunkCode(String className) {
+		return className.startsWith("net.minecraft.server.level.Chunk") || className.startsWith("net.minecraft.server.level.ServerChunkCache")
+				|| className.startsWith("net.minecraft.server.level.DistanceManager") || className.startsWith("net.minecraft.server.level.GenerationChunkHolder")
+				|| className.startsWith("net.minecraft.server.level.ThreadedLevelLightEngine") || className.startsWith("net.minecraft.server.level.TicketType")
+				|| className.startsWith("net.minecraft.world.level.chunk.") || className.startsWith("net.minecraft.world.level.lighting.");
 	}
 
 	private ModRow row(String owner) {

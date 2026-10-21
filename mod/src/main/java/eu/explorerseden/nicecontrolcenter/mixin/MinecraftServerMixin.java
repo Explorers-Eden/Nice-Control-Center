@@ -33,6 +33,21 @@ public abstract class MinecraftServerMixin {
 		}
 	}
 
+	/** Waiting for the next tick or for tasks; the rest of the time between ticks is work. */
+	@WrapMethod(method = "waitForTasks")
+	private void nicecontrolcenter$waitForTasks(Operation<Void> original) {
+		if (!Tracker.isServerThread() || Tracker.inTick()) {
+			original.call();
+			return;
+		}
+		long started = Tracker.beginWait();
+		try {
+			original.call();
+		} finally {
+			Tracker.endWait(started);
+		}
+	}
+
 	@WrapOperation(method = "tickChildren", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/ServerFunctionManager;tick()V"))
 	private void nicecontrolcenter$functions(ServerFunctionManager functions, Operation<Void> original) {
 		if (!Tracker.isActive()) {

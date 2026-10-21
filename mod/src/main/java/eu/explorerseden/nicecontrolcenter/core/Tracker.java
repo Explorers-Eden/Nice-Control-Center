@@ -46,6 +46,10 @@ public final class Tracker {
 	public static long lastElapsedNs;
 
 	private static long tickStart;
+	/** When the last measured tick ended (0: none yet, or monitoring was just switched); time waited since. */
+	private static volatile long lastTickEnd;
+	private static long waitedNs;
+	private static volatile boolean waiting;
 	/** Stats that got time in the current tick, to name the culprits of a lag spike. */
 	private static int tickId;
 	private static Stat[] touched = new Stat[256];
@@ -226,6 +230,8 @@ public final class Tracker {
 			bucket = new LiveBucket();
 			depth = 0;
 			currentPhase = null;
+			lastTickEnd = 0;
+			waitedNs = 0;
 		}
 		return enabled;
 	}
@@ -239,11 +245,40 @@ public final class Tracker {
 		Arrays.fill(tickPhaseNs, 0);
 		inTick = true;
 		tickStart = System.nanoTime();
+		// What the server did since the last tick: waiting for the next one, or working on queued tasks.
+		long end = lastTickEnd;
+		if (end != 0) {
+			long gap = Math.max(0, tickStart - end);
+			long waited = Math.min(gap, waitedNs);
+			bucket.betweenIdleNs += waited;
+			bucket.betweenBusyNs += gap - waited;
+		}
+		lastTickEnd = 0;
+		waitedNs = 0;
+	}
+
+	/** The server thread is working between ticks (not waiting for the next one); the sampler looks then too. */
+	public static boolean betweenTicks() {
+		return !inTick && !waiting && lastTickEnd != 0;
+	}
+
+	/** Around the server's wait for tasks or the next tick, between ticks only. */
+	public static long beginWait() {
+		waiting = true;
+		return System.nanoTime();
+	}
+
+	public static void endWait(long started) {
+		waitedNs += System.nanoTime() - started;
+		waiting = false;
 	}
 
 	public static void endTick() {
-		long tickNs = System.nanoTime() - tickStart;
+		long tickEnd = System.nanoTime();
+		long tickNs = tickEnd - tickStart;
 		inTick = false;
+		// From here on it counts as between ticks (Nice Control Center's own once-a-second work below included).
+		lastTickEnd = tickEnd;
 		depth = 0;
 		currentPhase = null;
 

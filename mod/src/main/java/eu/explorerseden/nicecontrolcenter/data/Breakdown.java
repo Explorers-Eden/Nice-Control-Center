@@ -56,6 +56,12 @@ public final class Breakdown {
 	public Map<String, ModRow> mods = new HashMap<>();
 	public long samples;
 	public int samplerIntervalMs;
+	/** Time the server thread worked between ticks (queued tasks: player packets, chunk work, mods' tasks), and waited there. */
+	public long betweenBusyNs;
+	public long betweenIdleNs;
+	/** Stack samples taken while it worked between ticks, by what it was doing. */
+	public Map<String, Long> betweenTasks = new HashMap<>();
+	public long betweenSamples;
 	/** Keyed "dimension|x|z". */
 	public Map<String, Hotspot> hotspots = new HashMap<>();
 	public List<Spike> spikes = new ArrayList<>();
@@ -335,6 +341,15 @@ public final class Breakdown {
 		other.mods.forEach((k, v) -> mods.computeIfAbsent(k, x -> new ModRow()).add(v));
 		samples += other.samples;
 		samplerIntervalMs = Math.max(samplerIntervalMs, other.samplerIntervalMs);
+		betweenBusyNs += other.betweenBusyNs;
+		betweenIdleNs += other.betweenIdleNs;
+		betweenSamples += other.betweenSamples;
+		if (other.betweenTasks != null) {
+			if (betweenTasks == null) {
+				betweenTasks = new HashMap<>();
+			}
+			other.betweenTasks.forEach((k, v) -> betweenTasks.merge(k, v, Long::sum));
+		}
 		other.hotspots.forEach((k, v) -> hotspots.merge(k, v, (a, b) -> {
 			Hotspot merged = copy(a);
 			merged.add(b);

@@ -64,6 +64,7 @@ public final class Diagnoser {
 		worldgen(b, findings);
 		explorers(b, findings);
 		spikes(b, findings);
+		between(b, findings);
 		memory(b, findings);
 		cpu(b, findings);
 
@@ -443,6 +444,50 @@ public final class Diagnoser {
 	}
 
 	// ── Spikes, memory, CPU ─────────────────────────────────────────────────
+
+	/**
+	 * Work the server thread did between ticks: player packets, chunk loading results, tasks mods queue. It's
+	 * not in the tick times, but it delays the next tick, so TPS drops while every tick looks quick.
+	 */
+	private static void between(Breakdown b, List<Finding> out) {
+		Views.BetweenView v = Views.between(b);
+		if (v.busyPercent() < 5) {
+			return;
+		}
+		Views.Kpi kpi = Views.kpi(b);
+		boolean lagging = kpi.tps() < kpi.targetTps() * 0.95;
+		// The same share of the second as ms in a tick, so it sorts and reads like the other findings.
+		double perTick = v.busyMsPerSecond() / Math.max(1, kpi.targetTps());
+		StringBuilder reason = new StringBuilder(String.format(Locale.ROOT,
+				"The server thread worked %.0f ms of every second between ticks, next to %.0f ms of ticks; it waited %.0f ms.",
+				v.busyMsPerSecond(), v.tickMsPerSecond(), v.idleMsPerSecond()));
+		if (lagging) {
+			reason.append(" That time isn't in the tick times, but the next tick waits for it, so TPS drops while ticks look quick.");
+		}
+		List<String> top = new ArrayList<>();
+		for (Views.BetweenTaskView t : v.tasks()) {
+			if (top.size() == 3 || t.percent() < 5) {
+				break;
+			}
+			top.add(String.format(Locale.ROOT, "%s %s%s (%.0f%%)", t.label().toLowerCase(Locale.ROOT), code(t.task()),
+					t.mod() == null ? "" : " from " + t.mod(), t.percent()));
+		}
+		if (!top.isEmpty()) {
+			reason.append(" Mostly ").append(String.join(", ", top)).append('.');
+		}
+		String kind = v.tasks().isEmpty() ? "" : v.tasks().get(0).kind();
+		String hint = switch (kind) {
+			case eu.explorerseden.nicecontrolcenter.sampler.StackSampler.PACKETS ->
+					"Handling what players send. Lots of movement, clicking or commands cost time here; check mods that send or answer many packets.";
+			case eu.explorerseden.nicecontrolcenter.sampler.StackSampler.CHUNKS ->
+					"Chunk loading and generation results are finished on the server thread. Pre-generate the world, and check mods that load chunks on their own (LOD mods like Distant Horizons, chunk loaders).";
+			case eu.explorerseden.nicecontrolcenter.sampler.StackSampler.MOD ->
+					"A mod runs work on the server thread outside the tick. Check its config, or test the server without it to confirm.";
+			default -> "See \"Between ticks\" for what the server was doing.";
+		};
+		Severity severity = !lagging ? Severity.INFO : v.busyPercent() >= 30 ? Severity.POOR : Severity.WARN;
+		out.add(new Finding(severity, "Between ticks", "Work between ticks", perTick, Views.percentOf(b, perTick), reason.toString(), hint));
+	}
 
 	private static void spikes(Breakdown b, List<Finding> out) {
 		int threshold = (int) Math.ceil(b.targetMspt * 2);
