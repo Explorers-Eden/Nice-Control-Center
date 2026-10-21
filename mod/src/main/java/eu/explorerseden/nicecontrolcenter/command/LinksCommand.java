@@ -3,7 +3,6 @@ package eu.explorerseden.nicecontrolcenter.command;
 import com.mojang.brigadier.CommandDispatcher;
 import eu.explorerseden.nicecontrolcenter.Links;
 import eu.explorerseden.nicecontrolcenter.core.Plop;
-import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -11,7 +10,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.server.permissions.PermissionLevel;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.tree.CommandNode;
@@ -53,7 +51,7 @@ public final class LinksCommand {
 		registered.clear();
 		pending = true;
 		dispatcher.register(Commands.literal("info")
-				.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
+				.requires(Everyone.unless(PERMISSION_USE))
 				.executes(ctx -> {
 					Links.Settings l = links();
 					if (!l.infoOn || l.info.isEmpty()) return none(ctx.getSource(), "There's no info page right now.");
@@ -104,7 +102,7 @@ public final class LinksCommand {
 				}
 				Command<CommandSourceStack> run = ctx -> custom(ctx.getSource(), name);
 				dispatcher.register(Commands.literal(name)
-						.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
+						.requires(Everyone.unless(PERMISSION_USE))
 						.executes(run));
 				registered.put(name, run);
 			}

@@ -23,6 +23,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -32,9 +33,13 @@ import net.minecraft.world.phys.Vec3;
  * switched off) drops as an item that keeps its mob and settings,
  * and places like that again for normal players (marked items only; other spawner data stays op-only).
  * The tool wears by the configured multiplier.
+ *
+ * The spawner's data rides in the item's custom data, not in its block entity data: the game client shows
+ * operators a "might lead to command execution" warning under every item with spawner block entity data.
  */
 public final class Spawners {
 	public static final String MARK = "nicecontrolcenter:spawner";
+	private static final String DATA = "nicecontrolcenter:spawner_data";
 
 	private Spawners() {
 	}
@@ -46,6 +51,15 @@ public final class Spawners {
 	/** For the placement mixin: one of ours, so its spawner data may be applied for non-ops. */
 	public static boolean marked(ItemStack stack) {
 		return stack.is(Items.SPAWNER) && stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBooleanOr(MARK, false);
+	}
+
+	/** For the placement mixin: the spawner data a marked item carries in its custom data, or null. */
+	public static TypedEntityData<BlockEntityType<?>> storedData(ItemStack stack) {
+		if (!marked(stack)) return null;
+		CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompound(DATA).orElse(null);
+		// By id: the constant moved to BlockEntityTypes in 26.2.
+		BlockEntityType<?> type = BuiltInRegistries.BLOCK_ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("mob_spawner"));
+		return tag == null || type == null ? null : TypedEntityData.of(type, tag);
 	}
 
 	private static void after(Level lvl, Player p, BlockPos pos, BlockState state, BlockEntity be) {
@@ -60,9 +74,9 @@ public final class Spawners {
 		String mob = data.getCompoundOrEmpty("SpawnData").getCompoundOrEmpty("entity").getStringOr("id", "");
 		if (!mob.isEmpty() && s.deniedMobs.contains(mob)) return;
 		ItemStack drop = new ItemStack(Items.SPAWNER);
-		drop.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(be.getType(), data));
 		CompoundTag mark = new CompoundTag();
 		mark.putBoolean(MARK, true);
+		mark.put(DATA, data);
 		drop.set(DataComponents.CUSTOM_DATA, CustomData.of(mark));
 		if (!mob.isEmpty()) {
 			var type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.tryParse(mob));

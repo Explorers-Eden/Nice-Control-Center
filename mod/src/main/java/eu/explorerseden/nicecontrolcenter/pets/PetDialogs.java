@@ -171,6 +171,7 @@ public final class PetDialogs {
 			if (PetStore.settings().particles) buttons.add(button("Particles: " + Pets.Trail.of(owner.trail).label, "Pick a trail for your pet", "trails", args()));
 			Pets.Owned out = shown(player, owner);
 			if (out != null && PetStore.settings().perks.enabled && !PetStore.perks(out).isEmpty()) buttons.add(button("Perks", "What " + PetStore.displayName(out) + " helps with", "perks", args()));
+			if (out != null && PetPerks.active(player, Pets.Perk.PACK_MULE)) buttons.add(button("Bag", "Open the bag " + PetStore.displayName(out) + " carries for you (also /pets bag)", "bag", args()));
 			if (PetStore.settings().names) buttons.add(button("Name above pet: " + (owner.showName ? "shown" : "hidden"),
 					owner.showName ? "Nobody sees your pets' names" : "Everyone near you sees your pet's name (give it one under Your pets)", "showname", args()));
 			if (PetStore.settings().reactions.enabled) buttons.add(button("Reactions: " + (owner.reactions ? "on" : "off"),
@@ -217,7 +218,7 @@ public final class PetDialogs {
 			if (PetStore.settings().names) desc.append(Component.literal("  ")).append(link("Name", "Give it a name and a colour (shown above it)", "name", args("id", o.pet), ChatFormatting.AQUA));
 			body.add(headRow(player, PetStore.texture(o), desc));
 		}
-		menu(player, "Pets · Your pets", body, List.of(), button("Back", null, "home", args()));
+		menu(player, "Pets · Your pets", body, List.of(), button("Back", "Back to the pets menu", "home", args()));
 	}
 
 	/** The shown pet's perks: what each does, from which level, and on/off for the owner. */
@@ -247,7 +248,7 @@ public final class PetDialogs {
 					: link("Switch off", "It stops helping with this (for all your pets)", "perk", args("perk", perk.name()), ChatFormatting.YELLOW));
 			body.add(new PlainMessage(row, TEXT_WIDTH));
 		}
-		menu(player, "Pets · " + PetStore.displayName(out) + "'s perks", body, List.of(), button("Back", null, "home", args()));
+		menu(player, "Pets · " + PetStore.displayName(out) + "'s perks", body, List.of(), button("Back", "Back to the pets menu", "home", args()));
 	}
 
 	/** Name and name colour for one of the player's pets (like a claim's). */
@@ -273,7 +274,7 @@ public final class PetDialogs {
 				new Input("name", new TextInput(250, Component.literal("Name"), true, o.nickname, 16, Optional.empty())),
 				new Input("color", new SingleOptionInput(250, colors, Component.literal("Colour"), true)),
 				new Input("hex", new TextInput(250, Component.literal("Or your own colour (#RRGGBB)"), true, "", 7, Optional.empty())));
-		menu(player, "Pets · Name " + PetStore.name(o), body, inputs, List.of(button("Save", null, "name_save", args("id", o.pet))), button("Back", null, "mine", args()));
+		menu(player, "Pets · Name " + PetStore.name(o), body, inputs, List.of(button("Save", "Save the name and its colour", "name_save", args("id", o.pet))), button("Back", "Back to your pets, without saving", "mine", args()));
 	}
 
 	private static void moves(ServerPlayer player, String notice) {
@@ -284,7 +285,7 @@ public final class PetDialogs {
 		body.add(text("How your pet moves: " + now.label + " · " + now.description.toLowerCase(Locale.ROOT) + ". Hover a button to see what it does.", ChatFormatting.GRAY));
 		List<ActionButton> buttons = new ArrayList<>();
 		for (Pets.Behavior b : Pets.Behavior.values()) buttons.add(button((b == now ? "● " : "") + b.label, b.description, "move", args("how", b.name())));
-		menu(player, "Pets · Moves", body, buttons, button("Back", null, "home", args()));
+		menu(player, "Pets · Moves", body, buttons, button("Back", "Back to the pets menu", "home", args()));
 	}
 
 	private static void trails(ServerPlayer player, String notice) {
@@ -298,7 +299,7 @@ public final class PetDialogs {
 			if (!PetFollowers.available(t)) continue;
 			buttons.add(button((t == now ? "● " : "") + t.label, t == Pets.Trail.RANDOM ? "A different one every time you teleport, die or take your pet out" : null, "trail", args("how", t.name())));
 		}
-		menu(player, "Pets · Particles", body, buttons, button("Back", null, "home", args()));
+		menu(player, "Pets · Particles", body, buttons, button("Back", "Back to the pets menu", "home", args()));
 	}
 
 	/** A pet's row in a shop list: its head, price and a link to its page. */
@@ -351,7 +352,7 @@ public final class PetDialogs {
 			}
 			for (Pets.Pet pet : pets.subList(p * PAGE, Math.min(pets.size(), (p + 1) * PAGE))) body.add(shopRow(player, pet, false));
 		}
-		menu(player, "Pet shop", body, List.of(), button("Back", null, "home", args()));
+		menu(player, "Pet shop", body, List.of(), button("Back", "Back to the pets menu", "home", args()));
 	}
 
 	/** A pet's page; market: opened from the market's Server shop (Back goes there). */
@@ -391,11 +392,11 @@ public final class PetDialogs {
 		if (why == null) {
 			String price = pet.price == 0 ? "free" : amount(pet.price);
 			String label = pet.price == 0 ? "Get it free" : "Buy · " + price;
-			buttons.add(button(label, null, "buy", market ? args("id", pet.id, "from", "market") : args("id", pet.id)));
+			buttons.add(button(label, pet.price == 0 ? "It's yours for good" : "Pay " + price + " from your inventory; it's yours for good", "buy", market ? args("id", pet.id, "from", "market") : args("id", pet.id)));
 		}
-		ActionButton back = market ? new ActionButton(new CommonButtonData(Component.literal("Back"), WIDTH),
+		ActionButton back = market ? new ActionButton(new CommonButtonData(Component.literal("Back"), Optional.of(Component.literal("Back to the server shop")), WIDTH),
 				Optional.of(new CustomAll(Identifier.fromNamespaceAndPath("nicecontrolcenter", "market/server"), Optional.of(new CompoundTag()))))
-				: button("Back", null, "shop", args("page", "0"));
+				: button("Back", "Back to the pet shop", "shop", args("page", "0"));
 		menu(player, pet.name, body, buttons, back);
 	}
 
@@ -495,6 +496,10 @@ public final class PetDialogs {
 			}
 			case "buy" -> buy(player, PetStore.settings().pet(str(in, "id")), "market".equals(str(in, "from")));
 			case "perks" -> perks(player, null);
+			case "bag" -> {
+				String why = PetBag.open(player);
+				if (why != null) home(player, why);
+			}
 			case "perk" -> {
 				Pets.Perk perk = Pets.Perk.of(str(in, "perk"));
 				if (owner == null || perk == null) {

@@ -8,6 +8,9 @@
 	},
 	"mixins": [
 		"PlacedBlockMixin",
+		"EntityFlagsAccessor",
+		"PetLureMixin",
+		"PetFallMixin",
 		"DropCauseGameModeMixin",
 		"DropCauseInteractMixin",
 		"DropCauseDeathMixin",

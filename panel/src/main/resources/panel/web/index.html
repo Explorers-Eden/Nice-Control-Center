@@ -1345,8 +1345,8 @@
 					<p class="np-card-intro">Each pet can have up to two perks (pick them when you add or edit a pet). A pet's bond grows while it's out with its owner and they aren't AFK; its first perk works from one bond level, its second from a higher one. Perks never work while the owner is AFK or in creative mode, and never where their claim rights don't reach. Players can switch single perks off in /pets.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Perks on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
-						<label class="np-form-row"><span>First perk from bond level<small class="pn-comment">0: right away</small></span><input type="number" name="slot1Level" min="0" max="100" step="1" required></label>
-						<label class="np-form-row"><span>Second perk from bond level</span><input type="number" name="slot2Level" min="0" max="100" step="1" required></label>
+						<label class="np-form-row"><span>First perk from bond level<small class="pn-comment">For every pet; 0: right away</small></span><input type="number" name="slot1Level" min="0" max="100" step="1" required></label>
+						<label class="np-form-row"><span>Second perk from bond level<small class="pn-comment">For every pet</small></span><input type="number" name="slot2Level" min="0" max="100" step="1" required></label>
 						<label class="np-form-row"><span>Minutes per level<small class="pn-comment">Level n takes this many minutes × n more, out together</small></span><input type="number" name="levelMinutes" min="1" max="10000" step="1" required></label>
 						<label class="np-form-row"><span>Highest bond level</span><input type="number" name="maxLevel" min="1" max="100" step="1" required></label>
 					</div>

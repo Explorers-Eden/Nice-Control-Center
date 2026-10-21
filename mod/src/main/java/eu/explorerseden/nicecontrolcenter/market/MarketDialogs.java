@@ -95,7 +95,14 @@ public final class MarketDialogs {
 	}
 
 	private static ActionButton back(String action, CompoundTag args) {
-		return button("Back", null, action, args);
+		String to = switch (action) {
+			case "browse" -> serverShopOpen() ? "Back to the player listings" : "Back to the listings";
+			case "mine" -> "Back to your listings";
+			case "server" -> "Back to the server shop";
+			case "sell" -> "Back to picking what to sell";
+			default -> "Back to the market";
+		};
+		return button("Back", to, action, args);
 	}
 
 	/** A clickable label that looks like a small button ("[ View ]"): sends the same "market/…" click as a button. */
@@ -167,7 +174,7 @@ public final class MarketDialogs {
 		if (serverShopOpen()) buttons.add(button("Server shop", "What the server sells", "server", args()));
 		buttons.add(button(serverShopOpen() ? "Player listings" : "Browse", "Everything players sell", "browse", args("page", "0")));
 		buttons.add(button("Sell", "List items from your inventory", "sell", args()));
-		buttons.add(button("My listings (" + data.of(me).size() + ")", null, "mine", args()));
+		buttons.add(button("My listings (" + data.of(me).size() + ")", "Change the price of what you sell, or take it back", "mine", args()));
 		buttons.add(button("Mailbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Your earnings and items that came back", "mail", args()));
 		menu(player, "Market", body, List.of(), buttons);
 	}
@@ -276,8 +283,8 @@ public final class MarketDialogs {
 						new SingleOptionInput.Entry("price", Optional.of(Component.literal("Cheapest first")), sort.equals("price")),
 						new SingleOptionInput.Entry("new", Optional.of(Component.literal("Newest first")), sort.equals("new")),
 						new SingleOptionInput.Entry("name", Optional.of(Component.literal("By name")), sort.equals("name"))), Component.literal("Order"), true)));
-		List<ActionButton> buttons = List.of(button("Search", null, "browse", args("page", "0")),
-				button("Show everything", null, "browse", args("page", "0", "keepq", "", "keepsort", sort, "clear", "1")));
+		List<ActionButton> buttons = List.of(button("Search", "Show the listings that match", "browse", args("page", "0")),
+				button("Show everything", "Clear the search and show every listing", "browse", args("page", "0", "keepq", "", "keepsort", sort, "clear", "1")));
 		menu(player, "Market · Search", List.of(text("Leave the search empty to see everything.", ChatFormatting.GRAY)), inputs, buttons,
 				back("browse", args("page", "0", "keepq", query, "keepsort", sort)));
 	}
@@ -419,7 +426,7 @@ public final class MarketDialogs {
 				amounts.add(new SingleOptionInput.Entry(Integer.toString(max), Optional.of(Component.literal(String.format(Locale.ROOT, "%,d blocks for %s (all)", (long) max * o.blocks, money(max * o.price)))), false));
 			}
 			inputs.add(new Input("amount", new SingleOptionInput(250, amounts, Component.literal("Buy"), true)));
-			buttons.add(button("Buy", null, "claims_buy", offerArgs(index, o)));
+			buttons.add(button("Buy", "Pay for the claim blocks you picked; they're yours right away", "claims_buy", offerArgs(index, o)));
 		}
 		menu(player, "Claim blocks", body, inputs, buttons, back("server", args()));
 	}

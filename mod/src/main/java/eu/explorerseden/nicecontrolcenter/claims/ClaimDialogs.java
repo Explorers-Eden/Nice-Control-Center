@@ -136,7 +136,7 @@ public final class ClaimDialogs {
 		if (mine.isEmpty()) body.add(text("Enter claim mode and right-click two opposite corners to claim land. Everything inside, from bedrock to the sky, is protected.", ChatFormatting.WHITE));
 		List<ActionButton> buttons = new ArrayList<>();
 		buttons.add(modeButton(player));
-		if (ClaimTool.hasSelection(player)) buttons.add(button("Cancel selection", null, "sel_cancel", args()));
+		if (ClaimTool.hasSelection(player)) buttons.add(button("Cancel selection", "Forget the corners you picked", "sel_cancel", args()));
 		if (eu.explorerseden.nicecontrolcenter.market.MarketDialogs.sellsClaimBlocks()) buttons.add(button("Buy claim blocks", "In the market", "shop", args()));
 		for (Claim c : mine.stream().limit(24).toList()) {
 			buttons.add(button(Component.literal(c.displayName()).withColor(c.color), dimName(c.dim) + ", " + c.box().width() + " × " + c.box().length()
@@ -169,13 +169,13 @@ public final class ClaimDialogs {
 		if (manage) {
 			buttons.add(button("Members", "Who may do what here", "members", args("claim", c.id)));
 			buttons.add(button("Everyone else", "What players who aren't members may do", "access", args("claim", c.id)));
-			buttons.add(button("Name & colour", null, "look", args("claim", c.id)));
+			buttons.add(button("Name & colour", "How the claim is named and shown", "look", args("claim", c.id)));
 			if (!c.isSub()) buttons.add(button("Subclaims (" + ClaimStore.subclaims(c.id).size() + ")", "Areas inside with their own members", "subclaims", args("claim", c.id)));
-			else buttons.add(button("Delete subclaim", null, "abandon", args("claim", c.id)));
+			else buttons.add(button("Delete subclaim", "The area goes back to the main claim", "abandon", args("claim", c.id)));
 		}
 		if (!c.isSub() && r == Role.OWNER) buttons.add(button("Abandon claim", "Gives the land and its claim blocks back", "abandon", args("claim", c.id)));
-		if (c.isSub()) buttons.add(button("Back to " + top.displayName(), null, "main", args("claim", top.id)));
-		buttons.add(button("My claims", null, "home", args()));
+		if (c.isSub()) buttons.add(button("Back to " + top.displayName(), "Back to the main claim", "main", args("claim", top.id)));
+		buttons.add(button("My claims", "All your claims and claim blocks", "home", args()));
 		menu(player, title(c), body, List.of(), buttons, close());
 		ClaimVisuals.show(player, c);
 	}
@@ -206,7 +206,7 @@ public final class ClaimDialogs {
 				new Input("name", new TextInput(250, Component.literal("Name"), true, c.name, 32, Optional.empty())),
 				new Input("color", new SingleOptionInput(250, colors, Component.literal("Colour"), true)),
 				new Input("hex", new TextInput(250, Component.literal("Or your own colour (#RRGGBB)"), true, "", 7, Optional.empty())));
-		List<ActionButton> buttons = List.of(button("Save", null, "look_save", args("claim", c.id)), button("Back", null, "main", args("claim", c.id)));
+		List<ActionButton> buttons = List.of(button("Save", "Save the name and colour", "look_save", args("claim", c.id)), button("Back", "Back to the claim, without saving", "main", args("claim", c.id)));
 		menu(player, fresh ? Component.literal("Your new claim") : title(c), body, inputs, buttons, null);
 	}
 
@@ -216,9 +216,9 @@ public final class ClaimDialogs {
 		for (Role r : Role.values()) if (r != Role.OWNER) body.add(text(r.label + ": " + r.description.toLowerCase(Locale.ROOT), ChatFormatting.GRAY));
 		if (c.isSub()) body.add(text("Members of the claim around keep their rights here.", ChatFormatting.GRAY));
 		List<ActionButton> buttons = new ArrayList<>();
-		buttons.add(button("Add a player", null, "member_new", args("claim", c.id)));
+		buttons.add(button("Add a player", "Let someone build, open containers or manage here", "member_new", args("claim", c.id)));
 		c.members.forEach((id, m) -> buttons.add(button(m.name + " — " + m.role.label, "Change or remove", "member", args("claim", c.id, "uuid", id))));
-		buttons.add(button("Back", null, "main", args("claim", c.id)));
+		buttons.add(button("Back", "Back to the claim", "main", args("claim", c.id)));
 		menu(player, title(c).append(Component.literal(" · Members").withStyle(ChatFormatting.WHITE)), body, List.of(), buttons, null);
 	}
 
@@ -240,9 +240,9 @@ public final class ClaimDialogs {
 		}
 		List<DialogBody> body = List.of(text(m.role.label + ": " + m.role.description.toLowerCase(Locale.ROOT), ChatFormatting.GRAY));
 		List<Input> inputs = List.of(new Input("role", new SingleOptionInput(250, roleEntries(player, c, m.role), Component.literal("Role"), true)));
-		List<ActionButton> buttons = List.of(button("Save", null, "member_set", args("claim", c.id, "uuid", uuid)),
-				button("Remove", null, "member_remove", args("claim", c.id, "uuid", uuid)),
-				button("Back", null, "members", args("claim", c.id)));
+		List<ActionButton> buttons = List.of(button("Save", "Save what they may do here", "member_set", args("claim", c.id, "uuid", uuid)),
+				button("Remove", "Take them off this claim", "member_remove", args("claim", c.id, "uuid", uuid)),
+				button("Back", "Back to the members", "members", args("claim", c.id)));
 		menu(player, Component.literal(m.name).withStyle(ChatFormatting.WHITE), body, inputs, buttons, null);
 	}
 
@@ -264,7 +264,7 @@ public final class ClaimDialogs {
 		if (online.size() > 1) inputs.add(new Input("online", new SingleOptionInput(250, online, Component.literal("Online"), true)));
 		inputs.add(new Input("name", new TextInput(250, Component.literal("Player name"), true, "", 16, Optional.empty())));
 		inputs.add(new Input("role", new SingleOptionInput(250, roleEntries(player, c, Role.BUILD), Component.literal("Role"), true)));
-		List<ActionButton> buttons = List.of(button("Add", null, "member_add", args("claim", c.id)), button("Back", null, "members", args("claim", c.id)));
+		List<ActionButton> buttons = List.of(button("Add", "Make them a member with the role you picked", "member_add", args("claim", c.id)), button("Back", "Back to the members", "members", args("claim", c.id)));
 		menu(player, Component.literal("Add a member"), body, inputs, buttons, null);
 	}
 
@@ -272,7 +272,7 @@ public final class ClaimDialogs {
 		List<Input> inputs = new ArrayList<>();
 		for (String[] f : Claims.Flags.LABELS) inputs.add(new Input(f[0], new BooleanInput(Component.literal(f[1]), c.flags.get(f[0]), "true", "false")));
 		List<DialogBody> body = List.of(text("What players who aren't members may do, and what may happen to the land.", ChatFormatting.GRAY));
-		List<ActionButton> buttons = List.of(button("Save", null, "flags_save", args("claim", c.id)), button("Back", null, "main", args("claim", c.id)));
+		List<ActionButton> buttons = List.of(button("Save", "Save what everyone else may do", "flags_save", args("claim", c.id)), button("Back", "Back to the claim, without saving", "main", args("claim", c.id)));
 		menu(player, title(c).append(Component.literal(" · Everyone else").withStyle(ChatFormatting.WHITE)), body, inputs, buttons, null);
 	}
 
@@ -281,7 +281,7 @@ public final class ClaimDialogs {
 		List<ActionButton> buttons = new ArrayList<>();
 		buttons.add(button("Make a subclaim", "Then right-click two corners inside the claim", "sub_start", args("claim", c.id)));
 		for (Claim s : ClaimStore.subclaims(c.id)) buttons.add(button(Component.literal(s.displayName()).withColor(s.color), s.box().width() + " × " + s.box().length(), "main", args("claim", s.id)));
-		buttons.add(button("Back", null, "main", args("claim", c.id)));
+		buttons.add(button("Back", "Back to the claim", "main", args("claim", c.id)));
 		menu(player, title(c).append(Component.literal(" · Subclaims").withStyle(ChatFormatting.WHITE)), body, List.of(), buttons, null);
 	}
 
@@ -289,8 +289,8 @@ public final class ClaimDialogs {
 		String what = c.isSub() ? "Delete the subclaim " + c.displayName() + "?" : "Abandon " + c.displayName() + "? Anyone can build there afterwards, and you get its "
 				+ c.box().area() + " claim blocks back.";
 		CommonDialogData data = common(Component.literal(c.isSub() ? "Delete subclaim" : "Abandon claim"), List.of(text(what, ChatFormatting.WHITE)), List.of());
-		show(player, new ConfirmationDialog(data, button(Component.literal(c.isSub() ? "Delete" : "Abandon").withStyle(ChatFormatting.RED), null, "abandon_yes", args("claim", c.id)),
-				button("Keep it", null, "main", args("claim", c.id))));
+		show(player, new ConfirmationDialog(data, button(Component.literal(c.isSub() ? "Delete" : "Abandon").withStyle(ChatFormatting.RED), c.isSub() ? "Delete it; this can't be undone" : "Give the land and its claim blocks back; this can't be undone", "abandon_yes", args("claim", c.id)),
+				button("Keep it", "Back to the claim, nothing changes", "main", args("claim", c.id))));
 	}
 
 	// ---------------------------------------------------------------- answers

@@ -76,7 +76,7 @@ public final class PetStore {
 
 	private static void command(CommandDispatcher<CommandSourceStack> dispatcher) {
 		dispatcher.register(Commands.literal("pets")
-				.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
+				.requires(eu.explorerseden.nicecontrolcenter.command.Everyone.unless(PERMISSION_USE))
 				.executes(ctx -> {
 					ServerPlayer player = ctx.getSource().getPlayerOrException();
 					if (!enabled()) return off(player);
@@ -85,6 +85,14 @@ public final class PetStore {
 				})
 				.then(Commands.literal("on").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), true)))
 				.then(Commands.literal("off").executes(ctx -> toggle(ctx.getSource().getPlayerOrException(), false)))
+				.then(Commands.literal("bag").executes(ctx -> {
+					ServerPlayer player = ctx.getSource().getPlayerOrException();
+					if (!enabled()) return off(player);
+					String why = PetBag.open(player);
+					if (why == null) return 1;
+					player.sendSystemMessage(net.minecraft.network.chat.Component.literal(why).withStyle(net.minecraft.ChatFormatting.RED));
+					return 0;
+				}))
 				.then(Commands.literal("grant").requires(Permissions.require(PERMISSION_ADMIN, PermissionLevel.GAMEMASTERS))
 						.then(Commands.argument("player", net.minecraft.commands.arguments.GameProfileArgument.gameProfile())
 								.then(Commands.argument("pet", com.mojang.brigadier.arguments.StringArgumentType.greedyString())

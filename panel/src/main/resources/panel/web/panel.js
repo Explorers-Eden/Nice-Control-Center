@@ -5479,8 +5479,9 @@
       sel.value = v;
     }
     const k = ptData.settings.perks;
-    $('pn-pt-perk1-note').textContent = `Works from bond level ${k.slot1Level}`;
-    $('pn-pt-perk2-note').textContent = `Works from bond level ${k.slot2Level}`;
+    const jump = '<a href="#" class="pn-pk-jump">Bond &amp; perks</a>';
+    $('pn-pt-perk1-note').innerHTML = `Unlocks at bond level ${k.slot1Level}, for every pet (set under ${jump})`;
+    $('pn-pt-perk2-note').innerHTML = `Unlocks at bond level ${k.slot2Level}, for every pet (set under ${jump})`;
     const list = (g) => all.filter((x) => x.group === g).map((x) => `<li><b>${esc(x.label)}</b>: ${esc(x.description)}</li>`).join('');
     $('pn-pk-list').innerHTML = `<h5>Helpers</h5><ul>${list('HELPER')}</ul><h5>Stronger</h5><ul>${list('STRONG')}</ul>`;
   }
@@ -5493,6 +5494,11 @@
     const lamp = [f.perk1.value, f.perk2.value].includes('LANTERN') && [f.perk1.value, f.perk2.value].includes('NIGHT_EYES') ? ' Night Eyes already is a lantern: pick one of the two.' : '';
     $('pn-pt-perk-desc').textContent = lines.join(' ') + clash + lamp;
   }
+  $('pn-pt-edit').addEventListener('click', (e) => {
+    if (!e.target.closest('.pn-pk-jump')) return;
+    e.preventDefault();
+    $('pn-pk-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   $('pn-pt-edit').perk1.addEventListener('change', ptPerkDesc);
   $('pn-pt-edit').perk2.addEventListener('change', ptPerkDesc);
 
@@ -5512,6 +5518,21 @@
     ['nipperDamage', 'Nipper damage', '2 is one heart; a wolf does 4', 0.5, 20, 0.5],
     ['nipperSeconds', 'Nipper bites every (seconds)', '', 0.5, 60, 0.5],
     ['shieldSeconds', 'Shield pushes every (seconds)', '', 1, 600, 1],
+    ['xpRadius', 'XP Magnet reaches (blocks)', 'Orbs come by themselves from 8 blocks', 8, 32, 1],
+    ['cookMinutes', 'Cook every (minutes)', 'One raw food from the inventory', 1, 1440, 1],
+    ['snackFood', 'Snack Sharer feeds at food level', '20 is full, 6 is when sprinting stops', 1, 19, 1],
+    ['snackSeconds', 'Snack Sharer waits (seconds)', 'Between two snacks', 5, 3600, 1],
+    ['tinkerMinutes', 'Tinkerer every (minutes)', 'Of being out together, not AFK', 1, 1440, 1],
+    ['tinkerPoints', 'Tinkerer mends (durability)', 'An iron pickaxe has 250', 1, 1000, 1],
+    ['lureLevels', 'Lure adds (levels)', 'Rod and pet together never go past Lure III', 1, 3, 1],
+    ['eyeRadius', 'Watchful Eye sees (blocks)', '', 4, 48, 1],
+    ['bagRows', 'Pack Mule bag (rows of 9)', 'Fewer rows later: what doesn\'t fit goes back to the player', 1, 6, 1],
+    ['luckyPercent', 'Lucky Paw chance (%)', 'Per natural ore or grown crop broken', 1, 100, 1],
+    ['fireSeconds', 'Fire Watch waits (seconds)', '', 1, 3600, 1],
+    ['softPercent', 'Soft Paws takes (% of a fall)', 'Only falls that hurt more than a heart', 1, 100, 1],
+    ['softMinutes', 'Soft Paws waits (minutes)', '0: every fall', 0, 1440, 1],
+    ['roarCount', 'Guardian Roar needs (monsters)', 'Within 5 blocks', 1, 20, 1],
+    ['roarMinutes', 'Guardian Roar waits (minutes)', '', 1, 1440, 1],
   ];
   $('pn-pk-tuning').innerHTML = PK_FIELDS.map(([name, label, comment, min, max, step]) => `<label class="np-form-row"><span>${esc(label)}${comment ? `<small class="pn-comment">${esc(comment)}</small>` : ''}</span><input type="number" name="${name}" min="${min}" max="${max}" step="${step}" required></label>`).join('');
 

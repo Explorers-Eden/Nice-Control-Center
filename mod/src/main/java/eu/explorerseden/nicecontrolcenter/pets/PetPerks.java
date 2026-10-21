@@ -6,6 +6,16 @@ import eu.explorerseden.nicecontrolcenter.claims.ClaimStore;
 import eu.explorerseden.nicecontrolcenter.claims.ClaimTool;
 import eu.explorerseden.nicecontrolcenter.core.PlayerActivity;
 import eu.explorerseden.nicecontrolcenter.tweaks.Felling;
+import eu.explorerseden.nicecontrolcenter.mixin.EntityFlagsAccessor;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -68,7 +78,7 @@ import java.util.function.Predicate;
  * in the panel) unlock at the bond levels from the settings. Nothing works while the owner is AFK, a spectator
  * or in creative mode, and nothing reaches where the owner's claim rights don't. Server thread.
  */
-final class PetPerks {
+public final class PetPerks {
 	private static final class State {
 		String pet;
 		int level = -1;
@@ -91,6 +101,11 @@ final class PetPerks {
 		long treeUntil;
 		/** Buried blocks Truffle Nose showed, and when. */
 		final Map<BlockPos, Long> sniffed = new HashMap<>();
+		/** Active ticks towards the next Cook and Tinkerer. */
+		long cookTicks;
+		long tinkerTicks;
+		/** Monsters Watchful Eye made glow for the owner, by entity id. */
+		final Map<Integer, Entity> glowing = new HashMap<>();
 	}
 
 	private static final Map<UUID, State> states = new HashMap<>();
@@ -103,7 +118,9 @@ final class PetPerks {
 		Iterator<Map.Entry<UUID, State>> it = states.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<UUID, State> e = it.next();
-			if (server.getPlayerList().getPlayer(e.getKey()) == null || PetFollowers.shownOwned(e.getKey()) == null) {
+			ServerPlayer gone = server.getPlayerList().getPlayer(e.getKey());
+			if (gone == null || PetFollowers.shownOwned(e.getKey()) == null) {
+				eyeOff(gone, e.getValue());
 				clear(e.getValue());
 				it.remove();
 			}
@@ -117,6 +134,7 @@ final class PetPerks {
 			State st = states.computeIfAbsent(player.getUUID(), k -> new State());
 			if (!s.perks.enabled || PlayerActivity.isAfk(player) || player.isSpectator() || player.isCreative() || !player.isAlive()) {
 				lightOff(st);
+				eyeOff(player, st);
 				continue;
 			}
 			// The bond grows; a new level is celebrated (not when another pet comes out).
@@ -136,8 +154,19 @@ final class PetPerks {
 			List<Pets.Perk> perks = PetStore.activePerks(owner, owned);
 			if (perks.contains(Pets.Perk.LANTERN) || perks.contains(Pets.Perk.NIGHT_EYES)) lantern(player, st, perks.contains(Pets.Perk.NIGHT_EYES), s.perks, time);
 			else lightOff(st);
+			if (perks.contains(Pets.Perk.WATCHFUL_EYE)) {
+				if (time % 20 == 0) watchfulEye(player, st, s.perks);
+			} else {
+				eyeOff(player, st);
+			}
 			if (perks.isEmpty()) continue;
 			if (perks.contains(Pets.Perk.SECOND_WIND)) secondWind(player, owner, owned, s.perks);
+			if (perks.contains(Pets.Perk.FIRE_WATCH) && time % 5 == 0 && ready(st, Pets.Perk.FIRE_WATCH, time)) fireWatch(player, st, owned, s.perks, time);
+			if (perks.contains(Pets.Perk.SNACKS) && time % 20 == 0 && ready(st, Pets.Perk.SNACKS, time)) snack(player, st, owned, s.perks, time);
+			if (perks.contains(Pets.Perk.XP_MAGNET) && time % 2 == 0) xpMagnet(player, s.perks);
+			if (perks.contains(Pets.Perk.COOK) && ++st.cookTicks >= s.perks.cookMinutes * 1200L) cook(player, st, owned);
+			if (perks.contains(Pets.Perk.TINKERER) && ++st.tinkerTicks >= s.perks.tinkerMinutes * 1200L) tinker(player, st, owned, s.perks);
+			if (perks.contains(Pets.Perk.GUARDIAN_ROAR) && time % 10 == 0 && ready(st, Pets.Perk.GUARDIAN_ROAR, time) && roar(player, st, owned, s.perks, time)) continue;
 			if (perks.contains(Pets.Perk.GIFTS)) gifts(player, owner, owned, s.perks);
 			if (perks.contains(Pets.Perk.FISHING)) st.fishingTicks++;
 			// One outing at a time; defending comes first and may call the pet back from anything else.
@@ -159,6 +188,10 @@ final class PetPerks {
 		State st = states.get(player.getUUID());
 		if (st == null) return;
 		long time = player.level().getServer().getTickCount();
+		boolean grown = state.getBlock() instanceof CropBlock crop ? crop.isMaxAge(state)
+				: state.is(Blocks.NETHER_WART) && state.getValue(NetherWartBlock.AGE) >= NetherWartBlock.MAX_AGE;
+		if ((grown || natural && PlacedBlocks.isOre(state)) && active(player, Pets.Perk.LUCKY_PAW)) luckyPaw(player, pos, state, grown);
+		if (grown && active(player, Pets.Perk.REPLANTER)) replant(player, pos, state);
 		if (natural && PlacedBlocks.tracked(state)) {
 			st.mined.addLast(new long[] {pos.asLong(), time});
 			while (st.mined.size() > 20) st.mined.removeFirst();
@@ -175,6 +208,15 @@ final class PetPerks {
 	}
 
 	// ---------------------------------------------------------------- helpers
+
+	/** The owner's pet is out and this perk works for them right now (for perks that wait for something to happen). */
+	static boolean active(ServerPlayer player, Pets.Perk perk) {
+		if (!PetStore.enabled() || !PetStore.settings().perks.enabled) return false;
+		if (PlayerActivity.isAfk(player) || player.isSpectator() || player.isCreative() || !player.isAlive()) return false;
+		Pets.Owned owned = PetFollowers.shownOwned(player.getUUID());
+		Pets.Owner owner = owned == null ? null : PetStore.data().owners.get(player.getStringUUID());
+		return owner != null && PetStore.activePerks(owner, owned).contains(perk);
+	}
 
 	private static boolean ready(State st, Pets.Perk perk, long time) {
 		return time >= st.next.getOrDefault(perk, 0L);
@@ -681,6 +723,224 @@ final class PetPerks {
 		}, null);
 	}
 
+	// ---------------------------------------------------------------- small helps at the owner's side
+
+	/** Orbs out of vanilla's 8 block reach drift closer, until the orbs come by themselves. */
+	private static void xpMagnet(ServerPlayer player, Pets.PerkSettings s) {
+		Vec3 me = player.position().add(0, player.getBbHeight() / 2, 0);
+		for (ExperienceOrb orb : player.level().getEntitiesOfClass(ExperienceOrb.class, player.getBoundingBox().inflate(s.xpRadius), ExperienceOrb::isAlive)) {
+			Vec3 way = me.subtract(orb.position());
+			double d = way.length();
+			if (d <= 7 || d > s.xpRadius) continue;
+			Vec3 to = orb.position().add(way.scale(Math.min(0.8, d - 7) / d));
+			orb.setPos(to.x, to.y, to.z);
+			orb.setDeltaMovement(Vec3.ZERO);
+		}
+	}
+
+	/** Raw food the Cook can cook, best first. */
+	private static final Item[][] COOKING = {
+			{Items.BEEF, Items.COOKED_BEEF}, {Items.PORKCHOP, Items.COOKED_PORKCHOP}, {Items.MUTTON, Items.COOKED_MUTTON},
+			{Items.SALMON, Items.COOKED_SALMON}, {Items.CHICKEN, Items.COOKED_CHICKEN}, {Items.RABBIT, Items.COOKED_RABBIT},
+			{Items.COD, Items.COOKED_COD}, {Items.POTATO, Items.BAKED_POTATO}};
+
+	private static void cook(ServerPlayer player, State st, Pets.Owned owned) {
+		Inventory inv = player.getInventory();
+		for (Item[] pair : COOKING) {
+			for (int i = 0; i < inv.getContainerSize(); i++) {
+				ItemStack raw = inv.getItem(i);
+				if (!raw.is(pair[0])) continue;
+				st.cookTicks = 0;
+				raw.shrink(1);
+				ItemStack done = new ItemStack(pair[1]);
+				String what = done.getHoverName().getString();
+				give(player, done);
+				Vec3 at = PetFollowers.position(player.getUUID());
+				if (at != null) particles(player.level(), ParticleTypes.SMOKE, at, 6, 0.2);
+				player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 0.3f, 1.6f);
+				player.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " cooked " + what + " for you!").withStyle(ChatFormatting.GOLD));
+				return;
+			}
+		}
+		// Nothing to cook: it tries again in a minute.
+		st.cookTicks = Math.max(0, st.cookTicks - 1200);
+	}
+
+	/** Food the Snack Sharer never picks: bad for you, or too good to eat by accident. */
+	private static final java.util.Set<Item> NO_SNACK = java.util.Set.of(Items.ROTTEN_FLESH, Items.SPIDER_EYE, Items.POISONOUS_POTATO, Items.PUFFERFISH,
+			Items.CHICKEN, Items.CHORUS_FRUIT, Items.SUSPICIOUS_STEW, Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE, Items.GOLDEN_CARROT);
+
+	/** Eats the least filling food from the inventory for its owner, the way they would. */
+	private static void snack(ServerPlayer player, State st, Pets.Owned owned, Pets.PerkSettings s, long time) {
+		if (player.getFoodData().getFoodLevel() > s.snackFood || player.isUsingItem()) return;
+		Inventory inv = player.getInventory();
+		int slot = -1;
+		int least = Integer.MAX_VALUE;
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack stack = inv.getItem(i);
+			FoodProperties food = stack.isEmpty() || NO_SNACK.contains(stack.getItem()) ? null : stack.get(DataComponents.FOOD);
+			if (food != null && food.nutrition() > 0 && food.nutrition() < least) {
+				least = food.nutrition();
+				slot = i;
+			}
+		}
+		if (slot < 0) return;
+		wait(st, Pets.Perk.SNACKS, time + s.snackSeconds * 20L);
+		ItemStack stack = inv.getItem(slot);
+		String what = stack.getHoverName().getString();
+		ItemStack left = stack.finishUsingItem(player.level(), player);
+		if (left != stack) inv.setItem(slot, left);
+		player.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " shared " + what + " with you").withStyle(ChatFormatting.GOLD));
+	}
+
+	/** Mends the item in the hand, else the off hand, else the most worn armor. */
+	private static void tinker(ServerPlayer player, State st, Pets.Owned owned, Pets.PerkSettings s) {
+		ItemStack target = null;
+		for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+			ItemStack it = player.getItemBySlot(slot);
+			if (!it.isDamageableItem() || it.getDamageValue() <= 0) continue;
+			if (target == null || slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && target != player.getMainHandItem() && target != player.getOffhandItem()
+					&& it.getDamageValue() > target.getDamageValue()) {
+				target = it;
+			}
+		}
+		if (target == null) {
+			// Nothing worn: it tries again in a minute.
+			st.tinkerTicks = Math.max(0, st.tinkerTicks - 1200);
+			return;
+		}
+		st.tinkerTicks = 0;
+		target.setDamageValue(Math.max(0, target.getDamageValue() - s.tinkerPoints));
+		Vec3 at = PetFollowers.position(player.getUUID());
+		if (at != null) particles(player.level(), ParticleTypes.WAX_OFF, at, 6, 0.25);
+		player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.SMITHING_TABLE_USE, SoundSource.PLAYERS, 0.3f, 1.5f);
+		player.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " mended your " + target.getHoverName().getString()).withStyle(ChatFormatting.GOLD));
+	}
+
+	/** Fishing rods: the pet adds its Lure levels (all together never more than Lure III's 15 seconds). */
+	public static float lure(Player player, float seconds) {
+		if (!(player instanceof ServerPlayer p) || seconds >= 15 || !active(p, Pets.Perk.LURE)) return seconds;
+		return Math.min(15, seconds + 5 * PetStore.settings().perks.lureLevels);
+	}
+
+	/** Monsters near the owner glow on their screen only (sent again every second; anything else sees no change). */
+	private static void watchfulEye(ServerPlayer player, State st, Pets.PerkSettings s) {
+		Map<Integer, Entity> now = new HashMap<>();
+		for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(s.eyeRadius),
+				e -> e instanceof Enemy && e.isAlive() && !(e instanceof Player) && !e.isInvisible())) {
+			if (e.distanceToSqr(player) > (double) s.eyeRadius * s.eyeRadius) continue;
+			now.put(e.getId(), e);
+			byte flags = e.getEntityData().get(EntityFlagsAccessor.nicecontrolcenter$flags());
+			player.connection.send(new ClientboundSetEntityDataPacket(e.getId(),
+					List.of(SynchedEntityData.DataValue.create(EntityFlagsAccessor.nicecontrolcenter$flags(), (byte) (flags | 0x40)))));
+		}
+		for (Map.Entry<Integer, Entity> e : st.glowing.entrySet()) if (!now.containsKey(e.getKey())) unglow(player, e.getValue());
+		st.glowing.clear();
+		st.glowing.putAll(now);
+	}
+
+	/** The owner's client gets the real flags back for every monster Watchful Eye lit up (no player: just forgotten). */
+	private static void eyeOff(ServerPlayer player, State st) {
+		if (st.glowing.isEmpty()) return;
+		if (player != null) for (Entity e : st.glowing.values()) unglow(player, e);
+		st.glowing.clear();
+	}
+
+	private static void unglow(ServerPlayer player, Entity e) {
+		if (e.isRemoved() || e.level() != player.level()) return;
+		byte flags = e.getEntityData().get(EntityFlagsAccessor.nicecontrolcenter$flags());
+		player.connection.send(new ClientboundSetEntityDataPacket(e.getId(), List.of(SynchedEntityData.DataValue.create(EntityFlagsAccessor.nicecontrolcenter$flags(), flags))));
+	}
+
+	/** One extra of what the block dropped (never the ore block itself, so Silk Touch gets nothing more). */
+	private static void luckyPaw(ServerPlayer player, BlockPos pos, BlockState state, boolean crop) {
+		if (player.getRandom().nextInt(100) >= PetStore.settings().perks.luckyPercent) return;
+		ServerLevel level = player.level();
+		List<ItemStack> drops = new ArrayList<>();
+		for (ItemStack d : Block.getDrops(state, level, pos, null, player, player.getMainHandItem())) {
+			if (!d.isEmpty() && (crop || !d.is(state.getBlock().asItem()))) drops.add(d);
+		}
+		if (drops.isEmpty()) return;
+		ItemStack extra = drops.get(player.getRandom().nextInt(drops.size())).copyWithCount(1);
+		Pets.Owned owned = PetFollowers.shownOwned(player.getUUID());
+		String what = extra.getHoverName().getString();
+		PlayerDrops.during(player, () -> Block.popResource(level, pos, extra));
+		particles(level, ParticleTypes.HAPPY_VILLAGER, Vec3.atCenterOf(pos), 6, 0.3);
+		if (owned != null) player.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " found one more " + what + "!").withStyle(ChatFormatting.GOLD));
+	}
+
+	/** Plants the crop again where it was harvested: a seed from the inventory, else one that just dropped. */
+	private static void replant(ServerPlayer player, BlockPos pos, BlockState state) {
+		ServerLevel level = player.level();
+		BlockState young = state.getBlock().defaultBlockState();
+		Item seed = state.getBlock().asItem();
+		if (seed == Items.AIR || !level.getBlockState(pos).isAir() || !young.canSurvive(level, pos)) return;
+		ItemStack from = null;
+		Inventory inv = player.getInventory();
+		for (int i = 0; i < inv.getContainerSize() && from == null; i++) if (inv.getItem(i).is(seed)) from = inv.getItem(i);
+		if (from == null) {
+			UUID me = player.getUUID();
+			for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, new net.minecraft.world.phys.AABB(pos).inflate(1.5),
+					e -> e.isAlive() && e.getItem().is(seed) && me.equals(PlayerDrops.owner(e)))) {
+				from = e.getItem();
+				break;
+			}
+		}
+		if (from == null) return;
+		from.shrink(1);
+		level.setBlock(pos, young, Block.UPDATE_ALL);
+		level.playSound(null, pos, SoundEvents.CROP_PLANTED, SoundSource.BLOCKS, 0.8f, 1f);
+		particles(level, ParticleTypes.HAPPY_VILLAGER, Vec3.atCenterOf(pos), 3, 0.25);
+	}
+
+	/** Puts out a burning owner (not in lava: that would only burn again). */
+	private static void fireWatch(ServerPlayer player, State st, Pets.Owned owned, Pets.PerkSettings s, long time) {
+		if (!player.isOnFire() || player.isInLava() || player.hasEffect(MobEffects.FIRE_RESISTANCE)) return;
+		player.clearFire();
+		wait(st, Pets.Perk.FIRE_WATCH, time + s.fireSeconds * 20L);
+		particles(player.level(), ParticleTypes.SPLASH, player.position().add(0, 1, 0), 20, 0.4);
+		player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.6f, 1.2f);
+		player.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " put you out!").withStyle(ChatFormatting.AQUA));
+	}
+
+	/** A fall's damage, less what Soft Paws takes (only for falls that hurt more than a heart). */
+	public static int softFall(Player player, int damage) {
+		if (damage <= 2 || !(player instanceof ServerPlayer p)) return damage;
+		State st = states.get(p.getUUID());
+		long time = p.level().getServer().getTickCount();
+		if (st == null || !ready(st, Pets.Perk.SOFT_PAWS, time) || !active(p, Pets.Perk.SOFT_PAWS)) return damage;
+		Pets.PerkSettings s = PetStore.settings().perks;
+		wait(st, Pets.Perk.SOFT_PAWS, time + s.softMinutes * 1200L);
+		particles(p.level(), ParticleTypes.CLOUD, p.position().add(0, 0.2, 0), 10, 0.4);
+		Pets.Owned owned = PetFollowers.shownOwned(p.getUUID());
+		if (owned != null) p.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " softened your fall!").withStyle(ChatFormatting.LIGHT_PURPLE));
+		return damage - Math.round(damage * s.softPercent / 100f);
+	}
+
+	/** Several monsters close in: one roar sends them all back. */
+	private static boolean roar(ServerPlayer player, State st, Pets.Owned owned, Pets.PerkSettings s, long time) {
+		List<LivingEntity> near = new ArrayList<>();
+		for (LivingEntity e : player.level().getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(5), e -> e instanceof Enemy && e.isAlive())) {
+			if (e instanceof Player || e.hasCustomName() || e instanceof TamableAnimal t && t.isTame() || boss(e)) continue;
+			if (e.distanceToSqr(player) <= 25) near.add(e);
+		}
+		if (near.size() < s.roarCount) return false;
+		wait(st, Pets.Perk.GUARDIAN_ROAR, time + s.roarMinutes * 1200L);
+		ServerLevel level = player.level();
+		for (LivingEntity mob : near) {
+			Vec3 away = mob.position().subtract(player.position()).multiply(1, 0, 1);
+			if (away.lengthSqr() < 1e-4) away = player.getLookAngle().multiply(1, 0, 1);
+			away = away.normalize();
+			mob.push(away.x * 1.4, 0.45, away.z * 1.4);
+			particles(level, ParticleTypes.POOF, mob.position().add(0, mob.getBbHeight() * 0.5, 0), 5, 0.2);
+		}
+		Vec3 at = PetFollowers.position(player.getUUID());
+		if (at != null) particles(level, ParticleTypes.SONIC_BOOM, at, 1, 0);
+		level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.RAVAGER_ROAR, SoundSource.PLAYERS, 0.7f, 1.6f);
+		player.sendOverlayMessage(Component.literal(PetStore.displayName(owned) + " roared them away!").withStyle(ChatFormatting.RED));
+		return true;
+	}
+
 	/** The pet is gone: clients get their real blocks back and a carried item is let go. */
 	private static void clear(State st) {
 		lightOff(st);
@@ -693,7 +953,10 @@ final class PetPerks {
 	}
 
 	static void removeAll() {
-		for (State st : states.values()) clear(st);
+		for (State st : states.values()) {
+			eyeOff(null, st);
+			clear(st);
+		}
 		states.clear();
 	}
 }

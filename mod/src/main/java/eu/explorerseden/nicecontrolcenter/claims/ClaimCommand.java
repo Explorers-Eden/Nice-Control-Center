@@ -43,7 +43,7 @@ public final class ClaimCommand {
 
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
 		dispatcher.register(Commands.literal("claim")
-				.requires(Permissions.require(PERMISSION_USE, PermissionLevel.ALL))
+				.requires(eu.explorerseden.nicecontrolcenter.command.Everyone.unless(PERMISSION_USE))
 				.executes(ctx -> player(ctx, p -> ClaimDialogs.openAt(p, p.blockPosition())))
 				.then(Commands.literal("mode").executes(ctx -> player(ctx, ClaimMode::toggle)))
 				.then(Commands.literal("list").executes(ctx -> player(ctx, ClaimCommand::list)))

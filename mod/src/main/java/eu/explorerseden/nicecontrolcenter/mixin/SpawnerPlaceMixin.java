@@ -7,6 +7,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -16,6 +18,13 @@ import eu.explorerseden.nicecontrolcenter.tweaks.Spawners;
 /** Silk touch spawners: a spawner picked up with Silk Touch keeps its mob when a normal player places it again. */
 @Mixin(BlockItem.class)
 public abstract class SpawnerPlaceMixin {
+	/** Ours carry the spawner data in their custom data (see {@link Spawners}); older ones still in the block entity data. */
+	@WrapOperation(method = "updateCustomBlockEntityTag", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;get(Lnet/minecraft/core/component/DataComponentType;)Ljava/lang/Object;"))
+	private static Object nicecontrolcenter$storedData(ItemStack stack, DataComponentType<?> type, Operation<Object> original) {
+		Object data = original.call(stack, type);
+		return data == null && type == DataComponents.BLOCK_ENTITY_DATA ? Spawners.storedData(stack) : data;
+	}
+
 	@WrapOperation(method = "updateCustomBlockEntityTag", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/BlockEntityType;onlyOpCanSetNbt()Z"))
 	private static boolean nicecontrolcenter$ownSpawners(BlockEntityType<?> type, Operation<Boolean> original, @Local(argsOnly = true) ItemStack stack) {
 		if (Spawners.marked(stack)) return false;

@@ -139,10 +139,22 @@ public final class Pets {
 		TORCHES("Torch Bearer", "Places one of your torches where it's dark enough for monsters", Group.HELPER),
 		MINER("Miner", "Mines ore you can see and widens your tunnel, with your pickaxe", Group.HELPER),
 		CHOPPER("Wood Chopper", "Helps chop the tree you started on, with your axe", Group.HELPER),
+		XP_MAGNET("XP Magnet", "Pulls experience orbs from further away to you", Group.HELPER),
+		REPLANTER("Replanter", "Replants the crops you harvest, with seeds from your inventory", Group.HELPER),
+		COOK("Cook", "Now and then cooks one raw food in your inventory", Group.HELPER),
+		SNACKS("Snack Sharer", "Feeds you from your inventory when you get hungry", Group.HELPER),
+		TINKERER("Tinkerer", "Now and then mends the tool in your hand or your armor a little", Group.HELPER),
+		LURE("Lure", "Fish bite sooner while it's out", Group.HELPER),
+		WATCHFUL_EYE("Watchful Eye", "Makes monsters near you glow, only for you", Group.HELPER),
+		PACK_MULE("Pack Mule", "Carries a small bag for you (open it in /pets)", Group.HELPER),
+		LUCKY_PAW("Lucky Paw", "Now and then one more drop from natural ore and grown crops", Group.HELPER),
 		GIFTS("Small Gifts", "Now and then finds something small for you", Group.STRONG),
 		SECOND_WIND("Second Wind", "Heals you a little when you're nearly dead, now and then", Group.STRONG),
 		NIPPER("Nipper", "Nips monsters that hurt you or that you attack, like a wolf", Group.STRONG),
-		SHIELD("Shield", "Pushes monsters back that come too close", Group.STRONG);
+		SHIELD("Shield", "Pushes monsters back that come too close", Group.STRONG),
+		FIRE_WATCH("Fire Watch", "Puts you out when you're burning, now and then", Group.STRONG),
+		SOFT_PAWS("Soft Paws", "Takes most of the damage of a fall, now and then", Group.STRONG),
+		GUARDIAN_ROAR("Guardian Roar", "Roars monsters away when several close in on you", Group.STRONG);
 
 		public enum Group { HELPER, STRONG }
 
@@ -315,6 +327,27 @@ public final class Pets {
 		public double nipperDamage = 2;
 		public double nipperSeconds = 1.5;
 		public int shieldSeconds = 5;
+		/** XP Magnet reaches this far (orbs come by themselves from 8 blocks). */
+		public int xpRadius = 16;
+		public int cookMinutes = 5;
+		/** Snack Sharer feeds the owner at this food level or lower (20 is full), at most this often. */
+		public int snackFood = 6;
+		public int snackSeconds = 60;
+		public int tinkerMinutes = 3;
+		public int tinkerPoints = 10;
+		/** Lure levels the pet adds to the rod (all together never more than Lure III). */
+		public int lureLevels = 1;
+		public int eyeRadius = 16;
+		/** Pack Mule's bag: rows of nine slots. */
+		public int bagRows = 1;
+		public int luckyPercent = 5;
+		public int fireSeconds = 60;
+		/** Soft Paws takes this share of one fall's damage, then waits. */
+		public int softPercent = 80;
+		public int softMinutes = 5;
+		/** Guardian Roar needs this many monsters within 5 blocks. */
+		public int roarCount = 3;
+		public int roarMinutes = 3;
 
 		public PerkSettings fill() {
 			if (gifts == null) gifts = defaultGifts();
@@ -484,6 +517,21 @@ public final class Pets {
 		if (!(k.nipperDamage >= 0.5 && k.nipperDamage <= 20)) return "Nipper does 0.5 to 20 damage.";
 		if (!(k.nipperSeconds >= 0.5 && k.nipperSeconds <= 60)) return "Nipper nips every 0.5 to 60 seconds.";
 		if (k.shieldSeconds < 1 || k.shieldSeconds > 600) return "Shield pushes every 1 to 600 seconds.";
+		if (k.xpRadius < 8 || k.xpRadius > 32) return "XP Magnet reaches 8 to 32 blocks.";
+		if (k.cookMinutes < 1 || k.cookMinutes > 1440) return "Cook cooks every 1 to 1440 minutes.";
+		if (k.snackFood < 1 || k.snackFood > 19) return "Snack Sharer feeds at a food level of 1 to 19.";
+		if (k.snackSeconds < 5 || k.snackSeconds > 3600) return "Snack Sharer waits 5 to 3600 seconds.";
+		if (k.tinkerMinutes < 1 || k.tinkerMinutes > 1440) return "Tinkerer mends every 1 to 1440 minutes.";
+		if (k.tinkerPoints < 1 || k.tinkerPoints > 1000) return "Tinkerer mends 1 to 1000 points.";
+		if (k.lureLevels < 1 || k.lureLevels > 3) return "Lure adds 1 to 3 levels.";
+		if (k.eyeRadius < 4 || k.eyeRadius > 48) return "Watchful Eye sees 4 to 48 blocks.";
+		if (k.bagRows < 1 || k.bagRows > 6) return "The Pack Mule bag has 1 to 6 rows.";
+		if (k.luckyPercent < 1 || k.luckyPercent > 100) return "Lucky Paw's chance is 1 to 100 %.";
+		if (k.fireSeconds < 1 || k.fireSeconds > 3600) return "Fire Watch waits 1 to 3600 seconds.";
+		if (k.softPercent < 1 || k.softPercent > 100) return "Soft Paws takes 1 to 100 % of a fall.";
+		if (k.softMinutes < 0 || k.softMinutes > 1440) return "Soft Paws waits 0 to 1440 minutes.";
+		if (k.roarCount < 1 || k.roarCount > 20) return "Guardian Roar needs 1 to 20 monsters.";
+		if (k.roarMinutes < 1 || k.roarMinutes > 1440) return "Guardian Roar waits 1 to 1440 minutes.";
 		if (k.gifts.size() > 50) return "At most 50 gifts.";
 		for (Gift g : k.gifts) {
 			if (!g.item.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + g.item + "\" isn't an item id (like minecraft:bone_meal).";
@@ -593,6 +641,11 @@ public final class Pets {
 		/** Active ticks towards the next Small Gift, and when Second Wind can help again (epoch ms). */
 		public long giftTicks;
 		public long secondWindAt;
+		/**
+		 * Pack Mule's bag, slot by slot (items as JSON, "" for an empty slot). It belongs to the player, not the
+		 * pet: nothing in it is lost when the pet is taken away or the perk is off (only opening it needs the perk).
+		 */
+		public List<String> bag = new ArrayList<>();
 
 		/** Puts the pet away, remembering it for /pets on. */
 		public void putAway() {
@@ -638,6 +691,8 @@ public final class Pets {
 				if (o.pets == null) o.pets = new ArrayList<>();
 				o.pets.removeIf(p -> p == null || p.pet == null || p.texture == null);
 				if (o.perksOff == null) o.perksOff = new HashSet<>();
+				if (o.bag == null) o.bag = new ArrayList<>();
+				o.bag.replaceAll(b -> b == null ? "" : b);
 				for (Owned p : o.pets) {
 					p.nickname = nickname(p.nickname);
 					if (Claims.parseColor(p.nameColor) < 0) p.nameColor = "#FFFFFF";
