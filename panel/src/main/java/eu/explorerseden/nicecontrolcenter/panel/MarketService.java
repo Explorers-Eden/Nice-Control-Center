@@ -8,6 +8,7 @@ import static eu.explorerseden.nicecontrolcenter.panel.Web.json;
 import com.google.gson.JsonObject;
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.Market;
+import eu.explorerseden.nicecontrolcenter.Pets;
 import io.javalin.config.RoutesConfig;
 import io.javalin.http.HttpStatus;
 
@@ -196,6 +197,8 @@ final class MarketService {
 				if (o.saleEnds != 0) m.put("until", o.saleEnds);
 				String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 				if (icon != null) m.put("icon", icon);
+				String head = Pets.skinHash(o.iconTexture);
+				if (head != null) m.put("head", head);
 				out.add(m);
 			}
 		}
@@ -209,6 +212,8 @@ final class MarketService {
 			if (o.perPlayer > 0) m.put("perPlayer", o.perPlayer);
 			String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 			if (icon != null) m.put("icon", icon);
+			String head = Pets.skinHash(o.iconTexture);
+			if (head != null) m.put("head", head);
 			out.add(m);
 		}
 		return out;
@@ -420,8 +425,12 @@ final class MarketService {
 				String icon = icons.iconFor(offerStack(o.icon, o.iconModel));
 				commandIcons.add(icon == null ? "" : icon);
 			}
-			json(ctx, Map.of("settings", s, "defaults", new Market.Settings().fill(), "claimIcons", claimIcons, "commandIcons", commandIcons,
-					"variables", Market.COMMAND_VARIABLES, "canCommands", me.can(Permissions.CONSOLE_WRITE)));
+			// Player head icons' skin hashes, for their faces ("" when there's none).
+			List<String> claimHeads = s.claimBlocks.stream().map(o -> java.util.Objects.requireNonNullElse(Pets.skinHash(o.iconTexture), "")).toList();
+			List<String> commandHeads = s.commandOffers.stream().map(o -> java.util.Objects.requireNonNullElse(Pets.skinHash(o.iconTexture), "")).toList();
+			json(ctx, Map.ofEntries(Map.entry("settings", s), Map.entry("defaults", new Market.Settings().fill()),
+					Map.entry("claimIcons", claimIcons), Map.entry("commandIcons", commandIcons), Map.entry("claimHeads", claimHeads), Map.entry("commandHeads", commandHeads),
+					Map.entry("variables", Market.COMMAND_VARIABLES), Map.entry("canCommands", me.can(Permissions.CONSOLE_WRITE))));
 		}));
 		routes.post("/api/market/settings", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Market.Settings next;
@@ -491,7 +500,14 @@ final class MarketService {
 	}
 
 	/** A server listing's icon as a stack: the item, with the item model (like one from the resource pack) when one is set. */
-	private static String offerStack(String icon, String model) {
+	/** A server shop listing has this head as its icon (its face may be shown on the info page). */
+	boolean isOfferHead(String hash) {
+		Market.Settings s = settings();
+		return s.claimBlocks.stream().anyMatch(o -> hash.equals(Pets.skinHash(o.iconTexture)))
+				|| s.commandOffers.stream().anyMatch(o -> hash.equals(Pets.skinHash(o.iconTexture)));
+	}
+
+		private static String offerStack(String icon, String model) {
 		JsonObject stack = new JsonObject();
 		stack.addProperty("id", icon);
 		if (model != null && !model.isBlank()) {

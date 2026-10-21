@@ -1,3 +1,6 @@
+## 1.20.0
+- Market → Server shop: a listing whose icon is minecraft:player_head gets a Head texture field (minecraft-heads.com "Value" or a textures.minecraft.net link) for mod 1.21.0; the face shows in the listing tables, the editor preview and on the info page
+
 ## 1.19.0
 - World → Borders & reset: Outer wilds message card for mod 1.20.0 (on/off, entering and leaving text and colour, plop sound, post effect on/off and its id)
 

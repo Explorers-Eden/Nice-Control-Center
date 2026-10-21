@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.21.0
+- Server shop: claim block and command listings with a player head as their icon can have a head texture (set in the panel), shown in /market
+
 ## 1.20.1
 - Updates: mods and data packs from GitHub are compared by the file's SHA-256 (GitHub's asset digest) instead of its name, so a pack released as one "latest" release whose zip is replaced each time (like A Realm Recrafted) shows its updates. Downloads are checked against that digest; tags without a version number show the upload date
 

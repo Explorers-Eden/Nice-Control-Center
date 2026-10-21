@@ -88,6 +88,11 @@ public final class PetDialogs {
 	}
 
 	/** A pet row: its head and a description next to it. */
+	/** A player head with this skin (EMPTY when the value can't be used), also for the market's head icons. */
+	public static ItemStack head(ServerPlayer player, String texture) {
+		return PetFollowers.head(player.level().getServer(), texture);
+	}
+
 	private static DialogBody headRow(ServerPlayer player, String texture, Component description) {
 		ItemStack head = PetFollowers.head(player.level().getServer(), texture);
 		if (head.isEmpty()) return new PlainMessage(description, TEXT_WIDTH);

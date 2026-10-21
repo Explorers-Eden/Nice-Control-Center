@@ -228,6 +228,13 @@ final class PetsService {
 		this.waypointHubs = hubs;
 	}
 
+	/** Server shop listings with head icons: their faces may be shown too. */
+	private volatile MarketService market;
+
+	void useMarket(MarketService market) {
+		this.market = market;
+	}
+
 	/** The face picture for a skin hash (fetched once), or null. */
 	Path head(String hash) {
 		if (hash == null || !hash.matches("[0-9a-f]{32,128}")) return null;
@@ -340,13 +347,15 @@ final class PetsService {
 			}
 			ctx.contentType("image/png").header("Cache-Control", "private, max-age=604800").result(Files.readAllBytes(f));
 		}));
-		// Faces of the shop's pets and of public waypoint hubs' owners: public, for the info page (only those, so
+		// Faces of the shop's pets, server shop head icons and public waypoint hubs' owners: public, for the info page (only those, so
 		// nobody can make the panel fetch others).
 		// The map has the same ones under /map/ (on the map's own host name only /map/ exists).
 		io.javalin.http.Handler faces = ctx -> {
 			String hash = ctx.pathParam("hash").replaceFirst("\\.png$", "");
 			WaypointHubs hubs = waypointHubs;
-			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture))) || hubs != null && hubs.isOwnerHead(hash);
+			MarketService shop = market;
+			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture))) || hubs != null && hubs.isOwnerHead(hash)
+					|| shop != null && shop.isOfferHead(hash);
 			Path f = known ? head(hash) : null;
 			if (f == null) {
 				ctx.status(HttpStatus.NOT_FOUND);

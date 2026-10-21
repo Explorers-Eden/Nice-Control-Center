@@ -149,6 +149,7 @@ public final class Panel {
 		WaypointHubs waypointHubs = new WaypointHubs(serverDir);
 		info.useWaypointHubs(waypointHubs);
 		pets.useWaypointHubs(waypointHubs);
+		pets.useMarket(market);
 		pets.startDbSync(db);
 		info.useAuth(auth);
 		Home home = new Home(server, scheduler, backups, discord, trimmer, branding, tuning, stats);

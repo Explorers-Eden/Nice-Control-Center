@@ -257,7 +257,7 @@
             <small class="in-tile__seller"><i class="bi bi-person"></i> ${esc(l.seller || 'someone')} · ${Number(l.amount).toLocaleString()} left</small></span></div>`;
       };
       const offer = (o) => `<div class="in-tile" data-search="${esc([o.name, o.description].join(' ').toLowerCase())}">
-          <span class="in-slot">${o.icon ? `<img src="items/${esc(o.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}</span>
+          <span class="in-slot">${o.head ? `<img class="in-head" src="heads/${esc(o.head)}" alt="" loading="lazy">` : o.icon ? `<img src="items/${esc(o.icon)}" alt="" loading="lazy">` : '<i class="bi bi-box"></i>'}</span>
           <span class="in-tile__text"><b>${esc(o.name)}</b>
             ${o.description ? `<small class="in-tile__extra">${esc(o.description)}</small>` : ''}
             <span class="in-tile__price">${coin}${Number(o.price).toLocaleString()} <small>${esc(o.price === 1 ? cur : cur + 's')}</small></span>

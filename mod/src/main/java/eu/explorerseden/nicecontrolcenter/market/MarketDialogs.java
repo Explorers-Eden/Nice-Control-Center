@@ -193,7 +193,7 @@ public final class MarketDialogs {
 				Market.ClaimOffer o = ms.claimBlocks.get(i);
 				if (!o.onSale()) continue;
 				any = true;
-				body.add(iconRow(o.icon, o.iconModel, Component.empty()
+				body.add(iconRow(player, o.icon, o.iconModel, o.iconTexture, Component.empty()
 						.append(Component.literal(String.format(Locale.ROOT, "%,d claim blocks", o.blocks)).withStyle(ChatFormatting.WHITE))
 						.append(Component.literal("\n" + money(o.price)).withStyle(ChatFormatting.GOLD))
 						.append(Component.literal((o.saleEnds != 0 ? " · until " + Pets.date(o.saleEnds) : "") + "  ").withStyle(ChatFormatting.GRAY))
@@ -203,7 +203,7 @@ public final class MarketDialogs {
 		for (Market.CommandOffer o : ms.commandOffers) {
 			if (!o.onSale()) continue;
 			any = true;
-			body.add(iconRow(o.icon, o.iconModel, Component.empty()
+			body.add(iconRow(player, o.icon, o.iconModel, o.iconTexture, Component.empty()
 					.append(Component.literal(o.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("\n" + (o.description.isEmpty() ? "" : o.description + "\n")).withStyle(ChatFormatting.GRAY))
 					.append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
@@ -375,11 +375,12 @@ public final class MarketDialogs {
 	 * A server listing's row: its icon (an item set in the panel, without that item's tooltip: it isn't that item) and the text.
 	 * model: an item model for the icon (like one from the server's resource pack), or empty for the item's own.
 	 */
-	private static DialogBody iconRow(String icon, String model, Component text) {
+	private static DialogBody iconRow(ServerPlayer player, String icon, String model, String texture, Component text) {
 		Identifier id = Identifier.tryParse(icon);
 		Item item = id == null ? null : BuiltInRegistries.ITEM.getValue(id);
 		if (item == null || item == Items.AIR) return new PlainMessage(text, TEXT_WIDTH);
-		ItemStack stack = new ItemStack(item);
+		ItemStack stack = item == Items.PLAYER_HEAD && texture != null && !texture.isEmpty() ? PetDialogs.head(player, texture) : ItemStack.EMPTY;
+		if (stack.isEmpty()) stack = new ItemStack(item);
 		Identifier modelId = model == null || model.isEmpty() ? null : Identifier.tryParse(model);
 		if (modelId != null) stack.set(net.minecraft.core.component.DataComponents.ITEM_MODEL, modelId);
 		return new ItemBody(ItemStackTemplate.fromNonEmptyStack(stack), Optional.of(new PlainMessage(text, TEXT_WIDTH - 30)), true, false, 16, 16);
@@ -398,7 +399,7 @@ public final class MarketDialogs {
 			body.add(text(notice, notice.startsWith("Bought") ? ChatFormatting.GREEN : ChatFormatting.RED));
 			Plop.play(player);
 		}
-		body.add(iconRow(o.icon, o.iconModel, Component.literal(String.format(Locale.ROOT, "%,d claim blocks", o.blocks)).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
+		body.add(iconRow(player, o.icon, o.iconModel, o.iconTexture, Component.literal(String.format(Locale.ROOT, "%,d claim blocks", o.blocks)).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
 				.append(Component.literal("\nEvery claimed block costs one. Use them in /claim.").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 		body.add(new PlainMessage(Component.empty()
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))
@@ -472,7 +473,7 @@ public final class MarketDialogs {
 		}
 		MutableComponent title = Component.literal(o.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD);
 		if (!o.description.isEmpty()) title.append(Component.literal("\n" + o.description).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
-		body.add(iconRow(o.icon, o.iconModel, title));
+		body.add(iconRow(player, o.icon, o.iconModel, o.iconTexture, title));
 		int bought = MarketStore.data().serverBought(o.id, me);
 		MutableComponent facts = Component.empty()
 				.append(Component.literal("Price ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(o.price)).withStyle(ChatFormatting.GOLD))

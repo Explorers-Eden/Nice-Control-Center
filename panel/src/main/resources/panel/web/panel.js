@@ -5091,19 +5091,20 @@
       : '<tbody><tr><td class="pn-hint">Nothing bought from the server yet.</td></tr></tbody>';
   }
 
-  const ssIcon = (hash) => (hash ? `<img src="info/items/${esc(hash)}" alt="" width="24" height="24">` : '<span class="pn-ss-noicon"></span>');
+  const ssIcon = (hash, head) => (head ? `<img src="info/heads/${esc(head)}" alt="" width="24" height="24">`
+    : hash ? `<img src="info/items/${esc(hash)}" alt="" width="24" height="24">` : '<span class="pn-ss-noicon"></span>');
   const ssActions = (i) => (can('settings.server') ? `<button type="button" class="np-btn small" data-edit="${i}"><i class="bi bi-pencil"></i> Edit</button>
     <button type="button" class="np-btn small" data-delete="${i}" title="Delete this listing"><i class="bi bi-trash"></i></button>` : '');
 
   function renderServerShop() {
     const s = mkSettings.settings;
     $('pn-ss-claims').innerHTML = s.claimBlocks.length ? `<thead><tr><th>Listing</th><th>Price</th><th>On sale</th><th>For sale</th><th></th></tr></thead><tbody>${s.claimBlocks.map((o, i) => `
-      <tr><td class="pn-mk-item">${ssIcon((mkSettings.claimIcons || [])[i])}<span>${Number(o.blocks).toLocaleString()} claim blocks</span></td>
+      <tr><td class="pn-mk-item">${ssIcon((mkSettings.claimIcons || [])[i], (mkSettings.claimHeads || [])[i])}<span>${Number(o.blocks).toLocaleString()} claim blocks</span></td>
       <td>${Number(o.price).toLocaleString()}</td><td>${ptSale(o)}</td><td>${o.forSale === false ? 'no' : 'yes'}</td><td>${ssActions(i)}</td></tr>`).join('')}</tbody>`
       : '<tbody><tr><td class="pn-hint">No claim blocks for sale. Add a listing below.</td></tr></tbody>';
     const cmdEdit = mkSettings.canCommands;
     $('pn-ss-cmds').innerHTML = s.commandOffers.length ? `<thead><tr><th>Listing</th><th>Price</th><th>On sale</th><th>Per player</th><th>For sale</th><th></th></tr></thead><tbody>${s.commandOffers.map((o, i) => `
-      <tr><td class="pn-mk-item">${ssIcon((mkSettings.commandIcons || [])[i])}<span>${esc(o.name)}<small class="pn-hint">${esc(o.description || '')}</small></span></td>
+      <tr><td class="pn-mk-item">${ssIcon((mkSettings.commandIcons || [])[i], (mkSettings.commandHeads || [])[i])}<span>${esc(o.name)}<small class="pn-hint">${esc(o.description || '')}</small></span></td>
       <td>${Number(o.price).toLocaleString()}</td><td>${ptSale(o)}</td><td>${o.perPlayer ? Number(o.perPlayer).toLocaleString() : 'no limit'}</td><td>${o.forSale === false ? 'no' : 'yes'}</td>
       <td>${cmdEdit ? ssActions(i) : ''}</td></tr>`).join('')}</tbody>`
       : '<tbody><tr><td class="pn-hint">No command listings. Add one below.</td></tr></tbody>';
@@ -5137,10 +5138,36 @@
     return t < Date.now() ? 'Pick a day from today on, or switch on Always on sale.' : t;
   }
 
-  function ssIconPreview(f, hash) {
+  function ssIconPreview(f, hash, head) {
     const img = f.querySelector('.pn-ss-icon');
-    img.hidden = !hash;
-    if (hash) img.src = 'info/items/' + hash;
+    img.hidden = !hash && !head;
+    if (head) img.src = 'info/heads/' + head;
+    else if (hash) img.src = 'info/items/' + hash;
+    ssHeadRow(f);
+  }
+
+  /** The head texture field only shows while the icon is a player head. */
+  function ssIsHead(f) {
+    return /^(minecraft:)?player_head$/.test(f.icon.value.trim().toLowerCase());
+  }
+  function ssHeadRow(f) {
+    f.querySelector('.pn-ss-head').hidden = !ssIsHead(f);
+  }
+
+  /** Checks a pasted head texture and shows its face as the icon preview. */
+  async function ssHeadCheck(f, msgId) {
+    const v = f.iconTexture.value.trim();
+    if (!v || !ssIsHead(f)) return;
+    try {
+      const res = await api('api/pets/texture', { texture: v });
+      f.iconTexture.value = res.texture;
+      const img = f.querySelector('.pn-ss-icon');
+      img.src = 'api/pets/head/' + res.head;
+      img.hidden = false;
+      formMsg(msgId, '', true);
+    } catch (err) {
+      formMsg(msgId, err.message, false);
+    }
   }
 
   function ssClaimOpen(i) {
@@ -5151,13 +5178,14 @@
     f.price.value = o ? o.price : '';
     f.icon.value = o ? o.icon : 'minecraft:grass_block';
     f.iconModel.value = o ? o.iconModel || '' : '';
+    f.iconTexture.value = o ? o.iconTexture || '' : '';
     f.always.checked = o ? !o.saleEnds : true;
     f.saleEnd.value = ptDay(o && o.saleEnds ? o.saleEnds : Date.now() + 30 * 86400000);
     f.forSale.checked = o ? o.forSale !== false : true;
     $('pn-ss-claim-title').textContent = o ? `Edit ${Number(o.blocks).toLocaleString()} claim blocks` : 'Add a listing';
     $('pn-ss-claim-add').innerHTML = o ? '<i class="bi bi-check2"></i> Save listing' : '<i class="bi bi-plus-lg"></i> Add listing';
     f.hidden = !o;
-    ssIconPreview(f, o ? (mkSettings.claimIcons || [])[i] : null);
+    ssIconPreview(f, o ? (mkSettings.claimIcons || [])[i] : null, o ? (mkSettings.claimHeads || [])[i] : null);
     formMsg('pn-ss-claim-msg', '', true);
     ssPairs(f);
   }
@@ -5172,6 +5200,7 @@
     f.price.value = o ? o.price : '';
     f.icon.value = o ? o.icon : 'minecraft:paper';
     f.iconModel.value = o ? o.iconModel || '' : '';
+    f.iconTexture.value = o ? o.iconTexture || '' : '';
     f.always.checked = o ? !o.saleEnds : true;
     f.saleEnd.value = ptDay(o && o.saleEnds ? o.saleEnds : Date.now() + 30 * 86400000);
     f.unlimited.checked = o ? !o.perPlayer : true;
@@ -5180,7 +5209,7 @@
     $('pn-ss-cmd-title').textContent = o ? 'Edit ' + o.name : 'Add a listing';
     $('pn-ss-cmd-add').innerHTML = o ? '<i class="bi bi-check2"></i> Save listing' : '<i class="bi bi-plus-lg"></i> Add listing';
     f.hidden = !o;
-    ssIconPreview(f, o ? (mkSettings.commandIcons || [])[i] : null);
+    ssIconPreview(f, o ? (mkSettings.commandIcons || [])[i] : null, o ? (mkSettings.commandHeads || [])[i] : null);
     formMsg('pn-ss-cmd-msg', '', true);
     ssPairs(f);
   }
@@ -5188,6 +5217,8 @@
   for (const id of ['pn-ss-claim-edit', 'pn-ss-cmd-edit']) {
     const f = $(id);
     f.always.addEventListener('change', () => ssPairs(f));
+    f.icon.addEventListener('input', () => ssHeadRow(f));
+    f.iconTexture.addEventListener('change', () => ssHeadCheck(f, id === 'pn-ss-claim-edit' ? 'pn-ss-claim-msg' : 'pn-ss-cmd-msg'));
     if (f.unlimited) f.unlimited.addEventListener('change', () => ssPairs(f));
   }
   $('pn-ss-claim-cancel').addEventListener('click', () => ssClaimOpen(null));
@@ -5210,7 +5241,7 @@
     const saleEnds = ssSaleEnds(f, before);
     if (typeof saleEnds === 'string') return formMsg('pn-ss-claim-msg', saleEnds, false);
     const o = { id: before ? before.id : undefined, blocks: Number(f.blocks.value) || 0, price: Number(f.price.value) || 0,
-      icon: f.icon.value.trim() || 'minecraft:grass_block', iconModel: f.iconModel.value.trim(), saleEnds, forSale: f.forSale.checked };
+      icon: f.icon.value.trim() || 'minecraft:grass_block', iconModel: f.iconModel.value.trim(), iconTexture: ssIsHead(f) ? f.iconTexture.value.trim() : '', saleEnds, forSale: f.forSale.checked };
     if (before) list[ssClaimEditing] = o; else list.push(o);
     if (await mkSave({ claimBlocks: list }, 'pn-ss-claim-msg', before ? 'Saved.' : 'Added.')) {
       formMsg('pn-ss-claim-note', $('pn-ss-claim-msg').textContent, true);
@@ -5229,7 +5260,7 @@
     if (!commands.length) return formMsg('pn-ss-cmd-msg', 'Add at least one command.', false);
     if (!f.unlimited.checked && !(Number(f.perPlayer.value) >= 1)) return formMsg('pn-ss-cmd-msg', 'Type how many each player can buy, or switch on No limit.', false);
     const o = { id: before ? before.id : undefined, name: f.name.value.trim(), description: f.description.value.trim(), commands, price: Number(f.price.value) || 0,
-      icon: f.icon.value.trim() || 'minecraft:paper', iconModel: f.iconModel.value.trim(), saleEnds, perPlayer: f.unlimited.checked ? 0 : Number(f.perPlayer.value), forSale: f.forSale.checked };
+      icon: f.icon.value.trim() || 'minecraft:paper', iconModel: f.iconModel.value.trim(), iconTexture: ssIsHead(f) ? f.iconTexture.value.trim() : '', saleEnds, perPlayer: f.unlimited.checked ? 0 : Number(f.perPlayer.value), forSale: f.forSale.checked };
     if (before) list[ssCmdEditing] = o; else list.push(o);
     if (await mkSave({ commandOffers: list }, 'pn-ss-cmd-msg', before ? 'Saved.' : 'Added.')) {
       formMsg('pn-ss-cmd-note', $('pn-ss-cmd-msg').textContent, true);
