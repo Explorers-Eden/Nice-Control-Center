@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.17.1
+- Pets: the name above a pet now moves exactly with it (the pet no longer rides its owner, so both are placed the same way and glide together)
+- Pets: 10 new reactions: a totem saving you, beating a monster or a boss (dragon, wither, warden, elder guardian), enchanting, a music disc, ringing a bell, pitch dark, way up high (above y 200), the rain stopping and a raid
+
 ## 1.17.0
 - Pets: bond levels and perks. A pet's bond grows while it's out with its owner and they aren't AFK; each pet can have up to two perks (set per pet in the panel) that unlock at bond levels from the settings: Lantern, Night Eyes, Fetch (brings what dropped from blocks you broke and mobs you killed; never thrown items), Truffle Nose, Fishing (fish and junk, never treasure), Gardener, Torch Bearer (your own torches), Miner (visible natural ore, and natural stone next to where you're mining; never player-placed blocks), Wood Chopper (the natural tree you started on), Small Gifts, Second Wind, Nipper (picks targets like a wolf; never players, creepers, bosses, named or tamed mobs) and Shield. Perks pause while AFK or in creative mode and respect claims. Players switch single perks off in /pets
 - Pets: names. Players name each pet and pick a colour (like claims); the name floats above the pet, hidden while its owner sneaks; owners can hide it altogether in /pets (Name above pet). Admins can clear a name from the player card

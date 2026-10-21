@@ -157,18 +157,20 @@ final class PetsService {
 	private void syncDb(Db db) throws IOException, java.sql.SQLException {
 		if (!db.ready()) return;
 		Path f = worldFile();
-		long modified = Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0;
+		// Also when the settings change (perks, unlock levels, shop names).
+		Path sf = settingsFile();
+		long modified = (Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : 0) * 31 + (Files.exists(sf) ? Files.getLastModifiedTime(sf).toMillis() : 0);
 		if (modified == syncedModified) return;
 		Pets.Data d = Pets.readData(f);
-		Map<String, String> shopTextures = new LinkedHashMap<>();
-		for (Pets.Pet p : settings().pets) shopTextures.put(p.id, p.texture);
+		Pets.Settings settings = settings();
 		try (java.sql.Connection con = db.connection()) {
 			con.setAutoCommit(false);
 			try {
 				try (java.sql.PreparedStatement del = con.prepareStatement("DELETE FROM pets_owned")) {
 					del.executeUpdate();
 				}
-				try (java.sql.PreparedStatement ins = con.prepareStatement("INSERT INTO pets_owned (player_uuid, pet_id, pet_name, head, since, active) VALUES (?, ?, ?, ?, ?, ?)")) {
+				try (java.sql.PreparedStatement ins = con.prepareStatement("INSERT INTO pets_owned (player_uuid, pet_id, pet_name, head, since, active, nickname, name_color, bond_level, perks)"
+						+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSONB))")) {
 					for (Map.Entry<String, Pets.Owner> e : d.owners.entrySet()) {
 						java.util.UUID player;
 						try {
@@ -177,14 +179,34 @@ final class PetsService {
 							continue;
 						}
 						for (Pets.Owned o : e.getValue().pets) {
+							Pets.Pet shop = settings.pet(o.pet);
 							String head = Pets.skinHash(o.texture);
-							if (head == null) head = Pets.skinHash(shopTextures.get(o.pet));
+							if (head == null && shop != null) head = Pets.skinHash(shop.texture);
 							ins.setObject(1, player);
 							ins.setString(2, o.pet);
-							ins.setString(3, o.name);
+							ins.setString(3, shop != null ? shop.name : o.name);
 							ins.setString(4, head);
 							ins.setTimestamp(5, o.since > 0 ? new java.sql.Timestamp(o.since) : null);
 							ins.setBoolean(6, o.pet.equals(e.getValue().active));
+							boolean named = settings.names && e.getValue().showName && o.nickname != null && !o.nickname.isEmpty();
+							ins.setString(7, named ? o.nickname : null);
+							ins.setString(8, named ? o.nameColor : null);
+							int level = Pets.level(o.bond, settings.perks);
+							ins.setObject(9, settings.perks.enabled ? level : null, java.sql.Types.INTEGER);
+							com.google.gson.JsonArray perks = new com.google.gson.JsonArray();
+							if (settings.perks.enabled && shop != null) {
+								for (int i = 0; i < shop.perks.size(); i++) {
+									Pets.Perk k = Pets.Perk.of(shop.perks.get(i));
+									if (k == null) continue;
+									JsonObject j = new JsonObject();
+									j.addProperty("label", k.label);
+									j.addProperty("description", k.description);
+									j.addProperty("level", Pets.slotLevel(i, settings.perks));
+									j.addProperty("unlocked", level >= Pets.slotLevel(i, settings.perks));
+									perks.add(j);
+								}
+							}
+							ins.setString(10, perks.toString());
 							ins.addBatch();
 						}
 					}

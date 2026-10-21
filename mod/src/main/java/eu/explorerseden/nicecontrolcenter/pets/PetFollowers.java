@@ -11,10 +11,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.core.particles.ParticleTypes;
-import io.netty.buffer.Unpooled;
 import net.minecraft.core.particles.ColorParticleOption;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -51,12 +48,14 @@ final class PetFollowers {
 	/** A head item on a display faces the other way than an entity with the same yaw. */
 	private static final float FACE = 180;
 
-	/** Ticks the clients take to glide to a new spot or turn (riding pets), and to a new place (Lazy). */
+	/** Ticks the clients take to glide the pet and its name to a new spot, and the head to a new turn. */
 	private static final int GLIDE = 2;
 	/** How fast the moves play: the animation clock runs at this share of game time. */
 	private static final double PACE = 0.6;
-	/** Ticks of the owner's movement the name tag runs ahead (it glides GLIDE ticks behind where it's sent). */
+	/** Ticks of the owner's movement the pet and its name run ahead (they glide GLIDE ticks behind where they're sent). */
 	private static final double LEAD = 2;
+	/** Share of the way the evened-out movement moves to this tick's each tick. */
+	private static final double PACE_EASE = 0.3;
 
 	/** Short moves pets make when they react to something. */
 	enum Move { HOP, BOUNCE, SPIN, DROOP, SHIVER, WIGGLE, LOOK_UP, CURL, FLINCH, LOOK_AT }
@@ -91,6 +90,8 @@ final class PetFollowers {
 		/** Name and speech bubble above the head (only while there is something to show), and its text. */
 		Display.TextDisplay label;
 		Component labelText;
+		/** The owner's movement per tick, evened out (it reaches the server in uneven steps), for the name's lead. */
+		Vec3 pace = Vec3.ZERO;
 		/** The pet shown (after Random pet's pick). */
 		Pets.Owned owned;
 		Outing outing;
@@ -115,9 +116,7 @@ final class PetFollowers {
 		/** The owned pet shown while the owner has Random pet on. */
 		String rolledPet;
 		net.minecraft.world.level.Level level;
-		/** Clients were told it rides the player, and when that was last sent; when it was spawned. */
-		boolean riding;
-		long ridingSent;
+		/** When it was spawned. */
 		long spawned;
 		/** So pets of players standing together don't move in step. */
 		final int phase;
@@ -188,8 +187,6 @@ final class PetFollowers {
 			long t = time + f.phase;
 			Vec3 base = player.position();
 			double h = player.getBbHeight();
-			// Where clients put a passenger of the player: on top of them.
-			Vec3 seat = base.add(0, h, 0);
 			// A teleport (or another dimension): Random picks again.
 			Vec3 moved = f.lastPlayer == null ? Vec3.ZERO : base.subtract(f.lastPlayer);
 			if (f.lastPlayer != null && (moved.lengthSqr() > 9 || f.level != player.level())) {
@@ -253,7 +250,7 @@ final class PetFollowers {
 				discard(f, player);
 				f.offset = goal.offset;
 				f.pos = want;
-				f.display = spawn(player.level(), goal.stay ? want : seat, texture, size);
+				f.display = spawn(player.level(), want, texture, size);
 				f.texture = texture;
 				f.size = size;
 				f.spawned = time;
@@ -262,7 +259,7 @@ final class PetFollowers {
 					f.retryAt = time + 1200;
 					continue;
 				}
-				pose(f, goal.stay ? Vec3.ZERO : goal.offset.subtract(0, h, 0), goal.yaw, pitch, size, 0);
+				pose(f, goal.yaw, pitch, size, 0);
 				if (!f.greeted) {
 					f.greeted = true;
 					PetReactions.hello(player);
@@ -271,24 +268,20 @@ final class PetFollowers {
 			}
 			if (goal.stay) {
 				// Lazy: a spot in the world, not around the player.
-				if (f.riding) ride(f, player, false, time);
 				f.pos = f.pos.add(want.subtract(f.pos).scale(goal.follow));
 				f.offset = f.pos.subtract(base);
-				f.display.setPos(f.pos);
-				pose(f, Vec3.ZERO, goal.yaw, pitch, size, GLIDE);
 			} else {
 				// Gliding there may cut through the player; it goes around them instead.
 				f.offset = clear(f.offset.add(goal.offset.subtract(f.offset).scale(goal.follow)), h, size, player.getYRot());
 				f.pos = base.add(f.offset);
-				// Told again now and then, for players who only just came near (and more often right after spawning).
-				if (!f.riding || time - f.ridingSent >= (time - f.spawned < 40 ? 5 : 20)) ride(f, player, true, time);
-				// The entity itself stays on the seat, for the server's tracking and for clients not told yet.
-				if (f.display.position().distanceToSqr(seat) > 0.09) f.display.setPos(seat);
-				pose(f, f.offset.subtract(0, h, 0), goal.yaw, pitch, size, GLIDE);
 			}
-			// The name moves on the server, so it leads by the owner's movement to keep up with the head (which rides them).
-			Vec3 lead = goal.stay || moved.lengthSqr() > 9 ? Vec3.ZERO : moved.scale(LEAD);
-			label(f, player, owner, size, time, lead);
+			// Clients glide the pet and its name GLIDE ticks behind, so both lead by the owner's movement to keep up with them.
+			f.pace = moved.lengthSqr() > 9 ? Vec3.ZERO : f.pace.add(moved.subtract(f.pace).scale(PACE_EASE));
+			Vec3 lead = goal.stay ? Vec3.ZERO : f.pace.scale(LEAD);
+			Vec3 shown = f.pos.add(lead);
+			if (f.display.position().distanceToSqr(shown) > 1e-6) f.display.setPos(shown);
+			pose(f, goal.yaw, pitch, size, GLIDE);
+			label(f, player, owner, size, time, shown);
 			Pets.Trail trail = Pets.Trail.of(owner.trail);
 			trail(player, trail == Pets.Trail.RANDOM ? f.rolledTrail : trail, f, t, size);
 		}
@@ -389,7 +382,7 @@ final class PetFollowers {
 	}
 
 	/** The name (hidden while the owner sneaks) and bubble above the pet; no entity while there's neither. */
-	private static void label(Follower f, ServerPlayer player, Pets.Owner owner, double size, long time, Vec3 lead) {
+	private static void label(Follower f, ServerPlayer player, Pets.Owner owner, double size, long time, Vec3 shown) {
 		String nick = PetStore.settings().names && owner.showName && f.owned != null && !player.isShiftKeyDown() ? f.owned.nickname : "";
 		boolean bubble = f.bubble != null && time < f.bubbleUntil;
 		if (!bubble && (nick == null || nick.isEmpty())) {
@@ -403,12 +396,13 @@ final class PetFollowers {
 			int rgb = eu.explorerseden.nicecontrolcenter.Claims.parseColor(f.owned.nameColor);
 			text.append(Component.literal(nick).withColor(rgb < 0 ? 0xFFFFFF : rgb));
 		}
-		Vec3 at = f.pos.add(lead).add(0, 0.25 * size + 0.12, 0);
+		// Just above the head, sent the same way, so the two move as one.
+		Vec3 at = shown.add(0, 0.25 * size + 0.12, 0);
 		if (f.label == null || f.label.isRemoved() || f.label.level() != player.level()) {
 			removeLabel(f);
 			f.label = spawnLabel(player.level(), at);
 			if (f.label == null) return;
-		} else if (f.label.position().distanceToSqr(at) > 1e-4) {
+		} else if (f.label.position().distanceToSqr(at) > 1e-6) {
 			f.label.setPos(at);
 		}
 		if (!text.equals(f.labelText)) {
@@ -442,11 +436,11 @@ final class PetFollowers {
 		f.labelText = null;
 	}
 
-	/** The head's spot (from where the entity is) and the way it looks (pitch: nods down), which clients glide to in ticks. */
-	private static void pose(Follower f, Vec3 at, float yaw, float pitch, double size, int ticks) {
+	/** The way the head looks (pitch: nods down), which clients turn to in ticks. */
+	private static void pose(Follower f, float yaw, float pitch, double size, int ticks) {
 		float s = (float) size;
 		// A head item is drawn below the display's spot; lift it so the spot is its middle.
-		Vector3f move = new Vector3f((float) at.x, (float) at.y + 0.25f * s, (float) at.z);
+		Vector3f move = new Vector3f(0, 0.25f * s, 0);
 		// The same turn a display with this yaw gets (the entity's own yaw stays 0).
 		Quaternionf turn = new Quaternionf().rotationY((float) Math.toRadians(-(yaw + FACE))).rotateX((float) Math.toRadians(pitch));
 		DisplayAccessor d = (DisplayAccessor) f.display;
@@ -455,26 +449,11 @@ final class PetFollowers {
 		d.nicecontrolcenter$setInterpolationDelay(0);
 	}
 
-	/** Tells the owner and everyone who sees them that the head rides the owner (or no longer does). */
-	private static void ride(Follower f, ServerPlayer player, boolean on, long time) {
-		FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-		buf.writeVarInt(player.getId());
-		// Players never have real passengers, so this list is all of them.
-		buf.writeVarIntArray(on ? new int[] {f.display.getId()} : new int[0]);
-		ClientboundSetPassengersPacket packet = ClientboundSetPassengersPacket.STREAM_CODEC.decode(buf);
-		buf.release();
-		player.level().getChunkSource().sendToTrackingPlayersAndSelf(player, packet);
-		f.riding = on;
-		f.ridingSent = time;
-	}
-
-	/** Removes the head (and tells clients it no longer rides the player). */
+	/** Removes the head and its name. */
 	private static void discard(Follower f, ServerPlayer player) {
 		endOuting(f, false);
 		removeLabel(f);
 		if (f.display == null) return;
-		if (f.riding && player != null) ride(f, player, false, 0);
-		f.riding = false;
 		f.display.discard();
 		f.display = null;
 	}
@@ -587,9 +566,7 @@ final class PetFollowers {
 	}
 
 	/**
-	 * AFK owner: the pet floats to a new spot a few blocks around them every few seconds, slowly. It keeps
-	 * riding the player like every other move (the player stands still, so that's a fixed spot), which keeps
-	 * the glide smooth on clients. It looks where it goes and, once there, turns to its owner; the turn is
+	 * AFK owner: the pet floats to a new spot a few blocks around them every few seconds, slowly. It looks where it goes and, once there, turns to its owner; the turn is
 	 * eased so it never spins.
 	 */
 	private static Target roam(ServerPlayer player, double t, Follower f) {

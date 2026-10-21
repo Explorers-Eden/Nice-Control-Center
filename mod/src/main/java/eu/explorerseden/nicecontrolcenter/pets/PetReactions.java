@@ -11,6 +11,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceKey;
@@ -25,7 +26,10 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
@@ -61,12 +65,19 @@ final class PetReactions {
 		boolean idle;
 		boolean raining;
 		boolean thundering;
+		boolean dark;
+		boolean high;
+		boolean raid;
 		ResourceKey<Level> dimension;
 		int food = -1;
 		int xp = -1;
 		int fish = -1;
 		int trades = -1;
 		int bred = -1;
+		int totems = -1;
+		int enchants = -1;
+		int records = -1;
+		int bells = -1;
 		long nightDay = -1;
 		long morningDay = -1;
 		boolean sneaking;
@@ -80,6 +91,8 @@ final class PetReactions {
 	private static final Set<UUID> died = new HashSet<>();
 	/** Two owners whose pets met lately (smaller UUID first), and when. */
 	private static final Map<String, Long> met = new HashMap<>();
+	/** Beaten, these make a pet cheer the most (registry ids: the constants moved between versions). */
+	private static final Set<String> BOSSES = Set.of("ender_dragon", "wither", "warden", "elder_guardian");
 
 	private PetReactions() {
 	}
@@ -91,6 +104,11 @@ final class PetReactions {
 		});
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			if (entity instanceof ServerPlayer p && taken > 0 && p.isAlive() && p.getHealth() > 6) fire(p, Pets.Reaction.HURT, null);
+		});
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			if (!(source.getEntity() instanceof ServerPlayer p)) return;
+			if (BOSSES.contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).getPath())) fire(p, Pets.Reaction.BOSS, null);
+			else if (entity instanceof Enemy) fire(p, Pets.Reaction.KILL, null);
 		});
 		ServerMessageEvents.GAME_MESSAGE.register((server, message, overlay) -> {
 			if (overlay || !(message.getContents() instanceof TranslatableContents tr) || !tr.getKey().startsWith("chat.type.advancement.")) return;
@@ -227,10 +245,21 @@ final class PetReactions {
 		boolean outside = level.canSeeSky(feet);
 		boolean raining = level.isRaining() && outside;
 		if (raining && !st.raining) fire(player, Pets.Reaction.RAIN, null);
+		// The rain stopping where they can see the sky (not when they just walk indoors).
+		if (st.raining && !raining && outside) fire(player, Pets.Reaction.SUNNY, null);
 		st.raining = raining;
 		boolean thundering = level.isThundering();
 		if (thundering && !st.thundering) fire(player, Pets.Reaction.THUNDER, null);
 		st.thundering = thundering;
+		boolean dark = !outside && level.getBrightness(LightLayer.BLOCK, feet) == 0 && level.getBrightness(LightLayer.SKY, feet) == 0;
+		if (dark && !st.dark) fire(player, Pets.Reaction.DARK, null);
+		st.dark = dark;
+		boolean high = dim == Level.OVERWORLD && player.getY() > 200;
+		if (high && !st.high) fire(player, Pets.Reaction.HIGH, null);
+		st.high = high;
+		boolean raid = level.getRaidAt(feet) != null;
+		if (raid && !st.raid) fire(player, Pets.Reaction.RAID, null);
+		st.raid = raid;
 		boolean flying = player.isFallFlying() || player.fallDistance > 6;
 		if (flying && !st.flying) fire(player, Pets.Reaction.FLYING, null);
 		st.flying = flying;
@@ -246,6 +275,18 @@ final class PetReactions {
 		int bred = player.getStats().getValue(Stats.CUSTOM.get(Stats.ANIMALS_BRED));
 		if (st.bred >= 0 && bred > st.bred) fire(player, Pets.Reaction.BREED, null);
 		st.bred = bred;
+		int totems = player.getStats().getValue(Stats.ITEM_USED.get(Items.TOTEM_OF_UNDYING));
+		if (st.totems >= 0 && totems > st.totems) fire(player, Pets.Reaction.TOTEM, null);
+		st.totems = totems;
+		int enchants = player.getStats().getValue(Stats.CUSTOM.get(Stats.ENCHANT_ITEM));
+		if (st.enchants >= 0 && enchants > st.enchants) fire(player, Pets.Reaction.ENCHANT, null);
+		st.enchants = enchants;
+		int records = player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_RECORD));
+		if (st.records >= 0 && records > st.records) fire(player, Pets.Reaction.MUSIC, null);
+		st.records = records;
+		int bells = player.getStats().getValue(Stats.CUSTOM.get(Stats.BELL_RING));
+		if (st.bells >= 0 && bells > st.bells) fire(player, Pets.Reaction.BELL, null);
+		st.bells = bells;
 		// Idle, then AFK.
 		if (PlayerActivity.isAfk(player)) {
 			fire(player, Pets.Reaction.AFK, null);
@@ -361,16 +402,16 @@ final class PetReactions {
 
 	private static PetFollowers.Move move(Pets.Reaction r) {
 		return switch (r) {
-			case TOOL, DANGER, SNOW, NETHER -> PetFollowers.Move.SHIVER;
+			case TOOL, DANGER, SNOW, NETHER, DARK, RAID -> PetFollowers.Move.SHIVER;
 			case HEALTH, RESPAWN -> PetFollowers.Move.DROOP;
 			case HUNGER, MEET -> PetFollowers.Move.LOOK_AT;
-			case AIR, FIRE, FISH, HARVEST, HELLO, EAT, SHINY, TRADE -> PetFollowers.Move.HOP;
-			case INVENTORY, UNDERWATER, DEEP, BYE, IDLE, PAT -> PetFollowers.Move.WIGGLE;
-			case HURT, THUNDER -> PetFollowers.Move.FLINCH;
-			case NIGHTFALL, END, RAIN -> PetFollowers.Move.LOOK_UP;
+			case AIR, FIRE, FISH, HARVEST, HELLO, EAT, SHINY, TRADE, KILL, BELL -> PetFollowers.Move.HOP;
+			case INVENTORY, UNDERWATER, DEEP, BYE, IDLE, PAT, MUSIC -> PetFollowers.Move.WIGGLE;
+			case HURT, THUNDER, TOTEM -> PetFollowers.Move.FLINCH;
+			case NIGHTFALL, END, RAIN, HIGH, SUNNY, ENCHANT -> PetFollowers.Move.LOOK_UP;
 			case JOIN, RIDING, BREED -> PetFollowers.Move.BOUNCE;
 			case SLEEP -> PetFollowers.Move.CURL;
-			case MORNING, ADVANCEMENT, LEVEL30, FLYING, LEVEL_UP, BIRTHDAY -> PetFollowers.Move.SPIN;
+			case MORNING, ADVANCEMENT, LEVEL30, FLYING, LEVEL_UP, BIRTHDAY, BOSS -> PetFollowers.Move.SPIN;
 			case AFK -> null;
 		};
 	}
@@ -387,7 +428,12 @@ final class PetReactions {
 			case SNOW -> ParticleTypes.SNOWFLAKE;
 			case JOIN, HELLO, BREED, MEET, PAT -> ParticleTypes.HEART;
 			case RESPAWN -> ParticleTypes.FALLING_WATER;
-			case ADVANCEMENT, BIRTHDAY -> ParticleTypes.TOTEM_OF_UNDYING;
+			case ADVANCEMENT, BIRTHDAY, TOTEM, BOSS -> ParticleTypes.TOTEM_OF_UNDYING;
+			case ENCHANT -> ParticleTypes.ENCHANT;
+			case MUSIC, BELL -> ParticleTypes.NOTE;
+			case KILL -> ParticleTypes.CRIT;
+			case SUNNY -> ParticleTypes.WAX_OFF;
+			case RAID -> ParticleTypes.ANGRY_VILLAGER;
 			case LEVEL30, LEVEL_UP -> ParticleTypes.FIREWORK;
 			case SHINY -> ParticleTypes.END_ROD;
 			default -> null;
@@ -396,6 +442,7 @@ final class PetReactions {
 
 	private static boolean happy(Pets.Reaction r) {
 		return List.of(Pets.Reaction.HELLO, Pets.Reaction.JOIN, Pets.Reaction.ADVANCEMENT, Pets.Reaction.LEVEL30, Pets.Reaction.LEVEL_UP, Pets.Reaction.BIRTHDAY,
-				Pets.Reaction.SHINY, Pets.Reaction.MEET, Pets.Reaction.PAT, Pets.Reaction.BREED, Pets.Reaction.HARVEST, Pets.Reaction.FISH, Pets.Reaction.TRADE).contains(r);
+				Pets.Reaction.SHINY, Pets.Reaction.MEET, Pets.Reaction.PAT, Pets.Reaction.BREED, Pets.Reaction.HARVEST, Pets.Reaction.FISH, Pets.Reaction.TRADE,
+				Pets.Reaction.BOSS, Pets.Reaction.KILL, Pets.Reaction.ENCHANT, Pets.Reaction.SUNNY).contains(r);
 	}
 }

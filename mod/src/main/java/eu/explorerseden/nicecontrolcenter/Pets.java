@@ -205,7 +205,17 @@ public final class Pets {
 		AFK("Owner AFK", false, 60, "zZz"),
 		PAT("Pat", false, 3, "♥", "Hehe"),
 		LEVEL_UP("Bond level up", false, 0, "Level {level}!", "Yay!"),
-		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦");
+		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦"),
+		TOTEM("Totem used", false, 0, "That was close!", "Phew…"),
+		KILL("Monster beaten", false, 120, "Got it!", "Take that!"),
+		BOSS("Boss beaten", false, 0, "WE DID IT!", "Champion!"),
+		ENCHANT("Enchanting", false, 60, "Sparkly!", "Magic!"),
+		MUSIC("Music playing", false, 120, "♪", "♫ ♪"),
+		BELL("Bell rung", false, 60, "Ding!", "Dong!"),
+		DARK("Pitch dark", false, 300, "It's dark…", "Light?"),
+		HIGH("Way up high", false, 600, "So high!", "Don't fall!"),
+		SUNNY("Rain stops", false, 600, "☀", "Sun's back!"),
+		RAID("Raid", false, 300, "Raid!", "Here they come!");
 
 		public final String label;
 		/** Also tells the owner on their screen (and doesn't wait for the gap between reactions). */
