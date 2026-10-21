@@ -101,6 +101,11 @@ final class ServerTuning {
 		return serverDir.resolve("config").resolve(Performance.FILE);
 	}
 
+	/** Saved performance presets, next to the settings file. */
+	Path presetsFile() {
+		return serverDir.resolve("config").resolve(Performance.PRESETS_FILE);
+	}
+
 	Path maintenanceFile() {
 		return serverDir.resolve("config").resolve(Maintenance.FILE);
 	}
@@ -227,7 +232,7 @@ final class ServerTuning {
 			audit.log(me.name(), "performance.settings", summary(next), clientIp(ctx));
 			json(ctx, Map.of("ok", true));
 		}));
-		// Ready-made profiles: which one the settings match, and laying one over them.
+		// Ready-made profiles and saved presets: which one the settings match, applying one, saving and deleting presets.
 		routes.get("/api/perf/profiles", guard(Permissions.DASHBOARD_VIEW, (ctx, me) -> {
 			Performance.Settings now = Performance.read(perfFile());
 			List<Map<String, Object>> list = new ArrayList<>();
@@ -238,23 +243,95 @@ final class ServerTuning {
 				p.put("recommended", name.equals(Performance.RECOMMENDED));
 				list.add(p);
 			}
-			json(ctx, Map.of("profiles", list));
+			List<Map<String, Object>> saved = new ArrayList<>();
+			for (Performance.Preset preset : Performance.readPresets(presetsFile()).presets) {
+				Map<String, Object> p = new LinkedHashMap<>();
+				p.put("id", preset.id);
+				p.put("name", preset.name);
+				p.put("saved", preset.saved);
+				p.put("savedBy", preset.savedBy);
+				p.put("matches", Performance.matches(now, preset.settings));
+				saved.add(p);
+			}
+			json(ctx, Map.of("profiles", list, "presets", saved));
 		}));
 		routes.post("/api/perf/profile", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
-			String name = str(body(ctx), "name");
-			if (!Performance.PROFILES.contains(name)) {
+			JsonObject b = body(ctx);
+			String name = str(b, "name");
+			String presetId = str(b, "preset");
+			JsonObject patch;
+			String label;
+			if (!presetId.isEmpty()) {
+				Performance.Preset preset = Performance.readPresets(presetsFile()).presets.stream().filter(p -> p.id.equals(presetId)).findFirst().orElse(null);
+				if (preset == null) {
+					error(ctx, HttpStatus.NOT_FOUND, "That preset is gone.");
+					return;
+				}
+				patch = preset.settings;
+				label = "preset \"" + preset.name + "\"";
+			} else if (Performance.PROFILES.contains(name)) {
+				patch = Performance.profile(name);
+				label = name + " profile";
+			} else {
 				error(ctx, HttpStatus.BAD_REQUEST, "Unknown profile.");
 				return;
 			}
-			Performance.Settings next = Performance.patched(Performance.read(perfFile()), Performance.profile(name));
+			Performance.Settings current = Performance.read(perfFile());
+			Performance.Settings next = Performance.patched(current, patch);
+			// Frozen chunks belong to places, never to a profile or preset.
+			next.frozen = current.frozen;
 			String problem = Performance.validate(next);
 			if (problem != null) {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);
 				return;
 			}
 			Performance.write(perfFile(), next);
-			audit.log(me.name(), "performance.profile", name + " profile: " + summary(next), clientIp(ctx));
+			audit.log(me.name(), "performance.profile", label + ": " + summary(next), clientIp(ctx));
 			json(ctx, Map.of("ok", true, "settings", next));
+		}));
+		routes.post("/api/perf/presets/save", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			String name = str(body(ctx), "name").strip().replaceAll("\\s+", " ");
+			String id = Performance.presetId(name);
+			if (name.isEmpty() || name.length() > 40 || id.isEmpty()) {
+				error(ctx, HttpStatus.BAD_REQUEST, "Give the preset a name (up to 40 characters, with letters or digits).");
+				return;
+			}
+			if (Performance.PROFILES.contains(id)) {
+				error(ctx, HttpStatus.BAD_REQUEST, "That name belongs to a built-in profile; pick another.");
+				return;
+			}
+			Performance.Presets presets = Performance.readPresets(presetsFile());
+			Performance.Preset preset = presets.presets.stream().filter(p -> p.id.equals(id)).findFirst().orElse(null);
+			boolean replaced = preset != null;
+			if (preset == null) {
+				if (presets.presets.size() >= 30) {
+					error(ctx, HttpStatus.BAD_REQUEST, "30 presets at most; delete one first.");
+					return;
+				}
+				preset = new Performance.Preset();
+				preset.id = id;
+				presets.presets.add(preset);
+			}
+			preset.name = name;
+			preset.saved = System.currentTimeMillis();
+			preset.savedBy = me.name();
+			preset.settings = Performance.snapshot(Performance.read(perfFile()));
+			Performance.writePresets(presetsFile(), presets);
+			audit.log(me.name(), "performance.preset", (replaced ? "updated" : "saved") + " preset \"" + name + "\"", clientIp(ctx));
+			json(ctx, Map.of("ok", true, "id", id, "replaced", replaced));
+		}));
+		routes.post("/api/perf/presets/delete", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			String id = str(body(ctx), "id");
+			Performance.Presets presets = Performance.readPresets(presetsFile());
+			Performance.Preset preset = presets.presets.stream().filter(p -> p.id.equals(id)).findFirst().orElse(null);
+			if (preset == null) {
+				error(ctx, HttpStatus.NOT_FOUND, "That preset is gone.");
+				return;
+			}
+			presets.presets.remove(preset);
+			Performance.writePresets(presetsFile(), presets);
+			audit.log(me.name(), "performance.preset", "deleted preset \"" + preset.name + "\"", clientIp(ctx));
+			json(ctx, Map.of("ok", true));
 		}));
 		routes.post("/api/perf/freeze", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			JsonObject b = body(ctx);

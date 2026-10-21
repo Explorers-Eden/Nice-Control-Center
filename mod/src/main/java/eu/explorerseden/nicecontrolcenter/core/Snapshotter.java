@@ -138,7 +138,6 @@ public final class Snapshotter {
 				server.getPlayerList().getViewDistance(), server.getPlayerList().getSimulationDistance(),
 				perSecond(b, b.tickNsSum), perSecond(b, b.betweenBusyNs), perSecond(b, offCpuNs(b)));
 		History.add(b, point);
-		Trials.onSecond(server, b);
 		AlertWatcher.onSecond(server, b);
 		Advisor.maybeRun(server);
 		BossBarMonitor.update(server);

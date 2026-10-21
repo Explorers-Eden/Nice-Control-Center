@@ -312,37 +312,74 @@ public final class Performance {
 
 	// ── Profiles ────────────────────────────────────────────────────────────
 
-	/** Ready-made sets of the switches and numbers above; anything a profile doesn't name stays as it is. */
-	public static final List<String> PROFILES = List.of("off", "balanced", "aggressive");
+	/**
+	 * Ready-made sets of every switch and number above (never the frozen chunks, mob rules, junk items or save limit
+	 * lists), so applying one gives a fully defined state.
+	 */
+	public static final List<String> PROFILES = List.of("off", "light", "balanced", "farms", "aggressive");
 	public static final String RECOMMENDED = "balanced";
 
-	/** What a profile changes, as a partial settings object (frozen chunks, mob rules and item lists are never touched). */
+	/** What a built-in profile sets, as a partial settings object; empty for an unknown name. */
 	public static com.google.gson.JsonObject profile(String name) {
 		String json = switch (name) {
-			case "off" -> """
-					{"dynamic":{"enabled":false},"activation":{"enabled":false},"ai":{"enabled":false},"hoppers":{"enabled":false},
-					 "merge":{"enabled":false},"collisions":{"enabled":false},"despawn":{"enabled":false},"saveLimits":{"enabled":false},
-					 "decor":{"armorStands":false},"villagers":{"lobotomize":false},"breeding":{"enabled":false},"autoCaps":{"enabled":false},
-					 "spawning":{"enabled":false},"smooth":{"saving":true,"teleports":true}}""";
-			case "balanced" -> """
-					{"dynamic":{"enabled":true,"targetMspt":40,"recoverMspt":30,"simulationMin":5,"viewMin":8,"mobCapMin":50,"view":true,"extraSteps":true},
-					 "activation":{"enabled":true,"monstersPercent":25,"animalsPercent":25,"villagersPercent":25,"otherPercent":15,"every":4},
-					 "ai":{"enabled":true,"farPercent":40,"farGoalEvery":4,"pathBudget":40,"whenLagging":true},
-					 "hoppers":{"enabled":true,"idleCooldown":8},"merge":{"enabled":true,"items":2.5,"xp":4},"collisions":{"enabled":true,"max":8},
-					 "despawn":{"enabled":true},"saveLimits":{"enabled":true},"decor":{"armorStands":true},
-					 "villagers":{"lobotomize":true,"every":20},"breeding":{"enabled":false},"autoCaps":{"enabled":false},
-					 "spawning":{"enabled":true,"monstersEvery":2,"waterEvery":2,"ambientEvery":4},"smooth":{"saving":true,"teleports":true}}""";
-			case "aggressive" -> """
-					{"dynamic":{"enabled":true,"targetMspt":35,"recoverMspt":25,"simulationMin":4,"viewMin":6,"mobCapMin":40,"view":true,"extraSteps":true},
-					 "activation":{"enabled":true,"monstersPercent":20,"animalsPercent":20,"villagersPercent":20,"otherPercent":10,"every":6},
-					 "ai":{"enabled":true,"farPercent":30,"farGoalEvery":6,"pathBudget":25,"whenLagging":false},
-					 "hoppers":{"enabled":true,"idleCooldown":16},"merge":{"enabled":true,"items":3,"xp":5},"collisions":{"enabled":true,"max":6},
-					 "despawn":{"enabled":true},"saveLimits":{"enabled":true},"decor":{"armorStands":true},
-					 "villagers":{"lobotomize":true,"every":30},"breeding":{"enabled":true},"autoCaps":{"enabled":true},
-					 "spawning":{"enabled":true,"monstersEvery":4,"waterEvery":4,"ambientEvery":8},"smooth":{"saving":true,"teleports":true}}""";
+			case "off" -> "{\"dynamic\":{\"enabled\":false,\"targetMspt\":40,\"recoverMspt\":30,\"simulationMin\":5,\"viewMin\":8,\"mobCapMin\":50,\"view\":true,\"extraSteps\":true},\"activation\":{\"enabled\":false,\"monstersPercent\":25,\"animalsPercent\":25,\"villagersPercent\":25,\"otherPercent\":15,\"every\":4},\"merge\":{\"enabled\":false,\"items\":2.5,\"xp\":4},\"breeding\":{\"enabled\":false,\"animals\":32,\"villagers\":16,\"radius\":16},\"villagers\":{\"lobotomize\":false,\"every\":20},\"autoCaps\":{\"enabled\":false,\"intervalSeconds\":60,\"items\":false,\"itemsPerChunk\":64},\"collisions\":{\"enabled\":false,\"max\":8},\"despawn\":{\"enabled\":false,\"itemSeconds\":60,\"arrowSeconds\":10},\"saveLimits\":{\"enabled\":false},\"ai\":{\"enabled\":false,\"farPercent\":40,\"farGoalEvery\":4,\"pathBudget\":40,\"whenLagging\":true},\"hoppers\":{\"enabled\":false,\"idleCooldown\":8},\"decor\":{\"armorStands\":false},\"smooth\":{\"saving\":true,\"teleports\":true},\"spawning\":{\"enabled\":false,\"monstersEvery\":2,\"waterEvery\":2,\"ambientEvery\":4}}";
+			case "light" -> "{\"dynamic\":{\"enabled\":false,\"targetMspt\":40,\"recoverMspt\":30,\"simulationMin\":5,\"viewMin\":8,\"mobCapMin\":50,\"view\":true,\"extraSteps\":true},\"activation\":{\"enabled\":false,\"monstersPercent\":25,\"animalsPercent\":25,\"villagersPercent\":25,\"otherPercent\":15,\"every\":4},\"merge\":{\"enabled\":true,\"items\":2.5,\"xp\":4},\"breeding\":{\"enabled\":false,\"animals\":32,\"villagers\":16,\"radius\":16},\"villagers\":{\"lobotomize\":false,\"every\":20},\"autoCaps\":{\"enabled\":false,\"intervalSeconds\":60,\"items\":false,\"itemsPerChunk\":64},\"collisions\":{\"enabled\":true,\"max\":12},\"despawn\":{\"enabled\":true,\"itemSeconds\":120,\"arrowSeconds\":20},\"saveLimits\":{\"enabled\":true},\"ai\":{\"enabled\":false,\"farPercent\":40,\"farGoalEvery\":4,\"pathBudget\":40,\"whenLagging\":true},\"hoppers\":{\"enabled\":true,\"idleCooldown\":8},\"decor\":{\"armorStands\":true},\"smooth\":{\"saving\":true,\"teleports\":true},\"spawning\":{\"enabled\":false,\"monstersEvery\":2,\"waterEvery\":2,\"ambientEvery\":4}}";
+			case "balanced" -> "{\"dynamic\":{\"enabled\":true,\"targetMspt\":40,\"recoverMspt\":30,\"simulationMin\":5,\"viewMin\":8,\"mobCapMin\":50,\"view\":true,\"extraSteps\":true},\"activation\":{\"enabled\":true,\"monstersPercent\":25,\"animalsPercent\":25,\"villagersPercent\":25,\"otherPercent\":15,\"every\":4},\"merge\":{\"enabled\":true,\"items\":2.5,\"xp\":4},\"breeding\":{\"enabled\":false,\"animals\":32,\"villagers\":16,\"radius\":16},\"villagers\":{\"lobotomize\":true,\"every\":20},\"autoCaps\":{\"enabled\":false,\"intervalSeconds\":60,\"items\":false,\"itemsPerChunk\":64},\"collisions\":{\"enabled\":true,\"max\":8},\"despawn\":{\"enabled\":true,\"itemSeconds\":60,\"arrowSeconds\":10},\"saveLimits\":{\"enabled\":true},\"ai\":{\"enabled\":true,\"farPercent\":40,\"farGoalEvery\":4,\"pathBudget\":40,\"whenLagging\":true},\"hoppers\":{\"enabled\":true,\"idleCooldown\":8},\"decor\":{\"armorStands\":true},\"smooth\":{\"saving\":true,\"teleports\":true},\"spawning\":{\"enabled\":true,\"monstersEvery\":2,\"waterEvery\":2,\"ambientEvery\":4}}";
+			case "farms" -> "{\"dynamic\":{\"enabled\":true,\"targetMspt\":45,\"recoverMspt\":30,\"simulationMin\":6,\"viewMin\":8,\"mobCapMin\":60,\"view\":true,\"extraSteps\":true},\"activation\":{\"enabled\":false,\"monstersPercent\":25,\"animalsPercent\":25,\"villagersPercent\":25,\"otherPercent\":15,\"every\":4},\"merge\":{\"enabled\":true,\"items\":2.5,\"xp\":4},\"breeding\":{\"enabled\":false,\"animals\":32,\"villagers\":16,\"radius\":16},\"villagers\":{\"lobotomize\":false,\"every\":20},\"autoCaps\":{\"enabled\":false,\"intervalSeconds\":60,\"items\":false,\"itemsPerChunk\":64},\"collisions\":{\"enabled\":false,\"max\":8},\"despawn\":{\"enabled\":true,\"itemSeconds\":60,\"arrowSeconds\":10},\"saveLimits\":{\"enabled\":true},\"ai\":{\"enabled\":false,\"farPercent\":40,\"farGoalEvery\":4,\"pathBudget\":40,\"whenLagging\":true},\"hoppers\":{\"enabled\":true,\"idleCooldown\":8},\"decor\":{\"armorStands\":true},\"smooth\":{\"saving\":true,\"teleports\":true},\"spawning\":{\"enabled\":false,\"monstersEvery\":2,\"waterEvery\":2,\"ambientEvery\":4}}";
+			case "aggressive" -> "{\"dynamic\":{\"enabled\":true,\"targetMspt\":35,\"recoverMspt\":25,\"simulationMin\":4,\"viewMin\":6,\"mobCapMin\":40,\"view\":true,\"extraSteps\":true},\"activation\":{\"enabled\":true,\"monstersPercent\":20,\"animalsPercent\":20,\"villagersPercent\":20,\"otherPercent\":10,\"every\":6},\"merge\":{\"enabled\":true,\"items\":3,\"xp\":5},\"breeding\":{\"enabled\":true,\"animals\":32,\"villagers\":16,\"radius\":16},\"villagers\":{\"lobotomize\":true,\"every\":30},\"autoCaps\":{\"enabled\":true,\"intervalSeconds\":60,\"items\":true,\"itemsPerChunk\":64},\"collisions\":{\"enabled\":true,\"max\":6},\"despawn\":{\"enabled\":true,\"itemSeconds\":45,\"arrowSeconds\":10},\"saveLimits\":{\"enabled\":true},\"ai\":{\"enabled\":true,\"farPercent\":30,\"farGoalEvery\":6,\"pathBudget\":25,\"whenLagging\":false},\"hoppers\":{\"enabled\":true,\"idleCooldown\":16},\"decor\":{\"armorStands\":true},\"smooth\":{\"saving\":true,\"teleports\":true},\"spawning\":{\"enabled\":true,\"monstersEvery\":4,\"waterEvery\":4,\"ambientEvery\":8}}";
 			default -> "{}";
 		};
 		return com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+	}
+
+	// ── Saved presets ───────────────────────────────────────────────────────
+
+	/** Presets saved by admins, kept next to the settings file. */
+	public static final String PRESETS_FILE = "nicecontrolcenter-performance-presets.json";
+
+	/** A saved preset: every setting at the time it was saved except the frozen chunks (those belong to places). */
+	public static final class Preset {
+		public String id;
+		public String name;
+		public long saved;
+		public String savedBy;
+		public com.google.gson.JsonObject settings;
+	}
+
+	public static final class Presets {
+		public List<Preset> presets = new ArrayList<>();
+	}
+
+	/** The settings as a preset stores them: everything but the frozen chunks. */
+	public static com.google.gson.JsonObject snapshot(Settings s) {
+		com.google.gson.JsonObject tree = Json.GSON.toJsonTree(s).getAsJsonObject();
+		tree.remove("frozen");
+		return tree;
+	}
+
+	/** An id for a preset name: lower case letters, digits and dashes ("My Server!" → "my-server"). */
+	public static String presetId(String name) {
+		String id = name == null ? "" : name.strip().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+		return id.length() > 40 ? id.substring(0, 40) : id;
+	}
+
+	public static Presets readPresets(Path file) {
+		try {
+			if (!Files.exists(file)) return new Presets();
+			Presets p = Json.GSON.fromJson(Files.readString(file), Presets.class);
+			if (p == null || p.presets == null) return new Presets();
+			p.presets.removeIf(x -> x == null || x.id == null || x.id.isBlank() || x.settings == null);
+			return p;
+		} catch (IOException | RuntimeException e) {
+			return new Presets();
+		}
+	}
+
+	public static void writePresets(Path file, Presets presets) throws IOException {
+		Files.createDirectories(file.getParent());
+		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+		Files.writeString(tmp, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(presets), StandardCharsets.UTF_8);
+		Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 	}
 
 	/** A copy of base with the patch's values laid over it (objects merge, everything else replaces). */
@@ -366,8 +403,13 @@ public final class Performance {
 
 	/** Whether the settings already match everything the profile sets. */
 	public static boolean matches(Settings s, String profile) {
-		com.google.gson.JsonObject tree = Json.GSON.toJsonTree(s).getAsJsonObject();
-		return contains(tree, profile(profile));
+		return matches(s, profile(profile));
+	}
+
+	/** Whether the settings already match everything the patch (a profile or a saved preset) sets. */
+	public static boolean matches(Settings s, com.google.gson.JsonObject patch) {
+		com.google.gson.JsonObject tree = Json.GSON.toJsonTree(s.fill()).getAsJsonObject();
+		return contains(tree, patch);
 	}
 
 	private static boolean contains(com.google.gson.JsonObject tree, com.google.gson.JsonObject patch) {

@@ -838,4 +838,6 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 .pn-perf-profile h4 { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .pn-perf-profile .pn-hint { flex: 1; margin: 0; }
 .pn-perf-profile-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pn-perf-subhead { margin: 18px 0 8px; }
+#pn-preset-save-row { margin-top: 12px; }
 .pn-badge.good { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good); }

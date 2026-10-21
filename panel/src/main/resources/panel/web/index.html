@@ -428,9 +428,12 @@
 
 			<div class="np-tab-panel" data-tab="tuning" hidden>
 				<section class="np-card" id="pn-profiles-card">
-					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Profiles</h3>
-					<p class="np-card-intro">Ready-made sets of the settings below. Applying one changes only what it lists; frozen chunks, mob limits and item lists stay. Every setting stays editable afterwards. Not sure? <b>Test against current</b> runs an A/B trial (about 40 minutes, best while players are on) and shows the result in Dashboard → Reports.</p>
+					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Presets</h3>
+					<p class="np-card-intro">Ready-made sets of every setting below, and your own. A built-in preset sets every switch and number; your presets also bring their mob limits, junk items and save limits. Frozen chunks always stay as they are. Every setting stays editable after applying.</p>
 					<div class="pn-perf-profiles" id="pn-profiles"></div>
+					<h4 class="pn-perf-subhead">Your presets</h4>
+					<div class="pn-perf-profiles" id="pn-presets"></div>
+					<div class="pn-perf-profile-actions" id="pn-preset-save-row"><button type="button" class="np-btn" id="pn-preset-save"><i class="bi bi-bookmark-plus"></i> Save current settings as preset…</button></div>
 					<p class="np-form-msg" id="pn-profiles-msg"></p>
 				</section>
 				<form id="pn-perf-form" autocomplete="off">
@@ -1290,6 +1293,7 @@
 					<p class="np-card-intro">Generates every chunk up to the hard border (or the soft border without one) in each dimension with Pregen ticked, one dimension after another, so players don't wait for terrain and the map is complete. It runs on its own thread in the mod, only as fast as the server has room for, keeps going with nobody online and carries on after a restart.</p>
 					<div class="pn-backup-status" id="pn-pregen-status"></div>
 					<label class="np-form-row">Only the outer wilds (skip the permanent area)<span class="np-switch"><input type="checkbox" id="pn-pregen-wilds"><span></span></span></label>
+					<label class="np-form-row" id="pn-pregen-lods-row" hidden><span>Also pregenerate Distant Horizons LODs<span class="pn-comment">After the chunks, Distant Horizons' own <code>/dh pregen</code> runs over the same area (its wiki advises against filling LODs by loading chunks fast). It runs at Distant Horizons' own pace; "Pause" waits until nobody is online before it starts.</span></span><span class="np-switch"><input type="checkbox" id="pn-pregen-lods" checked><span></span></span></label>
 					<label class="np-form-row">While players are online<select id="pn-pregen-players"><option value="slow">Slow down</option><option value="pause">Pause</option><option value="full">Full speed</option></select></label>
 					<div class="np-form-actions">
 						<button type="button" class="np-btn primary" id="pn-pregen-start"><i class="bi bi-play-fill"></i> Pregenerate</button>

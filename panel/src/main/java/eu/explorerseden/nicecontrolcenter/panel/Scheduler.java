@@ -450,6 +450,8 @@ public final class Scheduler {
 			body.addProperty("shape", b.shape);
 			body.addProperty("queue", true);
 			body.addProperty("players", players == null ? "slow" : players);
+			// Distant Horizons LODs after the chunks; the mod leaves this out when DH isn't installed.
+			body.addProperty("lods", true);
 			// Right after a start the mod may need a moment before it answers.
 			String error = null;
 			for (int attempt = 0; attempt < 12; attempt++) {

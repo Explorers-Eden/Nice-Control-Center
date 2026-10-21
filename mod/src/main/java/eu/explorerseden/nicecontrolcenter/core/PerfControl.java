@@ -48,7 +48,7 @@ import java.util.WeakHashMap;
  */
 public final class PerfControl {
 	private static volatile Performance.Settings settings = new Performance.Settings();
-	/** What the file says; {@link #settings} is this with a running trial's changes laid over it. */
+	/** What the file says. */
 	private static Performance.Settings fileSettings = new Performance.Settings();
 	private static long modified = -1;
 	/** Frozen chunks by dimension id. */
@@ -149,8 +149,6 @@ public final class PerfControl {
 			}
 		}
 		if (tick % 20 == 0) dynamic(server);
-		// A trial moves on with the monitor's measurements; without them it would never end.
-		if (tick % 20 == 0 && Trials.active() && !Tracker.enabled()) Trials.stop(server, "monitoring was switched off");
 		Performance.AutoCaps caps = settings.autoCaps;
 		if (caps.enabled && tick > 0 && tick % (caps.intervalSeconds * 20) == 0) autoCaps(server, caps);
 	}
@@ -188,9 +186,9 @@ public final class PerfControl {
 		if (!first || now != 0) NiceControlCenter.LOGGER.info("Performance settings loaded ({})", summary(settings));
 	}
 
-	/** The file's settings with a running trial's changes over them (also called when a trial switches sides). */
-	public static void apply(MinecraftServer server) {
-		Performance.Settings next = Trials.effective(fileSettings);
+	/** Uses the file's settings: the item, mob and save lists they name, then the settings themselves. */
+	private static void apply(MinecraftServer server) {
+		Performance.Settings next = fileSettings;
 		Map<String, LongSet> map = new HashMap<>();
 		for (Performance.Chunk c : next.frozen) map.computeIfAbsent(c.dimension, k -> new LongOpenHashSet()).add(ChunkPos.pack(c.x, c.z));
 		frozen = map;
@@ -208,13 +206,10 @@ public final class PerfControl {
 		saveLimits = save;
 		limits = new Cleanup.Limits(next.rules);
 		settings = next;
-		if (!next.dynamic.enabled && !Trials.active()) restore(server, "dynamic distances switched off");
+		if (!next.dynamic.enabled) restore(server, "dynamic distances switched off");
 	}
 
-	/** The settings as the file has them (without a trial's changes). */
-	public static Performance.Settings fileSettings() {
-		return fileSettings;
-	}
+
 
 	private static String summary(Performance.Settings s) {
 		StringBuilder b = new StringBuilder();
@@ -254,8 +249,6 @@ public final class PerfControl {
 	private static void dynamic(MinecraftServer server) {
 		Performance.Dynamic d = settings.dynamic;
 		if (!d.enabled) return;
-		// A trial sets the distances itself; stepping now would mix up its two sides.
-		if (Trials.active()) return;
 		var list = server.getPlayerList();
 		if (baseSim < 0) {
 			baseSim = sim = list.getSimulationDistance();

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.24.0
+- A/B trials removed (/ncc trial and the Reports card)
+- Performance presets: five built-ins (Off, Light, Balanced, Farm friendly, Aggressive) that each set every switch and number; saved presets file (config/nicecontrolcenter-performance-presets.json) for the panel
+- Pregeneration: with Distant Horizons installed, a job can also pregenerate DH's LODs: after the chunks, DH's own /dh pregen runs over the same area (DH advises against filling LODs by loading chunks fast), its progress shows in the status, stopping the job stops it, and a restart carries on. Without DH the option is ignored
+
 ## 1.23.1
 - Waypoint hubs: the dimension list is now where hubs are allowed (like claims) instead of where they aren't; until it's saved once in the panel, the old setting keeps working
 

@@ -3058,84 +3058,6 @@
     }
   });
 
-  // ── A/B trials ─────────────────────────────────────────────────────────
-
-  const TRIAL_LABELS = {
-    current: 'Current settings', off: 'Off profile', balanced: 'Balanced profile', aggressive: 'Aggressive profile',
-  };
-
-  function trialOptions(tokens, selected) {
-    const extra = ['sim4', 'sim6', 'sim8', 'sim10', 'view6', 'view8', 'view10', 'view12'];
-    return [...tokens, ...extra].map((t) => `<option value="${esc(t)}"${t === selected ? ' selected' : ''}>${esc(TRIAL_LABELS[t] || t.replace(/^no-/, 'without ').replace(/^sim/, 'simulation distance ').replace(/^view/, 'view distance '))}</option>`).join('');
-  }
-
-  function renderTrial(data) {
-    const box = $('np-trial');
-    const st = data.status || {};
-    if (st.active) {
-      const left = Math.max(0, Math.round((st.endsAt - Date.now()) / 60000));
-      const turnLeft = Math.max(0, Math.round((st.segmentEndsAt - Date.now()) / 1000));
-      box.innerHTML = `<p class="np-card-intro"><b>Running</b> (started by ${esc(st.startedBy)}): A = ${esc(st.a)} · B = ${esc(st.b)}<br>
-        Turn ${num(st.segment)} of ${num(st.segments)}, now <b>${esc(st.current)}</b>, ${num(turnLeft)} s left in this turn · about ${num(left)} min in all.</p>
-        ${trialSegments(st.done || [])}
-        <button type="button" class="np-btn" id="np-trial-stop"><i class="bi bi-stop-fill"></i> Stop and show the result so far</button>`;
-    } else {
-      const tokens = data.tokens || ['current', 'off', 'balanced', 'aggressive'];
-      box.innerHTML = `<div class="np-compare-pick">
-        <label>A <select id="np-trial-a">${trialOptions(tokens, 'current')}</select></label>
-        <label>B <select id="np-trial-b">${trialOptions(tokens, 'balanced')}</select></label>
-        <label>Minutes per turn <input type="number" id="np-trial-minutes" min="2" max="60" value="5"></label>
-        <label>Rounds <input type="number" id="np-trial-rounds" min="1" max="12" value="4"></label>
-        <button type="button" class="np-btn primary" id="np-trial-start"><i class="bi bi-play-fill"></i> Start trial</button></div>
-        <p class="np-card-intro">Best while players are on. 4 rounds of 5 minutes take 40 minutes. Lag protection pauses during the trial.</p>`;
-    }
-    const results = data.results || [];
-    $('np-trial-results').innerHTML = results.length ? '<h4 class="np-subhead">Results</h4>' + results.map(trialResult).join('') : '';
-  }
-
-  function trialSegments(segs) {
-    if (!segs.length) return '';
-    return `<div class="np-table-wrap"><table class="np-table"><thead><tr><th>Turn</th><th>Side</th><th class="num">Busy ms/s</th><th class="num">TPS</th><th class="num">Players</th><th></th></tr></thead><tbody>` +
-      segs.map((g, i) => `<tr><td>${i + 1}</td><td>${esc(g.side)}</td><td class="num">${fixed(g.values.busy, 0)}</td><td class="num">${fixed(g.values.tps, 1)}</td>
-        <td class="num">${fixed(g.players, 1)}</td><td>${g.valid ? '' : `<small>not counted: ${esc(g.note)}</small>`}</td></tr>`).join('') + '</tbody></table></div>';
-  }
-
-  function trialResult(r) {
-    const rows = (r.metrics || []).map((m) => {
-      const better = m.clear && (m.lowerIsBetter ? m.meanB < m.meanA : m.meanB > m.meanA);
-      const worse = m.clear && !better;
-      return `<tr><td class="name">${esc(m.label)}</td>
-        <td class="num">${fixed(m.meanA, 1)} <small>±${fixed(m.spreadA, 1)}</small></td>
-        <td class="num">${fixed(m.meanB, 1)} <small>±${fixed(m.spreadB, 1)}</small></td>
-        <td class="num" style="${better ? 'color:var(--good)' : worse ? 'color:var(--poor)' : ''}">${m.change > 0 ? '+' : ''}${fixed(m.change, 0)}%${m.clear ? '' : ' <small>(within spread)</small>'}</td></tr>`;
-    }).join('');
-    const turns = (r.segments || []).filter((g) => g.valid).length;
-    return `<details class="np-trial-result"><summary><b>${esc(r.verdict)}</b><br><small>${clock(r.started)} · A = ${esc(r.a)} · B = ${esc(r.b)} · ${num(turns)} turns counted · by ${esc(r.startedBy)}</small></summary>
-      <div class="np-table-wrap"><table class="np-table"><thead><tr><th>Measure</th><th class="num">A</th><th class="num">B</th><th class="num">B vs A</th></tr></thead><tbody>${rows}</tbody></table></div>
-      ${trialSegments(r.segments || [])}</details>`;
-  }
-
-  let trialTimer = null;
-  async function loadTrial() {
-    try {
-      const data = await api('api/trial');
-      renderTrial(data);
-      clearTimeout(trialTimer);
-      if (data.status && data.status.active) trialTimer = setTimeout(loadTrial, 10000);
-    } catch (e) { /* shown by the live indicator */ }
-  }
-
-  async function trialAction(path) {
-    try {
-      const data = await api(path, { method: 'POST' });
-      if (data.error) alert(data.error);
-      renderTrial(data);
-      if (data.status && data.status.active) loadTrial();
-    } catch (e) {
-      alert('The server did not respond: ' + e.message);
-    }
-  }
-
   async function recordingAction(path) {
     try {
       const data = await api(path, { method: 'POST' });
@@ -3510,13 +3432,6 @@
       if (e.target.closest('#np-rec-stop')) {
         recordingAction('api/recording/stop');
       }
-      if (e.target.closest('#np-trial-start')) {
-        const q = new URLSearchParams({ a: $('np-trial-a').value, b: $('np-trial-b').value, minutes: $('np-trial-minutes').value, rounds: $('np-trial-rounds').value });
-        trialAction('api/trial/start?' + q);
-      }
-      if (e.target.closest('#np-trial-stop')) {
-        if (confirm('Stop the trial? The result uses the turns done so far.')) trialAction('api/trial/stop');
-      }
     });
   }
 
@@ -3573,7 +3488,6 @@
     pollWindow();
     loadReports();
     setInterval(loadReports, 30000);
-    loadTrial();
     api('api/bloat').then((d) => (d.running ? runBloat() : renderBloat(d.result))).catch(() => {});
     loadUpdates();
 

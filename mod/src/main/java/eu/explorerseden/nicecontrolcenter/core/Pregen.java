@@ -57,6 +57,9 @@ public final class Pregen {
 		int ring;
 		long done;
 		long failed;
+		/** Also Distant Horizons LODs after the chunks; "lods" when the job was already at that step. */
+		boolean lods;
+		String phase;
 	}
 
 	private Pregen() {
@@ -74,6 +77,11 @@ public final class Pregen {
 		final boolean circle;
 		/** While players are online: "full", "slow" or "pause". */
 		final String players;
+		/** After the chunks, Distant Horizons' own LOD pregeneration over the same area (only set when DH is installed). */
+		final boolean lods;
+		/** "chunks", then "lods"; and what DH last said about its progress. */
+		volatile String phase = "chunks";
+		volatile String lodStatus;
 		volatile long total = -1;
 		volatile boolean pausedForPlayers;
 		// Where a restart picks up: the ring being worked on and what was done before it.
@@ -92,8 +100,10 @@ public final class Pregen {
 		volatile String stopReason;
 		volatile Thread thread;
 
-		Job(MinecraftServer server, ServerLevel level, String dimension, int centerX, int centerZ, int radius, int skipRadius, boolean circle, String players) {
+		Job(MinecraftServer server, ServerLevel level, String dimension, int centerX, int centerZ, int radius, int skipRadius, boolean circle, String players,
+				boolean lods) {
 			this.players = players;
+			this.lods = lods;
 			this.server = server;
 			this.level = level;
 			this.dimension = dimension;
@@ -164,6 +174,13 @@ public final class Pregen {
 		/** The job thread: requests chunks while there's room, sleeps until one finishes otherwise. */
 		void run() {
 			started = System.currentTimeMillis();
+			if ("lods".equals(phase)) {
+				// Resumed after a restart while DH was generating LODs: the chunks are done.
+				total = 0;
+				lodPhase();
+				finished(this, cancelled ? stopReason : lodResult);
+				return;
+			}
 			total = count();
 			NiceControlCenter.LOGGER.info("Pregenerating {} chunks in {} around {}, {} (radius {}{}, {})", total, dimension, centerX, centerZ, radius,
 					skipRadius > 0 ? ", outside " + skipRadius : "", circle ? "circle" : "square");
@@ -204,7 +221,100 @@ public final class Pregen {
 			// Wait for what's still generating, so the next job (or a stop) starts from a quiet server.
 			long until = System.currentTimeMillis() + 30_000;
 			while (inFlight.get() > 0 && System.currentTimeMillis() < until) LockSupport.parkNanos(50_000_000L);
+			if (!cancelled && lods) {
+				lodPhase();
+				finished(this, cancelled ? stopReason : lodResult);
+				return;
+			}
 			finished(this, cancelled ? stopReason : "finished");
+		}
+
+		volatile String lodResult = "finished";
+
+		/**
+		 * Distant Horizons' own LOD pregeneration over the job's area (its wiki advises against relying on chunk
+		 * pregenerators for LODs: loading chunks fast overloads it and leaves holes). Runs /dh pregen start, shows
+		 * /dh pregen status every few seconds and waits for DH to report it complete; stopping the job stops it too.
+		 * DH's area is a square of at least 32 chunks. With "pause", it waits until nobody is online to start.
+		 */
+		private void lodPhase() {
+			phase = "lods";
+			Pregen.save();
+			while (!cancelled && "pause".equals(players) && server.getPlayerCount() > 0) {
+				pausedForPlayers = true;
+				LockSupport.parkNanos(2_000_000_000L);
+			}
+			pausedForPlayers = false;
+			if (cancelled) return;
+			int chunkRadius = Math.max(32, (radius + 15) / 16);
+			java.util.concurrent.CompletableFuture<String> end = new java.util.concurrent.CompletableFuture<>();
+			java.util.function.Consumer<String> listen = line -> {
+				String l = line.toLowerCase(java.util.Locale.ROOT);
+				if (l.contains("pregen is complete")) end.complete("finished");
+				else if (l.contains("pregen is cancelled")) end.complete("LOD pregeneration cancelled");
+				else if (l.contains("pregen failed")) end.complete("LOD pregeneration failed: " + line);
+			};
+			lodStatus = "starting";
+			NiceControlCenter.LOGGER.info("Pregenerating Distant Horizons LODs in {} around {}, {} ({} chunks radius)", dimension, centerX, centerZ, chunkRadius);
+			dh("dh pregen start " + dimension + " " + centerX + " " + centerZ + " " + chunkRadius, listen, end);
+			long nextStatus = 0;
+			while (!end.isDone()) {
+				if (cancelled) {
+					dh("dh pregen stop", null, null);
+					try {
+						end.get(15, java.util.concurrent.TimeUnit.SECONDS);
+					} catch (Exception e) {
+						// It stops on its own time; the job is over either way.
+					}
+					return;
+				}
+				if (System.currentTimeMillis() >= nextStatus) {
+					nextStatus = System.currentTimeMillis() + 5_000;
+					dh("dh pregen status", line -> {
+						if (!line.isBlank()) lodStatus = line.strip();
+					}, null);
+				}
+				LockSupport.parkNanos(500_000_000L);
+			}
+			lodResult = end.getNow("finished");
+			lodStatus = null;
+		}
+
+		/**
+		 * Runs a Distant Horizons command on the server thread; every line it prints now or later goes to listen.
+		 * A command DH doesn't know (an old version) ends the LOD step with failed.
+		 */
+		private void dh(String command, java.util.function.Consumer<String> listen, java.util.concurrent.CompletableFuture<String> failed) {
+			server.execute(() -> {
+				net.minecraft.commands.CommandSource capture = new net.minecraft.commands.CommandSource() {
+					@Override
+					public void sendSystemMessage(net.minecraft.network.chat.Component message) {
+						if (listen != null) listen.accept(message.getString());
+					}
+
+					@Override
+					public boolean acceptsSuccess() {
+						return true;
+					}
+
+					@Override
+					public boolean acceptsFailure() {
+						return true;
+					}
+
+					@Override
+					public boolean shouldInformAdmins() {
+						return false;
+					}
+				};
+				boolean[] ran = {false};
+				try {
+					server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSource(capture).withCallback((ok, value) -> ran[0] |= ok), command);
+				} catch (RuntimeException e) {
+					NiceControlCenter.LOGGER.warn("/{} failed: {}", command, e.toString());
+				}
+				if (!ran[0] && failed != null) failed.complete("LOD pregeneration not possible (this Distant Horizons version has no /dh pregen)");
+			});
 		}
 
 		/**
@@ -243,23 +353,30 @@ public final class Pregen {
 	 * radius; players: "full", "slow" (default) or "pause" while players are online. Any thread.
 	 */
 	public static synchronized String start(MinecraftServer server, String dimension, int x, int z, int radius, int skipRadius, boolean circle,
-			String players, boolean enqueue) {
+			String players, boolean enqueue, boolean lods) {
 		if (job != null && !enqueue) return "A pregeneration is already running.";
-		Object made = create(server, dimension, x, z, radius, skipRadius, circle, players);
+		Object made = create(server, dimension, x, z, radius, skipRadius, circle, players, lods);
 		if (made instanceof String error) return error;
 		add((Job) made);
 		save();
 		return null;
 	}
 
-	private static Object create(MinecraftServer server, String dimension, int x, int z, int radius, int skipRadius, boolean circle, String players) {
+	/** Whether Distant Horizons is installed (LOD pregeneration is only offered then). */
+	public static boolean lodsAvailable() {
+		return net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("distanthorizons");
+	}
+
+	private static Object create(MinecraftServer server, String dimension, int x, int z, int radius, int skipRadius, boolean circle, String players,
+			boolean lods) {
 		if (radius < 16 || radius > 100_000) return "The radius must be between 16 and 100,000 blocks.";
 		if (skipRadius < 0 || skipRadius >= radius) skipRadius = 0;
 		Identifier id = Identifier.tryParse(dimension == null ? "" : dimension);
 		ServerLevel level = id == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
 		if (level == null) return "Unknown dimension " + dimension + ".";
 		String mode = "full".equals(players) || "pause".equals(players) ? players : "slow";
-		return new Job(server, level, id.toString(), x, z, radius, skipRadius, circle, mode);
+		// Without Distant Horizons the LOD step is simply left out.
+		return new Job(server, level, id.toString(), x, z, radius, skipRadius, circle, mode, lods && lodsAvailable());
 	}
 
 	private static void add(Job j) {
@@ -276,7 +393,7 @@ public final class Pregen {
 	}
 
 	/** Writes the running job and the queue (or removes the file when there's nothing left). */
-	private static synchronized void save() {
+	static synchronized void save() {
 		if (shuttingDown) return;
 		java.util.List<Saved> jobs = new java.util.ArrayList<>();
 		Job running = job;
@@ -307,6 +424,8 @@ public final class Pregen {
 		s.ring = j.ringStart;
 		s.done = j.doneAtRing;
 		s.failed = j.failedAtRing;
+		s.lods = j.lods;
+		s.phase = j.phase;
 		return s;
 	}
 
@@ -324,7 +443,7 @@ public final class Pregen {
 		}
 		if (jobs == null) return;
 		for (Saved s : jobs) {
-			Object made = create(server, s.dimension, s.x, s.z, s.radius, s.skipRadius, "circle".equals(s.shape), s.players);
+			Object made = create(server, s.dimension, s.x, s.z, s.radius, s.skipRadius, "circle".equals(s.shape), s.players, s.lods);
 			if (!(made instanceof Job j)) {
 				NiceControlCenter.LOGGER.warn("Not resuming the pregeneration of {}: {}", s.dimension, made);
 				continue;
@@ -335,6 +454,7 @@ public final class Pregen {
 			j.skipped.set(s.failed);
 			j.doneAtRing = s.done;
 			j.failedAtRing = s.failed;
+			if ("lods".equals(s.phase) && j.lods) j.phase = "lods";
 			NiceControlCenter.LOGGER.info("Resuming the pregeneration of {} at ring {} ({} chunks done)", s.dimension, j.ring, s.done);
 			add(j);
 		}
@@ -408,6 +528,7 @@ public final class Pregen {
 		List<String> waiting = new ArrayList<>();
 		for (Job q : queue) waiting.add(q.dimension);
 		out.put("queued", waiting);
+		out.put("lodsAvailable", lodsAvailable());
 		return out;
 	}
 
@@ -434,6 +555,9 @@ public final class Pregen {
 		out.put("perSecond", Math.round(rate * 10) / 10.0);
 		out.put("etaSeconds", rate > 0 ? Math.round((total - done - skipped) / rate) : -1);
 		out.put("seconds", seconds);
+		out.put("lods", j.lods);
+		out.put("phase", j.phase);
+		if (j.lodStatus != null) out.put("lodStatus", j.lodStatus);
 		if (j.stopReason != null) out.put("result", j.stopReason);
 		return out;
 	}

@@ -917,10 +917,10 @@
     const dim = (worldDims.find((x) => x.id === st.dimension) || {}).name
       || String(st.dimension || '').replace(/^minecraft:/, '').replace(/^[^:]*:/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     const pct = st.total ? Math.floor(st.done / st.total * 100) : 0;
-    const status = st.counting ? 'counting…' : st.paused ? 'paused' : pct + '%';
+    const status = st.paused ? 'paused' : st.phase === 'lods' ? 'LODs' : st.counting ? 'counting…' : pct + '%';
     const html = `<i class="bi bi-grid-3x3-gap"></i><b>${esc(dim)}:</b><span>${esc(status)}</span>`;
     if (pill.dataset.html !== html) { pill.innerHTML = html; pill.dataset.html = html; }
-    pill.title = `Pregenerating ${dim}: ${(st.done || 0).toLocaleString()} of ${(st.total || 0).toLocaleString()} chunks`
+    pill.title = (st.phase === 'lods' ? `Pregenerating Distant Horizons LODs in ${dim}: ${st.lodStatus || 'working…'}` : `Pregenerating ${dim}: ${(st.done || 0).toLocaleString()} of ${(st.total || 0).toLocaleString()} chunks`)
       + `${st.paused ? ' · paused: ' + st.paused : st.etaSeconds > 0 ? ' · about ' + duration(st.etaSeconds * 1000) + ' left' : ''}`
       + `${(st.queued || []).length ? ' · then ' + st.queued.length + ' more' : ''}`;
     pill.hidden = false;
@@ -3404,13 +3404,14 @@
     }
     const show = st.running ? st : st.last;
     const queued = (st.queued || []).map(dimName);
+    $('pn-pregen-lods-row').hidden = !st.lodsAvailable;
     if (!show) {
       $('pn-pregen-status').textContent = 'Nothing pregenerated yet.';
     } else {
       const pct = show.total ? Math.round(show.done / show.total * 100) : 0;
       const ring = show.skipRadius ? ` outside ${show.skipRadius}` : '';
       $('pn-pregen-status').innerHTML = `<b>${st.running ? (show.paused ? 'Paused: ' + esc(show.paused) : 'Pregenerating') : 'Last run (' + esc(show.result || 'stopped') + ')'}</b> · ${esc(dimName(show.dimension))} · ${show.shape} radius ${show.radius}${ring} around ${show.x}, ${show.z}<br>
-        ${show.counting ? 'Counting chunks…' : `${show.done.toLocaleString()} of ${show.total.toLocaleString()} chunks (${pct}%) · ${show.perSecond}/s${st.running ? ' · about ' + duration2(show.etaSeconds) + ' left' : ''}${show.failed ? ` · ${show.failed} failed` : ''}`}
+        ${show.phase === 'lods' && st.running ? `Chunks done · Distant Horizons LODs: ${esc(show.lodStatus || 'working…')}` : show.counting ? 'Counting chunks…' : `${show.done.toLocaleString()} of ${show.total.toLocaleString()} chunks (${pct}%) · ${show.perSecond}/s${st.running ? ' · about ' + duration2(show.etaSeconds) + ' left' : ''}${show.failed ? ` · ${show.failed} failed` : ''}${show.lods ? ' · then Distant Horizons LODs' : ''}`}
         ${queued.length ? `<br>Then: ${queued.map(esc).join(', ')}` : ''}
         <div class="pn-bar"><span style="width:${pct}%"></span></div>`;
     }
@@ -3438,7 +3439,8 @@
     if (!confirm(`Pregenerate about ${Math.round(chunks).toLocaleString()} chunks in ${jobs.map(([d]) => dimName(d)).join(', ')}? Large areas take hours; it only uses the server's spare time.`)) return;
     try {
       for (const [dim, b] of jobs) {
-        await modPost('api/pregen/start', { dimension: dim, x: b.x, z: b.z, radius: b.hard > 0 ? b.hard : b.soft, skipRadius: wilds ? b.soft : 0, shape: b.shape, queue: true, players: $('pn-pregen-players').value });
+        await modPost('api/pregen/start', { dimension: dim, x: b.x, z: b.z, radius: b.hard > 0 ? b.hard : b.soft, skipRadius: wilds ? b.soft : 0, shape: b.shape, queue: true, players: $('pn-pregen-players').value,
+          lods: !$('pn-pregen-lods-row').hidden && $('pn-pregen-lods').checked });
       }
       formMsg('pn-pregen-msg', jobs.length > 1 ? `Started; ${jobs.length} dimensions, one after another.` : 'Started.', true);
       loadPregen();
@@ -3629,9 +3631,11 @@
   $('pn-perf-form').addEventListener('change', perfNeeds);
 
   const PROFILE_INFO = {
-    off: { label: 'Off', icon: 'bi-toggle-off', text: 'Vanilla behaviour: every tuning off (smooth saving and warm teleport targets stay on).' },
-    balanced: { label: 'Balanced', icon: 'bi-speedometer2', text: 'Lag protection (40/30 ms, view ≥ 8), less ticking and lighter AI far from players, hopper cooldown, wider merging, collision cap, junk despawn, save limits, still armor stands, villager brains in trading cells. Players hardly notice it.' },
-    aggressive: { label: 'Aggressive', icon: 'bi-lightning-charge', text: 'Everything in Balanced, tighter (35/25 ms, view ≥ 6, mob cap ≥ 40 %, smaller ranges, AI budget always on), plus breeding caps and auto caps. For a server that still struggles.' },
+    off: { label: 'Off', icon: 'bi-toggle-off', text: 'Vanilla: every tuning off. Smooth saving and warm teleport targets stay on.' },
+    light: { label: 'Light', icon: 'bi-feather', text: 'Only what players never notice: wider item/XP merging, collision cap 12, junk despawn after 2 min, save limits, idle hopper cooldown, still armor stands. Mobs, villagers, spawning and distances stay vanilla.' },
+    balanced: { label: 'Balanced', icon: 'bi-speedometer2', text: 'Light plus lag protection (40/30 ms, view ≥ 8, simulation ≥ 5), less ticking and lighter AI far from players, villager brains in trading cells, collision cap 8, monsters and water mobs spawn every 2 ticks.' },
+    farms: { label: 'Farm friendly', icon: 'bi-flower1', text: 'Balanced without what slows mob and villager farms: no activation range, no AI throttle, normal villager brains, no collision cap, normal spawning. Lag protection only steps in later (45 ms).' },
+    aggressive: { label: 'Aggressive', icon: 'bi-lightning-charge', text: 'Balanced, tighter (35/25 ms, view ≥ 6, simulation ≥ 4, mob cap ≥ 40 %, smaller ranges, AI budget always on, spawning every 4 ticks) plus breeding caps and auto caps. For a server that still struggles.' },
   };
 
   async function loadProfiles() {
@@ -3647,34 +3651,68 @@
       return `<div class="pn-perf-profile${p.matches ? ' active' : ''}">
         <h4><i class="bi ${info.icon}"></i> ${esc(info.label)}${p.recommended ? ' <span class="pn-badge good">Recommended</span>' : ''}${p.matches ? ' <span class="pn-badge">Your settings</span>' : ''}</h4>
         <p class="pn-hint">${esc(info.text)}</p>
-        ${manage ? `<div class="pn-perf-profile-actions"><button type="button" class="np-btn small${p.recommended ? ' primary' : ''}" data-profile-apply="${esc(p.name)}"${p.matches ? ' disabled' : ''}>Apply</button>
-        <button type="button" class="np-btn small" data-profile-test="${esc(p.name)}"${p.matches ? ' disabled' : ''}><i class="bi bi-shuffle"></i> Test against current</button></div>` : ''}
+        ${manage ? `<div class="pn-perf-profile-actions"><button type="button" class="np-btn small${p.recommended ? ' primary' : ''}" data-profile-apply="${esc(p.name)}"${p.matches ? ' disabled' : ''}>Apply</button></div>` : ''}
       </div>`;
     }).join('');
+    const presets = d.presets || [];
+    $('pn-presets').innerHTML = presets.length ? presets.map((p) => `<div class="pn-perf-profile${p.matches ? ' active' : ''}">
+        <h4><i class="bi bi-bookmark-star"></i> ${esc(p.name)}${p.matches ? ' <span class="pn-badge">Your settings</span>' : ''}</h4>
+        <p class="pn-hint">Saved ${esc(new Date(p.saved).toLocaleString())}${p.savedBy ? ' by ' + esc(p.savedBy) : ''}</p>
+        ${manage ? `<div class="pn-perf-profile-actions">
+          <button type="button" class="np-btn small" data-preset-apply="${esc(p.id)}" data-name="${esc(p.name)}"${p.matches ? ' disabled' : ''}>Apply</button>
+          <button type="button" class="np-btn small" data-preset-update="${esc(p.name)}" title="Replace this preset with the settings as they are now">Update</button>
+          <button type="button" class="np-btn small" data-preset-delete="${esc(p.id)}" data-name="${esc(p.name)}" title="Delete this preset"><i class="bi bi-trash"></i></button></div>` : ''}
+      </div>`).join('') : '<p class="pn-hint">None yet. Set things up below, save them, then come back here and save them as a preset.</p>';
+    $('pn-preset-save-row').hidden = !manage;
   }
 
-  $('pn-profiles').addEventListener('click', async (e) => {
-    const apply = e.target.closest('[data-profile-apply]');
-    const test = e.target.closest('[data-profile-test]');
-    if (apply) {
-      const name = apply.dataset.profileApply;
-      if (!confirm(`Apply the ${PROFILE_INFO[name]?.label || name} profile? The server picks it up within 5 seconds.`)) return;
+  async function applyPreset(body, label) {
+    if (!confirm(`Apply ${label}? Changed settings below are replaced; the server picks them up within a few seconds.`)) return;
+    try {
+      await api('api/perf/profile', body);
+      formMsg('pn-profiles-msg', 'Applied ' + label + '.', true);
+      loadTuning();
+    } catch (err) {
+      formMsg('pn-profiles-msg', err.message, false);
+    }
+  }
+
+  async function savePreset(name) {
+    try {
+      const r = await api('api/perf/presets/save', { name });
+      formMsg('pn-profiles-msg', (r.replaced ? 'Updated' : 'Saved') + ' the preset "' + name + '".', true);
+      loadProfiles();
+    } catch (err) {
+      formMsg('pn-profiles-msg', err.message, false);
+    }
+  }
+
+  $('pn-profiles-card').addEventListener('click', async (e) => {
+    const builtin = e.target.closest('[data-profile-apply]');
+    const apply = e.target.closest('[data-preset-apply]');
+    const update = e.target.closest('[data-preset-update]');
+    const del = e.target.closest('[data-preset-delete]');
+    if (builtin) {
+      const name = builtin.dataset.profileApply;
+      applyPreset({ name }, `the ${PROFILE_INFO[name]?.label || name} preset`);
+    } else if (apply) {
+      applyPreset({ preset: apply.dataset.presetApply }, `the preset "${apply.dataset.name}"`);
+    } else if (update) {
+      if ($('pn-perf-form').classList.contains('pn-dirty') && !confirm('The form below has unsaved changes; the preset takes the saved settings. Continue?')) return;
+      if (confirm(`Replace the preset "${update.dataset.presetUpdate}" with the settings as they are saved now?`)) savePreset(update.dataset.presetUpdate);
+    } else if (del) {
+      if (!confirm(`Delete the preset "${del.dataset.name}"? Your current settings stay as they are.`)) return;
       try {
-        await api('api/perf/profile', { name });
-        formMsg('pn-profiles-msg', 'Applied.', true);
-        loadTuning();
+        await api('api/perf/presets/delete', { id: del.dataset.presetDelete });
+        formMsg('pn-profiles-msg', 'Deleted the preset "' + del.dataset.name + '".', true);
+        loadProfiles();
       } catch (err) {
         formMsg('pn-profiles-msg', err.message, false);
       }
-    } else if (test) {
-      const name = test.dataset.profileTest;
-      try {
-        const r = await api('dashboard/api/trial/start?' + new URLSearchParams({ a: 'current', b: name, minutes: 5, rounds: 4 }), {});
-        if (r.error) throw new Error(r.error);
-        formMsg('pn-profiles-msg', 'Trial started: current settings vs ' + (PROFILE_INFO[name]?.label || name) + '. Follow it in Dashboard → Reports (about 40 minutes).', true);
-      } catch (err) {
-        formMsg('pn-profiles-msg', err.message === 'Bad Gateway' || err.message === 'Service Unavailable' ? 'The server needs to be running for a trial.' : err.message, false);
-      }
+    } else if (e.target.closest('#pn-preset-save')) {
+      if ($('pn-perf-form').classList.contains('pn-dirty') && !confirm('The form below has unsaved changes; the preset takes the saved settings. Continue?')) return;
+      const name = prompt('Name for the preset (the settings as they are saved now; frozen chunks are not part of it):');
+      if (name && name.trim()) savePreset(name.trim());
     }
   });
 

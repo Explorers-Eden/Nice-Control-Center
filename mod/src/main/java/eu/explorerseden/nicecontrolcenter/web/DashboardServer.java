@@ -631,7 +631,8 @@ public final class DashboardServer {
 				boolean enqueue = body.has("queue") && body.get("queue").getAsBoolean();
 				String players = body.has("players") ? body.get("players").getAsString() : "slow";
 				String error = eu.explorerseden.nicecontrolcenter.core.Pregen.start(minecraft, body.get("dimension").getAsString(),
-						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), skip, "circle".equals(body.get("shape").getAsString()), players, enqueue);
+						body.get("x").getAsInt(), body.get("z").getAsInt(), body.get("radius").getAsInt(), skip, "circle".equals(body.get("shape").getAsString()), players, enqueue,
+						body.has("lods") && body.get("lods").getAsBoolean());
 				sendJson(exchange, error == null ? Map.of("ok", true) : Map.of("error", error));
 			}
 			case "/api/pregen/stop" -> {
@@ -746,32 +747,6 @@ public final class DashboardServer {
 				if (error != null) result.put("error", error);
 				sendJson(exchange, result);
 			}
-			case "/api/trial" -> sendJson(exchange, trial());
-			case "/api/trial/start" -> {
-				if (!requirePost(exchange)) {
-					return;
-				}
-				String a = query.getOrDefault("a", "");
-				String b = query.getOrDefault("b", "");
-				int minutes = (int) parseLong(query.get("minutes"), 5);
-				int rounds = (int) parseLong(query.get("rounds"), 4);
-				String by = exchange.getRequestHeaders().getFirst("X-NCC-User");
-				if (!Tracker.enabled()) {
-					NiceControlCenter.setMonitoring(true);
-				}
-				String error = onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Trials.start(minecraft, a, b, minutes, rounds,
-						by == null ? "web dashboard" : by));
-				Map<String, Object> result = trial();
-				if (error != null) result.put("error", error);
-				sendJson(exchange, result);
-			}
-			case "/api/trial/stop" -> {
-				if (!requirePost(exchange)) {
-					return;
-				}
-				onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Trials.stop(minecraft, "stopped in the dashboard"));
-				sendJson(exchange, trial());
-			}
 			case "/api/recording/stop" -> {
 				if (!requirePost(exchange)) {
 					return;
@@ -836,14 +811,6 @@ public final class DashboardServer {
 	/** The map's slow-changing parts and when they were worked out. */
 	private volatile Map<String, Object> mapStatic;
 	private volatile long mapStaticAt;
-
-	private Map<String, Object> trial() {
-		Map<String, Object> result = new LinkedHashMap<>();
-		result.put("status", eu.explorerseden.nicecontrolcenter.core.Trials.status());
-		result.put("results", eu.explorerseden.nicecontrolcenter.core.Trials.results(minecraft, 10));
-		result.put("tokens", eu.explorerseden.nicecontrolcenter.core.Trials.tokens());
-		return result;
-	}
 
 	private Map<String, Object> recording() {
 		Map<String, Object> result = new LinkedHashMap<>();

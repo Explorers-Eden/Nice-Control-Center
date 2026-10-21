@@ -293,7 +293,6 @@ public class NiceControlCenter implements ModInitializer {
 		BossBarMonitor.stop();
 		NiceControlCenter.server = null;
 		eu.explorerseden.nicecontrolcenter.core.HostMetrics.stop();
-		eu.explorerseden.nicecontrolcenter.core.Trials.reset();
 		if (sampler != null) {
 			sampler.stop();
 			sampler = null;

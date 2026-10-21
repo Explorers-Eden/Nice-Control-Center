@@ -1,3 +1,9 @@
+## 1.22.0
+- Performance → Tuning → Presets: new Light and Farm friendly presets; every built-in preset now sets every switch and number
+- Save your own presets (the settings as saved, with mob limits, junk items and save limits; never frozen chunks), apply, update or delete them; all audited
+- A/B trial button removed (mod 1.24.0)
+- World → Borders & reset → Pregenerate: "Also pregenerate Distant Horizons LODs" (shown only when DH is installed, on by default) and the LOD step's progress in the status and the header pill; scheduled pregeneration includes LODs too (mod 1.24.0)
+
 ## 1.21.1
 - Claims → Settings → Waypoint hubs: "Allowed in" dimensions (ticked = hubs may be placed), like the claims list; the old "Not allowed in" choices are shown turned around until saved (mod 1.23.1)
 
