@@ -248,7 +248,7 @@ public final class PetDialogs {
 			MutableComponent row = Component.empty()
 					.append(Component.literal(perk.label).withStyle(open ? ChatFormatting.WHITE : ChatFormatting.GRAY))
 					.append(Component.literal(open ? (off ? "  off" : "  on") : "  from bond level " + at).withStyle(open && !off ? ChatFormatting.GREEN : ChatFormatting.GRAY))
-					.append(Component.literal("\n" + perk.description + "  ").withStyle(ChatFormatting.GRAY));
+					.append(Component.literal("\n" + perk.describe(k) + "  ").withStyle(ChatFormatting.GRAY));
 			if (open) row.append(off ? link("Switch on", "Let it help with this again", "perk", args("perk", perk.name()), ChatFormatting.GREEN)
 					: link("Switch off", "It stops helping with this (for all your pets)", "perk", args("perk", perk.name()), ChatFormatting.YELLOW));
 			body.add(new PlainMessage(row, TEXT_WIDTH));
@@ -380,7 +380,7 @@ public final class PetDialogs {
 			body.add(text(perkLine(pet) + " (bond levels grow while it's out with you)", ChatFormatting.GRAY));
 			for (String n : pet.perks) {
 				Pets.Perk perk = Pets.Perk.of(n);
-				if (perk != null) body.add(text("· " + perk.label + ": " + perk.description, ChatFormatting.GRAY));
+				if (perk != null) body.add(text("· " + perk.label + ": " + perk.describe(PetStore.settings().perks), ChatFormatting.GRAY));
 			}
 		}
 		String why = data.cannotBuy(player.getStringUUID(), pet);

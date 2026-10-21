@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.21.1
+- Pets: perk descriptions show the numbers set in the panel (how far, how often, how much) on a pet's page in the shop, in /pets and in the "Perk unlocked" message
+
 ## 1.21.0
 - Server shop: claim block and command listings with a player head as their icon can have a head texture (set in the panel), shown in /market
 

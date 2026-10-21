@@ -310,7 +310,7 @@ public final class PetPerks {
 		for (int slot = 0; slot < perks.size(); slot++) {
 			int at = Pets.slotLevel(slot, s);
 			if (at > before && at <= level) {
-				player.sendSystemMessage(Component.literal("Perk unlocked: " + perks.get(slot).label + " · " + perks.get(slot).description).withStyle(ChatFormatting.GRAY));
+				player.sendSystemMessage(Component.literal("Perk unlocked: " + perks.get(slot).label + " · " + perks.get(slot).describe(s)).withStyle(ChatFormatting.GRAY));
 			}
 		}
 		PetReactions.levelUp(player, level);

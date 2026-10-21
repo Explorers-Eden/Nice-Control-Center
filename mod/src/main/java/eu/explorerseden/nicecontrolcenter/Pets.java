@@ -168,6 +168,58 @@ public final class Pets {
 			this.group = group;
 		}
 
+		/** What it does with the numbers set in the panel, for players. */
+		public String describe(PerkSettings s) {
+			return switch (this) {
+				case LANTERN -> "Glows and lights up the dark around you (light level " + s.lanternLevel + ")";
+				case NIGHT_EYES -> "Glows and lights up the dark around you (light level " + s.lanternLevel + ", " + s.nightEyesLevel + " deep underground)";
+				case FETCH -> "Brings you what dropped from blocks you broke and mobs you killed, within " + s.fetchRadius + " blocks";
+				case TRUFFLE -> "Sniffs out suspicious sand and gravel within " + s.truffleRadius + " blocks";
+				case FISHING -> "Dips into water nearby and brings you a catch, every " + minutes(s.fishingMinutes);
+				case GARDENER -> "Helps a crop next to you grow, every " + seconds(s.gardenerSeconds);
+				case TORCHES -> "Places one of your torches where it's dark enough for monsters, at most every " + seconds(s.torchSeconds);
+				case MINER -> "Mines ore you can see and widens your tunnel with your pickaxe, a block every " + seconds(s.minerSeconds);
+				case CHOPPER -> "Helps chop the tree you started on with your axe, a log every " + seconds(s.chopperSeconds);
+				case XP_MAGNET -> "Pulls experience orbs to you from up to " + s.xpRadius + " blocks away (instead of 8)";
+				case REPLANTER -> "Replants the crops you harvest, with seeds from your inventory";
+				case COOK -> "Cooks one raw food in your inventory every " + minutes(s.cookMinutes);
+				case SNACKS -> "Feeds you from your inventory when your food bar drops to " + s.snackFood + " of 20, at most every " + seconds(s.snackSeconds);
+				case TINKERER -> "Mends the tool in your hand or your armor by " + s.tinkerPoints + " durability every " + minutes(s.tinkerMinutes);
+				case LURE -> "Fish bite sooner while it's out, like Lure " + roman(s.lureLevels) + " on your rod (never more than Lure III in all)";
+				case WATCHFUL_EYE -> "Makes monsters within " + s.eyeRadius + " blocks glow, only for you";
+				case PACK_MULE -> "Carries a bag with " + s.bagRows * 9 + " slots for you (open it in /pets; the items stay yours)";
+				case LUCKY_PAW -> s.luckyPercent + "% chance of one more drop from natural ore and grown crops";
+				case GIFTS -> "Finds something small for you every " + minutes(s.giftMinutes);
+				case SECOND_WIND -> "Heals you a little when you're down to 2 hearts, at most every " + minutes(s.secondWindMinutes);
+				case NIPPER -> "Nips monsters that hurt you or that you attack, like a wolf (" + hearts(s.nipperDamage) + " every " + number(s.nipperSeconds) + " s)";
+				case SHIELD -> "Pushes monsters back that come within 3 blocks, at most every " + seconds(s.shieldSeconds);
+				case FIRE_WATCH -> "Puts you out when you're burning, at most every " + seconds(s.fireSeconds);
+				case SOFT_PAWS -> "Takes " + s.softPercent + "% of the damage of a fall, at most every " + minutes(s.softMinutes);
+				case GUARDIAN_ROAR -> "Roars monsters away when " + s.roarCount + " or more come within 5 blocks, at most every " + minutes(s.roarMinutes);
+			};
+		}
+
+		private static String minutes(int n) {
+			return n == 1 ? "minute" : n + " minutes";
+		}
+
+		private static String seconds(int n) {
+			return n == 1 ? "second" : n % 60 == 0 ? minutes(n / 60) : n + " seconds";
+		}
+
+		private static String hearts(double damage) {
+			double h = damage / 2;
+			return number(h) + (h == 1 ? " heart" : " hearts");
+		}
+
+		private static String number(double d) {
+			return d == Math.rint(d) ? String.valueOf((long) d) : String.valueOf(d);
+		}
+
+		private static String roman(int n) {
+			return n == 1 ? "I" : n == 2 ? "II" : n == 3 ? "III" : String.valueOf(n);
+		}
+
 		/** Null when it isn't one. */
 		public static Perk of(String name) {
 			if (name != null) for (Perk p : values()) if (p.name().equalsIgnoreCase(name)) return p;
