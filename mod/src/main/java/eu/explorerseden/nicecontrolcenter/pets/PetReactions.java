@@ -33,6 +33,9 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -296,6 +299,22 @@ final class PetReactions {
 			st.idle = idle;
 		}
 		meet(player, time);
+		if (musicNear(level, feet) && allowed(player, Pets.Reaction.MUSIC)) PetFollowers.dance(player.getUUID(), 30);
+	}
+
+	/** A jukebox playing within 12 blocks (only chunks already loaded). */
+	private static boolean musicNear(ServerLevel level, BlockPos feet) {
+		int cx = feet.getX() >> 4, cz = feet.getZ() >> 4;
+		for (int x = cx - 1; x <= cx + 1; x++) {
+			for (int z = cz - 1; z <= cz + 1; z++) {
+				LevelChunk chunk = level.getChunkSource().getChunkNow(x, z);
+				if (chunk == null) continue;
+				for (BlockEntity be : chunk.getBlockEntities().values()) {
+					if (be instanceof JukeboxBlockEntity j && j.getSongPlayer().isPlaying() && be.getBlockPos().distSqr(feet) <= 144) return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/** A hissing creeper close by, or a mob after the owner from behind. */
@@ -367,15 +386,20 @@ final class PetReactions {
 		return fireAt(player, r, level, null);
 	}
 
-	private static boolean fireAt(ServerPlayer player, Pets.Reaction r, String level, Vec3 lookAt) {
+	/** Reactions are on (server, owner and this one) and a pet is out. */
+	private static boolean allowed(ServerPlayer player, Pets.Reaction r) {
 		Pets.Settings s = PetStore.settings();
 		if (!PetStore.enabled() || !s.reactions.enabled) return false;
+		Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
+		return PetFollowers.shownOwned(player.getUUID()) != null && owner != null && owner.reactions && s.reactions.entry(r).on;
+	}
+
+	private static boolean fireAt(ServerPlayer player, Pets.Reaction r, String level, Vec3 lookAt) {
+		if (!allowed(player, r)) return false;
+		Pets.Settings s = PetStore.settings();
 		UUID id = player.getUUID();
 		Pets.Owned owned = PetFollowers.shownOwned(id);
-		Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
-		if (owned == null || owner == null || !owner.reactions) return false;
 		Pets.ReactionEntry entry = s.reactions.entry(r);
-		if (!entry.on) return false;
 		long time = player.level().getServer().getTickCount();
 		State st = states.computeIfAbsent(id, k -> new State());
 		Long last = st.last.get(r);
@@ -387,7 +411,7 @@ final class PetReactions {
 		if (waits) st.lastAny = time;
 		String line = entry.lines.isEmpty() ? null : entry.lines.get(player.getRandom().nextInt(entry.lines.size())).replace("{level}", level == null ? "" : level);
 		PetFollowers.Move move = move(r);
-		if (move != null) PetFollowers.animate(id, move, r == Pets.Reaction.SLEEP ? 200 : 40, lookAt != null ? lookAt : player.getEyePosition());
+		if (move != null) PetFollowers.animate(id, move, ticks(r, move), lookAt != null ? lookAt : player.getEyePosition());
 		if (line != null) PetFollowers.bubble(id, line, 60);
 		Vec3 at = PetFollowers.position(id);
 		ParticleOptions particle = particle(r);
@@ -402,17 +426,39 @@ final class PetReactions {
 
 	private static PetFollowers.Move move(Pets.Reaction r) {
 		return switch (r) {
-			case TOOL, DANGER, SNOW, NETHER, DARK, RAID -> PetFollowers.Move.SHIVER;
+			case DANGER, SNOW, NETHER, RAID -> PetFollowers.Move.SHIVER;
+			case TOOL, INVENTORY -> PetFollowers.Move.HEAD_SHAKE;
 			case HEALTH, RESPAWN -> PetFollowers.Move.DROOP;
 			case HUNGER, MEET -> PetFollowers.Move.LOOK_AT;
-			case AIR, FIRE, FISH, HARVEST, HELLO, EAT, SHINY, TRADE, KILL, BELL -> PetFollowers.Move.HOP;
-			case INVENTORY, UNDERWATER, DEEP, BYE, IDLE, PAT, MUSIC -> PetFollowers.Move.WIGGLE;
+			case AIR, FIRE, FISH, HELLO, EAT, SHINY, KILL, BELL -> PetFollowers.Move.HOP;
+			case HARVEST, TRADE -> PetFollowers.Move.NOD;
+			case UNDERWATER, BYE, IDLE -> PetFollowers.Move.WIGGLE;
+			case DARK, DEEP -> PetFollowers.Move.LOOK_AROUND;
+			case PAT, JOIN -> PetFollowers.Move.NUZZLE;
+			case MUSIC -> PetFollowers.Move.DANCE;
 			case HURT, THUNDER, TOTEM -> PetFollowers.Move.FLINCH;
-			case NIGHTFALL, END, RAIN, HIGH, SUNNY, ENCHANT -> PetFollowers.Move.LOOK_UP;
-			case JOIN, RIDING, BREED -> PetFollowers.Move.BOUNCE;
+			case NIGHTFALL, END, RAIN, HIGH, ENCHANT -> PetFollowers.Move.LOOK_UP;
+			case SUNNY -> PetFollowers.Move.SHAKE_OFF;
+			case RIDING, BREED -> PetFollowers.Move.BOUNCE;
 			case SLEEP -> PetFollowers.Move.CURL;
-			case MORNING, ADVANCEMENT, LEVEL30, FLYING, LEVEL_UP, BIRTHDAY, BOSS -> PetFollowers.Move.SPIN;
+			case MORNING -> PetFollowers.Move.SPIN;
+			case FLYING -> PetFollowers.Move.FLIP;
+			case ADVANCEMENT, LEVEL30, LEVEL_UP -> PetFollowers.Move.CHEER;
+			case BOSS, BIRTHDAY -> PetFollowers.Move.PARTY;
 			case AFK -> null;
+		};
+	}
+
+	/** How long the move plays. */
+	private static int ticks(Pets.Reaction r, PetFollowers.Move move) {
+		return switch (move) {
+			case CURL -> 200;
+			case DANCE -> 100;
+			case PARTY -> r == Pets.Reaction.BIRTHDAY ? 140 : 100;
+			case CHEER, LOOK_AROUND -> 60;
+			case FLIP -> 24;
+			case SHAKE_OFF, NOD, HEAD_SHAKE -> 30;
+			default -> 40;
 		};
 	}
 

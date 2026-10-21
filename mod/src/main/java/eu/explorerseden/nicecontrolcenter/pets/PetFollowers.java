@@ -58,7 +58,27 @@ final class PetFollowers {
 	private static final double PACE_EASE = 0.3;
 
 	/** Short moves pets make when they react to something. */
-	enum Move { HOP, BOUNCE, SPIN, DROOP, SHIVER, WIGGLE, LOOK_UP, CURL, FLINCH, LOOK_AT }
+	enum Move {
+		HOP, BOUNCE, SPIN, DROOP, SHIVER, WIGGLE, LOOK_UP, CURL, FLINCH, LOOK_AT,
+		/** Bobs on the beat and sways (music; kept going while a jukebox plays nearby). */
+		DANCE,
+		/** Hops and spins (big moments). */
+		CHEER,
+		/** Circles its owner, hopping and spinning (boss beaten, birthday). */
+		PARTY,
+		/** A somersault (flying, falling). */
+		FLIP,
+		/** Comes up to its owner's face (pat, owner back). */
+		NUZZLE,
+		/** Shakes like a wet dog, slowing down (rain over). */
+		SHAKE_OFF,
+		/** Looks slowly left and right (dark, deep down). */
+		LOOK_AROUND,
+		/** Nods (good deal, harvest). */
+		NOD,
+		/** Shakes its head (a warning). */
+		HEAD_SHAKE
+	}
 
 	/** A trip away from the owner and back (perks). */
 	private static final class Outing {
@@ -217,8 +237,11 @@ final class PetFollowers {
 				goal = outing(f, f.outing, base, goal, player, time);
 			} else if (f.move != null && time < f.moveUntil) {
 				double a = time - f.moveStart;
+				// How far through the move (0 to 1).
+				double p = Math.min(1, a / Math.max(1, f.moveUntil - f.moveStart));
 				Vec3 off = goal.offset;
 				float yaw = goal.yaw;
+				double ownerYaw = Math.toRadians(player.getYRot());
 				switch (f.move) {
 					case HOP -> off = off.add(0, 0.45 * Math.abs(Math.sin(a * 0.3)), 0);
 					case BOUNCE -> off = off.add(0, 0.3 * Math.abs(Math.sin(a * 0.5)), 0);
@@ -238,7 +261,51 @@ final class PetFollowers {
 					case LOOK_AT -> {
 						if (f.lookAt != null) yaw = heading(base.add(off), f.lookAt);
 					}
+					case DANCE -> {
+						// A beat every 10 ticks; a sway (to the owner's sides) every 20.
+						double beat = Math.abs(Math.sin(a * Math.PI / 10));
+						double sway = Math.sin(a * Math.PI / 20);
+						off = off.add(-Math.cos(ownerYaw) * 0.15 * sway, 0.15 * beat, -Math.sin(ownerYaw) * 0.15 * sway);
+						yaw += (float) (25 * sway);
+						pitch = (float) (15 * beat);
+					}
+					case CHEER -> {
+						off = off.add(0, 0.5 * Math.abs(Math.sin(a * 0.21)) * (1 - 0.4 * p), 0);
+						yaw += (float) (720 * ease(p));
+					}
+					case PARTY -> {
+						// Once around the owner (and a bit more), hopping, spinning on the way.
+						double turn = 2.4 * Math.PI * ease(p);
+						double cos = Math.cos(turn), sin = Math.sin(turn);
+						off = new Vec3(off.x * cos - off.z * sin, off.y + 0.3 * Math.abs(Math.sin(a * 0.4)), off.x * sin + off.z * cos);
+						yaw += (float) (a * 14);
+					}
+					case FLIP -> {
+						off = off.add(0, 0.6 * Math.sin(Math.PI * p), 0);
+						pitch = (float) (-360 * ease(p));
+					}
+					case NUZZLE -> {
+						// Up to the owner's face and back, looking at them.
+						Vec3 face = new Vec3(0, player.getEyeHeight(), 0);
+						Vec3 side = new Vec3(off.x, 0, off.z);
+						if (side.lengthSqr() < 1e-4) side = new Vec3(-Math.sin(ownerYaw), 0, Math.cos(ownerYaw));
+						Vec3 from = face.add(side.normalize().scale(0.45));
+						off = off.add(from.subtract(off).scale(Math.sin(Math.PI * p)));
+						yaw = heading(base.add(off), base.add(face));
+						pitch = (float) (10 * Math.sin(a * 0.8));
+					}
+					case SHAKE_OFF -> {
+						yaw += (float) (35 * Math.sin(a * 2.2) * (1 - p));
+						off = off.add(0, 0.08 * Math.abs(Math.sin(a * 1.1)) * (1 - p), 0);
+					}
+					case LOOK_AROUND -> {
+						yaw += (float) (70 * Math.sin(a * 0.1));
+						pitch = -10;
+					}
+					case NOD -> pitch = (float) (20 * Math.sin(a * 0.6) * (1 - p * 0.5));
+					case HEAD_SHAKE -> yaw += (float) (30 * Math.sin(a * 0.9) * (1 - p));
 				}
+				sparkle(player, f, a);
 				goal = new Target(off, yaw, Math.max(goal.follow, 0.6), goal.stay);
 			}
 			Vec3 want = base.add(goal.offset);
@@ -371,6 +438,58 @@ final class PetFollowers {
 		f.moveStart = now;
 		f.moveUntil = now + ticks;
 		f.lookAt = lookAt;
+	}
+
+	/**
+	 * Keeps the pet dancing while music plays: starts the dance when it isn't doing another move, and keeps
+	 * a running one going for ticks more.
+	 */
+	static void dance(UUID player, int ticks) {
+		Follower f = followers.get(player);
+		if (f == null || f.display == null || f.outing != null) return;
+		long now = f.display.level().getServer().getTickCount();
+		if (f.move == Move.DANCE && now < f.moveUntil) {
+			f.moveUntil = Math.max(f.moveUntil, now + ticks);
+		} else if (f.move == null || now >= f.moveUntil) {
+			animate(player, Move.DANCE, ticks, null);
+		}
+	}
+
+	/** Particles while a move plays (the reaction's own burst comes once, at the start). */
+	private static void sparkle(ServerPlayer player, Follower f, double a) {
+		if (f.pos == null) return;
+		ServerLevel level = player.level();
+		Vec3 at = f.pos.add(0, 0.25 * f.size + 0.15, 0);
+		int tick = (int) a;
+		switch (f.move) {
+			// A note on every beat, in a colour that walks through the rainbow (count 0: x is the colour).
+			case DANCE -> {
+				if (tick % 10 == 0) level.sendParticles(ParticleTypes.NOTE, at.x, at.y + 0.3, at.z, 0, (tick / 10 % 24) / 24.0, 0, 0, 1);
+			}
+			case CHEER -> {
+				if (tick % 5 == 0) level.sendParticles(ParticleTypes.END_ROD, at.x, at.y, at.z, 2, 0.2, 0.2, 0.2, 0.02);
+			}
+			case PARTY -> {
+				if (tick % 4 == 0) level.sendParticles(ParticleTypes.FIREWORK, at.x, at.y, at.z, 1, 0.15, 0.15, 0.15, 0.02);
+				if (tick % 12 == 0) level.sendParticles(ParticleTypes.NOTE, at.x, at.y + 0.3, at.z, 0, (tick / 12 % 24) / 24.0, 0, 0, 1);
+			}
+			case FLIP -> {
+				if (tick == 0) level.sendParticles(ParticleTypes.CLOUD, at.x, at.y - 0.3, at.z, 4, 0.15, 0.05, 0.15, 0.01);
+			}
+			case NUZZLE -> {
+				if (tick % 10 == 5) level.sendParticles(ParticleTypes.HEART, at.x, at.y + 0.1, at.z, 1, 0.1, 0.1, 0.1, 0);
+			}
+			case SHAKE_OFF -> {
+				if (tick % 3 == 0 && tick < 18) level.sendParticles(ParticleTypes.SPLASH, at.x, at.y - 0.1, at.z, 4, 0.2, 0.1, 0.2, 0.1);
+			}
+			default -> {
+			}
+		}
+	}
+
+	/** Slow, fast, slow (0 to 1). */
+	private static double ease(double p) {
+		return p * p * (3 - 2 * p);
 	}
 
 	/** A speech bubble above the pet for a while. */

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.17.2
+- Pets: reactions get their own animations. Pets dance to music (and keep dancing while a jukebox plays within 12 blocks), cheer with hops and spins for advancements and level ups, party around their owner for a beaten boss or their birthday, do a flip when you fly or fall, nuzzle you when patted or when you come back, shake off the rain, look around in the dark, nod at a good trade or harvest and shake their head at a breaking tool or a full inventory
+- Pets: notes, sparkles, fireworks, hearts and splashes while those animations play
+
 ## 1.17.1
 - Pets: the name above a pet now moves exactly with it (the pet no longer rides its owner, so both are placed the same way and glide together)
 - Pets: 10 new reactions: a totem saving you, beating a monster or a boss (dragon, wither, warden, elder guardian), enchanting, a music disc, ringing a bell, pitch dark, way up high (above y 200), the rain stopping and a raid
