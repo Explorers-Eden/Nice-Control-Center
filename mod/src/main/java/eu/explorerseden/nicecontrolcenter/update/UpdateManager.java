@@ -70,7 +70,7 @@ public final class UpdateManager {
 		public String published;
 		public Status status;
 		public String reason;
-		/** "url|sha512" or "url|size:bytes"; not sent to the dashboard. */
+		/** "url|sha512", "url|sha256:hex" or "url|size:bytes"; not sent to the dashboard. */
 		transient String download;
 	}
 
@@ -606,14 +606,28 @@ public final class UpdateManager {
 		entry.changelog = str(release, "body");
 		entry.published = str(release, "published_at");
 		entry.latestFile = str(asset, "name");
-		boolean same = entry.latestFile.equals(entry.file)
-				|| (!item.version().isEmpty() && normaliseTag(tag).equals(item.version()));
+		// GitHub's digest of the file tells a new upload apart even under the same tag and file name
+		// (packs released as one "latest" release whose zip is replaced each time).
+		String digest = str(asset, "digest");
+		boolean same;
+		if (digest.startsWith("sha256:")) {
+			same = digest.substring(7).equalsIgnoreCase(item.sha256());
+			entry.latestVersionId = digest;
+			String uploaded = str(asset, "updated_at");
+			if (!uploaded.isEmpty()) {
+				entry.published = uploaded;
+				// A tag without a version number ("latest") says nothing; the upload date does.
+				if (!tag.matches(".*\\d.*") && uploaded.length() >= 10) entry.latestVersion = tag + " (" + uploaded.substring(0, 10) + ")";
+			}
+		} else {
+			same = entry.latestFile.equals(entry.file) || (!item.version().isEmpty() && normaliseTag(tag).equals(item.version()));
+		}
 		if (same) {
 			entry.status = Status.UP_TO_DATE;
 			return;
 		}
 		entry.status = Status.AVAILABLE;
-		entry.download = str(asset, "browser_download_url") + "|size:" + asset.get("size").getAsLong();
+		entry.download = str(asset, "browser_download_url") + (digest.startsWith("sha256:") ? "|" + digest : "|size:" + asset.get("size").getAsLong());
 	}
 
 	private static final java.util.regex.Pattern MC_TAG = java.util.regex.Pattern.compile("-mc([0-9][0-9.]*)$");
@@ -733,7 +747,13 @@ public final class UpdateManager {
 		Path target = dir.resolve(entry.key.replaceAll("[^A-Za-z0-9._-]", "_") + "__" + entry.latestFile.replaceAll("[^A-Za-z0-9._+-]", "_"));
 		Sources.download(info[0], target);
 		String expected = info.length > 1 ? info[1] : "";
-		if (expected.startsWith("size:")) {
+		if (expected.startsWith("sha256:")) {
+			String[] hashes = Installed.hashes(target);
+			if (hashes == null || !hashes[2].equalsIgnoreCase(expected.substring(7))) {
+				Files.deleteIfExists(target);
+				throw new IOException("checksum doesn't match");
+			}
+		} else if (expected.startsWith("size:")) {
 			if (Files.size(target) != Long.parseLong(expected.substring(5))) {
 				Files.deleteIfExists(target);
 				throw new IOException("size doesn't match");

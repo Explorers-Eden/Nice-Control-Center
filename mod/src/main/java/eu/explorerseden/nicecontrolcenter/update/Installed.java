@@ -18,7 +18,7 @@ import net.fabricmc.loader.api.metadata.ModOrigin;
 /** Mods and data packs that can be updated: top-level jars in mods/ and zips in the world's datapacks folder. */
 public final class Installed {
 	/** {@code key} is "mod:<id>" or "pack:<file name>". */
-	public record Item(String key, String kind, String id, String name, String version, Path file, String sha1, String sha512) {
+	public record Item(String key, String kind, String id, String name, String version, Path file, String sha1, String sha512, String sha256) {
 	}
 
 	private Installed() {
@@ -42,7 +42,7 @@ public final class Installed {
 			}
 			String id = mod.getMetadata().getId();
 			items.add(new Item("mod:" + id, "mod", id, mod.getMetadata().getName(), mod.getMetadata().getVersion().getFriendlyString(),
-					file, hashes[0], hashes[1]));
+					file, hashes[0], hashes[1], hashes[2]));
 		}
 		if (datapackDir != null && Files.isDirectory(datapackDir)) {
 			try (Stream<Path> files = Files.list(datapackDir)) {
@@ -53,7 +53,7 @@ public final class Installed {
 					}
 					String name = file.getFileName().toString();
 					String id = name.substring(0, name.length() - 4);
-					items.add(new Item("pack:" + name, "datapack", id, id, "", file.toAbsolutePath().normalize(), hashes[0], hashes[1]));
+					items.add(new Item("pack:" + name, "datapack", id, id, "", file.toAbsolutePath().normalize(), hashes[0], hashes[1], hashes[2]));
 				}
 			} catch (IOException e) {
 				// No data packs folder readable: only mods are checked.
@@ -62,18 +62,21 @@ public final class Installed {
 		return items;
 	}
 
-	/** {sha1, sha512} of a file, or null if it can't be read. */
+	/** {sha1, sha512, sha256} of a file, or null if it can't be read. */
 	static String[] hashes(Path file) {
 		try (InputStream in = Files.newInputStream(file)) {
 			MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
 			MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
+			MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
 			byte[] buffer = new byte[65536];
 			int n;
 			while ((n = in.read(buffer)) > 0) {
 				sha1.update(buffer, 0, n);
 				sha512.update(buffer, 0, n);
+				sha256.update(buffer, 0, n);
 			}
-			return new String[] {HexFormat.of().formatHex(sha1.digest()), HexFormat.of().formatHex(sha512.digest())};
+			return new String[] {HexFormat.of().formatHex(sha1.digest()), HexFormat.of().formatHex(sha512.digest()),
+					HexFormat.of().formatHex(sha256.digest())};
 		} catch (IOException | NoSuchAlgorithmException e) {
 			return null;
 		}

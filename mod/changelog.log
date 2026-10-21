@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.20.1
+- Updates: mods and data packs from GitHub are compared by the file's SHA-256 (GitHub's asset digest) instead of its name, so a pack released as one "latest" release whose zip is replaced each time (like A Realm Recrafted) shows its updates. Downloads are checked against that digest; tags without a version number show the upload date
+
 ## 1.20.0
 - Outer wilds message: players crossing a soft border see an action bar message (with the plop) and, while in the outer wilds, optionally a post effect from the server resource pack (Minecraft 26.3+). Checked every second against the borders set in the panel, so it always matches them; replaces A Realm Recrafted's own fixed check. Text, colours, sound and post effect are set in the panel (World → Borders & reset). Players who join in the outer wilds get the post effect without the message. When the post effect id is changed, players who still have an earlier one saved lose it the next time they join
 
