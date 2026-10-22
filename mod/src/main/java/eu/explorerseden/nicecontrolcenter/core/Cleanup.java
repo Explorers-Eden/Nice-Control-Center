@@ -121,6 +121,11 @@ public final class Cleanup {
 
 	/** Mobs over their limit per chunk (see {@link Limits}); removes the excess when run is set. */
 	public static Map<String, Object> excess(MinecraftServer server, Limits limits, boolean run) {
+		return excess(server, limits, run, true);
+	}
+
+	/** {@code log} false: the caller reports it itself (auto caps, every minute). */
+	public static Map<String, Object> excess(MinecraftServer server, Limits limits, boolean run, boolean log) {
 		List<Map<String, Object>> chunks = new ArrayList<>();
 		int total = 0;
 		for (ServerLevel level : server.getAllLevels()) {
@@ -152,7 +157,7 @@ public final class Cleanup {
 		out.put("remove", total);
 		out.put("chunks", chunks.size() > 50 ? chunks.subList(0, 50) : chunks);
 		out.put("chunkCount", chunks.size());
-		if (run && total > 0) NiceControlCenter.LOGGER.info("Cleanup: removed {} mobs over their limit per chunk", total);
+		if (run && log && total > 0) NiceControlCenter.LOGGER.info("Cleanup: removed {} mobs over their limit per chunk", total);
 		return out;
 	}
 

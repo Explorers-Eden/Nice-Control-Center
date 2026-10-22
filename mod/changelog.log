@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.25.3
+- Auto caps no longer log twice (and no longer log "Cleanup: removed … mobs" every run): under the panel only its alert line shows; without the panel one summary line every 10 minutes at most, as before
+
 ## 1.25.2
 - Waypoint hub owner menu: the Waypoints button opens the list for hubs in the Nether again (the command ran at the player's position divided by 8, so the pack found neither the hub nor the player there and nothing happened)
 - Waypoint hub owner menu: when the Waypoints button can't open the pack's list, the owner is told in chat (with the command's error) and the server log notes the hub, player, place and error, instead of nothing happening; "Go back to the hub" also goes to chat now, where it isn't missed after the menu closes

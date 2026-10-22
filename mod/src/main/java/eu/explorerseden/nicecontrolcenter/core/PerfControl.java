@@ -155,7 +155,7 @@ public final class PerfControl {
 
 	/** The mob limits and the dropped item limit, applied on their own. */
 	private static void autoCaps(MinecraftServer server, Performance.AutoCaps caps) {
-		int mobs = limits.isEmpty() ? 0 : (int) Cleanup.excess(server, limits, true).get("remove");
+		int mobs = limits.isEmpty() ? 0 : (int) Cleanup.excess(server, limits, true, false).get("remove");
 		int items = caps.items ? Cleanup.itemsOver(server, caps.itemsPerChunk) : 0;
 		long now = System.currentTimeMillis();
 		while (!capped.isEmpty() && now - capped.peekFirst()[0] > 3_600_000L) capped.pollFirst();
@@ -165,8 +165,12 @@ public final class PerfControl {
 			lastCapAlert = now;
 			String text = "Auto caps removed " + (mobs > 0 ? mobs + " mobs over their limit" : "") + (mobs > 0 && items > 0 ? " and " : "")
 					+ (items > 0 ? items + " dropped items" : "");
-			NiceControlCenter.LOGGER.info(text);
-			PanelBridge.alert("perf", text);
+			// Under the panel its alert line is enough; without it, the log is the only notice.
+			if (PanelBridge.active()) {
+				PanelBridge.alert("perf", text);
+			} else {
+				NiceControlCenter.LOGGER.info(text);
+			}
 		}
 	}
 
