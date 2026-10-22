@@ -178,9 +178,9 @@ public final class ClaimProtection {
 		return InteractionResult.FAIL;
 	}
 
-	/** What touching the entity needs; null = anyone may (monsters, players: PvP is its own switch). */
+	/** What touching the entity needs; null = anyone may (unnamed monsters, players: PvP is its own switch). */
 	private static Role entityRole(Entity e, boolean attack) {
-		if (e instanceof Player || e instanceof Enemy) return null;
+		if (e instanceof Player || e instanceof Enemy && !e.hasCustomName()) return null;
 		// Interaction entities only exist for data packs to notice clicks (graves, waypoint hubs, the spawn's
 		// buttons and signs): anyone may use them, the pack decides what's allowed.
 		if (e instanceof net.minecraft.world.entity.Interaction) return null;
@@ -195,7 +195,7 @@ public final class ClaimProtection {
 		return Role.CONTAINERS;
 	}
 
-	/** Players hurting animals, villagers, armor stands (also with arrows) or other players (PvP switch). */
+	/** Players hurting animals, villagers, named monsters (a farm's zombie), armor stands (also with arrows) or other players (PvP switch). */
 	private static boolean allowDamage(LivingEntity victim, DamageSource source, float amount) {
 		if (!ClaimStore.enabled() || !(source.getEntity() instanceof ServerPlayer attacker) || attacker == victim) return true;
 		if (ClaimTool.bypassing(attacker)) return true;
@@ -207,7 +207,7 @@ public final class ClaimProtection {
 			ClaimTool.bar(attacker, "No fighting in claims here.", ChatFormatting.RED);
 			return false;
 		}
-		if (victim instanceof Enemy) return true;
+		if (victim instanceof Enemy && !victim.hasCustomName()) return true;
 		return allowed(attacker, level, victim.blockPosition(), victim instanceof ArmorStand ? Role.BUILD : Role.CONTAINERS);
 	}
 
@@ -266,9 +266,9 @@ public final class ClaimProtection {
 		return true;
 	}
 
-	/** Explosions hurting what's in a claim: animals, villagers, frames and armor stands are safe unless explosions are allowed there. */
+	/** Explosions hurting what's in a claim: animals, villagers, named monsters, frames and armor stands are safe unless explosions are allowed there. */
 	public static boolean explosionMayHurt(Entity e) {
-		if (!ClaimStore.enabled() || e instanceof Player || e instanceof Enemy) return true;
+		if (!ClaimStore.enabled() || e instanceof Player || e instanceof Enemy && !e.hasCustomName()) return true;
 		return explosionAllowed(e.level(), e.blockPosition());
 	}
 

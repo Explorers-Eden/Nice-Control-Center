@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.24.4
+- Claims protect named monsters like animals: a nametagged zombie, creeper or other monster in a claim can't be hurt (arrows too), blown up or used by players without the Containers role, so nobody can kill the mob a farm needs; unnamed monsters stay fair game
+
 ## 1.24.3
 - Better Mending wears the anvil like using it: each repair has a set chance (12 % by default, like vanilla) to chip, damage or break the anvil; never in creative
 
