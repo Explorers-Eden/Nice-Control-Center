@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.24.2
+- Market: buying from a player listing checks the price and lot size you saw; if the seller changed them while you had the listing open, nothing is taken and you're shown the new price instead of paying it
+
 ## 1.24.1
 - Pets move smoothly: their spot and turn (and their name) are sent as keyframes every 3 ticks that players' games glide through over 4, instead of a new spot every tick, which jittered even when the pet barely moved and more so while the server lagged
 - Pet animations no longer jump when they start, end or switch: reaction moves fade in and out, spins are whole eased turns that end facing where they started, the head's turn is eased the short way round, and fast wiggles (shiver, shake off, bounce) are slowed down so they show smoothly

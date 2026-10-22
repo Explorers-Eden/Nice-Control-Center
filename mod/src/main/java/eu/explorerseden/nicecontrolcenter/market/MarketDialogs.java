@@ -349,7 +349,8 @@ public final class MarketDialogs {
 		body.add(afford > 0 ? text("You carry " + money(carried) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + unit + ".", ChatFormatting.GRAY)
 				: text("You carry " + money(carried) + ": not enough for " + (lot == 1 ? "one." : lot + "."), ChatFormatting.RED));
 		List<Input> inputs = List.of(new Input("amount", new TextInput(120, Component.literal(lot == 1 ? "How many" : "Lots of " + lot), true, "1", 9, Optional.empty())));
-		buttons.add(button("Buy", price(l), "buy", args("id", l.id)));
+		// The price and lot size the buyer saw, so a click after the seller changed them is caught.
+		buttons.add(button("Buy", price(l), "buy", args("id", l.id, "price", String.valueOf(l.price), "per", String.valueOf(lot))));
 		menu(player, l.item.name, body, inputs, buttons, back("browse", args("page", "0")));
 	}
 
@@ -754,6 +755,10 @@ public final class MarketDialogs {
 		if (l.seller.equals(player.getStringUUID())) return;
 		int lots = num(in, "amount");
 		int lot = l.lot();
+		if (num(in, "price") != l.price || num(in, "per") != lot) {
+			view(player, l, "The seller just changed the price. Check it and buy again.");
+			return;
+		}
 		if (lots < 1) {
 			view(player, l, "Type how many you want.");
 			return;
