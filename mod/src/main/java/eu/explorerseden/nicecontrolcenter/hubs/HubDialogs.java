@@ -51,12 +51,15 @@ public final class HubDialogs {
 
 	/** Set while the pack's list is opened from this menu, so it isn't swapped again. */
 	private static boolean openingList;
+	/** The pack's list was shown while {@link #openingList} was set. */
+	private static boolean listShown;
 
 	private HubDialogs() {
 	}
 
 	/** Called for every dialog the server shows; true = it was the pack's list for the hub's owner, and the owner menu opened instead. */
 	public static boolean intercept(ServerPlayer player, Holder<Dialog> dialog) {
+		if (openingList && dialog.value() instanceof MultiActionDialog shown && isHubList(shown)) listShown = true;
 		if (openingList || !eu.explorerseden.nicecontrolcenter.claims.ClaimStore.settings().hubsOwnerMenu || !(dialog.value() instanceof MultiActionDialog d) || !isHubList(d)) return false;
 		MinecraftServer server = player.level().getServer();
 		// The pack's menu function leaves the hub it was opened for in eden:temp while the dialog is shown.
@@ -196,16 +199,52 @@ public final class HubDialogs {
 		menu(player, Component.literal("Trust a player"), body, inputs, buttons, null);
 	}
 
-	/** The pack's own waypoint list, as a right-click without this menu would have opened it. */
+	/**
+	 * The pack's own waypoint list, as a right-click without this menu would have opened it. When it doesn't
+	 * open, the player is told and the command's error (if any) goes to the log, instead of nothing happening.
+	 */
 	private static void openList(ServerPlayer player, int id) {
 		MinecraftServer server = player.level().getServer();
+		// Only errors are kept: the function's own messages stay out of chat and the log.
+		StringBuilder errors = new StringBuilder();
+		net.minecraft.commands.CommandSource capture = new net.minecraft.commands.CommandSource() {
+			@Override
+			public void sendSystemMessage(Component message) {
+				if (!errors.isEmpty()) errors.append(" / ");
+				errors.append(message.getString());
+			}
+
+			@Override
+			public boolean acceptsSuccess() {
+				return false;
+			}
+
+			@Override
+			public boolean acceptsFailure() {
+				return true;
+			}
+
+			@Override
+			public boolean shouldInformAdmins() {
+				return false;
+			}
+		};
+		String command = "function wawo:waypoint_hub/interact/right_click/menu/init {waypoint_id:" + id + "}";
 		openingList = true;
+		listShown = false;
 		try {
-			server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withEntity(player).withPosition(player.position())
-					.withRotation(player.getRotationVector()).withLevel(player.level()).withSuppressedOutput(),
-					"function wawo:waypoint_hub/interact/right_click/menu/init {waypoint_id:" + id + "}");
+			// The level before the position: withLevel scales the position like /execute in (÷ 8 into the Nether),
+			// which put the source far from the hub there, so the pack found neither the hub nor the player.
+			server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSource(capture).withLevel(player.level()).withEntity(player)
+					.withPosition(player.position()).withRotation(player.getRotationVector()), command);
 		} finally {
 			openingList = false;
+		}
+		if (!listShown) {
+			eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.warn("The waypoint list of hub {} didn't open for {} at {} in {}: {}", id, player.getGameProfile().name(),
+					player.blockPosition().toShortString(), player.level().dimension().identifier(), errors.isEmpty() ? "no error, but no list was shown" : errors);
+			ClaimTool.tell(player, "The waypoint list didn't open" + (errors.isEmpty() ? "." : ": " + errors) + " Please tell an admin.",
+					ChatFormatting.RED);
 		}
 	}
 
@@ -239,7 +278,8 @@ public final class HubDialogs {
 				// Changes (and the list, which finds the hub around the player) need the hub nearby, like the pack's own tools.
 				Marker marker = Hubs.marker(player, id);
 				if (marker == null) {
-					ClaimTool.bar(player, "Go back to the hub to do that.", ChatFormatting.RED);
+					// In chat: the menu just closed, so a line on the action bar is easy to miss.
+					ClaimTool.tell(player, "Go back to the hub to do that (within 16 blocks of it).", ChatFormatting.RED);
 					return;
 				}
 				change(player, id, hub, marker, what, in);
