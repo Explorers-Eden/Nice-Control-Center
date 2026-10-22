@@ -208,8 +208,11 @@ public class NiceControlCenter implements ModInitializer {
 	 * Sends a message to operators (level 2+) and anyone granted nicecontrolcenter.notify, and logs it
 	 * to the console. Safe to call from any thread.
 	 */
+	/** {@code logText} null: not logged (the panel shows it as an alert already). */
 	public static void notifyAdmins(Component message, String logText) {
-		LOGGER.info(logText);
+		if (logText != null) {
+			LOGGER.info(logText);
+		}
 		MinecraftServer current = server;
 		if (current == null) {
 			return;

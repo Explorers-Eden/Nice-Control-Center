@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.25.1
+- Under the panel, performance changes ("Recovered …, back to normal") and lag alerts are no longer logged by the server as well: the panel's alert line is enough (servers without the panel still log them)
+
 ## 1.25.0
 - Between ticks: each task (e.g. the player packet handleMovePlayer) shows the call paths inside it that took the time, so a report can tell why handling movement or another packet got slow
 - Diagnosis finds lag stretches: minutes where TPS dropped or ticks plus the work between them took most of each second, named with their times, and says whether the ticks or the work between them grew; a window that's fine on average but had such stretches is no longer called "running smoothly"

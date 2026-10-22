@@ -93,7 +93,9 @@ public final class AlertWatcher {
 		alertSent = config.alerts_enabled && now - lastAlert >= config.alert_cooldown_minutes * 60_000L;
 		if (alertSent) {
 			lastAlert = now;
-			NiceControlCenter.notifyAdmins(ControlCenterCommand.lagAlert(summary, causeText, cause), "Lag: " + summary
+			// Under the panel its alert shows up in the console already.
+			boolean panel = eu.explorerseden.nicecontrolcenter.web.PanelBridge.active();
+			NiceControlCenter.notifyAdmins(ControlCenterCommand.lagAlert(summary, causeText, cause), panel ? null : "Lag: " + summary
 					+ (causeText == null ? "" : ". Mainly " + causeText));
 			eu.explorerseden.nicecontrolcenter.web.PanelBridge.alert("lag", summary + (causeText == null ? "" : ", mainly " + causeText));
 		}
@@ -106,7 +108,8 @@ public final class AlertWatcher {
 	private static void onRecovered(MinecraftServer server, ControlCenterConfig config) {
 		long minutes = Math.max(1, (System.currentTimeMillis() - lagSince) / 60_000L);
 		if (alertSent) {
-			NiceControlCenter.notifyAdmins(ControlCenterCommand.lagRecovered(minutes), "Lag is over after about " + minutes + " min");
+			NiceControlCenter.notifyAdmins(ControlCenterCommand.lagRecovered(minutes),
+					eu.explorerseden.nicecontrolcenter.web.PanelBridge.active() ? null : "Lag is over after about " + minutes + " min");
 			eu.explorerseden.nicecontrolcenter.web.PanelBridge.alert("lagOver", "after about " + minutes + " min");
 		}
 		alertSent = false;

@@ -362,8 +362,12 @@ public final class PerfControl {
 	private static void step(long now, String text) {
 		lastStep = now;
 		lastChange = text;
-		NiceControlCenter.LOGGER.info(text);
-		PanelBridge.alert("perf", text);
+		// Under the panel the alert shows up in its console already; logging it too would show it twice.
+		if (PanelBridge.active()) {
+			PanelBridge.alert("perf", text);
+		} else {
+			NiceControlCenter.LOGGER.info(text);
+		}
 	}
 
 	/** Puts the server's own distances back (dynamic off, or the server stops). */
