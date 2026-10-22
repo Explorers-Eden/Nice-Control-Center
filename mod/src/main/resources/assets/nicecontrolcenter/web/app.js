@@ -2923,6 +2923,8 @@
       const who = status.automatic ? `automatically: ${esc(status.reason || 'lag')}` : `started by ${esc(status.startedBy)}`;
       box.innerHTML = `<span class="np-rec-dot"></span><span class="np-rec-text">Recording for ${duration(status.seconds * 1000)} (${who}), stops on its own in ${duration(left)}.</span>
         <button type="button" class="np-btn danger" id="np-rec-stop"><i class="bi bi-stop-fill"></i> Stop and build report</button>`;
+    } else if (status && status.building) {
+      box.innerHTML = `<span class="np-rec-dot"></span><span class="np-rec-text">Building the report… it appears in the list below when it's done.</span>`;
     } else if (!box.querySelector('select')) {
       box.innerHTML = `<select id="np-rec-minutes" aria-label="Recording length">
           <option value="10">10 minutes</option><option value="30">30 minutes</option><option value="60" selected>1 hour</option>
@@ -3003,11 +3005,15 @@
     $('np-reports-delete').disabled = !n;
   }
 
+  /** While a report is being written (after a stop, or a recording that ended on its own), the list checks again until it's there. */
+  let reportsTimer = 0;
   async function loadReports() {
+    clearTimeout(reportsTimer);
     try {
       const data = await api('api/recording');
       renderRecording(data.status);
       renderReports(data.reports);
+      if (data.status && data.status.building) reportsTimer = setTimeout(loadReports, 2000);
     } catch (e) { /* shown by the live indicator */ }
   }
 
@@ -3206,9 +3212,12 @@
       else setLive('on', 'Live');
       renderMeta(data.server, data.server.monitorSince, data.lagging ? data.lagSince : 0);
       renderReplies(data.replies || []);
-      if (data.recording.active || (state.recording && state.recording.active)) {
-        if (!data.recording.active && state.recording && state.recording.active) setTimeout(loadReports, 2500);
-        renderRecording(data.recording);
+      const busy = (r) => r && (r.active || r.building);
+      if (busy(data.recording) || busy(state.recording)) {
+        // Recording ended (or its report just got written): fetch the list, which keeps checking while it's built.
+        if (!data.recording.active && state.recording && state.recording.active) loadReports();
+        else if (!busy(data.recording)) loadReports();
+        else renderRecording(data.recording);
       }
       // The tiles follow the newest second, between the window refreshes.
       if (state.view) renderStats(state.view.kpi);

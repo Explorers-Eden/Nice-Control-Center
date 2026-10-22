@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.26.1
+- /ncc heap: which classes fill the server's memory (class histogram of live objects, like jcmd GC.class_histogram, but from inside the server, so it works without JDK tools in the image); the top 15 in chat, the top 30 in the log. It runs a full garbage collection first, so the server may pause a moment
+- Reports: after stopping a recording (or when one ends on its own) the list says "Building the report…" and shows the new report as soon as it's written, instead of only after reloading the page
+
 ## 1.26.0
 - Tuning → Saving, teleports and locator bar: "Lighter locator bar" (on by default). Vanilla works out a moving player's whole locator bar on every movement packet, checking every mob and player that shows on it each time; now it's done at most every 5 ticks per player, and at once after a teleport or a dimension change. Looks the same in game; much cheaper when a data pack puts mobs on the locator bar
 - Tuning → Data pack selectors: "Selectors by type" (on by default). @e[type=villager,…] without a distance used to check every loaded entity each time a data pack ran it; the server now keeps the entities of each type in their own list, in the same order, and only looks at those

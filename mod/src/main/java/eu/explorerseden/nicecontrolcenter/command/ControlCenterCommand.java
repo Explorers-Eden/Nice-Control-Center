@@ -90,6 +90,9 @@ public final class ControlCenterCommand {
 				.then(Commands.literal("bloat")
 						.requires(ControlCenterCommand::canStatus)
 						.executes(ControlCenterCommand::bloat))
+				.then(Commands.literal("heap")
+						.requires(Permissions.require(PERMISSION_MONITOR, DEFAULT_LEVEL))
+						.executes(ControlCenterCommand::heap))
 				.then(Commands.literal("bossbar")
 						.requires(ControlCenterCommand::canStatus)
 						.executes(ControlCenterCommand::bossbar))
@@ -187,6 +190,33 @@ public final class ControlCenterCommand {
 				message.append("\n").append(Component.literal(" ■ " + finding.title()).withStyle(Style.EMPTY.withColor(color(finding.severity()))
 						.withHoverEvent(new HoverEvent.ShowText(Component.literal(plain(finding.reason()) + "\n\nTip: " + finding.hint())))));
 			}
+			source.sendSystemMessage(message);
+		}));
+		return 1;
+	}
+
+	// ── Heap ────────────────────────────────────────────────────────────────
+
+	/** Which classes fill the memory (class histogram of live objects); the top 30 also go to the log. */
+	private static int heap(CommandContext<CommandSourceStack> ctx) {
+		CommandSourceStack source = ctx.getSource();
+		source.sendSystemMessage(header("Memory by class").append("\n").append(muted("Collecting garbage and counting objects… (the server may pause a moment)")));
+		eu.explorerseden.nicecontrolcenter.diagnosis.HeapHistogram.take(30).whenComplete((result, error) -> source.getServer().execute(() -> {
+			if (error != null) {
+				source.sendFailure(Component.literal("Couldn't take the histogram: " + (error.getCause() != null ? error.getCause().getMessage() : error.getMessage())));
+				return;
+			}
+			StringBuilder log = new StringBuilder("Memory by class (live objects, " + Diagnoser.bytes(result.totalBytes()) + " in total):");
+			MutableComponent message = header("Memory by class").append("\n").append(muted("Live objects: " + Diagnoser.bytes(result.totalBytes()) + " in "
+					+ Diagnoser.count(result.totalInstances()) + " objects. Largest:"));
+			int i = 0;
+			for (var row : result.top()) {
+				String line = String.format(Locale.ROOT, "%s  %s  (%s objects)", Diagnoser.bytes(row.bytes()), row.className(), Diagnoser.count(row.instances()));
+				log.append("\n  ").append(line);
+				if (i++ < 15) message.append("\n").append(Component.literal(" " + line));
+			}
+			NiceControlCenter.LOGGER.info(log.toString());
+			message.append("\n").append(muted("The top 30 are in the server log."));
 			source.sendSystemMessage(message);
 		}));
 		return 1;

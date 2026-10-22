@@ -40,7 +40,8 @@ public final class Recorder {
 		return thread;
 	});
 
-	public record Status(boolean active, long startedAt, long endsAt, String startedBy, int seconds, boolean automatic, String reason) {
+	/** building: a stopped recording's report is still being written (it shows up in the list when done). */
+	public record Status(boolean active, long startedAt, long endsAt, String startedBy, int seconds, boolean automatic, String reason, boolean building) {
 	}
 
 	/** A finished report; automatic ones were started by a lag episode. */
@@ -77,6 +78,9 @@ public final class Recorder {
 		}
 	}
 
+	/** Reports still being written after a stop. */
+	private static final java.util.concurrent.atomic.AtomicInteger building = new java.util.concurrent.atomic.AtomicInteger();
+
 	/** Where finished-report messages go (chat for ops, plus the log). */
 	public static void announcer(Consumer<String> consumer) {
 		announcer = consumer;
@@ -92,8 +96,9 @@ public final class Recorder {
 
 	public static synchronized Status status() {
 		Recording r = current;
-		return r == null ? new Status(false, 0, 0, null, 0, false, null)
-				: new Status(true, r.startedAt, r.endsAt, r.startedBy, r.seconds, r.automatic, r.reason);
+		boolean writing = building.get() > 0;
+		return r == null ? new Status(false, 0, 0, null, 0, false, null, writing)
+				: new Status(true, r.startedAt, r.endsAt, r.startedBy, r.seconds, r.automatic, r.reason, writing);
 	}
 
 	/**
@@ -229,6 +234,7 @@ public final class Recorder {
 		String serverName = server.getMotd();
 		String version = server.getServerVersion();
 		CompletableFuture<Path> result = new CompletableFuture<>();
+		building.incrementAndGet();
 		IO.execute(() -> {
 			try {
 				if (rest != null) {
@@ -246,6 +252,8 @@ public final class Recorder {
 				NiceControlCenter.LOGGER.error("Could not write report", e);
 				announcer.accept("Could not write the report: " + e.getMessage());
 				result.completeExceptionally(e);
+			} finally {
+				building.decrementAndGet();
 			}
 		});
 		return result;
