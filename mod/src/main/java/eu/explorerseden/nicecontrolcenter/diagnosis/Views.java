@@ -70,7 +70,7 @@ public final class Views {
 	}
 
 	/** One kind of work the server did between ticks; ms is per second of real time. */
-	public record BetweenTaskView(String kind, String label, String task, String mod, double msPerSecond, double percent) {
+	public record BetweenTaskView(String kind, String label, String task, String mod, double msPerSecond, double percent, List<MethodView> paths) {
 	}
 
 	/**
@@ -334,7 +334,14 @@ public final class Views {
 				String task = parts.length > 1 ? parts[1] : "";
 				String mod = parts.length > 2 && !parts[2].isEmpty() ? (parts[2].equals("minecraft") ? null : SourceIndex.mod(parts[2]).name()) : null;
 				double share = count / (double) b.betweenSamples;
-				tasks.add(new BetweenTaskView(kind, betweenLabel(kind), task, mod, busy * share, share * 100));
+				// Where inside the task the samples landed, as a share of the task's own samples.
+				List<MethodView> paths = new ArrayList<>();
+				Map<String, Long> inside = b.betweenPaths == null ? null : b.betweenPaths.get(key);
+				if (inside != null) {
+					inside.forEach((path, n) -> paths.add(new MethodView(path, n * 100.0 / count)));
+					paths.sort(Comparator.comparingDouble(MethodView::percent).reversed());
+				}
+				tasks.add(new BetweenTaskView(kind, betweenLabel(kind), task, mod, busy * share, share * 100, limit(paths, 6)));
 			});
 		}
 		tasks.sort(Comparator.comparingDouble(BetweenTaskView::msPerSecond).reversed());
@@ -410,9 +417,14 @@ public final class Views {
 
 	/** Everything the dashboard shows for one window. */
 	public static Map<String, Object> full(Breakdown b) {
+		return full(b, List.of());
+	}
+
+	/** With the window's chart points, so the diagnosis can find stretches of lag inside it. */
+	public static Map<String, Object> full(Breakdown b, List<eu.explorerseden.nicecontrolcenter.data.Point> points) {
 		Map<String, Object> view = new LinkedHashMap<>();
 		view.put("kpi", kpi(b));
-		view.put("diagnosis", Diagnoser.diagnose(b));
+		view.put("diagnosis", Diagnoser.diagnose(b, points));
 		view.put("phases", phases(b));
 		view.put("packs", packs(b));
 		view.put("mods", mods(b));

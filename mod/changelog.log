@@ -1,4 +1,12 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.25.0
+- Between ticks: each task (e.g. the player packet handleMovePlayer) shows the call paths inside it that took the time, so a report can tell why handling movement or another packet got slow
+- Diagnosis finds lag stretches: minutes where TPS dropped or ticks plus the work between them took most of each second, named with their times, and says whether the ticks or the work between them grew; a window that's fine on average but had such stretches is no longer called "running smoothly"
+- Diagnosis notes memory in use (after garbage collection) that keeps growing for half an hour or more while the same players have about the same chunks loaded
+- The lag spike finding counts ticks from spike_threshold_ms, like the spike list, instead of twice the tick budget (the two numbers no longer disagree)
+- Under the panel, the login check (Discord linking) asks the panel while the login waits instead of on the server thread, so a slow or hanging panel can't freeze the server for everyone when someone joins
+- The dashboard's 60 minute view is merged without holding up the server thread
+
 ## 1.24.4
 - Claims protect named monsters like animals: a nametagged zombie, creeper or other monster in a claim can't be hurt (arrows too), blown up or used by players without the Containers role, so nobody can kill the mob a farm needs; unnamed monsters stay fair game
 

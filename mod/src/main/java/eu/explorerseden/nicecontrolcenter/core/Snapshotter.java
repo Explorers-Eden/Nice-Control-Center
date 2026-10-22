@@ -129,6 +129,7 @@ public final class Snapshotter {
 			b.mods.putAll(drained.rows());
 			b.betweenTasks.putAll(drained.between());
 			b.betweenSamples = drained.betweenSamples();
+			b.betweenPaths.putAll(drained.betweenPaths());
 			b.waits.putAll(drained.waits());
 		}
 

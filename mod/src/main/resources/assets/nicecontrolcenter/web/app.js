@@ -523,7 +523,8 @@
       return;
     }
     table.innerHTML = '<thead><tr><th>What</th><th>Mod</th><th class="num">ms/s</th><th class="num">Share</th></tr></thead><tbody>' +
-      b.tasks.map((t) => `<tr><td class="name">${esc(t.task)}<small>${esc(t.label)}</small></td>
+      b.tasks.map((t) => `<tr><td class="name">${esc(t.task)}<small>${esc(t.label)}</small>${(t.paths || []).length && t.percent >= 5
+        ? `<div class="np-between-paths">${t.paths.map((x) => `<div class="np-line"><code>${esc(x.name)}</code><span class="np-value"><span class="np-value-pct">${pct(x.percent)}</span></span></div>`).join('')}</div>` : ''}</td>
         <td>${t.mod ? esc(t.mod) : '–'}</td>
         <td class="num">${fixed(t.msPerSecond, 1)}</td>
         <td class="num">${fixed(t.percent, 0)}%</td></tr>`).join('') + '</tbody>';

@@ -156,37 +156,48 @@ public final class History {
 		return new PreRoll(recent, merged);
 	}
 
-	/** Merged breakdown of the last 1, 5, 15 or 60 minutes, cached until the next second arrives. */
-	public static synchronized Breakdown window(int minutesWanted) {
-		long end = seconds.isEmpty() ? 0 : seconds.getLast().end;
-		if (end != cacheEnd) {
-			cache.clear();
-			cacheEnd = end;
+	/**
+	 * Merged breakdown of the last 1, 5, 15 or 60 minutes, cached until the next second arrives. Merging an hour
+	 * takes a while, so it happens outside the lock: the server thread adds its second meanwhile instead of waiting.
+	 */
+	public static Breakdown window(int minutesWanted) {
+		List<Breakdown> parts = new ArrayList<>();
+		long end;
+		synchronized (History.class) {
+			end = seconds.isEmpty() ? 0 : seconds.getLast().end;
+			if (end != cacheEnd) {
+				cache.clear();
+				cacheEnd = end;
+			}
+			Breakdown cached = cache.get(minutesWanted);
+			if (cached != null) {
+				return cached;
+			}
+			if (minutesWanted > SECONDS / 60) {
+				// Whole minutes plus the minute in progress (copied: the server thread keeps adding to it).
+				List<Breakdown> all = new ArrayList<>(minutes);
+				parts.addAll(all.subList(Math.max(0, all.size() - (minutesWanted - 1)), all.size()));
+				Breakdown current = new Breakdown();
+				current.merge(currentMinute);
+				parts.add(current);
+			} else {
+				Iterator<Breakdown> it = seconds.descendingIterator();
+				while (it.hasNext() && parts.size() < minutesWanted * 60) {
+					parts.add(it.next());
+				}
+				java.util.Collections.reverse(parts);
+			}
 		}
-		Breakdown cached = cache.get(minutesWanted);
-		if (cached != null) {
-			return cached;
-		}
+		// Seconds and finished minutes don't change once added, so they can be read without the lock.
 		Breakdown merged = new Breakdown();
-		if (minutesWanted > SECONDS / 60) {
-			// Whole minutes plus the minute in progress.
-			List<Breakdown> parts = new ArrayList<>(minutes);
-			int skip = Math.max(0, parts.size() - (minutesWanted - 1));
-			for (Breakdown part : parts.subList(skip, parts.size())) {
-				merged.merge(part);
-			}
-			merged.merge(currentMinute);
-		} else {
-			List<Breakdown> parts = new ArrayList<>();
-			Iterator<Breakdown> it = seconds.descendingIterator();
-			while (it.hasNext() && parts.size() < minutesWanted * 60) {
-				parts.add(it.next());
-			}
-			for (int i = parts.size() - 1; i >= 0; i--) {
-				merged.merge(parts.get(i));
+		for (Breakdown part : parts) {
+			merged.merge(part);
+		}
+		synchronized (History.class) {
+			if (cacheEnd == end) {
+				cache.put(minutesWanted, merged);
 			}
 		}
-		cache.put(minutesWanted, merged);
 		return merged;
 	}
 }

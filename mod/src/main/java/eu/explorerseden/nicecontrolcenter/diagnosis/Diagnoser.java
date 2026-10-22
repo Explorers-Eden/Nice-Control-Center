@@ -11,6 +11,7 @@ import eu.explorerseden.nicecontrolcenter.core.Phase;
 import eu.explorerseden.nicecontrolcenter.core.SourceIndex;
 import eu.explorerseden.nicecontrolcenter.core.TickHistogram;
 import eu.explorerseden.nicecontrolcenter.data.Breakdown;
+import eu.explorerseden.nicecontrolcenter.data.Point;
 
 /**
  * Plain-language answer to "what is slowing the server down, and why?".
@@ -46,6 +47,11 @@ public final class Diagnoser {
 	}
 
 	public static Diagnosis diagnose(Breakdown b) {
+		return diagnose(b, List.of());
+	}
+
+	/** With the window's chart points (one per second), stretches of lag inside a long window are found too. */
+	public static Diagnosis diagnose(Breakdown b, List<Point> points) {
 		List<Finding> findings = new ArrayList<>();
 		if (b.ticks == 0) {
 			if (b.pausedSeconds > 0) {
@@ -65,9 +71,11 @@ public final class Diagnoser {
 		explorers(b, findings);
 		spikes(b, findings);
 		between(b, findings);
+		stretches(b, points, findings);
 		offCpu(b, findings);
 		host(b, findings);
 		memory(b, findings);
+		memoryGrowth(points, findings);
 		cpu(b, findings);
 
 		findings.sort(Comparator.comparingInt((Finding f) -> f.severity().ordinal()).thenComparing(Comparator.comparingDouble(Finding::ms).reversed()));
@@ -103,6 +111,10 @@ public final class Diagnoser {
 		} else if (load > 70 || kpi.msptP95() > b.targetMspt || slowTickShare(b) > 0.02) {
 			status = Severity.WARN;
 			title = "The server is keeping up, but close to its limit";
+		} else if (findings.stream().anyMatch(f -> f.category().equals(STRETCHES) && f.severity().ordinal() <= Severity.WARN.ordinal())) {
+			// The averages look fine, but part of the window was close to the limit.
+			status = Severity.WARN;
+			title = "Smooth on average, but with stretches close to the limit";
 		} else {
 			status = Severity.GOOD;
 			title = "The server is running smoothly";
@@ -476,6 +488,12 @@ public final class Diagnoser {
 		}
 		if (!top.isEmpty()) {
 			reason.append(" Mostly ").append(String.join(", ", top)).append('.');
+			// Where inside the biggest task the time went (older recordings don't have this).
+			Views.BetweenTaskView first = v.tasks().get(0);
+			if (first.paths() != null && !first.paths().isEmpty() && first.paths().get(0).percent() >= 10) {
+				Views.MethodView path = first.paths().get(0);
+				reason.append(String.format(Locale.ROOT, " Inside %s mostly %s (%.0f%%).", code(first.task()), code(path.name()), path.percent()));
+			}
 		}
 		String kind = v.tasks().isEmpty() ? "" : v.tasks().get(0).kind();
 		String hint = switch (kind) {
@@ -491,8 +509,101 @@ public final class Diagnoser {
 		out.add(new Finding(severity, "Between ticks", "Work between ticks", perTick, Views.percentOf(b, perTick), reason.toString(), hint));
 	}
 
+	private static final String STRETCHES = "Lag stretches";
+	/** A minute counts when ticks plus the work between them took this much of each second, on average. */
+	private static final double BUSY_MS_PER_SECOND = 450;
+
+	/**
+	 * Minutes where TPS dropped or the server thread was busy for most of each second (ticks plus work between them),
+	 * merged into stretches. A long window's averages can hide an hour of trouble near its end; this names it.
+	 */
+	private static void stretches(Breakdown b, List<Point> points, List<Finding> out) {
+		if (points == null || points.size() < 180) {
+			return;
+		}
+		double target = 1000.0 / Math.max(1e-3, b.targetMspt);
+		// Per minute: tps sum, tick ms sum, between ms sum, count, lowest tps.
+		java.util.TreeMap<Long, double[]> minutes = new java.util.TreeMap<>();
+		for (Point p : points) {
+			if (p.paused()) {
+				continue;
+			}
+			double[] m = minutes.computeIfAbsent(p.t() / 60_000, k -> new double[] { 0, 0, 0, 0, Double.MAX_VALUE });
+			m[0] += p.tps();
+			m[1] += p.tickMs();
+			m[2] += p.betweenMs();
+			m[3]++;
+			m[4] = Math.min(m[4], p.tps());
+		}
+		// Stretch: first minute, last minute, bad minutes, tick ms, between ms, lowest tps.
+		List<double[]> stretches = new ArrayList<>();
+		double[] current = null;
+		// The other minutes, as a baseline: whichever grew in the stretches is the cause.
+		double normalTick = 0, normalBetween = 0, normalMinutes = 0;
+		for (Map.Entry<Long, double[]> e : minutes.entrySet()) {
+			double[] m = e.getValue();
+			if (m[3] < 10) {
+				continue;
+			}
+			double tps = m[0] / m[3];
+			double tick = m[1] / m[3];
+			double between = m[2] / m[3];
+			if (tps >= target * 0.95 && tick + between < BUSY_MS_PER_SECOND) {
+				normalTick += tick;
+				normalBetween += between;
+				normalMinutes++;
+				continue;
+			}
+			long minute = e.getKey();
+			if (current == null || minute - current[1] > 4) {
+				current = new double[] { minute, minute, 0, 0, 0, Double.MAX_VALUE };
+				stretches.add(current);
+			}
+			current[1] = minute;
+			current[2]++;
+			current[3] += tick;
+			current[4] += between;
+			current[5] = Math.min(current[5], m[4]);
+		}
+		stretches.removeIf(s -> s[2] < 3);
+		if (normalMinutes > 0) {
+			normalTick /= normalMinutes;
+			normalBetween /= normalMinutes;
+		}
+		if (stretches.isEmpty()) {
+			return;
+		}
+		stretches.sort(Comparator.comparingDouble((double[] s) -> s[2]).reversed());
+		java.time.format.DateTimeFormatter clock = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault());
+		List<String> parts = new ArrayList<>();
+		double tick = 0, between = 0, bad = 0, lowest = Double.MAX_VALUE;
+		for (double[] s : stretches) {
+			if (parts.size() < 3) {
+				parts.add(clock.format(java.time.Instant.ofEpochMilli((long) s[0] * 60_000)) + "–"
+						+ clock.format(java.time.Instant.ofEpochMilli((long) (s[1] + 1) * 60_000)));
+			}
+			bad += s[2];
+			tick += s[3];
+			between += s[4];
+			lowest = Math.min(lowest, s[5]);
+		}
+		tick /= bad;
+		between /= bad;
+		String reason = String.format(Locale.ROOT,
+				"%d %s with %.0f bad minutes (%s): the server thread was busy %.0f ms of every second (ticks %.0f ms, work between ticks %.0f ms), and TPS dipped to %.1f. Otherwise: ticks %.0f ms, work between ticks %.0f ms.",
+				stretches.size(), stretches.size() == 1 ? "stretch" : "stretches", bad, String.join(", ", parts), tick + between, tick, between, lowest,
+				normalTick, normalBetween);
+		String hint = between - normalBetween > tick - normalTick
+				? "Mostly more work between ticks, which the tick times don't show. See \"Between ticks\" for what it was, and check what players were doing then."
+				: "The ticks themselves got slower. See what costs the most above, or record a report while it happens.";
+		// Players notice TPS under 18, or ten minutes this busy (one more mob farm and it lags).
+		Severity severity = lowest < target * 0.9 || bad >= 10 ? Severity.WARN : Severity.INFO;
+		out.add(new Finding(severity, STRETCHES, "Stretches close to the limit", 0, 0, reason, hint));
+	}
+
 	private static void spikes(Breakdown b, List<Finding> out) {
-		int threshold = (int) Math.ceil(b.targetMspt * 2);
+		// The same cut-off as the spike list (spike_threshold_ms), so the count matches what's listed.
+		int threshold = (int) Math.ceil(eu.explorerseden.nicecontrolcenter.core.Tracker.spikeThresholdNs / 1e6);
 		int slow = 0;
 		for (int i = TickHistogram.binForMs(threshold); i < b.msptHistogram.length; i++) {
 			slow += b.msptHistogram[i];
@@ -550,6 +661,69 @@ public final class Diagnoser {
 		out.add(new Finding(severity, "Memory", "Memory pressure", 0, 0, reason,
 				"The server really needs most of its memory. Give it more (-Xmx), or reduce loaded chunks and entities. "
 						+ "Little free memory left after collections leads to frequent GC pauses, which players notice as lag spikes."));
+	}
+
+	/**
+	 * Memory still in use after garbage collection that keeps rising while the world stays the same (same players,
+	 * about the same loaded chunks) for at least half an hour: something may be holding on to memory.
+	 */
+	private static void memoryGrowth(List<Point> points, List<Finding> out) {
+		if (points == null || points.size() < 1800) {
+			return;
+		}
+		long bestGrowth = 0;
+		long from = 0, to = 0, fromBytes = 0, toBytes = 0;
+		int start = -1;
+		for (int i = 0; i <= points.size(); i++) {
+			Point p = i < points.size() ? points.get(i) : null;
+			boolean usable = p != null && !p.paused() && p.heapLive() > 0;
+			if (start >= 0 && usable) {
+				Point first = points.get(start);
+				boolean same = p.players() == first.players() && Math.abs(p.chunks() - first.chunks()) <= first.chunks() * 0.1 + 16;
+				if (same) {
+					continue;
+				}
+			}
+			if (start >= 0) {
+				// The segment [start, i) had the same world; compare its first and last five minutes.
+				List<Point> seg = points.subList(start, i);
+				long span = seg.getLast().t() - seg.getFirst().t();
+				if (span >= 30 * 60_000L) {
+					long head = averageLive(seg, seg.getFirst().t(), seg.getFirst().t() + 5 * 60_000L);
+					long tail = averageLive(seg, seg.getLast().t() - 5 * 60_000L, seg.getLast().t());
+					if (tail - head > bestGrowth) {
+						bestGrowth = tail - head;
+						from = seg.getFirst().t();
+						to = seg.getLast().t();
+						fromBytes = head;
+						toBytes = tail;
+					}
+				}
+			}
+			start = usable ? i : -1;
+		}
+		if (bestGrowth < 1L << 30 || toBytes < fromBytes * 1.4) {
+			return;
+		}
+		java.time.format.DateTimeFormatter clock = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault());
+		String reason = String.format(Locale.ROOT,
+				"From %s to %s the same players had about the same chunks loaded, but memory still in use after garbage collection rose from %s to %s.",
+				clock.format(java.time.Instant.ofEpochMilli(from)), clock.format(java.time.Instant.ofEpochMilli(to)), bytes(fromBytes), bytes(toBytes));
+		out.add(new Finding(Severity.INFO, "Memory", "Memory in use keeps growing", 0, 0, reason,
+				"Can be normal (caches filling up), but if it keeps rising over hours, something holds on to memory. "
+						+ "Run \"jcmd <pid> GC.class_histogram\" twice, half an hour apart, and compare which classes grow."));
+	}
+
+	private static long averageLive(List<Point> points, long from, long to) {
+		long sum = 0;
+		int n = 0;
+		for (Point p : points) {
+			if (p.t() >= from && p.t() <= to && p.heapLive() > 0) {
+				sum += p.heapLive();
+				n++;
+			}
+		}
+		return n == 0 ? 0 : sum / n;
 	}
 
 	/**

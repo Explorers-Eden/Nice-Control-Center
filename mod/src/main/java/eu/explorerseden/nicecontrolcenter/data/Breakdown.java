@@ -68,6 +68,8 @@ public final class Breakdown {
 	/** Stack samples taken while it worked between ticks, by what it was doing. */
 	public Map<String, Long> betweenTasks = new HashMap<>();
 	public long betweenSamples;
+	/** Per betweenTasks key: samples by the call path inside that task (what made it slow). */
+	public Map<String, Map<String, Long>> betweenPaths = new HashMap<>();
 	/** Samples (in ticks and between them) where the server thread waited instead of running, keyed where␟what␟frame␟mod. */
 	public Map<String, Long> waits = new HashMap<>();
 	/** What the machine did to the server (Linux), and CPU per group of threads. */
@@ -410,6 +412,20 @@ public final class Breakdown {
 				betweenTasks = new HashMap<>();
 			}
 			other.betweenTasks.forEach((k, v) -> betweenTasks.merge(k, v, Long::sum));
+		}
+		if (other.betweenPaths != null) {
+			if (betweenPaths == null) {
+				betweenPaths = new HashMap<>();
+			}
+			other.betweenPaths.forEach((task, paths) -> {
+				Map<String, Long> mine = betweenPaths.computeIfAbsent(task, k -> new HashMap<>());
+				// Twice the sampler's cap, so a long window keeps the common paths without growing forever.
+				paths.forEach((path, count) -> {
+					if (mine.size() < 2 * eu.explorerseden.nicecontrolcenter.sampler.StackSampler.MAX_PATHS || mine.containsKey(path)) {
+						mine.merge(path, count, Long::sum);
+					}
+				});
+			});
 		}
 		if (other.host != null) {
 			if (host == null) {

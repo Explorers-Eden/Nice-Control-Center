@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -32,8 +33,16 @@ public final class PanelBridge {
 		t.setDaemon(true);
 		return t;
 	});
+	/** Login checks: apart from the event sender, so a slow panel doesn't hold up both. */
+	private static final ExecutorService LOGINS = Executors.newCachedThreadPool(r -> {
+		Thread t = new Thread(r, "Nice Control Center login check");
+		t.setDaemon(true);
+		return t;
+	});
 	/** Recent "may join" answers, so a reconnect doesn't wait for the panel again. */
 	private static final Map<UUID, Long> allowedUntil = new ConcurrentHashMap<>();
+	/** Login checks asked while the login waited (off the server thread), read once by {@link #checkLogin}. */
+	private static final Map<UUID, Optional<Component>> answers = new ConcurrentHashMap<>();
 
 	private PanelBridge() {
 	}
@@ -46,6 +55,16 @@ public final class PanelBridge {
 		if (!active()) {
 			return;
 		}
+		// Asks the panel while the login waits, so the server thread never waits for an HTTP answer.
+		net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) -> {
+			com.mojang.authlib.GameProfile profile = ((eu.explorerseden.nicecontrolcenter.mixin.LoginProfileAccessor) handler).nicecontrolcenter$profile();
+			if (profile == null || recentlyAllowed(profile.id())) {
+				return;
+			}
+			NameAndId player = new NameAndId(profile);
+			boolean op = server.getPlayerList().isOp(player);
+			synchronizer.waitFor(java.util.concurrent.CompletableFuture.runAsync(() -> answers.put(player.id(), Optional.ofNullable(ask(player, op))), LOGINS));
+		});
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
 			JsonObject event = new JsonObject();
 			event.addProperty("type", "chat");
@@ -91,22 +110,36 @@ public final class PanelBridge {
 
 	/**
 	 * Called from PlayerList.canPlayerLogin after vanilla's own checks passed. Returns the kick message,
-	 * or null to let the player in. If the panel can't answer, the player is let in (with a warning),
+	 * or null to let the player in. The answer was usually fetched while the login waited (QUERY_START). If the panel can't answer, the player is let in (with a warning),
 	 * so a panel hiccup can't lock everyone out.
 	 */
 	public static Component checkLogin(MinecraftServer server, NameAndId player) {
 		if (!active()) {
 			return null;
 		}
-		Long until = allowedUntil.get(player.id());
-		if (until != null && until > System.currentTimeMillis()) {
+		Optional<Component> asked = answers.remove(player.id());
+		if (asked != null) {
+			return asked.orElse(null);
+		}
+		if (recentlyAllowed(player.id())) {
 			return null;
 		}
+		// Not asked during the login (shouldn't happen): ask now, on the server thread.
+		return ask(player, server.getPlayerList().isOp(player));
+	}
+
+	private static boolean recentlyAllowed(UUID id) {
+		Long until = allowedUntil.get(id);
+		return until != null && until > System.currentTimeMillis();
+	}
+
+	/** The panel's answer: the kick message, or null to let the player in (also when the panel can't answer). */
+	private static Component ask(NameAndId player, boolean op) {
 		try {
 			JsonObject body = new JsonObject();
 			body.addProperty("uuid", player.id().toString());
 			body.addProperty("name", player.name());
-			body.addProperty("op", server.getPlayerList().isOp(player));
+			body.addProperty("op", op);
 			HttpResponse<String> response = HTTP.send(request("/internal/login").POST(HttpRequest.BodyPublishers.ofString(body.toString())).build(),
 					HttpResponse.BodyHandlers.ofString());
 			if (response.statusCode() != 200) {

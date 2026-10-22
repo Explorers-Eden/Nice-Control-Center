@@ -310,6 +310,8 @@ Keeps the last hour. Every cost is in **milliseconds per tick**, so a data pack,
 - **World generation:** new chunks per minute, time per step, structure and feature. Runs on worker threads, so it doesn't slow the tick, but players wait for terrain.
 - **Busiest chunks** and **redstone/block updates**, each with a teleport command.
 - **Lag spikes:** each slow tick with what made it slow.
+- **Between ticks:** work the server thread does outside the ticks (player packets, chunk results, mod tasks), with the call paths inside each task, e.g. what in `handleMovePlayer` took the time.
+- **Lag stretches:** minutes where TPS dropped or the server thread was busy most of each second, so trouble in one part of a long window isn't averaged away; also memory that keeps growing while the world stays the same.
 - **Settings advice:** view/simulation distance, gamerules, Java memory and garbage collector.
 
 ### Errors and warnings

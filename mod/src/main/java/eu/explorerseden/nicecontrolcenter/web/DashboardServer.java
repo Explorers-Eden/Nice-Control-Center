@@ -238,7 +238,10 @@ public final class DashboardServer {
 		}
 		switch (path) {
 			case "/api/live" -> sendJson(exchange, live(parseLong(query.get("after"), 0)));
-			case "/api/window" -> sendJson(exchange, Views.full(History.window(window(query.get("m")))));
+			case "/api/window" -> {
+				int minutes = window(query.get("m"));
+				sendJson(exchange, Views.full(History.window(minutes), History.pointsAfter(System.currentTimeMillis() - minutes * 60_000L)));
+			}
 			case "/api/recording" -> sendJson(exchange, recording());
 			case "/api/compare" -> {
 				try {

@@ -849,6 +849,7 @@ body.report #np-packsettings-card { display: none; }
 .np-table td { padding: 7px 6px; border-bottom: 1px solid rgba(var(--ink),.05); font-weight: 500; color: var(--muted); vertical-align: middle; }
 .np-table td.name { color: var(--strong); font-weight: 600; }
 .np-table td.name small { display: block; color: var(--faint); font-weight: 600; font-size: var(--fs-xs); }
+.np-between-paths { margin-top: 4px; font-weight: 400; }
 .np-table .num { text-align: right; white-space: nowrap; }
 .np-table th.num { text-align: right; }
 .np-table .bar-cell { width: 26%; min-width: 70px; }

@@ -56,7 +56,7 @@ public final class ReportWriter {
 		Map<String, Object> data = new LinkedHashMap<>();
 		data.put("meta", meta);
 		data.put("points", downsample(points));
-		data.put("view", Views.full(total));
+		data.put("view", Views.full(total, points));
 		Files.writeString(report, render(Json.GSON.toJson(data)), StandardCharsets.UTF_8);
 	}
 

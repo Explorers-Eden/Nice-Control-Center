@@ -23,6 +23,8 @@ import eu.explorerseden.nicecontrolcenter.data.Breakdown.ModRow;
  */
 public final class StackSampler implements Runnable {
 	private static final int MAX_METHODS = 40;
+	/** Call paths kept per between-ticks task. */
+	public static final int MAX_PATHS = 30;
 
 	private final ModResolver resolver = new ModResolver();
 	private final int intervalMs;
@@ -34,6 +36,8 @@ public final class StackSampler implements Runnable {
 	/** Between ticks: samples by {@link #betweenKey} of what the server was doing. */
 	private Map<String, Long> between = new HashMap<>();
 	private long betweenSamples;
+	/** Between ticks: per {@link #betweenKey} key, samples by the call path inside the task ({@link #path}). */
+	private Map<String, Map<String, Long>> betweenPaths = new HashMap<>();
 	/** Samples where the server thread was waiting instead of running, by {@link #waitKey}. */
 	private Map<String, Long> waits = new HashMap<>();
 	private static final java.lang.management.ThreadMXBean THREADS = java.lang.management.ManagementFactory.getThreadMXBean();
@@ -62,16 +66,18 @@ public final class StackSampler implements Runnable {
 
 	/** Hands over the samples collected since the last call. */
 	public synchronized Drained drain() {
-		Drained drained = new Drained(rows, samples, between, betweenSamples, waits);
+		Drained drained = new Drained(rows, samples, between, betweenSamples, betweenPaths, waits);
 		rows = new HashMap<>();
 		samples = 0;
 		between = new HashMap<>();
 		betweenSamples = 0;
+		betweenPaths = new HashMap<>();
 		waits = new HashMap<>();
 		return drained;
 	}
 
-	public record Drained(Map<String, ModRow> rows, long samples, Map<String, Long> between, long betweenSamples, Map<String, Long> waits) {
+	public record Drained(Map<String, ModRow> rows, long samples, Map<String, Long> between, long betweenSamples,
+			Map<String, Map<String, Long>> betweenPaths, Map<String, Long> waits) {
 	}
 
 	@Override
@@ -174,13 +180,59 @@ public final class StackSampler implements Runnable {
 	public static final String OTHER = "other";
 
 	private void recordBetween(StackTraceElement[] stack) {
-		String key = betweenKey(stack);
+		int[] anchor = new int[1];
+		String key = betweenKey(stack, anchor);
+		String path = path(stack, anchor[0]);
 		synchronized (this) {
 			betweenSamples++;
 			if (between.size() < 200 || between.containsKey(key)) {
 				between.merge(key, 1L, Long::sum);
+				Map<String, Long> paths = betweenPaths.computeIfAbsent(key, k -> new HashMap<>());
+				if (paths.size() < MAX_PATHS || paths.containsKey(path)) {
+					paths.merge(path, 1L, Long::sum);
+				}
 			}
 		}
+	}
+
+	/**
+	 * Where inside a between-ticks task the sample landed: the two calls the task made first, then the innermost
+	 * frame ("Entity.move › Entity.collide › … › PalettedContainer.get"). Tells why a packet handler got slow.
+	 */
+	private String path(StackTraceElement[] stack, int anchor) {
+		java.util.List<String> parts = new java.util.ArrayList<>(3);
+		int inner = -1;
+		for (int i = 0; i < anchor; i++) {
+			StackTraceElement frame = stack[i];
+			if (!resolver.owner(frame).equals(ModResolver.JVM) && !ModResolver.isPassThrough(frame)) {
+				inner = i;
+				break;
+			}
+		}
+		if (inner < 0) {
+			return "(its own code)";
+		}
+		int last = anchor;
+		for (int i = anchor - 1; i > inner && parts.size() < 2; i--) {
+			StackTraceElement frame = stack[i];
+			if (resolver.owner(frame).equals(ModResolver.JVM) || ModResolver.isPassThrough(frame)) {
+				continue;
+			}
+			parts.add(describe(frame));
+			last = i;
+		}
+		boolean gap = false;
+		for (int i = last - 1; i > inner; i--) {
+			if (!resolver.owner(stack[i]).equals(ModResolver.JVM) && !ModResolver.isPassThrough(stack[i])) {
+				gap = true;
+				break;
+			}
+		}
+		if (gap) {
+			parts.add("…");
+		}
+		parts.add(describe(stack[inner]));
+		return String.join(" › ", parts);
 	}
 
 	/**
@@ -188,8 +240,10 @@ public final class StackSampler implements Runnable {
 	 * work (loading, generation results, ticket updates), or another queued task, named by the first method
 	 * the server's task loop called; plus the innermost mod on the stack.
 	 */
-	private String betweenKey(StackTraceElement[] stack) {
+	private String betweenKey(StackTraceElement[] stack, int[] anchor) {
 		String packet = null;
+		int entryAt = -1;
+		int packetAt = -1;
 		String entry = null;
 		boolean chunks = false;
 		String mod = null;
@@ -208,9 +262,11 @@ public final class StackSampler implements Runnable {
 					continue;
 				}
 				entry = describe(frame);
+				entryAt = i;
 			}
 			if (packet == null && className.endsWith("PacketListenerImpl") && frame.getMethodName().startsWith("handle")) {
 				packet = frame.getMethodName();
+				packetAt = i;
 			}
 			if (!chunks && isChunkCode(className)) {
 				chunks = true;
@@ -227,6 +283,8 @@ public final class StackSampler implements Runnable {
 		if (entry == null) {
 			entry = "the server's task loop";
 		}
+		// The path inside the task starts below the packet handler, or below the task's first method.
+		anchor[0] = packetAt >= 0 ? packetAt : Math.max(entryAt, 0);
 		String kind;
 		String task;
 		if (packet != null) {
