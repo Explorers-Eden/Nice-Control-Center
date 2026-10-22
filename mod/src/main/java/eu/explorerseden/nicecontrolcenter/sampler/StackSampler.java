@@ -244,6 +244,8 @@ public final class StackSampler implements Runnable {
 		String packet = null;
 		int entryAt = -1;
 		int packetAt = -1;
+		int selfAt = -1;
+		int modAt = -1;
 		String entry = null;
 		boolean chunks = false;
 		String mod = null;
@@ -273,18 +275,21 @@ public final class StackSampler implements Runnable {
 			}
 			if (owner.equals(ModResolver.SELF)) {
 				self = describe(frame);
+				selfAt = i;
 			}
 			if (!owner.equals(ModResolver.MINECRAFT)) {
 				// Keeps going: the innermost mod wins.
 				mod = owner;
 				modFrame = describe(frame);
+				modAt = i;
 			}
 		}
 		if (entry == null) {
 			entry = "the server's task loop";
 		}
-		// The path inside the task starts below the packet handler, or below the task's first method.
-		anchor[0] = packetAt >= 0 ? packetAt : Math.max(entryAt, 0);
+		// The path inside the task starts below what names it: the packet handler, the mod's own frame (so a mod
+		// task shows what it called, not the server loop above it), or the task's first method.
+		anchor[0] = packetAt >= 0 ? packetAt : selfAt >= 0 ? selfAt : !chunks && modAt >= 0 ? modAt : Math.max(entryAt, 0);
 		String kind;
 		String task;
 		if (packet != null) {

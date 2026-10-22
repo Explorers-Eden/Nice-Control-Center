@@ -1,3 +1,7 @@
+## 1.23.0
+- Performance → Tuning: "Lighter locator bar" switch next to Smooth saving and Warm teleport targets (mod 1.26.0)
+- Performance → Tuning: new "Data pack selectors" card with "Selectors by type"; Lighter mob AI explains that it now covers mobs with a brain too (mod 1.26.0)
+
 ## 1.22.1
 - Tweaks → Small tweaks: "Better Mending anvil wear (%)", the chance per repair that the anvil wears one step (12 by default, 0 never) (mod 1.24.3)
 

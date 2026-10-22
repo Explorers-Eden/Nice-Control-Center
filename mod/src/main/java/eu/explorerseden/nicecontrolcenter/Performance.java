@@ -177,6 +177,14 @@ public final class Performance {
 		public boolean saving = true;
 		/** Places players often teleport to stay loaded (not ticking), so arriving doesn't load them first. */
 		public boolean teleports = true;
+		/** A moving player's locator bar is worked out every few ticks instead of on every movement packet. */
+		public boolean locatorBar = true;
+	}
+
+	/** Data pack entity selectors. */
+	public static final class Selectors {
+		/** @e[type=…] looks only at entities of that type instead of checking every loaded entity. */
+		public boolean byType = true;
 	}
 
 	public static final class Chunk {
@@ -213,6 +221,7 @@ public final class Performance {
 		public Decor decor = new Decor();
 		public Smooth smooth = new Smooth();
 		public Spawning spawning = new Spawning();
+		public Selectors selectors = new Selectors();
 
 		/** Missing parts (older file, partial JSON) get their defaults. */
 		public Settings fill() {
@@ -227,6 +236,7 @@ public final class Performance {
 			rules.removeIf(r -> r == null || r.type == null || r.type.isBlank());
 			for (MobRule r : rules) r.type = id(r.type);
 			if (autoCaps == null) autoCaps = new AutoCaps();
+			if (selectors == null) selectors = new Selectors();
 			if (collisions == null) collisions = new Collisions();
 			if (despawn == null) despawn = new Despawn();
 			if (despawn.items == null) despawn.items = new ArrayList<>();

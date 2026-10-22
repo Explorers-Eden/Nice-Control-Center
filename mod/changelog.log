@@ -1,4 +1,12 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.26.0
+- Tuning → Saving, teleports and locator bar: "Lighter locator bar" (on by default). Vanilla works out a moving player's whole locator bar on every movement packet, checking every mob and player that shows on it each time; now it's done at most every 5 ticks per player, and at once after a teleport or a dimension change. Looks the same in game; much cheaper when a data pack puts mobs on the locator bar
+- Tuning → Data pack selectors: "Selectors by type" (on by default). @e[type=villager,…] without a distance used to check every loaded entity each time a data pack ran it; the server now keeps the entities of each type in their own list, in the same order, and only looks at those
+- Lighter mob AI also covers mobs with a brain (villagers, copper golems, frogs, allays, piglins…): far from every player their senses and behaviours run only every few ticks, while their memories keep counting down every tick; tamed and owned mobs always think
+- Lag stretches are only minutes where the server thread is busy two thirds of each second or more (was 45 %, which flagged ordinary busy evenings), a warning only when TPS really dropped for a minute or a minute was 80 % busy, and the lowest TPS is the worst minute's average (a single second with one long tick read as "TPS 1.0")
+- Between ticks: a mod's own task (and Nice Control Center's) shows the calls below its own code, not the server loop above it
+- Scheduled block and fluid tick counts are taken every 10 seconds instead of every second
+
 ## 1.25.3
 - Auto caps no longer log twice (and no longer log "Cleanup: removed … mobs" every run): under the panel only its alert line shows; without the panel one summary line every 10 minutes at most, as before
 

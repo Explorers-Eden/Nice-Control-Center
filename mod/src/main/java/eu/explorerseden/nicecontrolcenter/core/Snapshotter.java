@@ -231,9 +231,9 @@ public final class Snapshotter {
 			counts.blockEntities += tickers.size();
 			counts.chunks += level.getChunkSource().getLoadedChunksCount();
 			counts.chunkTasks += level.getChunkSource().getPendingTasksCount();
-			ServerLevelAccessor ticks = (ServerLevelAccessor) level;
-			counts.blockTicks += ticks.nicecontrolcenter$blockTicks().count();
-			counts.fluidTicks += ticks.nicecontrolcenter$fluidTicks().count();
+			int[] scheduled = scheduledTicks(server, level);
+			counts.blockTicks += scheduled[0];
+			counts.fluidTicks += scheduled[1];
 
 			List<Breakdown.PlayerRow> rows = describePlayers(server, level, dimension, perChunk, blockEntitiesPerChunk, b);
 			Long2LongOpenHashMap chunkNs = bucket.chunkNs.getOrDefault(dimension, new Long2LongOpenHashMap());
@@ -253,6 +253,24 @@ public final class Snapshotter {
 		for (Candidate candidate : candidates.subList(0, Math.min(HOTSPOT_CANDIDATES, candidates.size()))) {
 			b.hotspots.put(candidate.hotspot.dimension + "|" + candidate.hotspot.x + "|" + candidate.hotspot.z, describe(candidate));
 		}
+	}
+
+	/** Scheduled block and fluid ticks per level, counted every {@link #SCHEDULED_EVERY} seconds. */
+	private static final java.util.Map<ServerLevel, int[]> scheduled = new java.util.WeakHashMap<>();
+	private static final int SCHEDULED_EVERY = 10;
+
+	/**
+	 * LevelTicks.count() streams over a map with one entry per chunk that ever had a scheduled tick. Such maps don't
+	 * shrink, so after a big pregeneration it walks a mostly empty table: a few ms every second for a number that's
+	 * only shown. Counted every ten seconds instead.
+	 */
+	private static int[] scheduledTicks(MinecraftServer server, ServerLevel level) {
+		int[] last = scheduled.get(level);
+		if (last != null && server.getTickCount() - last[2] < SCHEDULED_EVERY * 20) return last;
+		ServerLevelAccessor ticks = (ServerLevelAccessor) level;
+		int[] now = { ticks.nicecontrolcenter$blockTicks().count(), ticks.nicecontrolcenter$fluidTicks().count(), server.getTickCount() };
+		scheduled.put(level, now);
+		return now;
 	}
 
 	/** Per player: where they are, ping, and how much is loaded around them. */

@@ -510,8 +510,13 @@ public final class Diagnoser {
 	}
 
 	private static final String STRETCHES = "Lag stretches";
-	/** A minute counts when ticks plus the work between them took this much of each second, on average. */
-	private static final double BUSY_MS_PER_SECOND = 450;
+	/**
+	 * A minute counts when ticks plus the work between them took this much of each second, on average. Busy evenings
+	 * with a few players sit around 50 %; from about two thirds on there's little room left before ticks run late.
+	 */
+	private static final double BUSY_MS_PER_SECOND = 650;
+	/** A minute this busy makes the stretch a warning (with TPS under 95 % in a minute). */
+	private static final double WARN_BUSY_MS_PER_SECOND = 800;
 
 	/**
 	 * Minutes where TPS dropped or the server thread was busy for most of each second (ticks plus work between them),
@@ -522,20 +527,19 @@ public final class Diagnoser {
 			return;
 		}
 		double target = 1000.0 / Math.max(1e-3, b.targetMspt);
-		// Per minute: tps sum, tick ms sum, between ms sum, count, lowest tps.
+		// Per minute: tps sum, tick ms sum, between ms sum, count.
 		java.util.TreeMap<Long, double[]> minutes = new java.util.TreeMap<>();
 		for (Point p : points) {
 			if (p.paused()) {
 				continue;
 			}
-			double[] m = minutes.computeIfAbsent(p.t() / 60_000, k -> new double[] { 0, 0, 0, 0, Double.MAX_VALUE });
+			double[] m = minutes.computeIfAbsent(p.t() / 60_000, k -> new double[4]);
 			m[0] += p.tps();
 			m[1] += p.tickMs();
 			m[2] += p.betweenMs();
 			m[3]++;
-			m[4] = Math.min(m[4], p.tps());
 		}
-		// Stretch: first minute, last minute, bad minutes, tick ms, between ms, lowest tps.
+		// Stretch: first minute, last minute, bad minutes, tick ms, between ms, lowest minute tps, busiest minute.
 		List<double[]> stretches = new ArrayList<>();
 		double[] current = null;
 		// The other minutes, as a baseline: whichever grew in the stretches is the cause.
@@ -556,14 +560,16 @@ public final class Diagnoser {
 			}
 			long minute = e.getKey();
 			if (current == null || minute - current[1] > 4) {
-				current = new double[] { minute, minute, 0, 0, 0, Double.MAX_VALUE };
+				current = new double[] { minute, minute, 0, 0, 0, Double.MAX_VALUE, 0 };
 				stretches.add(current);
 			}
 			current[1] = minute;
 			current[2]++;
 			current[3] += tick;
 			current[4] += between;
-			current[5] = Math.min(current[5], m[4]);
+			// The worst minute's average: a single second with one long tick would read as TPS 1.
+			current[5] = Math.min(current[5], tps);
+			current[6] = Math.max(current[6], tick + between);
 		}
 		stretches.removeIf(s -> s[2] < 3);
 		if (normalMinutes > 0) {
@@ -576,7 +582,7 @@ public final class Diagnoser {
 		stretches.sort(Comparator.comparingDouble((double[] s) -> s[2]).reversed());
 		java.time.format.DateTimeFormatter clock = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault());
 		List<String> parts = new ArrayList<>();
-		double tick = 0, between = 0, bad = 0, lowest = Double.MAX_VALUE;
+		double tick = 0, between = 0, bad = 0, lowest = Double.MAX_VALUE, busiest = 0;
 		for (double[] s : stretches) {
 			if (parts.size() < 3) {
 				parts.add(clock.format(java.time.Instant.ofEpochMilli((long) s[0] * 60_000)) + "–"
@@ -586,18 +592,19 @@ public final class Diagnoser {
 			tick += s[3];
 			between += s[4];
 			lowest = Math.min(lowest, s[5]);
+			busiest = Math.max(busiest, s[6]);
 		}
 		tick /= bad;
 		between /= bad;
 		String reason = String.format(Locale.ROOT,
-				"%d %s with %.0f bad minutes (%s): the server thread was busy %.0f ms of every second (ticks %.0f ms, work between ticks %.0f ms), and TPS dipped to %.1f. Otherwise: ticks %.0f ms, work between ticks %.0f ms.",
+				"%d %s with %.0f bad minutes (%s): the server thread was busy %.0f ms of every second (ticks %.0f ms, work between ticks %.0f ms), and TPS averaged %.1f in the worst minute. Otherwise: ticks %.0f ms, work between ticks %.0f ms.",
 				stretches.size(), stretches.size() == 1 ? "stretch" : "stretches", bad, String.join(", ", parts), tick + between, tick, between, lowest,
 				normalTick, normalBetween);
 		String hint = between - normalBetween > tick - normalTick
 				? "Mostly more work between ticks, which the tick times don't show. See \"Between ticks\" for what it was, and check what players were doing then."
 				: "The ticks themselves got slower. See what costs the most above, or record a report while it happens.";
-		// Players notice TPS under 18, or ten minutes this busy (one more mob farm and it lags).
-		Severity severity = lowest < target * 0.9 || bad >= 10 ? Severity.WARN : Severity.INFO;
+		// A warning only when TPS really dropped for a minute, or a minute left almost no room.
+		Severity severity = lowest < target * 0.95 || busiest >= WARN_BUSY_MS_PER_SECOND ? Severity.WARN : Severity.INFO;
 		out.add(new Finding(severity, STRETCHES, "Stretches close to the limit", 0, 0, reason, hint));
 	}
 

@@ -232,6 +232,8 @@ public final class PerfControl {
 		if (s.spawning.enabled) b.append("less frequent spawning, ");
 		if (s.smooth.saving) b.append("smooth saving, ");
 		if (s.smooth.teleports) b.append("warm teleport targets, ");
+		if (s.smooth.locatorBar) b.append("lighter locator bar, ");
+		if (s.selectors.byType) b.append("selectors by type, ");
 		if (!s.frozen.isEmpty()) b.append(s.frozen.size()).append(" frozen chunks, ");
 		return b.isEmpty() ? "all off" : b.substring(0, b.length() - 2);
 	}
@@ -549,6 +551,22 @@ public final class PerfControl {
 		if ((level.getGameTime() + mob.getId()) % ai.farGoalEvery == 0) return true;
 		if (immune(mob)) return true;
 		return playerWithin(level, mob, rangeOf(ai.farPercent));
+	}
+
+	/**
+	 * Whether a brain mob (villagers, copper golems, frogs, allays, piglins…) runs its sensors and behaviours this
+	 * tick: far from players only every farGoalEvery ticks, like goal planning. Its memories still count down every
+	 * tick (see BrainThrottleMixin), so timers like a piglin admiring gold don't stretch.
+	 */
+	public static boolean brainThinks(net.minecraft.world.entity.LivingEntity entity) {
+		if (!(entity instanceof Mob mob)) return true;
+		if (mob instanceof OwnableEntity owned && owned.getOwnerReference() != null) return true;
+		return plansGoals(mob);
+	}
+
+	/** @e[type=…] uses the per-type lists in EntityLookup (EntityLookupTypeMixin). */
+	public static boolean selectorsByType() {
+		return settings.selectors.byType;
 	}
 
 	/** Whether this mob may search a new path now (at most pathBudget searches per tick). */
