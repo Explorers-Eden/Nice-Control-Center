@@ -164,7 +164,8 @@ public final class ServerFacts {
 			out.add(tweak("rain", "Crops love rain", "bi-cloud-rain", "Crops grow " + t.crops.rainBoost + " % faster while rain falls on them.", List.of()));
 		}
 		if (t.mending.anvilRepair) {
-			out.add(tweak("mending", "Better Mending", "bi-hammer", "Sneak and right-click an anvil to repair the Mending item in your hand with your experience (2 durability per point, like Mending).", List.of()));
+			out.add(tweak("mending", "Better Mending", "bi-hammer", "Sneak and right-click an anvil to repair the Mending item in your hand with your experience (2 durability per point, like Mending)."
+					+ (t.mending.anvilWear > 0 ? " Each repair has a " + t.mending.anvilWear + " % chance to wear the anvil." : ""), List.of()));
 		}
 		if (t.sleep.ignoreAfk) {
 			out.add(tweak("sleep", "AFK players don't block the night", "bi-moon-stars", "Players who have been AFK for " + t.afk.minutes + " minutes don't count when the server checks whether enough players sleep.", List.of()));

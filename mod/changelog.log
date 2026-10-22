@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.24.3
+- Better Mending wears the anvil like using it: each repair has a set chance (12 % by default, like vanilla) to chip, damage or break the anvil; never in creative
+
 ## 1.24.2
 - Market: buying from a player listing checks the price and lot size you saw; if the seller changed them while you had the listing open, nothing is taken and you're shown the new price instead of paying it
 

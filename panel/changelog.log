@@ -1,3 +1,6 @@
+## 1.22.1
+- Tweaks → Small tweaks: "Better Mending anvil wear (%)", the chance per repair that the anvil wears one step (12 by default, 0 never) (mod 1.24.3)
+
 ## 1.22.0
 - Performance → Tuning → Presets: new Light and Farm friendly presets; every built-in preset now sets every switch and number
 - Save your own presets (the settings as saved, with mob limits, junk items and save limits; never frozen chunks), apply, update or delete them; all audited

@@ -245,6 +245,8 @@ public final class Tweaks {
 		 * player's experience points, at Mending's rate (1 point = 2 durability).
 		 */
 		public boolean anvilRepair = false;
+		/** Percent chance per repair that the anvil wears one step (chipped, damaged, gone), like a vanilla anvil use (12). */
+		public int anvilWear = 12;
 	}
 
 	public static final class Sleep {
@@ -378,6 +380,7 @@ public final class Tweaks {
 		for (Dimension d : s.tabList.dimensions.values()) if (d.name.length() > 32) return "Dimension names are up to 32 characters.";
 		if (s.veins.maxBlocks < 2 || s.veins.maxBlocks > 1024) return "Veins are 2 to 1024 blocks.";
 		if (s.afk.minutes < 1 || s.afk.minutes > 120) return "AFK after 1 to 120 minutes.";
+		if (s.mending.anvilWear < 0 || s.mending.anvilWear > 100) return "Anvil wear is a 0 to 100 % chance.";
 		if (s.crops.rainBoost < 1 || s.crops.rainBoost > 100) return "Rain makes crops grow 1 to 100 % faster.";
 		if (s.antiXray.maxY < -64 || s.antiXray.maxY > 320) return "Ores are hidden below a height of -64 to 320.";
 		if (s.antiXray.blocks.size() > 100) return "At most 100 blocks to hide.";

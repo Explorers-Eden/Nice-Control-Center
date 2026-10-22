@@ -2,6 +2,7 @@ package eu.explorerseden.nicecontrolcenter.tweaks;
 
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,10 +14,15 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.level.block.AnvilBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.LevelEvent;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Better Mending: sneak + right click an anvil and the Mending item in the main hand (else the off hand) is
- * repaired with the player's experience points, at the rate Mending uses (normally 2 durability per point).
+ * repaired with the player's experience points, at the rate Mending uses (normally 2 durability per point). Each repair has the set
+ * chance to wear the anvil one step, like using it.
  */
 public final class BetterMending {
 	private BetterMending() {
@@ -43,7 +49,17 @@ public final class BetterMending {
 			int cost = (repair + rate - 1) / rate;
 			stack.setDamageValue(damage - repair);
 			if (!sp.getAbilities().instabuild) sp.giveExperiencePoints(-cost);
-			level.playSound(null, hit.getBlockPos(), SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.6f, 1.2f);
+			// The anvil wears like a vanilla anvil use: one step (chipped, damaged, gone) at the set chance, never in creative.
+			BlockPos pos = hit.getBlockPos();
+			BlockState worn = sp.getAbilities().instabuild || level.getRandom().nextInt(100) >= TweaksControl.settings().mending.anvilWear ? level.getBlockState(pos)
+					: AnvilBlock.damage(level.getBlockState(pos));
+			if (worn == null) {
+				level.removeBlock(pos, false);
+				level.levelEvent(LevelEvent.SOUND_ANVIL_BROKEN, pos, 0);
+			} else {
+				if (worn != level.getBlockState(pos)) level.setBlock(pos, worn, Block.UPDATE_CLIENTS);
+				level.playSound(null, pos, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.6f, 1.2f);
+			}
 			level.playSound(null, sp.blockPosition(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.5f, 0.9f + level.getRandom().nextFloat() * 0.2f);
 			sp.sendOverlayMessage(Component.literal(stack.isDamaged() ? "Repaired " + repair + " durability for " + cost + " experience; out of experience."
 					: "Fully repaired for " + cost + " experience.").withStyle(ChatFormatting.GREEN));
