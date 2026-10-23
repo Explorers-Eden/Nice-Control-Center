@@ -45,6 +45,8 @@ public final class Felling {
 	private static boolean busy;
 	/** Where drops go while felling (dropsAtBreakPoint), else null. Server thread. */
 	private static BlockPos dropPoint;
+	/** While a vein's other blocks break without XP (Veins.dropXp off). Server thread. */
+	private static boolean noXp;
 	/** While a falling tree is prepared: its drops, spawned when it lands. */
 	private static List<ItemEntity> captured;
 
@@ -67,6 +69,11 @@ public final class Felling {
 	/** For the drop mixin: move new items and XP here (or null). */
 	public static BlockPos dropPoint() {
 		return dropPoint;
+	}
+
+	/** For the XP mixin: true while broken blocks drop no XP. */
+	public static boolean noXp() {
+		return noXp;
 	}
 
 	/** For the drop mixin: true when the item is kept for a falling tree (and not spawned now). */
@@ -390,7 +397,13 @@ public final class Felling {
 		}
 		if (found.isEmpty()) return;
 		found.sort(Comparator.comparingDouble(b -> b.distSqr(origin)));
-		List<TreeFall.Piece> mined = breakAll(level, player, origin, found, veins.preserveTool, veins.durability, veins.dropsAtBreakPoint, true);
+		noXp = !veins.dropXp;
+		List<TreeFall.Piece> mined;
+		try {
+			mined = breakAll(level, player, origin, found, veins.preserveTool, veins.durability, veins.dropsAtBreakPoint, true);
+		} finally {
+			noXp = false;
+		}
 		// The ore the player mined wears the tool like the others.
 		if (!mined.isEmpty()) ToolWear.afterThisBreak(veins.durability, veins.preserveTool, player, player.getMainHandItem(), player.getMainHandItem().getDamageValue());
 	}

@@ -96,6 +96,8 @@ public final class Tweaks {
 		public double durability = 1.0;
 		public int maxBlocks = 64;
 		public boolean dropsAtBreakPoint = false;
+		/** The other blocks of a vein drop XP orbs (the one the player mined always does, as in vanilla). */
+		public boolean dropXp = true;
 		public boolean inCreative = false;
 	}
 

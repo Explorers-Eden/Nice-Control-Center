@@ -542,7 +542,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-inboxes"></i> Hoppers</h3>
-					<p class="np-card-intro">A hopper with nothing to move looks again every tick. With this it waits a few ticks after finding nothing. Hoppers that move items keep their normal speed, and locked hoppers behave as in vanilla, so redstone timing stays the same.</p>
+					<p class="np-card-intro">A hopper with nothing to move looks again every tick. With this it waits a few ticks after finding nothing. Hoppers that move items keep their normal speed, and locked hoppers behave as in vanilla, so redstone timing stays the same. A waiting hopper looks again at once when the container above it changes, so item filters under a hopper line still catch every item.</p>
 					<div class="np-form-grid" data-needs="hoppers.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="hoppers.enabled"><span></span></span></label>
 						<label class="np-form-row">Idle hoppers wait (ticks)<input type="number" name="hoppers.idleCooldown" min="1" max="40"></label>
@@ -863,6 +863,7 @@
 						<label class="np-form-row"><span>Stop before the pickaxe breaks</span><span class="np-switch"><input type="checkbox" name="veins.preserveTool"><span></span></span></label>
 						<label class="np-form-row"><span>Pickaxe wear per block<span class="pn-comment">For every block of a mined vein, the one you mine included: 1 = normal, 0.5 = half, 0 = none, 25 = 25 times.</span></span><input type="number" name="veins.durability" min="0" max="100" step="0.05"></label>
 						<label class="np-form-row"><span>All drops where the first block was</span><span class="np-switch"><input type="checkbox" name="veins.dropsAtBreakPoint"><span></span></span></label>
+						<label class="np-form-row"><span>Also drop XP<span class="pn-comment">For the rest of the vein; the ore you mine yourself always drops its XP.</span></span><span class="np-switch"><input type="checkbox" name="veins.dropXp"><span></span></span></label>
 						<label class="np-form-row"><span>Also in creative mode</span><span class="np-switch"><input type="checkbox" name="veins.inCreative"><span></span></span></label>
 						<label class="np-form-row">Tools<input type="text" name="veins.tools"></label>
 						<label class="np-form-row">Never these tools<input type="text" name="veins.deniedTools"></label>

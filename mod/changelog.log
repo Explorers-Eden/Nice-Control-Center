@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.29.0
+- Vein mining: "Also drop XP" switch (on by default, as before). Off, the rest of a mined vein drops no XP orbs; the ore you mine yourself still drops its XP as usual
+- Hopper idle wait (Performance): item filters under a hopper line no longer let items slip past. A filter hopper with nothing to move waited 8+ ticks, while a hopper in the line passes each item on after 8, so it often missed it. A waiting hopper now looks again at once when the container above it changes
+
 ## 1.28.0
 - Updates: data packs have "Install now": the update is downloaded (if it isn't yet) and checked like any update, the old file is backed up (so it can be rolled back), the new one put in and the data packs reloaded, without a restart. Mods are still installed at the next restart
 - Data packs added, replaced or removed in the world's datapacks folder while the server runs (by hand, through the panel's files or an update) are loaded on their own with /reload once the folder stays the same for a few seconds; admins are told what changed. New config option datapack_auto_reload (on)
