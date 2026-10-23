@@ -277,6 +277,7 @@ An unexpected exit counts as a crash. The panel shows the exit code and the newe
 | `DISCORD_TOKEN` | – | the Discord bot token (instead of saving it in the panel) |
 | `MAP_HOST` | – | the map's own address, e.g. `map.example.com` |
 | `INFO_HOST` | – | the public info page's own address, e.g. `info.example.com` |
+| `WEBSITE_TOKEN` | – | a long random secret for a website that shows players their market bank and lets them buy (`POST /info/web/account` and `/info/web/buy` with `Authorization: Bearer <token>`); off when unset |
 | `SFTP_PORT` | `2022` | SFTP port inside the container (`off` turns SFTP off) |
 | `PANEL_JAVA_OPTS` | `-Xmx1536m -XX:+UseG1GC …` | Java options of the panel itself (not the Minecraft server); raise `-Xmx` only if the panel runs out of memory |
 | `DASHBOARD_PORT` | `8765` | port the mod's dashboard uses inside the container (only change it if something else needs 8765) |

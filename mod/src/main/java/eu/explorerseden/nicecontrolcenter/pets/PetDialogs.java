@@ -430,15 +430,19 @@ public final class PetDialogs {
 		} else if (why != null) {
 			body.add(text(why, ChatFormatting.GRAY));
 		} else if (pet.price > 0) {
-			int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
-			body.add(carried >= pet.price ? text("You carry " + amount(carried) + ".", ChatFormatting.GRAY)
-					: text("You carry " + amount(carried) + ": " + amount(pet.price - carried) + " more needed.", ChatFormatting.RED));
+			long bank = MarketStore.data().balance(player.getStringUUID());
+			int carried = MarketStore.carried(player);
+			long funds = bank + carried;
+			String funding = bank > 0 ? "You have " + amount(funds) + " (" + String.format(java.util.Locale.ROOT, "%,d", bank) + " in the bank"
+					+ (carried > 0 ? ", " + String.format(java.util.Locale.ROOT, "%,d", carried) + " carried)" : ")") : "You carry " + amount(carried);
+			body.add(funds >= pet.price ? text(funding + ".", ChatFormatting.GRAY)
+					: text(funding + ": " + amount(pet.price - funds) + " more needed.", ChatFormatting.RED));
 		}
 		List<ActionButton> buttons = new ArrayList<>();
 		if (why == null) {
 			String price = pet.price == 0 ? "free" : amount(pet.price);
 			String label = pet.price == 0 ? "Get it free" : "Buy · " + price;
-			buttons.add(button(label, pet.price == 0 ? "It's yours for good" : "Pay " + price + " from your inventory; it's yours for good", "buy", market ? args("id", pet.id, "from", "market") : args("id", pet.id)));
+			buttons.add(button(label, pet.price == 0 ? "It's yours for good" : "Pay " + price + " from your bank, then your inventory; it's yours for good", "buy", market ? args("id", pet.id, "from", "market") : args("id", pet.id)));
 		}
 		ActionButton back = market ? new ActionButton(new CommonButtonData(Component.literal("Back"), Optional.of(Component.literal("Back to the server shop")), WIDTH),
 				Optional.of(new CustomAll(Identifier.fromNamespaceAndPath("nicecontrolcenter", "market/server"), Optional.of(new CompoundTag()))))
@@ -447,7 +451,7 @@ public final class PetDialogs {
 	}
 
 	/** "1 diamond", "12 diamonds", "0 diamonds" (never "free"). */
-	private static String amount(int n) {
+	private static String amount(long n) {
 		String name = MarketStore.currencyName();
 		return String.format(Locale.ROOT, "%,d %s", n, n == 1 ? name.replaceAll("s$", "") : name);
 	}
@@ -611,8 +615,7 @@ public final class PetDialogs {
 			item(player, pet, why, market);
 			return;
 		}
-		ItemStack coin = new ItemStack(MarketStore.currency());
-		if (pet.price > 0 && !MarketStore.take(player, coin, pet.price)) {
+		if (pet.price > 0 && !MarketStore.pay(player, pet.price)) {
 			item(player, pet, "You need " + money(pet.price) + ".", market);
 			return;
 		}

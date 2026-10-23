@@ -1967,18 +1967,20 @@
   /** Market tab: what they sell now (admins can take a listing off), their mailbox and recent trades. */
   function marketSection(p, d) {
     const m = d.market;
-    if (!m || (!m.listings.length && !m.sales.length && !m.mailbox.currency && !m.mailbox.parcels.length)) return '';
+    const orders = (m && m.mailbox.orders) || [];
+    if (!m || (!m.listings.length && !m.sales.length && !m.mailbox.currency && !m.mailbox.balance && !m.mailbox.parcels.length && !orders.length)) return '';
     const cur = esc(m.currency);
     const listings = m.listings.length ? `<div class="np-table-wrap"><table class="np-table"><thead><tr><th>Item</th><th>Left</th><th>Price</th><th>Ends</th><th></th></tr></thead><tbody>
       ${m.listings.map((l) => `<tr><td title="${esc(l.itemId)}">${esc(l.item)}</td><td>${num(l.amount)}</td><td>${num(l.price)} ${cur}${l.per > 1 ? ` per ${num(l.per)}` : ''}</td>
         <td>${esc(dateTime(l.expires))}</td><td>${d.actions ? `<button type="button" class="np-btn small" data-market-withdraw="${esc(l.id)}" title="Takes it off the market; the items go to ${esc(p.name)}'s mailbox">Withdraw</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`
       : `<p class="np-loc-sub">Nothing on the market right now.</p>`;
-    const mail = m.mailbox.currency || m.mailbox.parcels.length ? `<h4 class="np-subhead">Mailbox <small>waiting for ${esc(p.name)} in /market</small></h4>
-      <div class="np-chips">${m.mailbox.currency ? `<span class="np-tag">${num(m.mailbox.currency)} ${cur}</span>` : ''}${m.mailbox.parcels.map((x) => `<span class="np-tag">${esc(x.item)} ×${num(x.amount)}</span>`).join('')}</div>` : '';
+    const bank = `<h4 class="np-subhead">Bank <small>spent first when ${esc(p.name)} buys</small></h4><p>${num(m.mailbox.balance || 0)} ${cur}</p>`;
+    const mail = m.mailbox.currency || m.mailbox.parcels.length || orders.length ? `<h4 class="np-subhead">Mailbox <small>waiting for ${esc(p.name)} in /market</small></h4>
+      <div class="np-chips">${m.mailbox.currency ? `<span class="np-tag">${num(m.mailbox.currency)} ${cur}</span>` : ''}${m.mailbox.parcels.map((x) => `<span class="np-tag">${esc(x.item)} ×${num(x.amount)}</span>`).join('')}${orders.map((x) => `<span class="np-tag" title="Bought on the website, runs when claimed">${x.times > 1 ? `${num(x.times)} × ` : ''}${esc(x.name)}</span>`).join('')}</div>` : '';
     const sales = m.sales.length ? `<h4 class="np-subhead">Recent trades <small>newest first</small></h4><div class="np-table-wrap"><table class="np-table"><thead><tr><th>When</th><th></th><th>Item</th><th>Amount</th><th>Total</th><th>With</th></tr></thead><tbody>
       ${m.sales.map((x) => `<tr><td>${esc(dateTime(x.time))}</td><td><span class="np-level ${x.sold ? 'good' : 'info'}">${x.sold ? 'Sold' : 'Bought'}</span></td><td>${esc(x.item)}</td><td>${num(x.amount)}</td><td>${num(x.total)} ${cur}</td><td>${esc(x.with || '')}</td></tr>`).join('')}</tbody></table></div>` : '';
     const note = playersState.marketNote ? `<p class="np-loc-sub ${playersState.marketNoteError ? 'np-pet-error' : ''}">${esc(playersState.marketNote)}</p>` : '';
-    return `<h4 class="np-subhead">On the market <small>${num(m.listings.length)}</small></h4>${listings}${note}${mail}${sales}${m.enabled ? '' : '<p class="np-loc-sub">The market is switched off.</p>'}`;
+    return `<h4 class="np-subhead">On the market <small>${num(m.listings.length)}</small></h4>${listings}${note}${bank}${mail}${sales}${m.enabled ? '' : '<p class="np-loc-sub">The market is switched off.</p>'}`;
   }
 
   /** The player's pets (cosmetic floating heads), with what an admin can change. */

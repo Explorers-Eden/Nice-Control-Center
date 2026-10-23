@@ -8,6 +8,7 @@
 #   DISCORD_TOKEN              optional: the Discord bot token (can also be pasted in the panel)
 #   MAP_HOST                   optional: the web map's own address, e.g. map.example.com (point it at port 8080 too)
 #   INFO_HOST                  optional: the public info page's own address, e.g. info.example.com (port 8080 too)
+#   WEBSITE_TOKEN              optional: a long random secret your website sends to show market balances and buy (see SETUP.md)
 # Point your reverse proxy (Nginx Proxy Manager, Traefik, ...) at port 8080 for the panel.
 services:
   nicecontrolcenter:
@@ -25,6 +26,7 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN:-}
       MAP_HOST: ${MAP_HOST:-}
       INFO_HOST: ${INFO_HOST:-}
+      WEBSITE_TOKEN: ${WEBSITE_TOKEN:-}
     ports:
       - "${PANEL_PORT:-8080}:8080"
       - "${MINECRAFT_PORT:-25565}:25565"

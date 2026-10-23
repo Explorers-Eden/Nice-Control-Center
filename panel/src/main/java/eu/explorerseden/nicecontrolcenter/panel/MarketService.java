@@ -92,12 +92,28 @@ final class MarketService {
 		return serverDir.resolve(name.isEmpty() ? "world" : name).resolve(Market.DATA_FILE);
 	}
 
+	private final java.util.concurrent.ScheduledExecutorService syncer = Executors.newSingleThreadScheduledExecutor(r -> {
+		Thread t = new Thread(r, "market-sync");
+		t.setDaemon(true);
+		return t;
+	});
+
 	void start() {
-		Executors.newSingleThreadScheduledExecutor(r -> {
-			Thread t = new Thread(r, "market-sync");
-			t.setDaemon(true);
-			return t;
-		}).scheduleWithFixedDelay(this::sync, 20, 15, TimeUnit.SECONDS);
+		syncer.scheduleWithFixedDelay(this::sync, 20, 15, TimeUnit.SECONDS);
+	}
+
+	/** Copies the market again in a moment (after a purchase on the website). */
+	void syncSoon() {
+		syncer.schedule(this::sync, 1, TimeUnit.SECONDS);
+	}
+
+	/** The world file as it is (for showing balances while the server is off); null when it can't be read. */
+	Market.Data worldData() {
+		try {
+			return Market.readData(worldFile());
+		} catch (IOException | RuntimeException e) {
+			return null;
+		}
 	}
 
 	/** All listings now: from the mod while running, else from the world file. */
@@ -190,6 +206,8 @@ final class MarketService {
 			for (Market.ClaimOffer o : s.claimBlocks) {
 				if (!o.onSale()) continue;
 				Map<String, Object> m = new LinkedHashMap<>();
+				m.put("id", o.id);
+				m.put("kind", "claims");
 				m.put("name", String.format(java.util.Locale.ROOT, "%,d claim blocks", o.blocks));
 				m.put("description", "For land claims: every claimed block costs one."
 						+ (s.claimBlocksMax > 0 ? String.format(java.util.Locale.ROOT, " Up to %,d per player in all.", s.claimBlocksMax) : ""));
@@ -205,6 +223,8 @@ final class MarketService {
 		for (Market.CommandOffer o : s.commandOffers) {
 			if (!o.onSale()) continue;
 			Map<String, Object> m = new LinkedHashMap<>();
+			m.put("id", o.id);
+			m.put("kind", "command");
 			m.put("name", o.name);
 			m.put("description", o.description);
 			m.put("price", o.price);
@@ -343,10 +363,10 @@ final class MarketService {
 					try (PreparedStatement del = con.prepareStatement("DELETE FROM market_mail")) {
 						del.executeUpdate();
 					}
-					try (PreparedStatement ins = con.prepareStatement("INSERT INTO market_mail (player_uuid, player_name, currency, parcels) VALUES (?, ?, ?, ?::jsonb)")) {
+					try (PreparedStatement ins = con.prepareStatement("INSERT INTO market_mail (player_uuid, player_name, currency, parcels, balance, orders) VALUES (?, ?, ?, ?::jsonb, ?, ?::jsonb)")) {
 						for (Map.Entry<String, Market.Mailbox> e : c.mail.entrySet()) {
 							Market.Mailbox m = e.getValue();
-							if (uuid(e.getKey()) == null || m == null || m.currency <= 0 && (m.parcels == null || m.parcels.isEmpty())) continue;
+							if (uuid(e.getKey()) == null || m == null || m.currency <= 0 && m.balance <= 0 && (m.parcels == null || m.parcels.isEmpty()) && (m.orders == null || m.orders.isEmpty())) continue;
 							List<Map<String, Object>> parcels = new ArrayList<>();
 							if (m.parcels != null) for (Market.Parcel p : m.parcels) {
 								if (p.item == null) continue;
@@ -362,6 +382,10 @@ final class MarketService {
 							ins.setString(2, m.name);
 							ins.setInt(3, Math.max(0, m.currency));
 							ins.setString(4, Json.GSON.toJson(parcels));
+							ins.setLong(5, Math.max(0, m.balance));
+							List<Map<String, Object>> orders = new ArrayList<>();
+							if (m.orders != null) for (Market.Order o : m.orders) orders.add(Map.of("name", o.name == null ? "" : o.name, "times", o.times, "bought", o.bought));
+							ins.setString(6, Json.GSON.toJson(orders));
 							ins.addBatch();
 						}
 						ins.executeBatch();

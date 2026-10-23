@@ -343,6 +343,8 @@ public final class Panel {
 			info.register(routes);
 			claims.register(routes);
 			market.register(routes);
+			// The website's market (balance and buying); off unless WEBSITE_TOKEN is set.
+			new WebShop(env("WEBSITE_TOKEN", ""), market, discord, dashboard, server, audit).register(routes);
 			pets.register(routes);
 			new PackMirror(serverDir).register(routes);
 			new TweaksRoutes(serverDir, server, audit, map).register(routes);

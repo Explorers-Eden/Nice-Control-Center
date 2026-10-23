@@ -113,6 +113,8 @@ final class PetsService {
 			int left = p.stock <= 0 ? -1 : Math.max(0, p.stock - number(sold.get(p.id)));
 			if (left == 0) continue;
 			Map<String, Object> m = new LinkedHashMap<>();
+			m.put("id", p.id);
+			m.put("kind", "pet");
 			m.put("name", p.name);
 			if (!p.description.isEmpty()) m.put("description", p.description);
 			m.put("price", p.price);

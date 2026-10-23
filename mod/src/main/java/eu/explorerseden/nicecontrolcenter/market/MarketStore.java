@@ -72,9 +72,9 @@ public final class MarketStore {
 			if (server == null || !settings.enabled) return;
 			Market.Mailbox m = data.mail.get(h.player.getStringUUID());
 			if (m != null && !m.isEmpty()) {
-				h.player.sendSystemMessage(Component.literal("You have " + (m.currency > 0 ? m.currency + " " + currencyName() : "")
-						+ (m.currency > 0 && !m.parcels.isEmpty() ? " and " : "") + (m.parcels.isEmpty() ? "" : "items")
-						+ " waiting in your market mailbox: /market").withStyle(ChatFormatting.GOLD));
+				String what = !m.parcels.isEmpty() && !m.orders.isEmpty() ? "Items and purchases from the website are"
+						: !m.orders.isEmpty() ? (m.orders.size() == 1 ? "A purchase from the website is" : "Purchases from the website are") : "Items are";
+				h.player.sendSystemMessage(Component.literal(what + " waiting in your market mailbox: /market").withStyle(ChatFormatting.GOLD));
 				Plop.play(h.player);
 			}
 		});
@@ -180,6 +180,36 @@ public final class MarketStore {
 			NiceControlCenter.LOGGER.warn("A market item can't be read any more ({}): {}", item.id, e.toString());
 			return ItemStack.EMPTY;
 		}
+	}
+
+	// ---------------------------------------------------------------- paying
+
+	/** How much currency the player carries. */
+	public static int carried(ServerPlayer player) {
+		return count(player, new ItemStack(currency()));
+	}
+
+	/** What the player can spend: their balance, then what they carry. */
+	public static long funds(ServerPlayer player) {
+		return data.balance(player.getStringUUID()) + carried(player);
+	}
+
+	/**
+	 * Pays cost: from the balance first, the rest from the currency the player carries. False (and nothing taken)
+	 * when both together aren't enough.
+	 */
+	public static boolean pay(ServerPlayer player, long cost) {
+		if (cost < 0) return false;
+		String me = player.getStringUUID();
+		long fromBalance = Math.min(cost, data.balance(me));
+		long rest = cost - fromBalance;
+		if (rest > carried(player)) return false;
+		if (fromBalance > 0 && !data.debit(me, fromBalance)) return false;
+		if (rest > 0 && !take(player, new ItemStack(currency()), (int) rest)) {
+			data.credit(me, player.getPlainTextName(), fromBalance);
+			return false;
+		}
+		return true;
 	}
 
 	/** How many items like this the player carries (same item, same components). */

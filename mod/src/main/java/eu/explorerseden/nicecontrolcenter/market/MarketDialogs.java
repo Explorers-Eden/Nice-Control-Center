@@ -140,8 +140,17 @@ public final class MarketDialogs {
 		return money(l.price) + (l.lot() == 1 ? " each" : " per " + l.lot());
 	}
 
-	private static String money(int n) {
+	private static String money(long n) {
 		return String.format(Locale.ROOT, "%,d %s", n, n == 1 ? MarketStore.currencyName().replaceAll("s$", "") : MarketStore.currencyName());
+	}
+
+	/** "You have 40 diamonds (25 in the bank, 15 carried)", or just what's carried when the bank is empty. */
+	private static String funds(ServerPlayer player) {
+		long bank = MarketStore.data().balance(player.getStringUUID());
+		int carried = MarketStore.carried(player);
+		if (bank <= 0) return "You carry " + money(carried);
+		return "You have " + money(bank + carried) + " (" + String.format(Locale.ROOT, "%,d", bank) + " in the bank"
+				+ (carried > 0 ? ", " + String.format(Locale.ROOT, "%,d", carried) + " carried)" : ")");
 	}
 
 	private static String str(CompoundTag t, String k) {
@@ -168,15 +177,101 @@ public final class MarketDialogs {
 			Plop.play(player);
 		}
 		body.add(text(data.listings.size() + (data.listings.size() == 1 ? " player listing" : " player listings") + " for sale · paid in " + MarketStore.currencyName(), ChatFormatting.GRAY));
-		if (mail != null && !mail.isEmpty()) body.add(text("Your mailbox: " + (mail.currency > 0 ? money(mail.currency) : "") + (mail.currency > 0 && !mail.parcels.isEmpty() ? " and " : "")
-				+ (mail.parcels.isEmpty() ? "" : mail.parcels.size() + " parcel" + (mail.parcels.size() == 1 ? "" : "s")), ChatFormatting.GOLD));
+		long balance = data.balance(me);
+		body.add(text("Your bank: " + money(balance) + (balance > 0 ? " · spent first when you buy" : ""), ChatFormatting.GOLD));
+		if (mail != null && !mail.isEmpty()) body.add(text("Your mailbox: " + mailSummary(mail), ChatFormatting.GOLD));
 		List<ActionButton> buttons = new ArrayList<>();
 		if (serverShopOpen()) buttons.add(button("Server shop", "What the server sells", "server", args()));
 		buttons.add(button(serverShopOpen() ? "Player listings" : "Browse", "Everything players sell", "browse", args("page", "0")));
 		buttons.add(button("Sell", "List items from your inventory", "sell", args()));
 		buttons.add(button("My listings (" + data.of(me).size() + ")", "Change the price of what you sell, or take it back", "mine", args()));
-		buttons.add(button("Mailbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Your earnings and items that came back", "mail", args()));
+		buttons.add(button("Mailbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Items that came back or didn't fit, and what you bought on the website", "mail", args()));
+		buttons.add(button("Bank", "Deposit and withdraw " + MarketStore.currencyName() + "; sales are paid in here", "bank", args()));
 		menu(player, "Market", body, List.of(), buttons);
+	}
+
+	/** "2 parcels and 1 purchase to claim". */
+	private static String mailSummary(Market.Mailbox m) {
+		List<String> parts = new ArrayList<>();
+		if (m.currency > 0) parts.add(money(m.currency));
+		if (!m.parcels.isEmpty()) parts.add(m.parcels.size() + " parcel" + (m.parcels.size() == 1 ? "" : "s"));
+		if (!m.orders.isEmpty()) parts.add(m.orders.size() + (m.orders.size() == 1 ? " purchase" : " purchases") + " to claim");
+		return String.join(" and ", parts);
+	}
+
+	/** The player's bank: deposit the currency they carry, or take it out again. */
+	private static void bank(ServerPlayer player, String notice) {
+		long balance = MarketStore.data().balance(player.getStringUUID());
+		int carried = MarketStore.carried(player);
+		List<DialogBody> body = new ArrayList<>();
+		if (notice != null) {
+			body.add(text(notice, notice.startsWith("Deposited") || notice.startsWith("Withdrew") ? ChatFormatting.GREEN : ChatFormatting.RED));
+			Plop.play(player);
+		}
+		body.add(new PlainMessage(Component.empty()
+				.append(Component.literal("Balance ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(balance)).withStyle(ChatFormatting.GOLD))
+				.append(Component.literal("   You carry ").withStyle(ChatFormatting.GRAY)).append(Component.literal(money(carried)).withStyle(ChatFormatting.WHITE)), TEXT_WIDTH));
+		body.add(text("Purchases take from your bank first, then from what you carry. Sales are paid in here. You can see your balance and buy on the website too.", ChatFormatting.GRAY));
+		List<Input> inputs = List.of(new Input("amount", new TextInput(120, Component.literal("How many"), true, "", 9, Optional.empty())));
+		List<ActionButton> buttons = new ArrayList<>();
+		buttons.add(button("Deposit", "Put the amount you typed into your bank", "deposit", args()));
+		buttons.add(button("Deposit all", "Every " + MarketStore.currencyName().replaceAll("s$", "") + " you carry", "deposit_all", args()));
+		buttons.add(button("Withdraw", "Take the amount you typed out; what doesn't fit stays in the bank", "withdraw", args()));
+		menu(player, "Market · Bank", body, inputs, buttons, back("home", args()));
+	}
+
+	private static void deposit(ServerPlayer player, int amount) {
+		if (amount < 1) {
+			bank(player, "Type how many to deposit.");
+			return;
+		}
+		int carried = MarketStore.carried(player);
+		if (amount > carried) {
+			bank(player, "You only carry " + money(carried) + ".");
+			return;
+		}
+		Market.Data data = MarketStore.data();
+		String me = player.getStringUUID();
+		if (data.balance(me) + amount > Market.MAX_BALANCE) {
+			bank(player, "Your bank is full.");
+			return;
+		}
+		if (!MarketStore.take(player, new ItemStack(MarketStore.currency()), amount)) {
+			bank(player, "You don't carry that many any more.");
+			return;
+		}
+		data.credit(me, player.getPlainTextName(), amount);
+		MarketStore.saveNow();
+		bank(player, "Deposited " + money(amount) + ".");
+	}
+
+	private static void withdraw(ServerPlayer player, int amount) {
+		Market.Data data = MarketStore.data();
+		String me = player.getStringUUID();
+		long balance = data.balance(me);
+		if (amount < 1) {
+			bank(player, "Type how many to withdraw.");
+			return;
+		}
+		if (amount > balance) {
+			bank(player, "Your bank only holds " + money(balance) + ".");
+			return;
+		}
+		data.debit(me, amount);
+		int left = MarketStore.give(player, new ItemStack(MarketStore.currency()), amount);
+		// What didn't fit goes straight back.
+		if (left > 0) data.credit(me, player.getPlainTextName(), left);
+		MarketStore.saveNow();
+		if (left == amount) bank(player, "Your inventory is full.");
+		else bank(player, "Withdrew " + money(amount - left) + "." + (left > 0 ? " Your inventory is full: " + money(left) + " stayed in the bank." : ""));
+	}
+
+	/** Tells the seller (when online) about a sale; the money is in their bank already. */
+	static void tellSeller(net.minecraft.server.MinecraftServer server, String sellerId, String what) {
+		ServerPlayer seller = server.getPlayerList().getPlayer(java.util.UUID.fromString(sellerId));
+		if (seller == null) return;
+		seller.sendSystemMessage(Component.literal(what + " It's in your bank: /market").withStyle(ChatFormatting.GOLD));
+		Plop.play(seller);
 	}
 
 	/** What the server sells: claim blocks (while claims are on), command listings and pets. */
@@ -341,13 +436,13 @@ public final class MarketDialogs {
 			menu(player, l.item.name, body, inputs, buttons, back("mine", args()));
 			return;
 		}
-		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
+		long funds = MarketStore.funds(player);
 		// Bought in whole lots: "How many" counts lots when a lot is more than one item.
 		int lot = l.lot();
-		int afford = Math.min(carried / Math.max(1, l.price), l.amount / lot);
+		long afford = Math.min(funds / Math.max(1, l.price), l.amount / lot);
 		String unit = lot == 1 ? "" : afford == 1 ? " lot of " + lot : " lots of " + lot;
-		body.add(afford > 0 ? text("You carry " + money(carried) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + unit + ".", ChatFormatting.GRAY)
-				: text("You carry " + money(carried) + ": not enough for " + (lot == 1 ? "one." : lot + "."), ChatFormatting.RED));
+		body.add(afford > 0 ? text(funds(player) + ": enough for " + String.format(Locale.ROOT, "%,d", afford) + unit + ".", ChatFormatting.GRAY)
+				: text(funds(player) + ": not enough for " + (lot == 1 ? "one." : lot + "."), ChatFormatting.RED));
 		List<Input> inputs = List.of(new Input("amount", new TextInput(120, Component.literal(lot == 1 ? "How many" : "Lots of " + lot), true, "1", 9, Optional.empty())));
 		// The price and lot size the buyer saw, so a click after the seller changed them is caught.
 		buttons.add(button("Buy", price(l), "buy", args("id", l.id, "price", String.valueOf(l.price), "per", String.valueOf(lot))));
@@ -412,16 +507,16 @@ public final class MarketDialogs {
 				.append(Component.literal("   Seller ").withStyle(ChatFormatting.GRAY)).append(Component.literal(MarketStore.settings().serverName).withStyle(ChatFormatting.WHITE)), TEXT_WIDTH));
 		if (o.saleEnds != 0) body.add(text("On sale until " + Pets.date(o.saleEnds) + ".", ChatFormatting.GRAY));
 		int left = ClaimStore.data().blocksLeft(me, MarketStore.settings().claimBlocksMax);
-		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
-		int max = Math.min(Math.min(carried / o.price, left / o.blocks), 64);
+		long funds = MarketStore.funds(player);
+		int max = (int) Math.min(Math.min(funds / o.price, left / o.blocks), 64);
 		List<Input> inputs = new ArrayList<>();
 		List<ActionButton> buttons = new ArrayList<>();
 		if (left < o.blocks) {
 			body.add(text(left == 0 ? "You've bought as many claim blocks as you can." : "You can only buy " + String.format(Locale.ROOT, "%,d", left) + " more claim blocks.", ChatFormatting.YELLOW));
 		} else if (max == 0) {
-			body.add(text("You carry " + money(carried) + ": not enough.", ChatFormatting.RED));
+			body.add(text(funds(player) + ": not enough.", ChatFormatting.RED));
 		} else {
-			body.add(text("You carry " + money(carried) + (left == Integer.MAX_VALUE ? "" : " · you can buy " + String.format(Locale.ROOT, "%,d", left) + " more claim blocks")
+			body.add(text(funds(player) + (left == Integer.MAX_VALUE ? "" : " · you can buy " + String.format(Locale.ROOT, "%,d", left) + " more claim blocks")
 					+ ": enough for " + max + (max == 1 ? " pack" : " packs") + " of " + String.format(Locale.ROOT, "%,d", o.blocks) + " (up to 64 at once).", ChatFormatting.GRAY));
 			// Typed like a player listing's amount: packs of o.blocks claim blocks.
 			inputs.add(new Input("amount", new TextInput(120, Component.literal(o.blocks == 1 ? "How many" : "Packs of " + o.blocks), true, "1", 9, Optional.empty())));
@@ -449,16 +544,15 @@ public final class MarketDialogs {
 			return;
 		}
 		long cost = (long) n * o.price;
-		ItemStack coin = new ItemStack(MarketStore.currency());
-		if (cost > Integer.MAX_VALUE || !MarketStore.take(player, coin, (int) cost)) {
-			claimOffer(player, index, o, "You need " + money((int) Math.min(cost, Integer.MAX_VALUE)) + ".");
+		if (!MarketStore.pay(player, cost)) {
+			claimOffer(player, index, o, "You need " + money(cost) + ".");
 			return;
 		}
 		ClaimStore.data().buy(me, player.getPlainTextName(), (int) blocks, ClaimStore.settings());
 		ClaimStore.touched();
 		MarketStore.data().serverSale(o.id, false, String.format(Locale.ROOT, "%,d claim blocks", o.blocks), o.icon, MarketStore.settings().serverName, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
 		MarketStore.saveNow();
-		claimOffer(player, index, o, String.format(Locale.ROOT, "Bought %,d claim blocks for %s.", blocks, money((int) cost)));
+		claimOffer(player, index, o, String.format(Locale.ROOT, "Bought %,d claim blocks for %s.", blocks, money(cost)));
 	}
 
 	/** Buying a command listing, up to 64 at once (its commands run once per one bought). */
@@ -481,16 +575,16 @@ public final class MarketDialogs {
 		body.add(new PlainMessage(facts, TEXT_WIDTH));
 		if (o.saleEnds != 0) body.add(text("On sale until " + Pets.date(o.saleEnds) + ".", ChatFormatting.GRAY));
 		int left = o.perPlayer > 0 ? Math.max(0, o.perPlayer - bought) : Integer.MAX_VALUE;
-		int carried = MarketStore.count(player, new ItemStack(MarketStore.currency()));
-		int max = Math.min(Math.min(carried / o.price, left), 64);
+		long funds = MarketStore.funds(player);
+		int max = (int) Math.min(Math.min(funds / o.price, left), 64);
 		List<Input> inputs = new ArrayList<>();
 		List<ActionButton> buttons = new ArrayList<>();
 		if (left == 0) {
 			body.add(text("You've bought as many as you can.", ChatFormatting.YELLOW));
 		} else if (max == 0) {
-			body.add(text("You carry " + money(carried) + ": not enough.", ChatFormatting.RED));
+			body.add(text(funds(player) + ": not enough.", ChatFormatting.RED));
 		} else {
-			body.add(text("You carry " + money(carried) + (max > 1 ? ": enough for " + max + (max == 64 ? " (up to 64 at once)." : ".") : "."), ChatFormatting.GRAY));
+			body.add(text(funds(player) + (max > 1 ? ": enough for " + max + (max == 64 ? " (up to 64 at once)." : ".") : "."), ChatFormatting.GRAY));
 			// Typed like a player listing's amount when more than one can be bought.
 			if (max > 1) inputs.add(new Input("amount", new TextInput(120, Component.literal("How many"), true, "1", 9, Optional.empty())));
 			buttons.add(button("Buy", money(o.price) + " each", "command_buy", args("id", o.id, "price", String.valueOf(o.price))));
@@ -517,27 +611,26 @@ public final class MarketDialogs {
 			return;
 		}
 		long cost = (long) n * o.price;
-		ItemStack coin = new ItemStack(MarketStore.currency());
-		if (cost > Integer.MAX_VALUE || !MarketStore.take(player, coin, (int) cost)) {
-			commandOffer(player, o, "You need " + money((int) Math.min(cost, Integer.MAX_VALUE)) + ".");
+		if (!MarketStore.pay(player, cost)) {
+			commandOffer(player, o, "You need " + money(cost) + ".");
 			return;
 		}
 		// Counted before the commands run, so a command that reopens the menu sees it.
 		MarketStore.data().serverSale(o.id, true, o.name, o.icon, MarketStore.settings().serverName, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
 		MarketStore.saveNow();
-		runCommands(player, o, n);
+		runCommands(player, o.name, o.commands, n);
 		if (player.isRemoved()) return;
-		commandOffer(player, o, "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money((int) cost) + ".");
+		commandOffer(player, o, "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + ".");
 	}
 
 	/** Runs the listing's commands as the console, once per one bought, with the variables filled in for the buyer. */
-	private static void runCommands(ServerPlayer player, Market.CommandOffer o, int times) {
+	private static void runCommands(ServerPlayer player, String what, List<String> commands, int times) {
 		var server = player.level().getServer();
 		var pos = player.blockPosition();
 		String name = player.getPlainTextName();
-		eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("[market] {} bought {} × {}: running its commands", name, times, o.name);
+		eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("[market] {} bought {} × {}: running its commands", name, times, what);
 		for (int i = 0; i < times; i++) {
-			for (String c : o.commands) {
+			for (String c : commands) {
 				String cmd = c.replace("{player}", name).replace("{uuid}", player.getStringUUID())
 						.replace("{x}", String.valueOf(pos.getX())).replace("{y}", String.valueOf(pos.getY())).replace("{z}", String.valueOf(pos.getZ()))
 						.replace("{dimension}", player.level().dimension().identifier().toString());
@@ -672,6 +765,14 @@ public final class MarketDialogs {
 			body.add(text("Your mailbox is empty.", ChatFormatting.GRAY));
 		} else {
 			if (m.currency > 0) body.add(text("Earnings: " + money(m.currency), ChatFormatting.GOLD));
+			for (int i = 0; i < m.orders.size(); i++) {
+				Market.Order o = m.orders.get(i);
+				// The click label first on its line: the dialog only wraps at spaces.
+				body.add(new PlainMessage(Component.empty()
+						.append(link("Claim", "Run it now, here where you stand", "claim", args("order", String.valueOf(i), "offer", o.offer, "bought", String.valueOf(o.bought)), ChatFormatting.GREEN))
+						.append(Component.literal(" " + (o.times == 1 ? "" : o.times + " × ") + o.name).withStyle(ChatFormatting.WHITE))
+						.append(Component.literal(" · bought on the website").withStyle(ChatFormatting.GRAY)), TEXT_WIDTH));
+			}
 			for (Market.Parcel p : m.parcels) {
 				Component desc = Component.literal(p.item.name).withStyle(ChatFormatting.WHITE)
 						.append(Component.literal(" ×" + String.format(Locale.ROOT, "%,d", p.amount)).withStyle(ChatFormatting.GRAY));
@@ -679,7 +780,7 @@ public final class MarketDialogs {
 			}
 		}
 		List<ActionButton> buttons = new ArrayList<>();
-		if (m != null && !m.isEmpty()) buttons.add(button("Collect", "What fits in your inventory", "collect", args()));
+		if (m != null && (m.currency > 0 || !m.parcels.isEmpty())) buttons.add(button("Collect", "The items that fit in your inventory", "collect", args()));
 		menu(player, "Market · Mailbox", body, List.of(), buttons, back("home", args()));
 	}
 
@@ -740,6 +841,14 @@ public final class MarketDialogs {
 				mail(player);
 			}
 			case "collect" -> collect(player);
+			case "claim" -> claim(player, in);
+			case "bank" -> bank(player, null);
+			case "deposit" -> deposit(player, num(in, "amount"));
+			case "deposit_all" -> {
+				if (MarketStore.carried(player) == 0) bank(player, "You don't carry any " + MarketStore.currencyName() + ".");
+				else deposit(player, MarketStore.carried(player));
+			}
+			case "withdraw" -> withdraw(player, num(in, "amount"));
 			default -> {
 			}
 		}
@@ -769,9 +878,8 @@ public final class MarketDialogs {
 		}
 		int amount = lots * lot;
 		long cost = (long) lots * l.price;
-		ItemStack coin = new ItemStack(MarketStore.currency());
-		if (cost > Integer.MAX_VALUE || MarketStore.count(player, coin) < cost) {
-			view(player, l, "You need " + money((int) Math.min(cost, Integer.MAX_VALUE)) + ".");
+		if (MarketStore.funds(player) < cost) {
+			view(player, l, "You need " + money(cost) + ".");
 			return;
 		}
 		ItemStack goods = MarketStore.stack(player.level().getServer(), l.item, 1);
@@ -779,7 +887,10 @@ public final class MarketDialogs {
 			view(player, l, "This item can't be bought any more (a mod it needs is gone).");
 			return;
 		}
-		MarketStore.take(player, coin, (int) cost);
+		if (!MarketStore.pay(player, cost)) {
+			view(player, l, "You need " + money(cost) + ".");
+			return;
+		}
 		long now = System.currentTimeMillis();
 		Market.Item item = l.item;
 		String sellerId = l.seller;
@@ -795,13 +906,8 @@ public final class MarketDialogs {
 			data.mailChanged(m);
 		}
 		MarketStore.saveNow();
-		ServerPlayer seller = player.level().getServer().getPlayerList().getPlayer(java.util.UUID.fromString(sellerId));
-		if (seller != null) {
-			seller.sendSystemMessage(Component.literal(player.getPlainTextName() + " bought " + amount + " × " + item.name + " for " + money((int) cost)
-					+ ". Collect it in /market.").withStyle(ChatFormatting.GOLD));
-			Plop.play(seller);
-		}
-		home(player, "Bought " + amount + " × " + item.name + " for " + money((int) cost) + (left > 0 ? "; " + left + " didn't fit and wait in your mailbox." : "."));
+		tellSeller(player.level().getServer(), sellerId, player.getPlainTextName() + " bought " + amount + " × " + item.name + " for " + money(cost) + ".");
+		home(player, "Bought " + amount + " × " + item.name + " for " + money(cost) + (left > 0 ? "; " + left + " didn't fit and wait in your mailbox." : "."));
 	}
 
 	private static void list(ServerPlayer player, CompoundTag in) {
@@ -1003,5 +1109,24 @@ public final class MarketDialogs {
 		data.mailChanged(m);
 		MarketStore.saveNow();
 		home(player, full ? "Your inventory is full: the rest waits in your mailbox." : "Collected everything.");
+	}
+
+	/** Runs a command listing bought on the website, for the player where they stand. */
+	private static void claim(ServerPlayer player, CompoundTag in) {
+		Market.Data data = MarketStore.data();
+		Market.Mailbox m = data.mail.get(player.getStringUUID());
+		int i = num(in, "order");
+		Market.Order o = m == null || i < 0 || i >= m.orders.size() ? null : m.orders.get(i);
+		// The list changed since the menu opened (claimed already, or a new one came in).
+		if (o == null || !o.offer.equals(str(in, "offer")) || !String.valueOf(o.bought).equals(str(in, "bought"))) {
+			mail(player);
+			return;
+		}
+		m.orders.remove(i);
+		data.mailChanged(m);
+		MarketStore.saveNow();
+		runCommands(player, o.name, o.commands, o.times);
+		if (player.isRemoved()) return;
+		home(player, "Collected " + (o.times == 1 ? "" : o.times + " × ") + o.name + ".");
 	}
 }

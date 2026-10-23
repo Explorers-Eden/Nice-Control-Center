@@ -10,6 +10,7 @@
 #   DISCORD_TOKEN              optional: the Discord bot token (can also be pasted in the panel)
 #   MAP_HOST                   optional: the web map's own domain, e.g. map.explorerseden.eu (gets its own certificate)
 #   INFO_HOST                  optional: the public info page's own domain, e.g. info.explorerseden.eu
+#   WEBSITE_TOKEN              optional: a long random secret your website sends to show market balances and buy (see SETUP.md)
 #   MINECRAFT_PORT             the port players connect to (default 25565). Crafty publishes 25500-25600 on the same
 #                              host: while both run, pick a free port outside that range (e.g. 25601), or stop Crafty.
 #   TRAEFIK_CERTRESOLVER       only if yours isn't called "le" (Crafty's stack uses "le")
@@ -32,6 +33,7 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN:-}
       MAP_HOST: ${MAP_HOST:-}
       INFO_HOST: ${INFO_HOST:-}
+      WEBSITE_TOKEN: ${WEBSITE_TOKEN:-}
     ports:
       - "${MINECRAFT_PORT:-25565}:25565"
       # SFTP with the panel's accounts.

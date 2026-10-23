@@ -677,6 +677,19 @@ public final class DashboardServer {
 					return Map.of("ok", true);
 				}));
 			}
+			// The website through the panel (which checked who the player is): their bank, and buying from it.
+			case "/api/market/web" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String action = body.has("action") ? body.get("action").getAsString() : "";
+				sendJson(exchange, onServerThread(() -> switch (action) {
+					case "account" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.account(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
+					case "buy" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.buy(minecraft, body);
+					default -> Map.of("error", "Unknown action.");
+				}));
+			}
 			// For the panel's Discord channel topic: who's on, and the Nice Actions Time/Date HUD as plain text when it's there.
 			case "/api/topic" -> sendJson(exchange, onServerThread(() -> {
 				Map<String, Object> topic = new LinkedHashMap<>();

@@ -259,15 +259,33 @@ public final class Market {
 		public int amount;
 	}
 
+	/** A command listing bought on the website: its commands run when the player claims it in game (kept as bought). */
+	public static final class Order {
+		public String offer;
+		public String name;
+		public String icon;
+		public int times;
+		public List<String> commands = new ArrayList<>();
+		public long bought;
+	}
+
+	/** Most a balance can hold (far above anything real; keeps sums from overflowing). */
+	public static final long MAX_BALANCE = 1_000_000_000_000L;
+
 	public static final class Mailbox {
 		public String name;
-		/** Currency owed (sales). */
+		/** Currency owed from sales in files before the bank (moved into {@link #balance} on load). */
 		public int currency;
+		/** Currency in the player's bank: deposited, or earned from sales. Spent first when buying. */
+		public long balance;
 		public List<Parcel> parcels = new ArrayList<>();
+		/** Command listings bought on the website, waiting to be claimed in game. */
+		public List<Order> orders = new ArrayList<>();
 		public long rev;
 
+		/** Nothing to collect (the balance isn't mail). */
 		public boolean isEmpty() {
-			return currency <= 0 && parcels.isEmpty();
+			return currency <= 0 && parcels.isEmpty() && orders.isEmpty();
 		}
 	}
 
@@ -303,6 +321,18 @@ public final class Market {
 			if (sales == null) sales = new ArrayList<>();
 			if (tombstones == null) tombstones = new LinkedHashMap<>();
 			if (serverBought == null) serverBought = new LinkedHashMap<>();
+			mail.values().removeIf(m -> m == null);
+			for (Mailbox m : mail.values()) {
+				if (m.parcels == null) m.parcels = new ArrayList<>();
+				if (m.orders == null) m.orders = new ArrayList<>();
+				m.orders.removeIf(o -> o == null || o.commands == null || o.times < 1);
+				// Earnings waiting before the bank existed go into the balance.
+				if (m.currency > 0) {
+					m.balance = Math.min(MAX_BALANCE, Math.max(0, m.balance) + m.currency);
+					m.currency = 0;
+					m.rev = bump();
+				}
+			}
 			listings.values().removeIf(l -> l == null || l.id == null || l.item == null || l.amount <= 0);
 			return this;
 		}
@@ -315,6 +345,44 @@ public final class Market {
 			Mailbox m = mail.computeIfAbsent(uuid, k -> new Mailbox());
 			if (name != null) m.name = name;
 			return m;
+		}
+
+		/** The player's balance (0 when they have no mailbox yet). */
+		public long balance(String uuid) {
+			Mailbox m = mail.get(uuid);
+			return m == null ? 0 : m.balance;
+		}
+
+		/** Adds to the player's balance (deposits, sales); false when it would go over {@link #MAX_BALANCE}. */
+		public boolean credit(String uuid, String name, long amount) {
+			Mailbox m = mailbox(uuid, name);
+			if (amount < 0 || m.balance + amount > MAX_BALANCE) return false;
+			m.balance += amount;
+			m.rev = bump();
+			return true;
+		}
+
+		/** Takes from the player's balance (spending, withdrawing); false when there isn't that much. */
+		public boolean debit(String uuid, long amount) {
+			Mailbox m = mail.get(uuid);
+			if (amount < 0 || m == null || m.balance < amount) return false;
+			m.balance -= amount;
+			m.rev = bump();
+			return true;
+		}
+
+		/** A command listing bought on the website waits in the mailbox until it's claimed in game. */
+		public void order(String uuid, String name, CommandOffer o, int times, long now) {
+			Mailbox m = mailbox(uuid, name);
+			Order order = new Order();
+			order.offer = o.id;
+			order.name = o.name;
+			order.icon = o.icon;
+			order.times = times;
+			order.commands = new ArrayList<>(o.commands);
+			order.bought = now;
+			m.orders.add(order);
+			m.rev = bump();
 		}
 
 		/** How many of this command listing the player bought. */
@@ -409,12 +477,12 @@ public final class Market {
 			return null;
 		}
 
-		/** A purchase of whole lots (the currency is already taken from the buyer): the seller is paid into their mailbox. */
+		/** A purchase of whole lots (the currency is already taken from the buyer): the seller is paid into their balance. */
 		public Sale buy(Listing l, String buyer, String buyerName, int amount, long now) {
 			l.amount -= amount;
 			int total = amount / l.lot() * l.price;
 			Mailbox m = mailbox(l.seller, l.sellerName);
-			m.currency += total;
+			m.balance = Math.min(MAX_BALANCE, m.balance + total);
 			m.rev = bump();
 			Sale sale = new Sale();
 			sale.listing = l.id;

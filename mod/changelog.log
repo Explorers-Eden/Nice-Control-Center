@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.31.0
+- Market bank: /market → Bank to deposit and withdraw the currency (diamonds by default). Purchases (player listings, claim blocks, command listings, pets) take from the bank first, then from what you carry. Sales are paid straight into the seller's bank; earnings already waiting in mailboxes moved into the banks. Withdrawing gives what fits, the rest stays in the bank
+- Buying on the website: through the panel, players see their bank and buy with it on the website. Items go to the mailbox, claim blocks and pets are theirs right away, command listings wait in the mailbox with a [ Claim ] label and run where the player stands when claimed
+
 ## 1.30.1
 - Lighter locator bar (Performance, on by default) now covers the second place the game rebuilds a moving player's whole locator bar: every position change, not just the chunk tracker's move. That was most of the work between ticks in a recording (87 % of it was player movement packets, mostly locator bar checks), up to a third of each second while three players moved around
 

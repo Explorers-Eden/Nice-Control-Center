@@ -121,6 +121,8 @@ public final class PlayerExtras {
 		Market.Mailbox mail = data.mail.get(uuid);
 		Map<String, Object> mailbox = new LinkedHashMap<>();
 		mailbox.put("currency", mail == null ? 0 : mail.currency);
+		mailbox.put("balance", mail == null ? 0 : mail.balance);
+		mailbox.put("orders", mail == null ? List.of() : mail.orders.stream().map(o -> Map.of("name", o.name, "times", o.times)).toList());
 		List<Map<String, Object>> parcels = new ArrayList<>();
 		if (mail != null) {
 			for (Market.Parcel p : mail.parcels) {
