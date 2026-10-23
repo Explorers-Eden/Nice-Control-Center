@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.30.1
+- Lighter locator bar (Performance, on by default) now covers the second place the game rebuilds a moving player's whole locator bar: every position change, not just the chunk tracker's move. That was most of the work between ticks in a recording (87 % of it was player movement packets, mostly locator bar checks), up to a third of each second while three players moved around
+
 ## 1.30.0
 - Craft suspicious sand and gravel (Tweaks, off by default): sand or gravel plus any one item in a crafting grid (table or inventory) gives suspicious sand or gravel holding that item with all its components (enchantments, name, damage, contents, custom data…), named e.g. "Suspicious Sand (Blade)". Brushing it gives the exact item back. Suspicious sand and gravel can't go inside, nothing is handed back from the grid (no empty bucket), and real recipes still win. Replaces the 3,000 per-item recipes Nice Things had (removed in Nice Things 3.10), which lost the item's components. The crafter block doesn't make them
 

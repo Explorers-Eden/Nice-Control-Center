@@ -11,6 +11,7 @@
 		"EntityFlagsAccessor",
 		"LoginProfileAccessor",
 		"LocatorBarThrottleMixin",
+		"LocatorBarPosMixin",
 		"BrainThrottleMixin",
 		"EntityLookupTypeMixin",
 		"ClaimEnchantEffectMixin",
