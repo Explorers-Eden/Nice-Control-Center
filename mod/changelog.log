@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.31.1
+- /ncc heap shows what grows: from the second run on, it also lists the classes that grew most since the run before (bytes and objects), which is what points at a memory leak; one run only shows what is big. /ncc heap <name> lists only classes whose name contains it, e.g. /ncc heap pathfinder or /ncc heap zombie
+
 ## 1.31.0
 - Market bank: /market → Bank to deposit and withdraw the currency (diamonds by default). Purchases (player listings, claim blocks, command listings, pets) take from the bank first, then from what you carry. Sales are paid straight into the seller's bank; earnings already waiting in mailboxes moved into the banks. Withdrawing gives what fits, the rest stays in the bank
 - Buying on the website: through the panel, players see their bank and buy with it on the website. Items go to the mailbox, claim blocks and pets are theirs right away, command listings wait in the mailbox with a [ Claim ] label and run where the player stands when claimed

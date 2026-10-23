@@ -92,7 +92,9 @@ public final class ControlCenterCommand {
 						.executes(ControlCenterCommand::bloat))
 				.then(Commands.literal("heap")
 						.requires(Permissions.require(PERMISSION_MONITOR, DEFAULT_LEVEL))
-						.executes(ControlCenterCommand::heap))
+						.executes(ctx -> heap(ctx, null))
+						.then(Commands.argument("class", StringArgumentType.greedyString())
+								.executes(ctx -> heap(ctx, StringArgumentType.getString(ctx, "class")))))
 				.then(Commands.literal("bossbar")
 						.requires(ControlCenterCommand::canStatus)
 						.executes(ControlCenterCommand::bossbar))
@@ -197,23 +199,46 @@ public final class ControlCenterCommand {
 
 	// ── Heap ────────────────────────────────────────────────────────────────
 
-	/** Which classes fill the memory (class histogram of live objects); the top 30 also go to the log. */
-	private static int heap(CommandContext<CommandSourceStack> ctx) {
+	/**
+	 * Which classes fill the memory (class histogram of live objects); the top 30 also go to the log. From the second run
+	 * on it also shows which classes grew since the run before, which is what points at a leak. With a filter, only
+	 * classes whose name contains it (e.g. "zombie", "pathfinder").
+	 */
+	private static int heap(CommandContext<CommandSourceStack> ctx, String filter) {
 		CommandSourceStack source = ctx.getSource();
 		source.sendSystemMessage(header("Memory by class").append("\n").append(muted("Collecting garbage and counting objects… (the server may pause a moment)")));
-		eu.explorerseden.nicecontrolcenter.diagnosis.HeapHistogram.take(30).whenComplete((result, error) -> source.getServer().execute(() -> {
+		eu.explorerseden.nicecontrolcenter.diagnosis.HeapHistogram.take().whenComplete((result, error) -> source.getServer().execute(() -> {
 			if (error != null) {
 				source.sendFailure(Component.literal("Couldn't take the histogram: " + (error.getCause() != null ? error.getCause().getMessage() : error.getMessage())));
 				return;
 			}
 			StringBuilder log = new StringBuilder("Memory by class (live objects, " + Diagnoser.bytes(result.totalBytes()) + " in total):");
 			MutableComponent message = header("Memory by class").append("\n").append(muted("Live objects: " + Diagnoser.bytes(result.totalBytes()) + " in "
-					+ Diagnoser.count(result.totalInstances()) + " objects. Largest:"));
+					+ Diagnoser.count(result.totalInstances()) + " objects. " + (filter == null ? "Largest:" : "Classes with \"" + filter + "\":")));
+			var shown = filter == null ? result.top(30) : result.matching(filter, 30);
+			if (filter != null) log.append("\n Classes with \"").append(filter).append("\":");
 			int i = 0;
-			for (var row : result.top()) {
+			for (var row : shown) {
 				String line = String.format(Locale.ROOT, "%s  %s  (%s objects)", Diagnoser.bytes(row.bytes()), row.className(), Diagnoser.count(row.instances()));
 				log.append("\n  ").append(line);
 				if (i++ < 15) message.append("\n").append(Component.literal(" " + line));
+			}
+			if (shown.isEmpty()) message.append("\n").append(muted(" (none)"));
+			var previous = result.previous();
+			if (previous == null) {
+				message.append("\n").append(muted("Run it again later to see which classes grew in between."));
+			} else {
+				long minutes = Math.max(0, (result.time() - previous.time()) / 60_000);
+				String since = String.format(Locale.ROOT, "Grew most in the last %d min (total %s%s):", minutes,
+						result.totalBytes() >= previous.totalBytes() ? "+" : "-", Diagnoser.bytes(Math.abs(result.totalBytes() - previous.totalBytes())));
+				log.append("\n ").append(since);
+				message.append("\n").append(muted(since));
+				i = 0;
+				for (var row : result.grown(30)) {
+					String line = String.format(Locale.ROOT, "+%s  %s  (%+,d objects)", Diagnoser.bytes(row.bytes()), row.className(), row.instances());
+					log.append("\n  ").append(line);
+					if (i++ < 10) message.append("\n").append(Component.literal(" " + line));
+				}
 			}
 			NiceControlCenter.LOGGER.info(log.toString());
 			message.append("\n").append(muted("The top 30 are in the server log."));

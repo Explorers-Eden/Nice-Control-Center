@@ -64,6 +64,7 @@ The main command is `/nicecontrolcenter`, short `/ncc`. `[minutes]` is optional 
 | `/ncc top <list> [minutes]` | Top list. `<list>` is `datapacks`, `functions`, `mods`, `entities`, `blockentities`, `chunks` or `phases`. |
 | `/ncc bossbar` | Shows or hides a live TPS/MSPT boss bar, only for you (remembered across restarts) |
 | `/ncc bloat` | Checks scoreboards, storage, entity tags and big files in the world folder |
+| `/ncc heap [class]` | Which classes fill the memory; from the second run on also what grew since the last run. With a name, only matching classes |
 | `/ncc monitor on` / `off` | Switches measuring on or off |
 | `/ncc web` | Prints the dashboard link |
 | `/ncc web regen` | Makes a new link; old links stop working |
