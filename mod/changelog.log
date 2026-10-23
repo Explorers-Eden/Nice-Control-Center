@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.27.0
+- Claims cover enchantments that change blocks: Frost Walker's ice and Enchantments Encore's Magma, Grass and Summer Walker, Plow and Electric Walker (every replace_disk, replace_block and set_block_properties effect) only change blocks in a claim where the wearer is a builder; for a mob wearing them, the claim's mob switch decides. No message (walking over water would warn every step)
+- Waypoint hubs can be placed again right where one was just broken: dropped items and XP orbs on the spot (like the old hub's own item) no longer block a hub item, which silently did nothing until they were picked up or despawned; anything else still blocks as for any armor stand
+- Claims cover data packs acting for a player: Nice Things' biome brews (fillbiome) and Fabled Roots' bloom scrolls (place feature) leave the biome and blocks in claims that player can't build on as they were, and the player is told once on the action bar. Only commands run for the player by a data pack (advancement rewards, enchantment functions) are checked; commands someone types work as before
+
 ## 1.26.1
 - /ncc heap: which classes fill the server's memory (class histogram of live objects, like jcmd GC.class_histogram, but from inside the server, so it works without JDK tools in the image); the top 15 in chat, the top 30 in the log. It runs a full garbage collection first, so the server may pause a moment
 - Reports: after stopping a recording (or when one ends on its own) the list says "Building the report…" and shows the new report as soon as it's written, instead of only after reloading the page

@@ -123,6 +123,13 @@ public final class Hubs {
 		return true;
 	}
 
+	/** A Warping Wonders hub item (an armor stand item the pack marks as a hub). */
+	public static boolean isHubItem(net.minecraft.world.item.ItemStack stack) {
+		if (!stack.is(net.minecraft.world.item.Items.ARMOR_STAND)) return false;
+		var data = stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+		return data != null && "waypoint_hub".equals(data.copyTag().getCompoundOrEmpty("warping_wonders").getStringOr("item", ""));
+	}
+
 	// ---------------------------------------------------------------- reading
 
 	private static Identifier storageId() {

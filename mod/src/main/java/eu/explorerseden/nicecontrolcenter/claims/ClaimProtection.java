@@ -247,6 +247,82 @@ public final class ClaimProtection {
 		return c == null || c.flags.fireSpread;
 	}
 
+	// ---------------------------------------------------------------- enchantments and data packs acting for someone
+
+	/**
+	 * Who is changing blocks right now on this thread, when it isn't a player's own click: an enchantment effect
+	 * (Frost Walker and data pack walkers placing ice, magma or grass; set_block_properties) for its wearer, or a
+	 * data pack function running as a player (a biome brew's fillbiome, a bloom scroll's place feature).
+	 */
+	private static final class Actor {
+		final Entity entity;
+		/** Walking over water would warn on every step; pack edits say once at the end what stayed. */
+		final boolean silent;
+		final Actor outer;
+		int skipped;
+
+		Actor(Entity entity, boolean silent, Actor outer) {
+			this.entity = entity;
+			this.silent = silent;
+			this.outer = outer;
+		}
+	}
+
+	private static final ThreadLocal<Actor> actor = new ThreadLocal<>();
+	/** Fast path for the setBlock hook: nothing is acting for anyone anywhere. */
+	private static volatile int actors;
+
+	/** An enchantment effect starts changing blocks for this entity (the wearer). */
+	public static void beginEffect(Entity entity) {
+		begin(entity, true);
+	}
+
+	/**
+	 * A command starts: a data pack acting for a player when the command runs as that player with suppressed output
+	 * (advancement rewards, enchantment functions); a command the player typed isn't suppressed and isn't checked.
+	 * Returns whether something was started, for {@link #end}.
+	 */
+	public static boolean beginPackEdit(net.minecraft.commands.CommandSourceStack source) {
+		if (!ClaimStore.enabled() || !source.isSilent() || !(source.getEntity() instanceof ServerPlayer player)) return false;
+		begin(player, false);
+		return true;
+	}
+
+	private static void begin(Entity entity, boolean silent) {
+		actor.set(new Actor(entity, silent, actor.get()));
+		actors++;
+	}
+
+	public static void end() {
+		Actor a = actor.get();
+		if (a == null) return;
+		actor.set(a.outer);
+		actors--;
+		if (!a.silent && a.skipped > 0 && a.entity instanceof ServerPlayer player) {
+			ClaimTool.bar(player, "Claimed land you can't build on stayed as it was.", ChatFormatting.RED);
+		}
+	}
+
+	public static boolean acting() {
+		return actors > 0 && actor.get() != null;
+	}
+
+	/**
+	 * A block (or biome cell) about to change while something acts for someone: a player needs to be a builder there,
+	 * a mob needs the claim's mob switch. Server thread.
+	 */
+	public static boolean actorMayChange(Level level, BlockPos pos) {
+		if (actors == 0 || level.isClientSide()) return true;
+		Actor a = actor.get();
+		if (a == null || !ClaimStore.enabled()) return true;
+		Claim c = ClaimStore.claimAt(level, pos);
+		boolean ok = c == null || (a.entity instanceof ServerPlayer player
+				? ClaimTool.bypassing(player) || ClaimStore.data().allows(c, player.getStringUUID(), Role.BUILD)
+				: c.flags.mobGriefing);
+		if (!ok) a.skipped++;
+		return ok;
+	}
+
 	public static boolean mobGriefingAllowed(Level level, BlockPos pos) {
 		if (!ClaimStore.enabled()) return true;
 		Claim c = ClaimStore.claimAt(level, pos);
