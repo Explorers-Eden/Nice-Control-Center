@@ -107,42 +107,44 @@
       { id: 'console', hue: '#9fb0c8', label: 'Console', icon: 'bi-terminal', subs: [
         { tab: 'server', label: 'Console', perm: 'console.read', desc: 'The server log as it happens. Type commands below it.' },
         { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' },
-        { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server, by where it comes from: who may use it and what it does.' }] },
+        { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server: who may use it and what it does.' }] },
       { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
         { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' }] },
       { id: 'performance', hue: '#ffb35c', label: 'Performance', icon: 'bi-speedometer2', subs: [
         { tab: 'mod:performance', label: 'Live', perm: 'dashboard.view', desc: 'What takes the server\'s time right now, tick by tick.' },
         { tab: 'stats', label: 'History', perm: 'server.view', desc: 'TPS, players, memory and disk over days and weeks.' },
-        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' }] },
+        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' },
+        { tab: 'mod:checks', label: 'Checks', perm: 'dashboard.view', desc: 'Errors in the log, settings worth a look and leftovers that bloat the world.' }] },
       { id: 'world', hue: '#4fd1c5', label: 'World', icon: 'bi-globe-americas', subs: [
-        { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'Chunks, entities and the places that cost the most.' },
-        { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'Decide which part of the world is permanent, pregenerate it, and reset the rest on a schedule.' },
+        { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'New terrain, busy chunks and redstone, and what\'s loaded around players.' },
+        { tab: 'chunks', label: 'Chunks', perm: 'dashboard.view', desc: 'Freeze the laggiest chunks, release ones loaded with nobody near, clean up.' },
+        { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'The permanent area, pregeneration and resetting the outer wilds.' },
         { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' }] },
     ] },
     { group: 'Community', items: [
       { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
         { tab: 'claims', label: 'Claims', perm: 'claims.view', desc: 'Land players have claimed: who owns it, who may do what, and where.' },
         { tab: 'claimblocks', label: 'Claim blocks', perm: 'claims.view', desc: 'How many claim blocks each player has earned, bought and used.' },
-        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Switch claims on, how players earn claim blocks, the claim tool and where waypoint hubs may go.' },
+        { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Where players may claim, how they earn claim blocks, the claim tool and waypoint hubs.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
         { tab: 'market', label: 'Player market', perm: 'server.view', desc: 'The player market (/market): settings, what players sell and what sold.' },
-        { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'What the server sells in /market: claim blocks, command listings and pet listings, and what players bought.' }] },
+        { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
-        { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: add pets, then list them in the Server shop or give them with /pets grant.' }] },
+        { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
     { group: 'Settings', items: [
       { id: 'settings', hue: '#a77bff', label: 'Server', icon: 'bi-sliders', subs: [
-        { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'Game rules and server.properties.' },
+        { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'server.properties and game rules.' },
         { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
         { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
         { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
       { id: 'gameplay', hue: '#c4a6ff', label: 'Gameplay', icon: 'bi-magic', subs: [
-        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Anvil, Better Mending, grindstone, spawners, tridents, dispensers, tree felling and vein mining: things vanilla does differently.' },
-        { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Nether portals in any shape, saplings that plant themselves, bone meal on more plants, hidden ores, crops in the rain and iron golems.' },
+        { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Tree felling, vein mining, anvil, grindstone, spawners and small tweaks.' },
+        { tab: 'felling', label: 'World & nature', perm: 'server.view', desc: 'Portals, saplings, bone meal, hidden ores, crops and golems.' },
         { tab: 'chattweaks', label: 'Chat & tab list', perm: 'server.view', desc: '@Mentions in chat, the AFK tag, and the tab list\'s header, footer and dimensions.' }] },
       { id: 'tuning', hue: '#ffb35c', label: 'Tuning', icon: 'bi-speedometer', subs: [
         { tab: 'tuning', label: 'Tuning', perm: 'dashboard.view', desc: 'Make the server lighter: tick less where nobody is, cap what piles up, step down while it lags.' }] },
@@ -314,8 +316,9 @@
     body.embedded .np-console-log { height: 520px !important; }
     /* Kick and ban live on Players → Whitelist & bans. */
     body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }
-    /* On Home the health banner is part of the panel's greeting card. */
+    /* On Home the health banner is part of the panel's greeting card; on pages without a time window it's left out. */
     body.embedded.pn-overview #np-banner { display: none !important; }
+    body.embedded[data-tab]:not([data-tab="overview"]):not([data-tab="performance"]):not([data-tab="world"]) #np-banner { display: none !important; }
     /* The panel shows the Save/Cancel bar under the frame (in here it would sit at the end of the page). */
     body.embedded .np-save-bar { display: none !important; }`;
   let frameResize = null;
@@ -477,6 +480,7 @@
     $('pn-home').hidden = tab !== 'mod:overview';
     if (tab === 'mod:overview') loadHome();
     if (tab === 'tuning') loadTuning();
+    if (tab === 'chunks') loadChunks();
     if (tab === 'maintenance') loadMaintenance();
     if (tab === 'serverlist') loadServerList();
     if (tab === 'info') loadInfo();
@@ -870,13 +874,13 @@
     const cpuClass = p.cpuSystem >= 90 ? 'poor' : p.cpuSystem >= 70 ? 'warn' : 'good';
     const gcPct = cur && cur.wallMs ? cur.gcTimeMs * 100 / cur.wallMs : 0;
     const bg = cur && cur.wallMs ? Math.min(100, (cur.gcBackgroundMs || 0) * 100 / cur.wallMs) : 0;
-    // Same rules as the mod's tile: background work (ZGC) only counts once the heap is filling up, and
-    // the tile shows the number its color comes from.
+    // Same rules as the mod's tile. ZGC hardly ever pauses, its work runs next to the server, so the tile
+    // shows whichever is bigger; background work only turns it yellow or red once the heap is filling up.
     const pauseClass = gcPct >= 10 ? 'poor' : gcPct >= 5 ? 'warn' : 'good';
     const bgClass = bg >= 95 && livePct >= 85 ? 'poor' : bg >= 80 && livePct >= 70 ? 'warn' : 'good';
     const rank = { good: 0, warn: 1, poor: 2 };
-    const showBusy = rank[bgClass] > rank[pauseClass];
-    const gcClass = showBusy ? bgClass : pauseClass;
+    const showBusy = rank[bgClass] > rank[pauseClass] || (rank[bgClass] === rank[pauseClass] && bg > gcPct);
+    const gcClass = rank[bgClass] > rank[pauseClass] ? bgClass : pauseClass;
     const ms = (v) => (v >= 100 ? fixed(v, 0) : fixed(v, 1));
     // Short sizes for the tiles: "54 MB", "2.0 GB", "540 GB".
     const short = (b) => { const [v, u] = b >= 1073741824 ? [b / 1073741824, 'GB'] : [b / 1048576, 'MB']; return (v < 10 ? v.toFixed(1) : Math.round(v)) + ' ' + u; };
@@ -897,9 +901,8 @@
     tiles.push(
       ['GC', showBusy ? `<span class="${gcClass}">${fixed(bg, 0)}%</span><small> busy</small>` : `<span class="${gcClass}">${fixed(gcPct, 1)}%</span><small> paused</small>`,
         showBusy ? `paused ${fixed(gcPct, 1)}%` : `${num(cur ? cur.gcCount : 0)} pauses`],
-      ['Entities', num(p.entities), 'loaded'],
-      ['Block entities', num(p.blockEntities), 'ticking'],
-      ['Chunks', num(p.chunks), 'loaded'],
+      ['Loaded', null, null, `<div class="np-mspt">${[['chunks', p.chunks], ['entities', p.entities], ['block ent.', p.blockEntities]]
+        .map(([l, v]) => `<span>${num(v)}<small>${l}</small></span>`).join('')}</div>`],
       ['Players', num(p.players), d.server && d.server.maxPlayers ? `online of ${num(d.server.maxPlayers)}` : 'online'],
     );
     $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}">
@@ -1984,7 +1987,7 @@
     if (s.type === 'cleanup') {
       const caps = [8, 16, 24, 32, 48, 64];
       const cur = (s.text || 'items').startsWith('excess') ? s.text : 'items';
-      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option><option value="excess" ${cur === 'excess' ? 'selected' : ''}>remove mobs over their limit (Settings → Tuning)</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
+      fields = `<select data-f="text"><option value="items" ${cur === 'items' ? 'selected' : ''}>clear dropped items and XP</option><option value="excess" ${cur === 'excess' ? 'selected' : ''}>remove mobs over their limit (Tuning → Mob limits)</option>${caps.map((n) => `<option value="excess:${n}" ${cur === 'excess:' + n ? 'selected' : ''}>remove mobs over ${n} of one kind per chunk</option>`).join('')}</select>
         <span>warn in chat</span><input type="number" data-f="seconds" min="0" max="600" value="${s.seconds ?? 30}"><span>seconds before (items only)</span>`;
     }
     if (s.type === 'maintenance') fields = `<select data-f="text"><option value="on" ${s.text !== 'off' ? 'selected' : ''}>switch on (staff only)</option><option value="off" ${s.text === 'off' ? 'selected' : ''}>switch off</option></select><span>(settings under Settings → Server → Maintenance)</span>`;
@@ -3724,11 +3727,18 @@
     } catch (e) {
       formMsg('pn-perf-msg', e.message, false);
     }
-    renderFrozen();
     loadPerfLive();
+    loadTypes();
+  }
+
+  /** World → Chunks: the laggiest chunks (frozen ones from the Tuning settings), loaded without players, clean-ups. */
+  async function loadChunks() {
+    try {
+      perfSettings = await api('api/perf/settings');
+    } catch (e) { /* the list shows without the frozen marks */ }
+    renderFrozen();
     loadHotspots();
     loadLoaded();
-    loadTypes();
   }
 
   // Mob limits, junk items and save limits: lists the form can't hold in "section.key" fields.
@@ -3967,7 +3977,7 @@
     }
   });
 
-  document.querySelector('.np-tab-panel[data-tab="tuning"]').addEventListener('click', async (e) => {
+  document.querySelector('.np-tab-panel[data-tab="chunks"]').addEventListener('click', async (e) => {
     const c = e.target.closest('[data-cleanup]');
     if (!c) return;
     const kind = c.dataset.cleanup;
@@ -4665,6 +4675,19 @@
       el.classList.toggle('pic', !!url);
     }
     $('pn-avatar-remove').hidden = !(me && me.avatar);
+    // No picture of its own: the face of the player with the account's name, when there is one.
+    if (me && !me.avatar) {
+      const img = new Image();
+      img.onload = () => {
+        for (const el of [$('pn-avatar'), $('pn-profile-avatar')]) {
+          if (!el) continue;
+          el.textContent = '';
+          el.style.backgroundImage = `url("${img.src}")`;
+          el.classList.add('pic');
+        }
+      };
+      img.src = `api/avatar/${encodeURIComponent(me.user)}`;
+    }
   }
 
   $('pn-avatar-file').addEventListener('change', async (e) => {

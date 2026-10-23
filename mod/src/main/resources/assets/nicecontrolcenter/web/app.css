@@ -644,7 +644,7 @@ body.report .np-clock { display: none; }
 .np-tab-panel[hidden] { display: none; }
 .np-tab-intro { margin: 0; font-size: var(--fs-base); font-weight: 500; color: var(--muted); }
 .np-window[hidden] { display: none; }
-body.report .np-tab[data-tab="schedule"], body.report .np-tab[data-tab="players"], body.report .np-tab[data-tab="server"], body.report .np-tab[data-tab="packs"], body.report .np-tab[data-tab="updates"],
+body.report .np-tab[data-tab="schedule"], body.report .np-tab[data-tab="players"], body.report .np-tab[data-tab="server"], body.report .np-tab[data-tab="checks"], body.report .np-tab[data-tab="packs"], body.report .np-tab[data-tab="updates"],
 body.report .np-tab[data-tab="console"], body.report .np-tab[data-tab="reports"] { display: none; }
 
 /* ── Breakdown rows (profiling.css) ──────────────────────────────────────── */
@@ -1230,6 +1230,8 @@ body.charts-more .np-chart--extra { display: block; }
 .np-msg.in { align-self: flex-start; background: rgba(255,209,139,.12); }
 .np-moderation { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 12px; border: 1px dashed rgba(255,80,80,.35); border-radius: 10px; }
 .np-player-row .np-tab-badge { justify-self: end; }
+.np-player-row .np-live-dot.on { background: var(--good); }
+.np-player-row .np-live-dot.afk { background: var(--accent-2); }
 .np-note { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; padding: 5px 10px; border-radius: 999px;
   animation: np-note-out 4s forwards; }
 .np-note.ok { background: rgba(111,232,155,.14); color: var(--good); }

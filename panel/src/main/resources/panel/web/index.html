@@ -152,7 +152,7 @@
 
 			<section class="np-card np-tab-panel" data-tab="java" hidden>
 				<h3 class="np-card-title"><i class="bi bi-cpu"></i> Startup &amp; Java</h3>
-				<p class="np-card-intro">Applies the next time the server starts. With ZGC, set the minimum memory to the maximum: the memory is taken up front anyway (AlwaysPreTouch), and the soft limit is 7/8 of it.</p>
+				<p class="np-card-intro">Applies at the next start. With ZGC, set the minimum memory to the maximum: it's taken up front anyway.</p>
 				<form id="pn-settings">
 					<div class="np-form-grid">
 						<label class="np-form-row">Start the server when the panel starts<span class="np-switch"><input type="checkbox" name="autoStart"><span></span></span></label>
@@ -183,7 +183,7 @@
 			<div class="np-tab-panel" data-tab="backups" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-archive"></i> Backups</h3>
-					<p class="np-card-intro">Zip files of the server folder. While the server runs, saving pauses for the copy, so the world is consistent. Pinned backups are never removed automatically.</p>
+					<p class="np-card-intro">Zip files of the server folder; saving pauses during the copy, so the world is consistent. Pinned backups are never removed automatically.</p>
 					<div class="pn-backup-status" id="pn-backup-status"></div>
 					<form class="np-form-actions" id="pn-backup-form" data-perm="backup.create">
 						<input type="text" class="np-console-search" id="pn-backup-label" placeholder="Note (optional), e.g. before update" maxlength="40">
@@ -267,7 +267,7 @@
 				</section>
 				<section class="np-card" id="pn-modtasks" hidden>
 					<h3 class="np-card-title"><i class="bi bi-puzzle"></i> Tasks from the mod's dashboard</h3>
-					<p class="np-card-intro">These were set up in the Nice Control Center mod's own schedule and still run there. Move them here to keep everything in one place: daily, weekly and every-few-minutes tasks become panel tasks (with their wait lines); one-off tasks and tasks that follow another one stay in the mod.</p>
+					<p class="np-card-intro">Set up in the mod's own schedule; they still run there. <b>Move here</b> turns daily, weekly and every-few-minutes tasks into panel tasks; one-off and follow-up tasks stay in the mod.</p>
 					<div id="pn-modtask-list" class="pn-tasks"></div>
 				</section>
 			</div>
@@ -315,7 +315,7 @@
 			<div class="np-tab-panel" data-tab="configs" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-gear"></i> Mod configs</h3>
-					<p class="np-card-intro">Everything in <code>config/</code>. The format is checked before saving (JSON, JSON5, TOML, YAML, properties); simple files can also be edited as a form. Files open in their own editor window. Most mods read their config at start, so restart the server afterwards.</p>
+					<p class="np-card-intro">Everything in <code>config/</code>, checked before saving; simple files also open as a form. Most mods read their config at start, so restart afterwards.</p>
 					<div class="pn-configs">
 						<div class="pn-config-list">
 							<input type="search" class="np-console-search" id="pn-config-search" placeholder="Search configs" aria-label="Search configs">
@@ -333,7 +333,7 @@
 				</section>
 				<section class="np-card" data-perm="versions.manage">
 					<h3 class="np-card-title"><i class="bi bi-arrow-up-circle"></i> Change version</h3>
-					<p class="np-card-intro">An update swaps the server and mod files and starts the server. If it doesn't come up, the old files are put back (or, with a backup, the backup is restored). Going back to an older Minecraft version isn't supported by Minecraft itself; with a backup, Undo below brings everything back, the world included.</p>
+					<p class="np-card-intro">Swaps the server and mod files and starts the server; if it doesn't come up, the old files go back. Minecraft can't go back to an older version, but with a backup, Undo below brings everything back, the world included.</p>
 					<div class="pn-form-cols">
 						<label class="pn-field">Minecraft<select id="pn-mc"></select></label>
 						<label class="pn-field">Fabric Loader<select id="pn-loader"></select></label>
@@ -378,7 +378,7 @@
 				<div id="pn-stats-charts"></div>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-calendar-week"></i> Busiest times</h3>
-					<p class="np-card-intro">Average players online per weekday and hour over the last 30 days (<span id="pn-heat-zone"></span>). Quiet hours are good for restarts and resetting the outer wilds.</p>
+					<p class="np-card-intro">Average players online per weekday and hour, last 30 days (<span id="pn-heat-zone"></span>). Quiet hours suit restarts and resets.</p>
 					<div class="pn-heat" id="pn-heat"></div>
 				</section>
 				<section class="np-card" id="pn-stats-days" data-folded>
@@ -429,7 +429,7 @@
 			<div class="np-tab-panel" data-tab="tuning" hidden>
 				<section class="np-card" id="pn-profiles-card">
 					<h3 class="np-card-title"><i class="bi bi-sliders"></i> Presets</h3>
-					<p class="np-card-intro">Ready-made sets of every setting below, and your own. A built-in preset sets every switch and number; your presets also bring their mob limits, junk items and save limits. Frozen chunks always stay as they are. Every setting stays editable after applying.</p>
+					<p class="np-card-intro">Ready-made sets of every setting below, and your own (yours also bring their mob limits, junk items and save limits). Everything stays editable after applying.</p>
 					<div class="pn-perf-profiles" id="pn-profiles"></div>
 					<h4 class="pn-perf-subhead">Your presets</h4>
 					<div class="pn-perf-profiles" id="pn-presets"></div>
@@ -439,7 +439,7 @@
 				<form id="pn-perf-form" autocomplete="off">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-graph-down-arrow"></i> Step down while it lags</h3>
-					<p class="np-card-intro">When ticks take longer than the target, the server saves work step by step, what players notice least first: the ranges of <i>Tick less where nobody is</i> and <i>Lighter mob AI</i> shrink to the lowest you set below (three quick steps), then the mob cap and the <span data-help="sim">simulation distance</span> come down taking turns, then (with <i>More steps first</i>) how far players see mobs, and last the <span data-help="view">view distance</span>. A step every 10 seconds, every 5 while ticks take more than twice the target. Once it has been calm for a minute, it undoes its steps one by one in reverse, so the far-mob ranges come back last. Nothing is saved: a restart starts from your normal settings.</p>
+					<p class="np-card-intro">When ticks run over the target, the server saves work step by step, what players notice least first: the far-mob ranges below shrink, then the mob cap and the <span data-help="sim">simulation distance</span> take turns, and last the <span data-help="view">view distance</span>. A step every 10 seconds (5 when it's bad); after a calm minute the steps are undone in reverse. A restart starts from your normal settings.</p>
 					<p class="pn-perf-live" id="pn-perf-live"></p>
 					<div class="np-form-grid" data-needs="dynamic.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="dynamic.enabled"><span></span></span></label>
@@ -460,7 +460,7 @@
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
 						<div class="np-form-grid" data-needs="activation.enabled">
-							<p class="pn-hint">With lag protection on, these are the lowest ranges: without lag mobs tick normally across the whole simulation distance, and while it lags the ranges shrink down to these shares of the simulation distance at that moment (at least 16 blocks). With lag protection off they always apply.</p>
+							<p class="pn-hint">With <i>Step down while it lags</i> on, these are the lowest the ranges go while it lags (without lag, mobs tick normally). Without it they always apply. At least 16 blocks.</p>
 							<label class="np-form-row">Monsters: active within (% of simulation distance)<input type="number" name="activation.monstersPercent" min="10" max="100"></label>
 							<label class="np-form-row">Animals: active within (% of simulation distance)<input type="number" name="activation.animalsPercent" min="10" max="100"></label>
 							<label class="np-form-row">Villagers: active within (% of simulation distance)<input type="number" name="activation.villagersPercent" min="10" max="100"></label>
@@ -471,10 +471,10 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-cpu"></i> Lighter mob AI</h3>
-					<p class="np-card-intro">Mobs far from every player decide what to do next only every few ticks; what they're already doing keeps running (like Pufferfish). This includes mobs with a brain (villagers, copper golems, frogs, allays, piglins…): far away, their senses and behaviours run every few ticks too, while their memories keep counting down normally. Tamed and owned mobs always think. While the server lags, it also limits how many mobs may search a new path per tick; the others try again a moment later.</p>
+					<p class="np-card-intro">Mobs far from every player decide what to do next only every few ticks; what they're already doing keeps running (like Pufferfish), brains of villagers, piglins and the like included. Tamed mobs always think. While it lags, only so many mobs may search a new path per tick.</p>
 					<div class="np-form-grid" data-needs="ai.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="ai.enabled"><span></span></span></label>
-						<label class="np-form-row"><span>Far means more than (% of simulation distance) <small class="pn-hint">with lag protection on, the lowest it goes while it lags (without lag: the whole simulation distance); a share of the simulation distance at that moment, at least 16 blocks</small></span><input type="number" name="ai.farPercent" min="10" max="100"></label>
+						<label class="np-form-row"><span>Far means more than (% of simulation distance) <small class="pn-hint">with <i>Step down while it lags</i> on, the lowest it goes while it lags; at least 16 blocks</small></span><input type="number" name="ai.farPercent" min="10" max="100"></label>
 					</div>
 					<details class="pn-advanced"><summary>Advanced</summary>
 						<div class="np-form-grid" data-needs="ai.enabled">
@@ -542,7 +542,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-inboxes"></i> Hoppers</h3>
-					<p class="np-card-intro">A hopper with nothing to move looks again every tick. With this it waits a few ticks after finding nothing. Hoppers that move items keep their normal speed, and locked hoppers behave as in vanilla, so redstone timing stays the same. A waiting hopper looks again at once when the container above it changes, so item filters under a hopper line still catch every item.</p>
+					<p class="np-card-intro">A hopper with nothing to move waits a few ticks before it looks again, instead of every tick. Moving hoppers keep their speed and locked ones behave as in vanilla, so redstone timing and item filters still work.</p>
 					<div class="np-form-grid" data-needs="hoppers.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="hoppers.enabled"><span></span></span></label>
 						<label class="np-form-row">Idle hoppers wait (ticks)<input type="number" name="hoppers.idleCooldown" min="1" max="40"></label>
@@ -550,7 +550,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-hourglass-split"></i> Spawn less often</h3>
-					<p class="np-card-intro">Vanilla tries to spawn monsters, water mobs and bats in every chunk near players every tick (animals only every 20 seconds). Trying every few ticks instead (like Paper's <i>ticks-per spawns</i>) costs much less; caps still fill up, only a little slower. Each dimension tries on its own ticks. Needs mod 1.23.0.</p>
+					<p class="np-card-intro">Vanilla tries to spawn monsters, water mobs and bats every tick. Trying every few ticks (like Paper's <i>ticks-per spawns</i>) costs much less; caps still fill up, only a little slower.</p>
 					<div class="np-form-grid" data-needs="spawning.enabled">
 						<label class="np-form-row">On<span class="np-switch"><input type="checkbox" name="spawning.enabled"><span></span></span></label>
 						<label class="np-form-row">Monsters every (ticks)<input type="number" name="spawning.monstersEvery" min="1" max="40"></label>
@@ -567,23 +567,22 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-lightning-charge"></i> Saving, teleports and locator bar</h3>
-					<p class="np-card-intro"><b>Smooth saving</b>: the autosave every 5 minutes writes changed chunks and player files over the next seconds instead of all in one tick, which removes its lag spike. <i>save-all</i>, stopping and backups still save everything at once. <b>Warm teleport targets</b>: places players teleport to three times in a day (hubs, homes, spawn) stay loaded, without ticking, so arriving there doesn't load them first. They're listed under Loaded chunks as <i>Teleport target</i>, at most 24. <b>Lighter locator bar</b>: a moving player's locator bar is worked out a few times a second instead of on every movement packet (vanilla checks every mob and player that shows on the bar each time; costly when a data pack puts mobs on it). Looks the same in game.</p>
-					<div class="np-form-grid">
-						<label class="np-form-row">Smooth saving<span class="np-switch"><input type="checkbox" name="smooth.saving"><span></span></span></label>
-						<label class="np-form-row">Warm teleport targets<span class="np-switch"><input type="checkbox" name="smooth.teleports"><span></span></span></label>
-						<label class="np-form-row">Lighter locator bar<span class="np-switch"><input type="checkbox" name="smooth.locatorBar"><span></span></span></label>
+										<div class="np-form-grid">
+						<label class="np-form-row"><span>Smooth saving<span class="pn-comment">The autosave writes over the next seconds instead of in one tick, so it causes no lag spike. save-all, stops and backups still save at once.</span></span><span class="np-switch"><input type="checkbox" name="smooth.saving"><span></span></span></label>
+						<label class="np-form-row"><span>Warm teleport targets<span class="pn-comment">Places players teleport to three times a day (hubs, homes, spawn) stay loaded without ticking, at most 24 (World → Chunks).</span></span><span class="np-switch"><input type="checkbox" name="smooth.teleports"><span></span></span></label>
+						<label class="np-form-row"><span>Lighter locator bar<span class="pn-comment">Worked out a few times a second instead of on every movement packet. Looks the same in game.</span></span><span class="np-switch"><input type="checkbox" name="smooth.locatorBar"><span></span></span></label>
 					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-search"></i> Data pack selectors</h3>
-					<p class="np-card-intro">Data packs often look for entities with <i>@e[type=villager,…]</i>. Vanilla checks every loaded entity each time to find the villagers; with this on, the server keeps a list per type and only looks at those. Same entities, same order. Selectors with a distance (<i>distance=..16</i>) already only look nearby.</p>
+					<p class="np-card-intro">For <i>@e[type=villager,…]</i> the server looks only at entities of that type instead of every loaded entity. Same result, same order.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row">Selectors by type<span class="np-switch"><input type="checkbox" name="selectors.byType"><span></span></span></label>
 					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-funnel"></i> Mob limits per chunk</h3>
-					<p class="np-card-intro">How many mobs of a kind may live in one chunk. Used by <b>Clean up now</b> below, by the <b>Clean up</b> step in Schedule and, when switched on, every few seconds on their own. Pick single mobs or groups (<i>all animals</i>, <i>all monsters</i>…); a single mob's limit wins over its group's. Named, tamed, leashed and persistent mobs are never removed.</p>
+					<p class="np-card-intro">How many mobs of a kind may live in one chunk: used by <b>Clean up now</b> (World → Chunks), the <b>Clean up</b> step in Schedule and, when on, on their own. A single mob's limit wins over its group's. Named, tamed, leashed and persistent mobs stay.</p>
 					<div class="pn-rules" id="pn-rules"></div>
 					<div class="pn-type-add">
 						<button type="button" class="np-btn small" id="pn-rule-add"><i class="bi bi-plus-lg"></i> Add a mob</button>
@@ -604,31 +603,6 @@
 					<span class="pn-hint">Applies within a few seconds, no restart needed.</span>
 				</div>
 				</form>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Clean up now</h3>
-					<p class="np-card-intro">Check first to see how much would go. Named, tamed, leashed and persistent mobs are never removed. To clean up regularly, add a <b>Clean up</b> step in Schedule.</p>
-					<div class="pn-cleanup-row">
-						<span class="pn-cleanup-label"><b>Dropped items and XP orbs</b><span id="pn-cl-items-note"></span></span>
-						<button type="button" class="np-btn small" data-cleanup="items" data-run="0">Check</button>
-						<button type="button" class="np-btn small danger" data-cleanup="items" data-run="1">Remove</button>
-					</div>
-					<div class="pn-cleanup-row">
-						<span class="pn-cleanup-label"><b>Mobs over <input type="number" id="pn-cl-per" class="pn-cl-per" min="1" max="500" value="24" aria-label="Mobs of one kind per chunk"> of one kind per chunk</b><span id="pn-cl-excess-note"></span></span>
-						<button type="button" class="np-btn small" data-cleanup="excess" data-run="0">Check</button>
-						<button type="button" class="np-btn small danger" data-cleanup="excess" data-run="1">Remove</button>
-					</div>
-					<div class="np-table-wrap" id="pn-cl-table-wrap" hidden><table class="np-table" id="pn-cl-table"></table></div>
-				</section>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-snow"></i> Laggiest chunks <span class="pn-count" id="pn-frozen-count"></span></h3>
-					<p class="np-card-intro">The chunks that took the most time in the last 15 minutes. <b>Frozen</b> stops everything in a chunk (mobs, furnaces, hoppers, farms) until you switch it off again, as a stopgap until you can fix what's there. Frozen chunks stay in this list.</p>
-					<div class="np-table-wrap"><table class="np-table" id="pn-hotspots"></table></div>
-				</section>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-pin-map"></i> Loaded without players <span class="pn-count" id="pn-loaded-count"></span></h3>
-					<p class="np-card-intro">Chunks kept loaded with nobody near: <b>/forceload</b>, ender pearls (in flight or in stasis chambers), portals, the dragon fight. Ones that also <b>tick</b> run farms, mobs and redstone all the time. <b>Release</b> lets go of them; a pearl or portal that's used again loads its chunk again.</p>
-					<div class="np-table-wrap"><table class="np-table" id="pn-loaded"></table></div>
-				</section>
 				<datalist id="pn-mob-types"></datalist>
 				<datalist id="pn-item-types"></datalist>
 				<datalist id="pn-entity-types"></datalist>
@@ -652,7 +626,7 @@
 			<div class="np-tab-panel" data-tab="maintenance" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-cone-striped"></i> Maintenance mode</h3>
-					<p class="np-card-intro">While it's on, only operators and the staff below can join. The server list shows the maintenance message (and icon), and everyone else is warned in chat and kicked after the countdown. Applies right away, no restart.</p>
+					<p class="np-card-intro">Only operators and the staff below can join; everyone else is warned and kicked after the countdown. Applies right away.</p>
 					<form id="pn-mt-form" autocomplete="off">
 						<div class="np-form-grid">
 							<label class="np-form-row"><b>Maintenance mode</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
@@ -811,7 +785,7 @@
 			<div class="np-tab-panel" data-tab="claimimport" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-box-arrow-in-down"></i> Import from GOML</h3>
-					<p class="np-card-intro">Turns Get Off My Lawn claims into claims here: same area (as a square), the first owner becomes the owner, other owners and trusted players builders (the owner can make co-owners later). Owners get claim blocks for the land, so nobody starts in debt. GOML's claims stay as they are. Needs the server running with GOML installed.</p>
+					<p class="np-card-intro">Turns Get Off My Lawn claims into claims here (same area, first owner owns it, the rest become builders) and gives owners the claim blocks for it. GOML's claims stay. Needs the server running with GOML.</p>
 					<div class="np-form-actions">
 						<button type="button" class="np-btn" id="pn-gi-preview"><i class="bi bi-search"></i> Check</button>
 						<button type="button" class="np-btn primary" id="pn-gi-run" disabled><i class="bi bi-box-arrow-in-down"></i> Import</button>
@@ -825,7 +799,7 @@
 				<form id="pn-tw-form" autocomplete="off" class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-tree"></i> Tree felling</h3>
-					<p class="np-card-intro">Chop one log and the whole tree comes down, like the FallingTree mod (remove that one when you switch this on). Every log is broken as if the player mined it: drops, enchantments, axe wear and land claims work as usual.</p>
+					<p class="np-card-intro">Chop one log and the whole tree comes down, like FallingTree (remove that mod). Every log counts as mined by the player: drops, enchantments, axe wear and claims work as usual.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Tree felling</b><span class="np-switch"><input type="checkbox" name="felling.enabled"><span></span></span></label>
 						<label class="np-form-row">How the tree falls<select name="felling.breakMode"><option value="instant">All at once</option><option value="shiftDown">One log per hit, from the top</option></select></label>
@@ -1035,7 +1009,7 @@
 				<div class="pn-stack">
 				<form id="pn-mk-form" autocomplete="off" class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-shop"></i> Player market</h3>
-					<p class="np-card-intro">Players type <code>/market</code> to sell items for the server's currency (any amount, more than a stack is fine) and to buy what others sell. Unsold items go back to the seller's mailbox after a while. Players can deposit the currency in their bank (/market → Bank): purchases take from it first and sales are paid into it. Items keep everything (names, enchantments, custom models). What the server itself sells is under <a href="#market/server-shop">Server shop</a>.</p>
+					<p class="np-card-intro">Players sell and buy items in <code>/market</code> for the server's currency. Sales go into the seller's bank, and purchases are paid from it first; unsold items return to the mailbox. What the server sells is under <a href="#market/server-shop">Server shop</a>.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Market open</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 						<label class="np-form-row"><span>Currency (item id)<small class="pn-comment">Also pays for everything in the Server shop</small></span><input type="text" name="currency" placeholder="minecraft:diamond"></label>
@@ -1066,7 +1040,7 @@
 				<div class="pn-stack">
 				<form id="pn-ss-form" autocomplete="off" class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-shop-window"></i> Server shop</h3>
-					<p class="np-card-intro">What the server itself sells, in the Server shop of <code>/market</code> (apart from what players sell) and on the info page, paid in the market's currency.<span id="pn-ss-closed" hidden> The market is closed (Player market → Market open), so nothing here is sold right now.</span></p>
+					<p class="np-card-intro">What the server itself sells in <code>/market</code> and on the info page, paid in the market's currency.<span id="pn-ss-closed" hidden> The market is closed (Player market → Market open), so nothing here is sold right now.</span></p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><span>Seller name<small class="pn-comment">Shown as the seller of these listings in game, in the sales and on the info page</small></span><input type="text" name="serverName" maxlength="32" placeholder="the server"></label>
 					</div>
@@ -1109,7 +1083,7 @@
 				</section>
 				<section class="np-card pn-mk-shop">
 					<h3 class="np-card-title"><i class="bi bi-terminal"></i> Commands</h3>
-					<p class="np-card-intro">Things the server sells by running commands from the console for the buyer, once per one bought (a kit, a title, a teleport, a rank). <span id="pn-mk-vars"></span> Changing the commands needs the right to run console commands.</p>
+					<p class="np-card-intro">Kits, titles, ranks…: console commands run for the buyer, once per purchase. <span id="pn-mk-vars"></span> Changing them needs the console permission.</p>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-ss-cmds"></table></div>
 					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-ss-cmd-new"><i class="bi bi-plus-lg"></i> Add listing</button><span class="np-form-msg" id="pn-ss-cmd-note"></span></div>
 					<form id="pn-ss-cmd-edit" autocomplete="off" class="pn-pt-edit" hidden>
@@ -1135,7 +1109,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-emoji-smile"></i> Pet listings</h3>
-					<p class="np-card-intro">The pets the Server shop sells. The pets themselves are made under <b>Community → Pets</b>; here you only put them up for sale. Bought pets stay with their players for good, also when the listing ends or goes.</p>
+					<p class="np-card-intro">Pets are made under <b>Community → Pets</b>; here you put them up for sale. Bought pets stay with their players for good.</p>
 					<p class="pn-hint" id="pn-ptl-intro"></p>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-ptl-table"></table></div>
 					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-ptl-new"><i class="bi bi-plus-lg"></i> Add listing</button><span class="np-form-msg" id="pn-ptl-note"></span></div>
@@ -1211,7 +1185,7 @@
 				<form id="pn-info-form" autocomplete="off" class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-book"></i> Public info page</h3>
-					<p class="np-card-intro">A page for everyone to read up on how the server is set up: its settings, game rules, data pack settings and the mod configs you pick (passwords, tokens and remote-access settings never show, and it stays online while the server is off). <b id="pn-info-status"></b></p>
+					<p class="np-card-intro">A public page about how the server is set up; it stays online while the server is off, and passwords and tokens never show. <b id="pn-info-status"></b></p>
 					<p class="np-card-intro"><a class="np-btn small" id="pn-info-open" href="info/" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Open the page</a> <span id="pn-info-link"></span></p>
 					<div class="np-form-grid">
 						<label class="np-form-row">Page on<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
@@ -1228,7 +1202,7 @@
 						<label class="np-form-row">/info: link text<input type="text" name="infoLabel" maxlength="80" placeholder="Server info"></label>
 					</div>
 					<h4 class="pn-pt-subhead">Own link commands</h4>
-					<p class="pn-hint">Like <code>/website</code>, <code>/discord</code> or <code>/vote</code>: each gets a command (and more names if you like) for every player, with a clickable link. Changes apply within a few seconds, no restart needed. A name another command already uses is skipped.</p>
+					<p class="pn-hint">Each becomes a command for every player with a clickable link. A name another command already uses is skipped.</p>
 					<div class="pn-links" id="pn-links"></div>
 					<button type="button" class="np-btn small" id="pn-links-add"><i class="bi bi-plus-lg"></i> Add a link</button>
 				</section>
@@ -1267,7 +1241,7 @@
 			<div class="np-tab-panel" data-tab="world" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Borders</h3>
-					<p class="np-card-intro">Per dimension, distances in blocks from the center. Inside the <b>soft border</b> is the permanent area: it's never trimmed. Between the soft and the <b>hard border</b> lie the outer wilds, which a scheduled task can reset (trim) every week. Nobody gets past the hard border: players are put back inside, and a square one also sets the world border so they see the wall. Hard border 0 = none.</p>
+					<p class="np-card-intro">Distances in blocks from the center. Inside the <b>soft border</b> is the permanent area; between it and the <b>hard border</b> lie the outer wilds, which can be reset on a schedule. Nobody gets past the hard border (0 = none).</p>
 					<div class="np-table-wrap">
 						<table class="np-table pn-borders" id="pn-borders">
 							<thead><tr><th>Dimension</th><th>On</th><th>Shape</th><th>Center x</th><th>Center z</th><th>Soft border</th><th>Hard border</th><th title="Pregenerate this dimension">Pregen</th><th title="A square hard border also sets the vanilla world border">World border</th><th title="Players near the soft border see it as green particles (a round hard border as red ones)">Show soft border</th></tr></thead>
@@ -1281,7 +1255,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-signpost-split"></i> Outer wilds message</h3>
-					<p class="np-card-intro">When players cross a soft border above, they see a message in the action bar. While they're in the outer wilds they can also see a post effect from the server resource pack (Minecraft 26.3 or newer). Changes reach a running server within a few seconds.</p>
+					<p class="np-card-intro">Shown in the action bar when players cross a soft border. In the outer wilds they can also see a post effect from the server resource pack (26.3+).</p>
 					<form id="pn-wilds-form" autocomplete="off">
 						<label class="np-form-row">Show the message<span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 						<div class="np-form-grid">
@@ -1301,7 +1275,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-grid-3x3-gap"></i> Pregenerate</h3>
-					<p class="np-card-intro">Generates every chunk up to the hard border (or the soft border without one) in each dimension with Pregen ticked, one dimension after another, so players don't wait for terrain and the map is complete. It runs on its own thread in the mod, only as fast as the server has room for, keeps going with nobody online and carries on after a restart.</p>
+					<p class="np-card-intro">Generates every chunk up to the hard border (or the soft one) in each dimension with Pregen ticked, as fast as the server has room for. Carries on after a restart.</p>
 					<div class="pn-backup-status" id="pn-pregen-status"></div>
 					<label class="np-form-row">Only the outer wilds (skip the permanent area)<span class="np-switch"><input type="checkbox" id="pn-pregen-wilds"><span></span></span></label>
 					<label class="np-form-row" id="pn-pregen-lods-row" hidden><span>Also pregenerate Distant Horizons LODs<span class="pn-comment">After the chunks, Distant Horizons' own <code>/dh pregen</code> runs over the same area (its wiki advises against filling LODs by loading chunks fast). It runs at Distant Horizons' own pace; "Pause" waits until nobody is online before it starts.</span></span><span class="np-switch"><input type="checkbox" id="pn-pregen-lods" checked><span></span></span></label>
@@ -1314,7 +1288,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-scissors"></i> Reset the outer wilds</h3>
-					<p class="np-card-intro">Deletes all generated chunks outside the soft border in every dimension with borders (whole region files, single chunks along the edge, also entities and points of interest). They generate fresh when someone goes there. Only while the server is stopped. To do this every week, add a task in Schedule with the <b>Reset the outer wilds</b> step (it stops and starts the server itself), or use the preset there.</p>
+					<p class="np-card-intro">Deletes every generated chunk outside the soft border; it generates fresh when someone goes there. Only while the server is stopped. For a weekly reset, use the preset in Schedule.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row">Dimension to check<select id="pn-trim-dim"></select></label>
 						<label class="np-form-row">Keep chunks players spent at least this many minutes in (0 = off)<input type="number" id="pn-trim-keep" value="0" min="0"></label>
@@ -1329,10 +1303,38 @@
 				</section>
 			</div>
 
+			<div class="np-tab-panel" data-tab="chunks" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-snow"></i> Laggiest chunks <span class="pn-count" id="pn-frozen-count"></span></h3>
+					<p class="np-card-intro">The chunks that took the most time in the last 15 minutes. <b>Frozen</b> stops everything in a chunk until you switch it off again: a stopgap until you can fix what's there.</p>
+					<div class="np-table-wrap"><table class="np-table" id="pn-hotspots"></table></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-pin-map"></i> Loaded without players <span class="pn-count" id="pn-loaded-count"></span></h3>
+					<p class="np-card-intro">Kept loaded by <b>/forceload</b>, ender pearls, portals or the dragon fight. Ticking ones run farms and redstone all the time. <b>Release</b> lets go; a pearl or portal used again loads its chunk again.</p>
+					<div class="np-table-wrap"><table class="np-table" id="pn-loaded"></table></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Clean up now</h3>
+					<p class="np-card-intro">Check first to see how much would go. Named, tamed, leashed and persistent mobs stay. For regular clean-ups, add a <b>Clean up</b> step in Schedule.</p>
+					<div class="pn-cleanup-row">
+						<span class="pn-cleanup-label"><b>Dropped items and XP orbs</b><span id="pn-cl-items-note"></span></span>
+						<button type="button" class="np-btn small" data-cleanup="items" data-run="0">Check</button>
+						<button type="button" class="np-btn small danger" data-cleanup="items" data-run="1">Remove</button>
+					</div>
+					<div class="pn-cleanup-row">
+						<span class="pn-cleanup-label"><b>Mobs over <input type="number" id="pn-cl-per" class="pn-cl-per" min="1" max="500" value="24" aria-label="Mobs of one kind per chunk"> of one kind per chunk</b><span id="pn-cl-excess-note"></span></span>
+						<button type="button" class="np-btn small" data-cleanup="excess" data-run="0">Check</button>
+						<button type="button" class="np-btn small danger" data-cleanup="excess" data-run="1">Remove</button>
+					</div>
+					<div class="np-table-wrap" id="pn-cl-table-wrap" hidden><table class="np-table" id="pn-cl-table"></table></div>
+				</section>
+			</div>
+
 			<div class="np-tab-panel" data-tab="map" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-map"></i> Web map</h3>
-					<p class="np-card-intro">A top-down map of your world for everyone, drawn by the panel from the region files (it doesn't slow the server and stays online while the server is off). <b id="pn-map-status"></b></p>
+					<p class="np-card-intro">A public top-down map, drawn by the panel from the region files: no load on the server, and online while it's off. <b id="pn-map-status"></b></p>
 					<p class="np-card-intro"><a class="np-btn small" id="pn-map-open" href="map/" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Open the map</a> <span id="pn-map-host"></span></p>
 					<form id="pn-map-form">
 						<div class="np-form-grid">
@@ -1359,7 +1361,7 @@
 				<div class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-emoji-smile"></i> Pets</h3>
-					<p class="np-card-intro">Floating player heads that follow their owner, and everyone nearby sees them. Add pets here, then sell them under <b>Market → Server shop → Pet listings</b> or give them with <code>/pets grant &lt;player&gt; &lt;pet&gt;</code>. Players keep their pets for good, name them and pick how theirs moves and, if you allow it, a particle trail. Each pet can have up to two perks that unlock as its bond grows (see Bond &amp; perks below). Changes to a pet's name or head reach the players who have it.</p>
+					<p class="np-card-intro">Floating heads that follow their owner. Add pets here, then sell them in <b>Market → Server shop</b> or give them with <code>/pets grant &lt;player&gt; &lt;pet&gt;</code>. Players keep them for good.</p>
 					<form id="pn-pt-form" autocomplete="off">
 						<div class="np-form-grid">
 							<label class="np-form-row"><b>Pets on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
@@ -1404,7 +1406,7 @@
 				<form id="pn-pk-form" autocomplete="off" class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-stars"></i> Bond &amp; perks</h3>
-					<p class="np-card-intro">Each pet can have up to two perks (pick them when you add or edit a pet). A pet's bond grows while it's out with its owner and they aren't AFK; its first perk works from one bond level, its second from a higher one. Perks never work while the owner is AFK or in creative mode, and never where their claim rights don't reach. Players can switch single perks off in /pets.</p>
+					<p class="np-card-intro">A pet's bond grows while it's out with its owner; its two perks unlock at the levels below. Perks pause while the owner is AFK or in creative, and respect claims.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Perks on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 						<label class="np-form-row"><span>First perk from bond level<small class="pn-comment">For every pet; 0: right away</small></span><input type="number" name="slot1Level" min="0" max="100" step="1" required></label>
@@ -1431,7 +1433,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-chat-heart"></i> Reactions</h3>
-					<p class="np-card-intro">Every pet reacts to what happens: a short move, particles and sometimes a speech bubble everyone nearby sees (one of the lines, picked at random; no lines, no bubble). Warnings also tell the owner above their hotbar. Players can switch reactions off for their pets in /pets. Lines are up to 32 characters; {level} is the new bond level.</p>
+					<p class="np-card-intro">Pets react with a move, particles and sometimes a speech bubble (a random line; none, no bubble). Lines up to 32 characters; {level} is the new bond level.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Reactions on</b><span class="np-switch"><input type="checkbox" name="reactionsOn"><span></span></span></label>
 						<label class="np-form-row"><span>Seconds between reactions<small class="pn-comment">Per pet; warnings and once-only reactions don't wait</small></span><input type="number" name="gapSeconds" min="0" max="3600" step="1" required></label>
@@ -1498,7 +1500,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-person-lock"></i> Account linking</h3>
-					<p class="np-card-intro">Players post a code once, in the link channel or as a direct message to the bot; after that they can join. In the link channel the bot removes the message right away and answers by direct message (or, when those are closed, with a mention that disappears after 15 seconds). <code>unlink</code> removes the link the same way.</p>
+					<p class="np-card-intro">Players post their code once, in the link channel or to the bot directly; then they can join. <code>unlink</code> removes the link the same way.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row">Players must link a Discord account to play<span class="np-switch"><input type="checkbox" name="requireLink"><span></span></span></label>
 						<label class="np-form-row">…and still be on the Discord server<span class="np-switch"><input type="checkbox" name="requireMember"><span></span></span></label>
@@ -1517,7 +1519,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bell"></i> Events &amp; alerts</h3>
-					<p class="np-card-intro">Tick what gets posted, pick the channel, and change the wording. <code>{player}</code>, <code>{message}</code> and <code>{advancement}</code> are filled in; deaths and advancements follow the game rules showDeathMessages and announceAdvancements (Fabled Roots' own death messages count as deaths). "/tellraw @a and /say messages" are what data packs (or admins) send to everyone with <code>/tellraw @a</code>, plus <code>/say</code>; the same text twice within a minute is skipped, and at most 20 go out per minute. Alerts also show in the panel's console; lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
+					<p class="np-card-intro">Tick what gets posted and change the wording; <code>{player}</code>, <code>{message}</code> and <code>{advancement}</code> are filled in. Deaths and advancements follow the game rules. Lag alerts come at most every 15 minutes, disk and memory every 6 hours.</p>
 					<div id="pn-discord-events" class="pn-dc-events"></div>
 				</section>
 				<div class="pn-sticky-save">
@@ -1527,7 +1529,7 @@
 				</form>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> Linked accounts</h3>
-					<p class="np-card-intro">Players link by sending the code from the join screen to the bot. They can send <code>unlink</code> to the bot to remove it.</p>
+					
 					<input type="search" class="np-console-search" id="pn-link-search" placeholder="Search players" aria-label="Search linked accounts">
 					<div class="np-table-wrap"><table class="np-table">
 						<thead><tr><th>Player</th><th>Discord</th><th>Linked</th><th></th></tr></thead>
@@ -1619,10 +1621,10 @@
 							</div>
 						</div>
 					</div>
-					<p class="pn-hint">The info page banner is the background picture at the top of the public info page. After choosing a picture you pick the part to show; a screenshot of your spawn works well. It's darkened a little on the left so the text stays readable.</p>
+					<p class="pn-hint">The banner is the picture at the top of the info page; after choosing one you pick the part to show.</p>
 					<dialog class="pn-crop" id="pn-crop" aria-labelledby="pn-crop-title">
 						<h3 class="np-card-title" id="pn-crop-title"><i class="bi bi-crop"></i> Choose the part to show</h3>
-						<p class="pn-hint">Drag the picture to move it; zoom with the slider or the mouse wheel. The frame is the banner with its dark fade: this part always spans the whole width; where the banner is taller (narrow windows, phones), a blurred copy of the picture fills above and below.</p>
+						<p class="pn-hint">Drag to move, zoom with the slider or the mouse wheel.</p>
 						<div class="pn-crop-frame" id="pn-crop-frame"><img id="pn-crop-img" alt="" draggable="false"><div class="pn-crop-shade"></div></div>
 						<label class="pn-crop-zoom"><i class="bi bi-zoom-out"></i><input type="range" id="pn-crop-zoom" min="1" max="5" step="0.01" value="1" aria-label="Zoom"><i class="bi bi-zoom-in"></i></label>
 						<div class="np-form-actions">

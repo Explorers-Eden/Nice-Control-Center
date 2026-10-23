@@ -74,7 +74,7 @@ final class Home {
 		if (mod != null && server.running()) {
 			com.google.gson.JsonObject loaded = mod.get("/api/loadedchunks");
 			if (loaded != null && loaded.has("ticking") && loaded.get("ticking").getAsInt() > 25) {
-				attention.add(item("warn", loaded.get("ticking").getAsInt() + " chunks keep ticking with no player near (forceload, ender pearls, portals).", "tuning", "Loaded chunks"));
+				attention.add(item("warn", loaded.get("ticking").getAsInt() + " chunks keep ticking with no player near (forceload, ender pearls, portals).", "chunks", "Loaded chunks"));
 			}
 		}
 		if (!server.eulaAccepted()) attention.add(item("warn", "The Minecraft EULA isn't accepted yet, so the server can't start.", "server", "Console"));

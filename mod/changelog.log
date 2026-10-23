@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.32.0
+- Dashboard: new Checks tab with errors & warnings, the server settings check and the bloat check (they were the first part of the Server tab, which now opens on server.properties)
+- GC tile shows ZGC's background work when that's the bigger number: ZGC hardly ever pauses the server, so "paused" stayed at 0.0% while the collector was busy
+- Players: AFK players show an "AFK n min" badge on their card and a yellow dot in the list; the card's overview shows the player's market bank balance, and the Market tab starts with the bank
+- Shorter descriptions on several cards
+
 ## 1.31.1
 - /ncc heap shows what grows: from the second run on, it also lists the classes that grew most since the run before (bytes and objects), which is what points at a memory leak; one run only shows what is big. /ncc heap <name> lists only classes whose name contains it, e.g. /ncc heap pathfinder or /ncc heap zombie
 

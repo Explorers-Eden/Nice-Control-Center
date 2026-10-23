@@ -73,6 +73,7 @@
 			<button type="button" role="tab" class="np-tab" data-tab="performance" id="tabbtn-performance" aria-controls="tab-performance"><i class="bi bi-stopwatch"></i><span>Performance</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="world" id="tabbtn-world" aria-controls="tab-world"><i class="bi bi-globe-americas"></i><span>World</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="players" id="tabbtn-players" aria-controls="tab-players"><i class="bi bi-people"></i><span>Players</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="checks" id="tabbtn-checks" aria-controls="tab-checks"><i class="bi bi-clipboard-check"></i><span>Checks</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="server" id="tabbtn-server" aria-controls="tab-server"><i class="bi bi-hdd-stack"></i><span>Server</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="packs" id="tabbtn-packs" aria-controls="tab-packs"><i class="bi bi-toggles"></i><span>Data packs</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="updates" id="tabbtn-updates" aria-controls="tab-updates"><i class="bi bi-cloud-arrow-down"></i><span>Updates</span><span class="np-tab-badge" hidden></span></button>
@@ -141,7 +142,7 @@
 			</section>
 			<section class="np-card">
 				<h3 class="np-card-title"><i class="bi bi-hourglass-split"></i> Between ticks</h3>
-				<p class="np-card-intro">What the server thread does outside the ticks: player packets, finishing chunk loads, tasks mods queue. It isn't in the tick times, but the next tick waits for it, so TPS can drop while ticks look quick.</p>
+				<p class="np-card-intro">Work outside the ticks (player packets, chunk loads, mod tasks). The next tick waits for it, so TPS can drop while ticks look quick.</p>
 				<p class="np-card-intro" id="np-between-summary"></p>
 				<div class="np-table-wrap"><table class="np-table" id="np-between"></table></div>
 				<h4 class="np-subhead">Where it waited instead of running</h4>
@@ -150,7 +151,7 @@
 			</section>
 			<section class="np-card">
 				<h3 class="np-card-title"><i class="bi bi-cpu"></i> Machine &amp; threads</h3>
-				<p class="np-card-intro">Whether the host holds the server back (CPU taken by other guests or a container limit, waiting for the disk), and which threads use the CPU. 1 core = one core busy all the time.</p>
+				<p class="np-card-intro">Whether the host holds the server back, and which threads use the CPU (1 core = one core busy all the time).</p>
 				<div id="np-host"></div>
 				<div class="np-table-wrap"><table class="np-table" id="np-threads"></table></div>
 			</section>
@@ -159,7 +160,7 @@
 			<p class="np-tab-intro">Where things happen: new terrain, crowded chunks, busy redstone and what is loaded around players.</p>
 			<section class="np-card" id="np-worldgen-card">
 				<h3 class="np-card-title"><i class="bi bi-globe2"></i> World generation</h3>
-				<p class="np-card-intro">New chunks are generated on worker threads. That doesn't slow the tick, but players wait for terrain to appear. Times are per new chunk.</p>
+				<p class="np-card-intro">Runs on worker threads: it doesn't slow the tick, but players wait for terrain. Times are per new chunk.</p>
 				<div id="np-worldgen"></div>
 			</section>
 			<div class="np-columns">
@@ -186,7 +187,7 @@
 		<section class="np-tab-panel" id="tab-players" data-tab="players" role="tabpanel" hidden>
 			<section class="np-card" id="np-inspector-card">
 				<h3 class="np-card-title"><i class="bi bi-people"></i> Player inspector</h3>
-				<p class="np-card-intro">Everyone who has played here. Online players are live; offline players show what was saved when they left. Homes, graves and waypoints come from the Explorer's Eden player database when it's there.</p>
+				<p class="np-card-intro">Online players are live; offline players show what was saved when they left.</p>
 				<div class="np-inspector">
 					<div class="np-inspector-list">
 						<label class="np-inspector-search"><i class="bi bi-search"></i><input type="search" id="np-player-search" placeholder="Search players" autocomplete="off"></label>
@@ -196,18 +197,13 @@
 				</div>
 			</section>
 		</section>
-		<section class="np-tab-panel" id="tab-server" data-tab="server" role="tabpanel" hidden>
-			<div class="np-subtabs" id="np-server-sub" role="tablist" aria-label="Server sections">
-				<button type="button" class="np-filter active" data-sub="health"><i class="bi bi-heart-pulse"></i> Health</button>
-				<button type="button" class="np-filter" data-sub="properties"><i class="bi bi-file-earmark-text"></i> server.properties</button>
-				<button type="button" class="np-filter" data-sub="gamerules"><i class="bi bi-dice-5"></i> Gamerules</button>
-			</div>
-			<section class="np-card" id="np-errors-card" data-sub="health">
+		<section class="np-tab-panel" id="tab-checks" data-tab="checks" role="tabpanel" hidden>
+			<section class="np-card" id="np-errors-card">
 				<h3 class="np-card-title"><i class="bi bi-exclamation-octagon"></i> Errors &amp; warnings</h3>
-				<p class="np-card-intro">Errors and warnings from the server log, grouped and traced back to the data pack or mod they come from.</p>
+				<p class="np-card-intro">From the server log, grouped by the data pack or mod they come from.</p>
 				<div id="np-errors"></div>
 			</section>
-			<div class="np-columns" data-sub="health">
+			<div class="np-columns">
 				<div class="np-column">
 					<section class="np-card" id="np-settings-card">
 						<h3 class="np-card-title"><i class="bi bi-sliders"></i> Server settings</h3>
@@ -218,34 +214,40 @@
 				<div class="np-column">
 					<section class="np-card" id="np-bloat-card">
 						<h3 class="np-card-title"><i class="bi bi-archive"></i> Bloat check</h3>
-						<p class="np-card-intro">Looks for leftovers that slowly make saving and commands slower: huge scoreboards, big command storage, many entity tags and large world files. Runs on demand.</p>
+						<p class="np-card-intro">Leftovers that slowly make saving and commands slower: huge scoreboards, command storage, entity tags and world files.</p>
 						<div class="np-bloat-actions"><button type="button" class="np-btn primary" id="np-bloat-run"><i class="bi bi-search"></i> Run check</button><span class="np-rec-text" id="np-bloat-status"></span></div>
 						<div id="np-bloat"></div>
 					</section>
 				</div>
 			</div>
-			<section class="np-card" id="np-properties-card" data-sub="properties" hidden>
+		</section>
+		<section class="np-tab-panel" id="tab-server" data-tab="server" role="tabpanel" hidden>
+			<div class="np-subtabs" id="np-server-sub" role="tablist" aria-label="Server sections">
+				<button type="button" class="np-filter active" data-sub="properties"><i class="bi bi-file-earmark-text"></i> server.properties</button>
+				<button type="button" class="np-filter" data-sub="gamerules"><i class="bi bi-dice-5"></i> Gamerules</button>
+			</div>
+			<section class="np-card" id="np-properties-card" data-sub="properties">
 				<h3 class="np-card-title"><i class="bi bi-file-earmark-text"></i> server.properties</h3>
-				<p class="np-card-intro">Every setting from server.properties. Changes are saved right away (with a backup in nicecontrolcenter/backups/) and most take effect at the next restart.</p>
+				<p class="np-card-intro">Saved right away (with a backup in nicecontrolcenter/backups/); most take effect at the next restart.</p>
 				<div id="np-properties"></div>
 			</section>
 			<section class="np-card" id="np-gamerules-card" data-sub="gamerules" hidden>
 				<h3 class="np-card-title"><i class="bi bi-dice-5"></i> Gamerules</h3>
-				<p class="np-card-intro">All gamerules with their in-game names. Changes apply right away, the same as /gamerule.</p>
+				<p class="np-card-intro">Changes apply right away, like /gamerule.</p>
 				<div id="np-gamerules"></div>
 			</section>
 		</section>
 		<section class="np-tab-panel" id="tab-packs" data-tab="packs" role="tabpanel" hidden>
 			<section class="np-card" id="np-packsettings-card">
 				<h3 class="np-card-title"><i class="bi bi-toggles"></i> Data pack settings</h3>
-				<p class="np-card-intro">The settings of your data packs, laid out like their in-game menus. Pick a project on the left or search; saving runs the pack's own confirm command, like pressing "Confirm" in the menu.</p>
+				<p class="np-card-intro">Laid out like the packs' in-game menus. Saving runs the pack's own confirm command.</p>
 				<div id="np-packsettings"></div>
 			</section>
 		</section>
 		<section class="np-tab-panel" id="tab-updates" data-tab="updates" role="tabpanel" hidden>
 			<section class="np-card" id="np-updates-card">
 				<h3 class="np-card-title"><i class="bi bi-cloud-arrow-down"></i> Updates</h3>
-				<p class="np-card-intro">New versions of your mods, data packs and server resource pack, installed at the next restart. Data packs can also be installed right away with <b>Install now</b>; and any data pack added, replaced or removed in the world's <i>datapacks</i> folder while the server runs is loaded on its own with /reload.</p>
+				<p class="np-card-intro">New versions of your mods, data packs and server resource pack, installed at the next restart. Data packs can also go in right away with <b>Install now</b>.</p>
 				<div id="np-updates"></div>
 			</section>
 		</section>
@@ -273,7 +275,7 @@
 			<p class="np-tab-intro">Longer recordings, automatic lag reports and before/after comparisons.</p>
 			<section class="np-card" id="np-recording-card">
 				<h3 class="np-card-title"><i class="bi bi-record-circle"></i> Recordings</h3>
-				<p class="np-card-intro">The live monitor keeps the last hour. For longer sessions, record and download a report you can share; it opens offline in any browser.</p>
+				<p class="np-card-intro">The live monitor keeps the last hour. Record longer sessions as a report that opens offline in any browser.</p>
 				<div class="np-recording" id="np-recording"></div>
 				<div class="np-reports" id="np-reports"></div>
 				<div class="np-compare">

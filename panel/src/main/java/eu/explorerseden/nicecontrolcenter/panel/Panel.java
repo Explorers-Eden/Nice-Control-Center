@@ -132,7 +132,7 @@ public final class Panel {
 		ServerTuning tuning = new ServerTuning(serverDir, dataDir, server, audit);
 		tuning.useNotifier(alerts);
 		scheduler.useTuning(tuning);
-		Profiles profiles = new Profiles(dataDir, audit);
+		Profiles profiles = new Profiles(dataDir, serverDir, audit);
 		ClaimService claims = new ClaimService(serverDir, db, server, dashboard, audit, map);
 		claims.start();
 		// The player market, with item icons drawn from the game's textures and the server's resource pack.

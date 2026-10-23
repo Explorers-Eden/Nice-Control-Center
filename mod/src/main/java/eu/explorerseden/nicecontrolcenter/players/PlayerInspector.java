@@ -167,6 +167,8 @@ public final class PlayerInspector {
 		p.put("uuid", player.getUUID().toString());
 		p.put("name", player.getGameProfile().name());
 		p.put("online", true);
+		p.put("afk", eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAfk(player));
+		p.put("idleMinutes", eu.explorerseden.nicecontrolcenter.core.PlayerActivity.idleTicks(player) / 1200);
 		raceAndClass(player.entityTags(), p);
 		p.put("dimension", dimension(player.level().dimension().identifier().toString()));
 		p.put("ping", player.connection.latency());

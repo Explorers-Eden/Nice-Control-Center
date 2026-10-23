@@ -204,8 +204,8 @@
     const bgClass = gc.background >= 95 && livePct >= 85 ? 'poor' : gc.background >= 80 && livePct >= 70 ? 'warn' : 'good';
     const rank = { good: 0, warn: 1, poor: 2 };
     const gcClass = rank[bgClass] > rank[pauseClass] ? bgClass : pauseClass;
-    // The tile shows the number its color comes from: pauses, or background work when that's the worse one.
-    const showBusy = rank[bgClass] > rank[pauseClass];
+    // Shows the number its color comes from; with both fine, the bigger one (ZGC hardly ever pauses).
+    const showBusy = rank[bgClass] > rank[pauseClass] || (rank[bgClass] === rank[pauseClass] && gc.background > gc.percent);
     const gcAvg = gc.count ? gc.timeMs / gc.count : 0;
     const c = k.counts || {};
     const ms = (v) => v >= 100 ? fixed(v, 0) : fixed(v, 1);
@@ -577,7 +577,7 @@
     renderHeadline(k);
     renderStats(k);
     renderNotesLink(view.diagnosis.notes || []);
-    setTabBadge('server', (view.diagnosis.notes || []).length, (view.diagnosis.notes || []).some((n) => n.severity === 'WARN' || n.severity === 'POOR'));
+    setTabBadge('checks', (view.diagnosis.notes || []).length, (view.diagnosis.notes || []).some((n) => n.severity === 'WARN' || n.severity === 'POOR'));
     // Only the visible tab is drawn; the others catch up when they are opened.
     switch (activeTab) {
       case 'overview':
@@ -600,7 +600,7 @@
         renderBlockUpdates(view.blockUpdates);
         renderPlayers(view.players);
         break;
-      case 'server':
+      case 'checks':
         renderSettings(view.settings);
         break;
       default:
@@ -629,6 +629,7 @@
   function selectTab(tab, focus) {
     if (!availableTabs().includes(tab)) tab = 'overview';
     activeTab = tab;
+    document.body.dataset.tab = tab;
     document.querySelectorAll('.np-tab-panel').forEach((p) => (p.hidden = p.dataset.tab !== tab));
     document.querySelectorAll('.np-tab').forEach((b) => {
       const on = b.dataset.tab === tab;
@@ -648,7 +649,7 @@
   }
 
   /** Data that is only loaded when its tab is opened. */
-  /** Server tab: one of Health, server.properties or Gamerules at a time. */
+  /** Server tab: server.properties or Gamerules. */
   function selectSub(sub) {
     document.querySelectorAll('#tab-server [data-sub]').forEach((el) => {
       if (el.closest('#np-server-sub')) el.classList.toggle('active', el.dataset.sub === sub);
@@ -662,9 +663,9 @@
       const b = e.target.closest('[data-sub]');
       if (b) selectSub(b.dataset.sub);
     });
-    let sub = 'health';
-    try { sub = localStorage.getItem('np-server-sub') || 'health'; } catch (e) { /* default */ }
-    selectSub(sub);
+    let sub = 'properties';
+    try { sub = localStorage.getItem('np-server-sub') || sub; } catch (e) { /* default */ }
+    selectSub(sub === 'gamerules' ? sub : 'properties');
   }
 
   /** "More charts" works the same in the live dashboard and in exported reports. */
@@ -693,8 +694,8 @@
     if (tab === 'console' && typeof openConsole === 'function') openConsole();
     if (tab === 'chat') openChat();
     if (tab === 'updates') loadUpdates();
+    if (tab === 'checks') loadErrors();
     if (tab === 'server') {
-      loadErrors();
       if (!propsState.data) loadProperties();
       if (!rulesState.data) loadGamerules();
     }
@@ -1455,7 +1456,7 @@
       $('np-errors').innerHTML = `<div class="np-empty">Could not load the log: ${esc(e.message)}</div>`;
     }
     clearTimeout(errorsState.timer);
-    if (activeTab === 'server') errorsState.timer = setTimeout(loadErrors, 5000);
+    if (activeTab === 'checks') errorsState.timer = setTimeout(loadErrors, 5000);
   }
 
   function renderErrors() {
@@ -1714,7 +1715,7 @@
       return `<button type="button" class="np-player-row ${playerKey(p) === playersState.selected ? 'active' : ''}" data-player="${esc(playerKey(p))}">
         ${face(p, 32)}<span class="np-player-name"><b>${esc(p.name)}${p.banned ? ' <span class="np-banned">banned</span>' : ''}</b><small>${esc(sub || '')}</small>
           ${p.client || (p.xray && p.xray.length) ? `<span class="np-player-badges">${p.client ? `<span class="np-client">${esc(p.client)}</span>` : ''}${p.xray && p.xray.length ? '<span class="np-xray" title="Mined unusually little stone per ore; see the player card">x-ray hint</span>' : ''}</span>` : ''}</span>
-        ${p.unread ? `<span class="np-tab-badge warn" title="${p.unread} new ${p.unread === 1 ? 'answer' : 'answers'}">${p.unread}</span>` : `<span class="np-live-dot ${p.online ? 'on' : ''}" title="${p.online ? 'Online' : 'Offline'}"></span>`}</button>`;
+        ${p.unread ? `<span class="np-tab-badge warn" title="${p.unread} new ${p.unread === 1 ? 'answer' : 'answers'}">${p.unread}</span>` : `<span class="np-live-dot ${p.online ? (p.afk ? 'afk' : 'on') : ''}" title="${p.online ? (p.afk ? `AFK for ${p.idleMinutes} min` : 'Online') : 'Offline'}"></span>`}</button>`;
     }).join('') || '<div class="np-empty">No players match.</div>'));
   }
 
@@ -1915,7 +1916,7 @@
     if (!tabs.some((t) => t[0] === playersState.tab)) playersState.tab = 'overview';
     const tab = tabs.find((t) => t[0] === playersState.tab);
     const changed = patchHtml(box, `<div class="np-player-head">${face(p, 64)}<div>
-        <h3>${esc(p.name)} <span class="np-level ${p.online ? 'good' : 'info'}">${p.online ? 'Online' : 'Offline'}</span>${p.ban ? ' <span class="np-level poor">Banned</span>' : ''}</h3>
+        <h3>${esc(p.name)} <span class="np-level ${p.online ? 'good' : 'info'}">${p.online ? 'Online' : 'Offline'}</span>${p.online && p.afk ? ` <span class="np-level warn" title="Did nothing for ${num(p.idleMinutes)} minutes">AFK ${num(p.idleMinutes)} min</span>` : ''}${p.ban ? ' <span class="np-level poor">Banned</span>' : ''}</h3>
         <p class="np-loc-sub">${[p.race, p.class].filter(Boolean).map(esc).join(' · ')}</p>
         ${seenLine(p)}
         ${p.uuid ? `<p class="np-loc-sub np-mono">${esc(p.uuid)}</p>` : ''}</div></div>
@@ -1935,6 +1936,7 @@
   function playerSummary(p, d) {
     const bits = [];
     if (d.claims) bits.push(['claims', 'bi-bounding-box', `${num(d.claims.owned.length)} claim${d.claims.owned.length === 1 ? '' : 's'} · ${num(d.claims.blocks.available)} claim blocks left`]);
+    if (d.market) bits.push(['market', 'bi-bank', `${num(d.market.mailbox.balance || 0)} ${d.market.currency} in the bank`]);
     if (d.market && (d.market.listings.length || d.market.sales.length)) bits.push(['market', 'bi-shop', `${num(d.market.listings.length)} on the market · ${num(d.market.sales.length)} recent trades`]);
     if (d.pets && d.pets.owned.length) bits.push(['pets', 'bi-emoji-smile', `${num(d.pets.owned.length)} pet${d.pets.owned.length === 1 ? '' : 's'}`]);
     if (p.waypoints && p.waypoints.length) bits.push(['places', 'bi-signpost-2', `${num(p.waypoints.length)} waypoint${p.waypoints.length === 1 ? '' : 's'}`]);
@@ -1980,7 +1982,7 @@
     const sales = m.sales.length ? `<h4 class="np-subhead">Recent trades <small>newest first</small></h4><div class="np-table-wrap"><table class="np-table"><thead><tr><th>When</th><th></th><th>Item</th><th>Amount</th><th>Total</th><th>With</th></tr></thead><tbody>
       ${m.sales.map((x) => `<tr><td>${esc(dateTime(x.time))}</td><td><span class="np-level ${x.sold ? 'good' : 'info'}">${x.sold ? 'Sold' : 'Bought'}</span></td><td>${esc(x.item)}</td><td>${num(x.amount)}</td><td>${num(x.total)} ${cur}</td><td>${esc(x.with || '')}</td></tr>`).join('')}</tbody></table></div>` : '';
     const note = playersState.marketNote ? `<p class="np-loc-sub ${playersState.marketNoteError ? 'np-pet-error' : ''}">${esc(playersState.marketNote)}</p>` : '';
-    return `<h4 class="np-subhead">On the market <small>${num(m.listings.length)}</small></h4>${listings}${note}${bank}${mail}${sales}${m.enabled ? '' : '<p class="np-loc-sub">The market is switched off.</p>'}`;
+    return `${bank}<h4 class="np-subhead">On the market <small>${num(m.listings.length)}</small></h4>${listings}${note}${mail}${sales}${m.enabled ? '' : '<p class="np-loc-sub">The market is switched off.</p>'}`;
   }
 
   /** The player's pets (cosmetic floating heads), with what an admin can change. */

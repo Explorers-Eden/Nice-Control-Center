@@ -1,3 +1,12 @@
+## 1.26.0
+- Tidier panel: shorter page and card descriptions throughout; Tuning only holds settings now
+- World → Chunks: laggiest chunks (freeze), chunks loaded without players (release) and clean up now, moved here from Tuning
+- Performance → Checks: errors & warnings, the server settings check and the bloat check (from Settings → Server → Game, which now shows server.properties and game rules only) (mod 1.32.0)
+- The health banner shows only on pages with a time window (Overview, Live, World health)
+- Top bar: chunks, entities and block entities share one "Loaded" tile, so the row fits; the GC tile shows ZGC's background work when that's bigger than its (near zero) pauses
+- Accounts without a profile picture show the face of the Minecraft player with the same name, if they have joined the server
+- Players: AFK badge and market bank balance on the player card (mod 1.32.0)
+
 ## 1.25.0
 - Market bank for the website: with WEBSITE_TOKEN set, the website can show a player's bank (by their linked Discord account) and buy from it (POST /info/web/account and /info/web/buy, also on INFO_HOST). Buying works while the server runs; every purchase is in the audit log (mod 1.31.0)
 - The database copy of the mailboxes has each player's balance and waiting website purchases (market_mail.balance, orders); server shop offers and pets on the info page carry their id

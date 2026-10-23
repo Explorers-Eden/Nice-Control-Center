@@ -25,17 +25,36 @@ import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
 
 /**
  * Per account: a profile picture (square-cropped to 128 × 128 PNG) and the chosen theme. Kept in
- * /data/panel/profiles by account name, so they follow the account to every browser.
+ * /data/panel/profiles by account name, so they follow the account to every browser. Without a picture,
+ * an account named like a player who has joined the server gets that player's face.
  */
 final class Profiles {
 	static final Set<String> THEMES = Set.of("dark", "light", "midnight", "forest", "nether", "end", "ocean", "sakura");
 
 	private final Path dir;
+	private final Path serverDir;
 	private final Audit audit;
 
-	Profiles(Path dataDir, Audit audit) {
+	Profiles(Path dataDir, Path serverDir, Audit audit) {
 		this.dir = dataDir.resolve("profiles");
+		this.serverDir = serverDir;
 		this.audit = audit;
+	}
+
+	/** The UUID of the player with this name in usercache.json (any case), or null. */
+	private String playerUuid(String name) {
+		try {
+			Path f = serverDir.resolve("usercache.json");
+			if (!Files.isRegularFile(f)) return null;
+			for (var e : JsonParser.parseString(Files.readString(f)).getAsJsonArray()) {
+				if (!e.isJsonObject()) continue;
+				JsonObject o = e.getAsJsonObject();
+				if (o.has("name") && o.has("uuid") && o.get("name").getAsString().equalsIgnoreCase(name)) return o.get("uuid").getAsString();
+			}
+		} catch (IOException | RuntimeException e) {
+			// No face then.
+		}
+		return null;
 	}
 
 	private static String key(String name) {
@@ -95,7 +114,12 @@ final class Profiles {
 		routes.get("/api/avatar/{name}", guard(null, (ctx, me) -> {
 			Path f = avatar(ctx.pathParam("name"));
 			if (!Files.isRegularFile(f)) {
-				ctx.status(HttpStatus.NOT_FOUND).result("No picture");
+				String uuid = playerUuid(ctx.pathParam("name"));
+				if (uuid == null) {
+					ctx.status(HttpStatus.NOT_FOUND).result("No picture");
+					return;
+				}
+				ctx.header("Cache-Control", "private, max-age=3600").redirect("https://mc-heads.net/avatar/" + uuid + "/128", HttpStatus.FOUND);
 				return;
 			}
 			String etag = "\"" + Files.getLastModifiedTime(f).toMillis() + "\"";
