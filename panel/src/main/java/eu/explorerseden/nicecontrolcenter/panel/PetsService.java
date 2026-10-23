@@ -180,8 +180,9 @@ final class PetsService {
 						}
 						for (Pets.Owned o : e.getValue().pets) {
 							Pets.Pet shop = settings.pet(o.pet);
-							String head = Pets.skinHash(o.texture);
-							if (head == null && shop != null) head = Pets.skinHash(shop.texture);
+							// The shop's current head, like in game (PetStore.texture); the copy from the purchase only once the shop dropped the pet.
+							String head = shop != null ? Pets.skinHash(shop.texture) : null;
+							if (head == null) head = Pets.skinHash(o.texture);
 							ins.setObject(1, player);
 							ins.setString(2, o.pet);
 							ins.setString(3, shop != null ? shop.name : o.name);

@@ -42,8 +42,8 @@ import java.util.zip.ZipFile;
 final class ItemIcons {
 	private static final String MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 	private static final int SIZE = 64;
-	/** 2: shulker boxes, chests, banners and other items the game draws with code. */
-	private static final int RENDERER = 2;
+	/** 2: shulker boxes, chests, banners and other items the game draws with code. 3: block models drawn box by box (anvils, stairs, slabs…). */
+	private static final int RENDERER = 3;
 
 	private final Path assetsDir;
 	private final Path iconsDir;
@@ -351,6 +351,9 @@ final class ItemIcons {
 						JsonElement dc = comps.get("minecraft:dyed_color");
 						tint = dc.isJsonPrimitive() ? dc.getAsInt() : dc.getAsJsonObject().get("rgb").getAsInt();
 					} else if (t.has("default")) tint = color(t.get("default"));
+					// Grass and foliage depend on the biome; the inventory shows them in this green.
+					else if ("minecraft:grass".equals(type(t))) tint = 0x7CBD6B;
+					else if ("minecraft:foliage".equals(type(t)) || "minecraft:dry_foliage".equals(type(t))) tint = 0x48B518;
 					else if (t.has("value")) tint = color(t.get("value"));
 				}
 				return new Pick(n.has("model") ? n.get("model").getAsString() : null, tint);
@@ -406,6 +409,10 @@ final class ItemIcons {
 				return choose(n.has("fallback") ? n.get("fallback") : n.get("model"), comps);
 			}
 		}
+	}
+
+	private static String type(JsonObject tint) {
+		return tint.has("type") ? tint.get("type").getAsString() : "";
 	}
 
 	/** The dye colours as the game tints banners with them. */
@@ -479,26 +486,120 @@ final class ItemIcons {
 			}
 			return flat(layers);
 		}
-		JsonObject faces = elements.size() > 0 ? elements.get(0).getAsJsonObject().getAsJsonObject("faces") : null;
-		String top = face(faces, textures, "up");
-		String left = face(faces, textures, "south", "north");
-		String right = face(faces, textures, "east", "west");
-		BufferedImage t = top == null ? null : texture(top);
-		BufferedImage l = left == null ? null : texture(left);
-		BufferedImage r = right == null ? null : texture(right);
-		if (t == null && l == null && r == null) return null;
-		return cube(t, l, r);
+		return boxes(elements, textures, tint);
 	}
 
-	private static String face(JsonObject faces, Map<String, String> textures, String... names) {
-		if (faces == null) return null;
-		for (String n : names) {
-			if (faces.has(n) && faces.getAsJsonObject(n).has("texture")) {
-				String ref = faces.getAsJsonObject(n).get("texture").getAsString();
-				return ref.startsWith("#") ? resolve(textures, ref.substring(1)) : ref;
+	/**
+	 * A block model drawn box by box, the way the inventory shows it (from above, south on the left, east on the right):
+	 * an anvil, stairs or a slab keep their shape instead of becoming a full cube. Boxes go back to front; each visible
+	 * face uses its own texture and UV area. Element rotations are left out (a few degrees don't show at this size).
+	 */
+	private BufferedImage boxes(JsonArray elements, Map<String, String> textures, int tint) {
+		List<JsonObject> list = new ArrayList<>();
+		for (JsonElement e : elements) if (e.isJsonObject() && e.getAsJsonObject().has("from") && e.getAsJsonObject().has("to")) list.add(e.getAsJsonObject());
+		if (list.isEmpty()) return null;
+		// Farther first: the viewer looks from +x, +y, +z.
+		list.sort(java.util.Comparator.comparingDouble(e -> {
+			double[] a = vec(e, "from"), b = vec(e, "to");
+			return (a[0] + b[0]) + (a[2] + b[2]) + (a[1] + b[1]) * 0.5;
+		}));
+		BufferedImage out = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = out.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+		boolean drewAny = false;
+		for (JsonObject e : list) {
+			double[] a = vec(e, "from"), b = vec(e, "to");
+			JsonObject faces = e.getAsJsonObject("faces");
+			if (faces == null) continue;
+			double dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+			// South (z = to): x to the right, down from the top.
+			drewAny |= face(g, faces, "south", textures, tint, 0.8f, new double[] { a[0], 16 - b[1], b[0], 16 - a[1] }, b[0] - dx, b[1], b[2], dx, 0, 0, 0, -dy, 0);
+			// East (x = to): from z = to towards z = from, down from the top.
+			drewAny |= face(g, faces, "east", textures, tint, 0.62f, new double[] { 16 - b[2], 16 - b[1], 16 - a[2], 16 - a[1] }, b[0], b[1], b[2], 0, 0, -dz, 0, -dy, 0);
+			// Up (y = to): x one way, z the other.
+			drewAny |= face(g, faces, "up", textures, tint, 1f, new double[] { a[0], a[2], b[0], b[2] }, a[0], b[1], a[2], dx, 0, 0, 0, 0, dz);
+		}
+		g.dispose();
+		return drewAny ? out : null;
+	}
+
+	private static double[] vec(JsonObject e, String key) {
+		JsonArray v = e.getAsJsonArray(key);
+		return new double[] { v.get(0).getAsDouble(), v.get(1).getAsDouble(), v.get(2).getAsDouble() };
+	}
+
+	/** Screen position of a model point (0..16 per axis) in the 64 px icon; same projection as {@link #cube}. */
+	private static double[] project(double x, double y, double z) {
+		double k = 2.0;
+		double c = Math.cos(Math.PI / 6);
+		double half = 16 * k * c;
+		double x0 = (SIZE - 2 * half) / 2;
+		return new double[] { x0 + half + k * c * (x - z), k * 0.5 * (x + z) + k * (16 - y) };
+	}
+
+	/**
+	 * One face: the part of its texture its UV names (default: the part matching the box), turned by the face's
+	 * rotation, onto the parallelogram from the origin along u (texture right) and v (texture down) in model space.
+	 */
+	private boolean face(Graphics2D g, JsonObject faces, String name, Map<String, String> textures, int tint, float shade, double[] defaultUv,
+			double ox, double oy, double oz, double ux, double uy, double uz, double vx, double vy, double vz) {
+		if (!faces.has(name)) return false;
+		JsonObject f = faces.getAsJsonObject(name);
+		if (!f.has("texture")) return false;
+		String ref = f.get("texture").getAsString();
+		String tex = ref.startsWith("#") ? resolve(textures, ref.substring(1)) : ref;
+		BufferedImage t = tex == null ? null : texture(tex);
+		if (t == null) return false;
+		if (tint >= 0 && f.has("tintindex")) t = tinted(t, tint);
+		double[] uv = defaultUv;
+		if (f.has("uv") && f.getAsJsonArray("uv").size() == 4) {
+			JsonArray a = f.getAsJsonArray("uv");
+			uv = new double[] { a.get(0).getAsDouble(), a.get(1).getAsDouble(), a.get(2).getAsDouble(), a.get(3).getAsDouble() };
+		}
+		double s = t.getWidth() / 16.0;
+		int x1 = (int) Math.floor(Math.min(uv[0], uv[2]) * s), x2 = (int) Math.ceil(Math.max(uv[0], uv[2]) * s);
+		int y1 = (int) Math.floor(Math.min(uv[1], uv[3]) * s), y2 = (int) Math.ceil(Math.max(uv[1], uv[3]) * s);
+		x1 = Math.max(0, Math.min(t.getWidth() - 1, x1));
+		y1 = Math.max(0, Math.min(t.getHeight() - 1, y1));
+		x2 = Math.max(x1 + 1, Math.min(t.getWidth(), x2));
+		y2 = Math.max(y1 + 1, Math.min(t.getHeight(), y2));
+		BufferedImage part = t.getSubimage(x1, y1, x2 - x1, y2 - y1);
+		if (uv[0] > uv[2] || uv[1] > uv[3]) part = flipped(part, uv[0] > uv[2], uv[1] > uv[3]);
+		int rotation = f.has("rotation") ? ((f.get("rotation").getAsInt() % 360) + 360) % 360 : 0;
+		if (rotation != 0) part = rotated(part, rotation);
+		if (shade < 1f) part = shaded(part, shade);
+		double[] o = project(ox, oy, oz);
+		double[] u = project(ox + ux, oy + uy, oz + uz);
+		double[] v = project(ox + vx, oy + vy, oz + vz);
+		AffineTransform at = new AffineTransform((u[0] - o[0]) / part.getWidth(), (u[1] - o[1]) / part.getWidth(),
+				(v[0] - o[0]) / part.getHeight(), (v[1] - o[1]) / part.getHeight(), o[0], o[1]);
+		g.drawImage(part, at, null);
+		return true;
+	}
+
+	private static BufferedImage flipped(BufferedImage src, boolean horizontal, boolean vertical) {
+		int w = src.getWidth(), h = src.getHeight();
+		BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) out.setRGB(x, y, src.getRGB(horizontal ? w - 1 - x : x, vertical ? h - 1 - y : y));
+		return out;
+	}
+
+	/** Turned clockwise by 90, 180 or 270 degrees, like a face's "rotation". */
+	private static BufferedImage rotated(BufferedImage src, int degrees) {
+		int w = src.getWidth(), h = src.getHeight();
+		boolean swap = degrees == 90 || degrees == 270;
+		BufferedImage out = new BufferedImage(swap ? h : w, swap ? w : h, BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				int p = src.getRGB(x, y);
+				switch (degrees) {
+					case 90 -> out.setRGB(h - 1 - y, x, p);
+					case 180 -> out.setRGB(w - 1 - x, h - 1 - y, p);
+					default -> out.setRGB(y, w - 1 - x, p);
+				}
 			}
 		}
-		return null;
+		return out;
 	}
 
 	/** "#side" → the texture it points to, through the model's texture map. */

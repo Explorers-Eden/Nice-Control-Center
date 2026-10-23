@@ -1,3 +1,7 @@
+## 1.23.1
+- Market icons on the website: block items are drawn box by box from their model, so anvils, stairs, slabs, hoppers, cauldrons, trapdoors and the like keep their shape instead of turning into a full cube; grass and leaf tints show green (icons are drawn again once)
+- Player profiles on the website show a pet with the shop's current head, like in game, instead of the head it had when it was bought
+
 ## 1.23.0
 - Performance → Tuning: "Lighter locator bar" switch next to Smooth saving and Warm teleport targets (mod 1.26.0)
 - Performance → Tuning: new "Data pack selectors" card with "Selectors by type"; Lighter mob AI explains that it now covers mobs with a brain too (mod 1.26.0)
