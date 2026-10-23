@@ -160,6 +160,9 @@ public final class ServerFacts {
 		if (t.dispensers.goatHorns) {
 			out.add(tweak("horns", "Dispensers play goat horns", "bi-megaphone", "Power a dispenser with a goat horn in it and it blows the horn (and keeps it), as loud as a player would. Then it rests as long as a player has to.", List.of()));
 		}
+		if (t.crafting.suspiciousBlocks) {
+			out.add(tweak("suspicious", "Suspicious sand and gravel", "bi-hourglass-split", "Craft sand or gravel with any item to get suspicious sand or gravel that holds it, enchantments, name and all. Brush it to get the item back.", List.of()));
+		}
 		if (t.crops.rainGrowth) {
 			out.add(tweak("rain", "Crops love rain", "bi-cloud-rain", "Crops grow " + t.crops.rainBoost + " % faster while rain falls on them.", List.of()));
 		}

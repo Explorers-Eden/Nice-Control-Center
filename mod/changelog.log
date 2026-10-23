@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.30.0
+- Craft suspicious sand and gravel (Tweaks, off by default): sand or gravel plus any one item in a crafting grid (table or inventory) gives suspicious sand or gravel holding that item with all its components (enchantments, name, damage, contents, custom data…), named e.g. "Suspicious Sand (Blade)". Brushing it gives the exact item back. Suspicious sand and gravel can't go inside, nothing is handed back from the grid (no empty bucket), and real recipes still win. Replaces the 3,000 per-item recipes Nice Things had (removed in Nice Things 3.10), which lost the item's components. The crafter block doesn't make them
+
 ## 1.29.0
 - Vein mining: "Also drop XP" switch (on by default, as before). Off, the rest of a mined vein drops no XP orbs; the ore you mine yourself still drops its XP as usual
 - Hopper idle wait (Performance): item filters under a hopper line no longer let items slip past. A filter hopper with nothing to move waited 8+ ticks, while a hopper in the line passes each item on after 8, so it often missed it. A waiting hopper now looks again at once when the container above it changes

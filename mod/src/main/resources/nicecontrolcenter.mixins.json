@@ -32,6 +32,8 @@
 		"GrindstoneResultMixin",
 		"GrindstoneSlot2Mixin",
 		"GrindstoneSlot3Mixin",
+		"SuspiciousCraftMixin",
+		"SuspiciousTakeMixin",
 		"SaplingReplantMixin",
 		"SpawnerPlaceMixin",
 		"WaypointHubAnnounceMixin",

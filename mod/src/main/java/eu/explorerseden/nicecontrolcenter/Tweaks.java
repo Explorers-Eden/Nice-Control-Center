@@ -15,7 +15,7 @@ import java.util.Map;
  * Gameplay tweaks that need the server mod (a data pack can't do them), kept in
  * config/nicecontrolcenter-tweaks.json: anvil limits, nether portals in any shape, tree felling and vein
  * mining, the AFK tag and the tab list, chat mentions, the grindstone, spawners, saplings, bone meal, tridents, dispensers, iron golems,
- * crops in the rain, Mending repairs at the anvil and AFK players at night. Written by the panel, read by the mod when the file changes;
+ * crops in the rain, Mending repairs at the anvil, suspicious sand and gravel crafting and AFK players at night. Written by the panel, read by the mod when the file changes;
  * Minecraft-free so both compile it. Everything is off until switched on, and vanilla clients work.
  */
 public final class Tweaks {
@@ -251,6 +251,11 @@ public final class Tweaks {
 		public int anvilWear = 12;
 	}
 
+	public static final class Crafting {
+		/** Sand or gravel plus any one item (not suspicious sand or gravel) crafts suspicious sand or gravel holding that item, components and all. */
+		public boolean suspiciousBlocks = false;
+	}
+
 	public static final class Sleep {
 		/** AFK players (see Afk.minutes) don't count when working out how many need to sleep to skip the night. */
 		public boolean ignoreAfk = false;
@@ -287,6 +292,7 @@ public final class Tweaks {
 		public Villagers villagers = new Villagers();
 		public Crops crops = new Crops();
 		public Mending mending = new Mending();
+		public Crafting crafting = new Crafting();
 		public Sleep sleep = new Sleep();
 		public AntiXray antiXray = new AntiXray();
 
@@ -307,6 +313,7 @@ public final class Tweaks {
 			if (villagers == null) villagers = new Villagers();
 			if (crops == null) crops = new Crops();
 			if (mending == null) mending = new Mending();
+			if (crafting == null) crafting = new Crafting();
 			if (sleep == null) sleep = new Sleep();
 			if (antiXray == null) antiXray = new AntiXray();
 			antiXray.blocks = ids(antiXray.blocks);

@@ -1,3 +1,6 @@
+## 1.24.0
+- Tweaks → Small tweaks: "Craft suspicious sand and gravel" switch (mod 1.30.0)
+
 ## 1.23.2
 - Tweaks → Vein mining: "Also drop XP" switch (mod 1.29.0)
 - Performance → Hoppers: the description says waiting hoppers wake up when the container above them changes (mod 1.29.0)
