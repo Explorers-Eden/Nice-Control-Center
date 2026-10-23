@@ -1540,10 +1540,14 @@
 
   function updateActions(e) {
     const b = (action, label, cls) => `<button type="button" class="np-btn ${cls || ''}" data-update-action="${action}" data-key="${esc(e.key)}">${label}</button>`;
+    // Data packs can be swapped while the server runs (backed up, then /reload); mods need a restart.
+    const now = e.kind === 'datapack' && updatesState.data && updatesState.data.dedicated
+      ? b('now', '<i class="bi bi-lightning-charge"></i> Install now', 'primary') : '';
     switch (e.status) {
-      case 'STAGED': return b('approve', '<i class="bi bi-check2"></i> Install at restart', 'primary') + b('skip', 'Skip this version') + b('ignore', 'Never update');
-      case 'PENDING': return b('cancel', 'Don\'t install') + b('skip', 'Skip this version');
-      case 'AVAILABLE': case 'HELD': case 'FAILED': return (e.latestVersion ? b('skip', 'Skip this version') : '') + b('ignore', 'Never update');
+      case 'STAGED': return now + b('approve', '<i class="bi bi-check2"></i> Install at restart', now ? '' : 'primary') + b('skip', 'Skip this version') + b('ignore', 'Never update');
+      case 'PENDING': return now + b('cancel', 'Don\'t install') + b('skip', 'Skip this version');
+      case 'AVAILABLE': return (e.latestVersion ? now + b('skip', 'Skip this version') : '') + b('ignore', 'Never update');
+      case 'HELD': case 'FAILED': return (e.latestVersion ? b('skip', 'Skip this version') : '') + b('ignore', 'Never update');
       case 'IGNORED': return b('unignore', 'Update again');
       case 'SKIPPED': case 'UP_TO_DATE': return b('ignore', 'Never update');
       default: return '';

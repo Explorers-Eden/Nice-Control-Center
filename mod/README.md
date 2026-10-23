@@ -186,6 +186,7 @@ Settings are in `config/nicecontrolcenter.json`. Changes are picked up within a 
   "update_github": {},
   "update_ignore": [],
   "update_keep_backups": 10,
+  "datapack_auto_reload": true,
   "resource_pack_source": "",
   "resource_pack_check_minutes": 10,
   "resource_pack_webhook_token": "",
@@ -274,6 +275,7 @@ Settings are in `config/nicecontrolcenter.json`. Changes are picked up within a 
 | `update_github` | `{}` | Use GitHub releases for some entries: `{"<mod id or pack name>": "owner/repo"}`. |
 | `update_ignore` | `[]` | Mod ids or pack names (without `.zip`) never to update. |
 | `update_keep_backups` | `10` | How many backups of replaced files to keep. |
+| `datapack_auto_reload` | `true` | Data packs added, replaced or removed in the world's datapacks folder while the server runs are loaded with `/reload` (once the folder stays the same for a few seconds). |
 | `resource_pack_source` | `""` | Where the server resource pack comes from: `https://…/pack.zip`, `github:owner/repo[@tag][#file-part]` or `modrinth:project`. Empty = just watch the link in server.properties. |
 | `resource_pack_check_minutes` | `10` | Minutes between resource pack checks. `0` = never. |
 | `resource_pack_webhook_token` | `""` | Token for build-script pings. Set by `/ncc updates webhook`. Empty = off. |

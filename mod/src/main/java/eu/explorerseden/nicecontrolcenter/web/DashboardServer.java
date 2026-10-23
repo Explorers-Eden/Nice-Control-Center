@@ -422,7 +422,8 @@ public final class DashboardServer {
 					return;
 				}
 				JsonObject body = jsonBody(exchange);
-				String error = UpdateManager.action(body.get("action").getAsString(), body.get("key").getAsString());
+				String act = body.get("action").getAsString();
+				String error = "now".equals(act) ? UpdateManager.installNow(body.get("key").getAsString()) : UpdateManager.action(act, body.get("key").getAsString());
 				Map<String, Object> result = UpdateManager.summary(config);
 				result.put("error", error);
 				sendJson(exchange, result);

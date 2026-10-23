@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.28.0
+- Updates: data packs have "Install now": the update is downloaded (if it isn't yet) and checked like any update, the old file is backed up (so it can be rolled back), the new one put in and the data packs reloaded, without a restart. Mods are still installed at the next restart
+- Data packs added, replaced or removed in the world's datapacks folder while the server runs (by hand, through the panel's files or an update) are loaded on their own with /reload once the folder stays the same for a few seconds; admins are told what changed. New config option datapack_auto_reload (on)
+
 ## 1.27.0
 - Claims cover enchantments that change blocks: Frost Walker's ice and Enchantments Encore's Magma, Grass and Summer Walker, Plow and Electric Walker (every replace_disk, replace_block and set_block_properties effect) only change blocks in a claim where the wearer is a builder; for a mob wearing them, the claim's mob switch decides. No message (walking over water would warn every step)
 - Waypoint hubs can be placed again right where one was just broken: dropped items and XP orbs on the spot (like the old hub's own item) no longer block a hub item, which silently did nothing until they were picked up or despawned; anything else still blocks as for any armor stand

@@ -70,6 +70,8 @@ public final class ControlCenterConfig {
 	public java.util.List<String> update_ignore = new java.util.ArrayList<>();
 	/** How many backup batches of replaced versions to keep. */
 	public int update_keep_backups = 10;
+	/** A data pack added, replaced or removed in the world's datapacks folder while the server runs is loaded with /reload. */
+	public boolean datapack_auto_reload = true;
 
 	/**
 	 * Where the server resource pack comes from: a direct "https://…/pack.zip" link,

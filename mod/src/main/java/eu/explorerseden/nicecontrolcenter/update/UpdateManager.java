@@ -144,6 +144,9 @@ public final class UpdateManager {
 			thread.setDaemon(true);
 			return thread;
 		});
+		packsSeen = null;
+		packsLast = null;
+		if (dedicated) executor.scheduleWithFixedDelay(UpdateManager::watchPacks, 10, 5, TimeUnit.SECONDS);
 		if (!"off".equals(mode(config))) {
 			long hours = Math.max(1, config.update_check_hours);
 			schedule = executor.scheduleWithFixedDelay(() -> check(config), 60, hours * 3600, TimeUnit.SECONDS);
@@ -192,7 +195,7 @@ public final class UpdateManager {
 	}
 
 	public static boolean checking() {
-		return checking || packChecking;
+		return checking || packChecking || installing;
 	}
 
 	/** server.properties values the updater will set at the next stop, by key. */
@@ -891,6 +894,12 @@ public final class UpdateManager {
 		if (todo.isEmpty()) {
 			return;
 		}
+		state.lastApplied = apply(todo);
+		save();
+	}
+
+	/** Backs up and replaces the files of these pending items (one backup batch); returns what happened, line by line. */
+	private static List<String> apply(List<Pending> todo) {
 		String batch = LocalDateTime.now().format(BATCH);
 		Path backupDir = base.resolve("backup").resolve(batch);
 		List<Map<String, String>> manifest = new ArrayList<>();
@@ -946,8 +955,136 @@ public final class UpdateManager {
 			}
 			pruneBackups(NiceControlCenter.config() == null ? 10 : NiceControlCenter.config().update_keep_backups);
 		}
-		state.lastApplied = done;
-		save();
+		return done;
+	}
+
+	// ── Data packs while the server runs ────────────────────────────────────
+
+	/** A data pack update is being installed right now ("Install now"). */
+	private static volatile boolean installing;
+
+	/**
+	 * Installs a data pack update right away instead of at the next restart: downloads it if it isn't yet, checks it
+	 * like every update, backs up the old file (so it can be rolled back), puts the new one in and reloads. Mods need
+	 * a restart. Returns an error, or null when it started.
+	 */
+	public static synchronized String installNow(String key) {
+		Entry entry = entries().stream().filter(e -> e.key.equals(key)).findFirst().orElse(null);
+		if (entry == null) return "Unknown item.";
+		if (!"datapack".equals(entry.kind)) return "Only data packs can be installed while the server runs; mods are installed at the next restart.";
+		if (server == null || executor == null || !dedicated && server.isStopped()) return "The server isn't running.";
+		boolean staged = state.pending.stream().anyMatch(p -> p.key.equals(key) && p.type.equals("install"));
+		if (!staged && (entry.download == null || entry.latestVersionId == null)) return "There's no update to install.";
+		if (installing) return "An update is being installed already.";
+		installing = true;
+		executor.execute(() -> installNowWork(entry));
+		return null;
+	}
+
+	private static void installNowWork(Entry entry) {
+		String result;
+		try {
+			Pending p;
+			synchronized (UpdateManager.class) {
+				p = state.pending.stream().filter(x -> x.key.equals(entry.key) && x.type.equals("install")).findFirst().orElse(null);
+			}
+			if (p == null) {
+				Installed.Item item = Installed.scan(datapackDir).stream().filter(i -> i.key().equals(entry.key)).findFirst().orElse(null);
+				if (item == null) throw new IOException("the installed file is gone");
+				p = new Pending();
+				p.type = "install";
+				p.key = entry.key;
+				p.name = entry.name;
+				p.kind = entry.kind;
+				p.from = download(entry, item).toString();
+				p.targetDir = item.file().getParent().toString();
+				p.removeFile = item.file().getFileName().toString();
+				p.newFile = entry.latestFile;
+				p.oldVersion = entry.installedVersion;
+				p.newVersion = entry.latestVersion;
+				p.newVersionId = entry.latestVersionId;
+			}
+			p.approved = true;
+			List<String> done;
+			synchronized (UpdateManager.class) {
+				if (!state.pending.contains(p)) state.pending.add(p);
+				done = apply(List.of(p));
+				state.lastApplied = done;
+				save();
+			}
+			result = String.join("; ", done);
+			if (state.pending.contains(p)) throw new IOException(result);
+			reloadPacks("Data pack updated: " + p.name + " " + p.oldVersion + " → " + p.newVersion);
+		} catch (IOException | RuntimeException e) {
+			NiceControlCenter.LOGGER.warn("Installing {} now failed: {}", entry.name, e.getMessage());
+			NiceControlCenter.notifyAdmins(net.minecraft.network.chat.Component.literal("Nice Control Center · Couldn't install " + entry.name + " now: " + e.getMessage()),
+					"Couldn't install " + entry.name + " now: " + e.getMessage());
+		} finally {
+			installing = false;
+		}
+		check(config);
+	}
+
+	/** What the data pack folder looked like at the last reload: file or folder name → size and change time. */
+	private static Map<String, String> packsSeen;
+	/** The last look, to wait until it stays the same (a file being uploaded keeps changing). */
+	private static Map<String, String> packsLast;
+
+	/**
+	 * Every few seconds: a data pack added, replaced or removed in the world's datapacks folder (dropped in by hand,
+	 * through the panel's files, or by an update) is loaded with /reload once the folder stays the same for a moment.
+	 */
+	private static void watchPacks() {
+		if (server == null || NiceControlCenter.config() == null || !NiceControlCenter.config().datapack_auto_reload) return;
+		Map<String, String> now = packSnapshot();
+		if (now == null) return;
+		Map<String, String> last = packsLast;
+		packsLast = now;
+		if (packsSeen == null) {
+			packsSeen = now;
+			return;
+		}
+		if (now.equals(packsSeen) || !now.equals(last)) return;
+		List<String> changes = new ArrayList<>();
+		now.keySet().stream().filter(k -> !packsSeen.containsKey(k)).forEach(k -> changes.add("added " + k));
+		now.keySet().stream().filter(k -> packsSeen.containsKey(k) && !packsSeen.get(k).equals(now.get(k))).forEach(k -> changes.add("updated " + k));
+		packsSeen.keySet().stream().filter(k -> !now.containsKey(k)).forEach(k -> changes.add("removed " + k));
+		packsSeen = now;
+		reloadPacks("Data packs changed (" + String.join(", ", changes) + ")");
+	}
+
+	private static Map<String, String> packSnapshot() {
+		if (datapackDir == null || !Files.isDirectory(datapackDir)) return Map.of();
+		Map<String, String> out = new java.util.TreeMap<>();
+		try (var list = Files.list(datapackDir)) {
+			for (Path p : list.toList()) {
+				String name = p.getFileName().toString();
+				if (name.startsWith(".")) continue;
+				if (Files.isDirectory(p)) {
+					if (Files.isRegularFile(p.resolve("pack.mcmeta"))) out.put(name, "dir|" + Files.getLastModifiedTime(p.resolve("pack.mcmeta")).toMillis());
+				} else if (name.endsWith(".zip")) {
+					out.put(name, Files.size(p) + "|" + Files.getLastModifiedTime(p).toMillis());
+				}
+			}
+		} catch (IOException e) {
+			return null;
+		}
+		return out;
+	}
+
+	/** /reload on the server thread, then admins hear what happened; the folder as it is now counts as seen. */
+	private static void reloadPacks(String why) {
+		Map<String, String> now = packSnapshot();
+		if (now != null) {
+			packsSeen = now;
+			packsLast = now;
+		}
+		MinecraftServer s = server;
+		if (s == null) return;
+		s.execute(() -> {
+			NiceControlCenter.notifyAdmins(net.minecraft.network.chat.Component.literal("Nice Control Center · " + why + ". Reloading data packs…"), why + ": reloading");
+			s.getCommands().performPrefixedCommand(s.createCommandSourceStack(), "reload");
+		});
 	}
 
 	private static void reportLastApply() {
