@@ -659,6 +659,7 @@
 					<div class="pn-cl-tools">
 						<input type="search" id="pn-cl-search" placeholder="Find a claim, owner or member" autocomplete="off">
 						<select id="pn-cl-dim" aria-label="Dimension"></select>
+						<label class="np-check" title="Claims whose owner has been away so long that they go within 30 days"><input type="checkbox" id="pn-cl-soon"> Expiring soon <span class="pn-count" id="pn-cl-soon-count"></span></label>
 						<button type="button" class="np-btn small" id="pn-cl-new" data-perm="claims.manage"><i class="bi bi-plus-lg"></i> Server claim</button>
 					</div>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-claims-table"></table></div>
@@ -678,6 +679,15 @@
 								<label>x<input type="number" name="minX"></label><label>z<input type="number" name="minZ"></label>
 								<span>to</span>
 								<label>x<input type="number" name="maxX"></label><label>z<input type="number" name="maxZ"></label>
+							</div>
+						</div>
+						<div class="pn-field" data-old id="pn-cl-expiry-field"><span>Expiry</span>
+							<p class="pn-cl-expiry" id="pn-cl-expiry"></p>
+							<div class="pn-cl-keep" id="pn-cl-keep">
+								<button type="button" class="np-btn small" data-keep="30"><i class="bi bi-calendar-plus"></i> +30 days</button>
+								<button type="button" class="np-btn small" data-keep="90"><i class="bi bi-calendar-plus"></i> +90 days</button>
+								<button type="button" class="np-btn small" data-keep="365"><i class="bi bi-calendar-plus"></i> +1 year</button>
+								<button type="button" class="np-btn small" data-keep="0" id="pn-cl-keep-clear"><i class="bi bi-calendar-x"></i> Remove extension</button>
 							</div>
 						</div>
 						<div class="pn-field" data-old><span>Everyone else may</span><div class="pn-cl-flags" id="pn-cl-flags"></div></div>

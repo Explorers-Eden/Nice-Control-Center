@@ -4768,24 +4768,45 @@
     renderClaims();
   }
 
+  const DAY = 86400000;
+  /** Expires within 30 days (or is due): the claim is highlighted. */
+  const clSoon = (c) => c.expires > 0 && c.expires - Date.now() <= 30 * DAY;
+  const clWhen = (expires) => { const days = Math.ceil((expires - Date.now()) / DAY); return days <= 0 ? 'due now' : days === 1 ? 'in 1 day' : `in ${days} days`; };
+
+  /** The Expires cell: a date with how long until then, or why it never expires. */
+  function clExpiry(c) {
+    if (c.parent) return '<span class="pn-hint">with its claim</span>';
+    if (!c.owner) return '<span class="pn-hint">never · server claim</span>';
+    if (!clData.inactiveDays) return '<span class="pn-hint">never</span>';
+    if (!c.expires) return '<span class="pn-hint" title="The owner hasn\'t been seen since claims started counting">–</span>';
+    const kept = c.keepUntil && c.keepUntil >= c.expires ? ' <i class="bi bi-calendar-plus pn-hint" title="Extended by an admin"></i>' : '';
+    const days = Math.ceil((c.expires - Date.now()) / DAY);
+    return clSoon(c) ? `<span class="np-level ${days <= 7 ? 'poor' : 'warn'}" title="${esc(dateTime(c.expires))}">${clWhen(c.expires)}</span>${kept}`
+      : `${esc(new Date(c.expires).toLocaleDateString(undefined, { dateStyle: 'medium' }))} <small class="pn-hint">${clWhen(c.expires)}</small>${kept}`;
+  }
+
   function renderClaims() {
     if (!clData) return;
     const q = $('pn-cl-search').value.trim().toLowerCase();
     const dim = $('pn-cl-dim').value;
+    const soon = $('pn-cl-soon').checked;
+    const soonCount = clData.claims.filter(clSoon).length;
+    $('pn-cl-soon-count').textContent = soonCount ? String(soonCount) : '';
     const byId = Object.fromEntries(clData.claims.map((c) => [c.id, c]));
-    const rows = clData.claims.filter((c) => (!dim || c.dim === dim) && (!q || [c.displayName, c.ownerName || 'server', ...c.members.map((m) => m.name)]
+    const rows = clData.claims.filter((c) => (!dim || c.dim === dim) && (!soon || clSoon(c)) && (!q || [c.displayName, c.ownerName || 'server', ...c.members.map((m) => m.name)]
       .some((t) => String(t).toLowerCase().includes(q))))
       .sort((a, b) => (a.parent ? byId[a.parent]?.displayName || '' : a.displayName).localeCompare(b.parent ? byId[b.parent]?.displayName || '' : b.displayName)
         || (a.parent ? 1 : 0) - (b.parent ? 1 : 0) || a.displayName.localeCompare(b.displayName));
-    $('pn-claims-table').innerHTML = rows.length ? `<thead><tr><th>Claim</th><th>Owner</th><th>Where</th><th>Size</th><th>Members</th><th>Changed</th></tr></thead><tbody>${rows.map((c) => `
-      <tr data-id="${esc(c.id)}" class="pn-cl-row">
+    $('pn-claims-table').innerHTML = rows.length ? `<thead><tr><th>Claim</th><th>Owner</th><th>Where</th><th>Size</th><th>Members</th><th>Expires</th><th>Changed</th></tr></thead><tbody>${rows.map((c) => `
+      <tr data-id="${esc(c.id)}" class="pn-cl-row${clSoon(c) ? ' pn-cl-soon' : ''}">
         <td>${c.parent ? '<span class="pn-hint">↳</span> ' : ''}<span class="pn-cl-dot" style="background:${esc(c.color)}"></span>${esc(c.displayName)}${c.subclaims ? ` <small class="pn-hint">${c.subclaims} sub</small>` : ''}</td>
         <td>${esc(c.ownerName || 'Server')}</td>
         <td>${esc(dimShort(c.dim))} ${Math.round((c.minX + c.maxX) / 2)}, ${Math.round((c.minZ + c.maxZ) / 2)}</td>
         <td>${c.width} × ${c.length} <small class="pn-hint">${c.area.toLocaleString()}</small></td>
         <td>${c.members.length ? esc(c.members.map((m) => m.name).join(', ')) : '<span class="pn-hint">–</span>'}</td>
+        <td>${clExpiry(c)}</td>
         <td>${esc(dateTime(c.updated))}</td></tr>`).join('')}</tbody>`
-      : `<tbody><tr><td class="pn-hint">${clData.claims.length ? 'Nothing matches.' : 'No claims yet.'}</td></tr></tbody>`;
+      : `<tbody><tr><td class="pn-hint">${clData.claims.length ? (soon ? 'No claims expire within 30 days.' : 'Nothing matches.') : 'No claims yet.'}</td></tr></tbody>`;
   }
 
   function openClaim(c) {
@@ -4806,11 +4827,47 @@
     $('pn-cl-flags').innerHTML = clData.flags.map((fl) => `<label class="np-check"><input type="checkbox" name="flag-${fl.id}" ${c && c.flags[fl.id] ? 'checked' : ''}> ${esc(fl.label)}</label>`).join('');
     clMembers = c ? c.members.map((m) => ({ ...m })) : [];
     renderClMembers();
+    if (c) renderClExpiry(c);
     const editable = can('claims.manage');
     f.querySelectorAll('input, select, button[type=submit], #pn-cl-delete, #pn-cl-add-btn').forEach((el) => { if (el.id !== 'pn-cl-close') el.disabled = !editable || (el === f.ownerName && c && c.parent); });
     Dirty.reset('claim');
     $('pn-cl-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  /** The editor's Expiry line and the extend buttons (owned claims, with a limit set). */
+  function renderClExpiry(c) {
+    let text;
+    if (c.parent) text = 'Goes with the claim around it.';
+    else if (!c.owner) text = 'Server claims never expire.';
+    else if (!clData.inactiveDays) text = 'Never: claims don\'t expire (Claims → Settings → "Claims of players away … days" is 0).';
+    else if (!c.expires) text = `${esc(c.ownerName || 'The owner')} hasn't been seen yet, so it doesn't expire for now.`;
+    else {
+      const why = c.keepUntil && c.keepUntil >= c.expires ? 'extended by an admin'
+        : `${clData.inactiveDays} days after ${esc(c.ownerName)} was last seen (${esc(dateTime(c.ownerLastSeen))})`;
+      text = `<b class="${clSoon(c) ? 'pn-cl-expiry--soon' : ''}">${esc(new Date(c.expires).toLocaleDateString(undefined, { dateStyle: 'long' }))}</b> (${clWhen(c.expires)}), ${why}. `
+        + 'Then it goes to a co-owner who still plays, or is removed. Playing again pushes it back.';
+    }
+    $('pn-cl-expiry').innerHTML = text;
+    $('pn-cl-keep').hidden = !!c.parent || !c.owner || !clData.inactiveDays || !can('claims.manage');
+    $('pn-cl-keep-clear').hidden = !c.keepUntil;
+  }
+
+  $('pn-cl-keep').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-keep]');
+    if (!b || !clOpen || !clOpen.id) return;
+    const days = Number(b.dataset.keep);
+    // From the later of today and the current expiry, so +30 days is always 30 more.
+    const from = Math.max(Date.now(), clOpen.expires || 0);
+    try {
+      await api('api/claims/action', { action: 'keep', claim: clOpen.id, until: days ? from + days * DAY : 0 });
+      formMsg('pn-cl-msg', days ? `Kept ${days === 365 ? 'a year' : days + ' days'} longer.` : 'Extension removed.', true);
+      await loadClaims();
+      const fresh = clData.claims.find((x) => x.id === clOpen.id);
+      if (fresh) { clOpen = fresh; renderClExpiry(fresh); }
+    } catch (err) {
+      formMsg('pn-cl-msg', err.message, false);
+    }
+  });
 
   function renderClMembers() {
     $('pn-cl-members').innerHTML = clMembers.length ? clMembers.map((m, i) => `<div class="pn-cl-member">
@@ -4839,6 +4896,7 @@
   });
   $('pn-cl-search').addEventListener('input', renderClaims);
   $('pn-cl-dim').addEventListener('change', renderClaims);
+  $('pn-cl-soon').addEventListener('change', renderClaims);
   $('pn-claims-table').addEventListener('click', (e) => {
     const row = e.target.closest('.pn-cl-row');
     if (row) openClaim(clData.claims.find((c) => c.id === row.dataset.id));

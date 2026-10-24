@@ -748,6 +748,11 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 	color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; min-width: 0; }
 .pn-cl-tools input:focus, .pn-cl-tools select:focus, .pn-cl-add input:focus, .pn-cl-add select:focus, .pn-cl-member select:focus, .pn-cb-bonus:focus { outline: none; border-color: var(--accent); }
 .pn-cl-table .pn-cl-row { cursor: pointer; }
+.pn-cl-table .pn-cl-soon td { background: rgba(255,193,110,.06); }
+.pn-cl-table .pn-cl-soon td:first-child { box-shadow: inset 3px 0 0 rgba(255,193,110,.7); }
+.pn-cl-expiry { margin: 0; line-height: 1.5; font-weight: 400; }
+.pn-cl-expiry--soon { color: #ffcf6e; }
+.pn-cl-keep { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .pn-cl-table .pn-cl-row:hover td { background: color-mix(in srgb, var(--accent, #7b93ff) 8%, transparent); }
 .pn-cl-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
 .pn-cl-coords { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

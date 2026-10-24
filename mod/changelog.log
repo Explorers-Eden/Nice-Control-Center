@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.35.0
+- Claims can be kept longer: an admin extends how long a claim stays while its owner is away (from the panel); the inactive-players check leaves it alone until then. Server claims and subclaims never expire, as before
+
 ## 1.34.0
 - For the website's My SMP Profile (through the panel): a player's own waypoint hubs, changing them away from the hub (name, description, colour, public or private, trusted players; same rules as the owner menu, the floating name updates too), their market listings, and taking a listing back (the items go to the mailbox; an online player is told)
 

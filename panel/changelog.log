@@ -1,3 +1,6 @@
+## 1.28.0
+- Claims: an Expires column (the owner's last visit plus "Claims of players away … days"), claims that go within 30 days highlighted (red within a week) with an "Expiring soon" filter. The claim editor tells when and why, and extends it by 30 days, 90 days or a year (or removes the extension). Server claims never expire (mod 1.35.0)
+
 ## 1.27.0
 - My SMP Profile on the website (with WEBSITE_TOKEN): players see their claims, waypoint hubs and listings live and change them there. Claims: name, colour, the switches for everyone else and members, with the same rights as in game (owner and co-owners; only the owner makes or removes co-owners), whether the server runs or not. Hubs and taking listings back while the server runs (mod 1.34.0). Every change is in the audit log
 

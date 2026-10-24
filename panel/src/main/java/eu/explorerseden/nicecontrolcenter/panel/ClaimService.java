@@ -361,6 +361,11 @@ final class ClaimService {
 					count.merge(c.owner, 1, Integer::sum);
 				}
 			}
+			// For the expiry dates: the owners' last visits.
+			Claims.Data all = new Claims.Data();
+			for (Claims.Claim c : data.claims) all.claims.put(c.id, c);
+			all.players = data.players;
+			out.put("inactiveDays", s.inactiveDays);
 			List<Map<String, Object>> claims = new ArrayList<>();
 			for (Claims.Claim c : data.claims) {
 				Map<String, Object> m = new LinkedHashMap<>();
@@ -386,6 +391,10 @@ final class ClaimService {
 				m.put("subclaims", subs.getOrDefault(c.id, 0));
 				m.put("created", c.created);
 				m.put("updated", c.updated);
+				m.put("expires", all.expiresAt(c, s));
+				m.put("keepUntil", c.keepUntil);
+				Claims.PlayerBlocks owner = c.owner == null ? null : data.players.get(c.owner);
+				m.put("ownerLastSeen", owner == null ? 0 : owner.lastSeen);
 				claims.add(m);
 			}
 			out.put("claims", claims);
@@ -421,7 +430,7 @@ final class ClaimService {
 		routes.post("/api/claims/action", guard(Permissions.CLAIMS_MANAGE, (ctx, me) -> {
 			JsonObject body = Web.body(ctx);
 			String action = Web.str(body, "action");
-			if (!List.of("create", "resize", "delete", "update", "member_set", "member_remove", "transfer", "blocks").contains(action)) {
+			if (!List.of("create", "resize", "delete", "update", "member_set", "member_remove", "transfer", "blocks", "keep").contains(action)) {
 				error(ctx, HttpStatus.BAD_REQUEST, "Unknown action.");
 				return;
 			}
@@ -515,7 +524,7 @@ final class ClaimService {
 
 	private static String describe(JsonObject body) {
 		StringBuilder sb = new StringBuilder();
-		for (String key : new String[] { "claim", "name", "playerName", "ownerName", "role", "color", "bonus", "minX", "minZ", "maxX", "maxZ", "dim" }) {
+		for (String key : new String[] { "claim", "name", "playerName", "ownerName", "role", "color", "bonus", "minX", "minZ", "maxX", "maxZ", "dim", "until" }) {
 			if (body.has(key) && !body.get(key).isJsonNull()) {
 				if (sb.length() > 0) sb.append(", ");
 				sb.append(key).append(' ').append(body.get(key).getAsString());

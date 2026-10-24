@@ -70,7 +70,7 @@ public final class ClaimPlaytime {
 		List<Claim> gone = new ArrayList<>();
 		int passed = 0;
 		for (Claim c : List.copyOf(data.claims.values())) {
-			if (c.parent != null || c.owner == null || !away(data, c.owner, cutoff)) continue;
+			if (c.parent != null || c.owner == null || c.keepUntil > now || !away(data, c.owner, cutoff)) continue;
 			// Co-owners in the order they were added, who played within the time (one away too wouldn't keep it long).
 			String heir = null;
 			for (var m : c.members.entrySet()) {

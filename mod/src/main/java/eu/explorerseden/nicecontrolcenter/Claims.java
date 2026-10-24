@@ -362,6 +362,8 @@ public final class Claims {
 		public long created;
 		public long updated;
 		public long rev;
+		/** Kept at least until then (ms) even when its owner stays away (an admin extended it); 0 = not extended. */
+		public long keepUntil;
 
 		public Box box() {
 			return new Box(minX, minZ, maxX, maxZ);
@@ -497,6 +499,18 @@ public final class Claims {
 				if (outer != null && (best == null || outer.role.includes(best))) best = outer.role;
 			}
 			return best;
+		}
+
+		/**
+		 * When the claim goes because its owner stays away (to a co-owner who still plays, or removed): the
+		 * owner's last visit plus the inactive days, or {@link Claim#keepUntil} when that's later. 0 = never:
+		 * no limit set, a server claim, a subclaim (goes with its claim) or an owner never seen.
+		 */
+		public long expiresAt(Claim c, Settings s) {
+			if (s.inactiveDays <= 0 || c.parent != null || c.owner == null) return 0;
+			PlayerBlocks p = players.get(c.owner);
+			if (p == null || p.lastSeen <= 0) return 0;
+			return Math.max(p.lastSeen + s.inactiveDays * 86_400_000L, c.keepUntil);
 		}
 
 		/** May the player do something that needs this role here (members, or everyone through the switches)? */
@@ -820,6 +834,14 @@ public final class Claims {
 				if (err != null) return error(err);
 			}
 			case "member_remove" -> data.removeMember(c, str(a, "uuid"), now);
+			case "keep" -> {
+				// Extends (or with 0 clears) how long the claim stays while its owner is away.
+				if (c.parent != null) return error("Subclaims go with their claim.");
+				if (c.owner == null) return error("Server claims never expire.");
+				long until = a.has("until") ? a.get("until").getAsLong() : 0;
+				c.keepUntil = Math.max(0, until);
+				data.touch(c, now);
+			}
 			case "transfer" -> {
 				String owner = str(a, "owner");
 				if (!owner.isEmpty() && !isUuid(owner)) return error("Unknown owner.");
