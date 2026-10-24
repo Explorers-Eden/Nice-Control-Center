@@ -127,7 +127,7 @@ final class WebShop {
 	}
 
 	/** The request body when the website's token is right; otherwise answered (404 while no token is set) and null. */
-	private JsonObject authorized(Context ctx) {
+	JsonObject authorized(Context ctx) {
 		ctx.header("Cache-Control", "no-store");
 		if (token.length == 0) {
 			ctx.status(HttpStatus.NOT_FOUND).result("Not found");
@@ -147,7 +147,7 @@ final class WebShop {
 		return in;
 	}
 
-	private List<Discord.Link> linksOf(String discordId) {
+	List<Discord.Link> linksOf(String discordId) {
 		if (discordId.isEmpty()) return List.of();
 		return discord.links().stream().filter(l -> discordId.equals(l.discordId())).toList();
 	}

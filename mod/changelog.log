@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.34.0
+- For the website's My SMP Profile (through the panel): a player's own waypoint hubs, changing them away from the hub (name, description, colour, public or private, trusted players; same rules as the owner menu, the floating name updates too), their market listings, and taking a listing back (the items go to the mailbox; an online player is told)
+
 ## 1.33.0
 - /afk for every player: marks you AFK (tab list tag, skipping the night, pet perks and claim block earning treat you as AFK) until you move or look around, or type /afk again. Permission nicecontrolcenter.afk
 

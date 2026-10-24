@@ -318,6 +318,27 @@ final class ClaimService {
 		return p == null ? null : p.name;
 	}
 
+	// ---------------------------------------------------------------- for the website (WebProfile)
+
+	/** All claims and players right now (from the mod or the world file). */
+	Changes current() throws IOException {
+		return live();
+	}
+
+	/** Runs an already checked edit for the website; returns the error, or null. */
+	String editFor(JsonObject action, String actor) throws IOException, InterruptedException {
+		return edit(action, actor);
+	}
+
+	/** A player's UUID by name (server name cache, claims data). */
+	String playerUuid(String name, Changes data) {
+		return uuidOf(name, data);
+	}
+
+	String playerName(String uuid, Changes data) {
+		return nameOf(uuid, data);
+	}
+
 	// ---------------------------------------------------------------- routes
 
 	void register(RoutesConfig routes) {

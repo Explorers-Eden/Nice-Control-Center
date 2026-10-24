@@ -344,7 +344,10 @@ public final class Panel {
 			claims.register(routes);
 			market.register(routes);
 			// The website's market (balance and buying); off unless WEBSITE_TOKEN is set.
-			new WebShop(env("WEBSITE_TOKEN", ""), market, discord, dashboard, server, audit).register(routes);
+			WebShop webShop = new WebShop(env("WEBSITE_TOKEN", ""), market, discord, dashboard, server, audit);
+			webShop.register(routes);
+			// My SMP Profile on the website: claims, hubs and listings players change there (same token).
+			new WebProfile(webShop, claims, market, dashboard, server, audit).register(routes);
 			pets.register(routes);
 			new PackMirror(serverDir).register(routes);
 			new TweaksRoutes(serverDir, server, audit, map).register(routes);

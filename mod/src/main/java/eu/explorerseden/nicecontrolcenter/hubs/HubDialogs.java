@@ -298,10 +298,10 @@ public final class HubDialogs {
 					edit(player, id, hub, "Give the hub a name.");
 					return;
 				}
-				if (!name.equals(Hubs.name(server, hub))) Hubs.rename(player, id, marker, name);
-				if (!description.equals(Hubs.description(server, hub))) Hubs.describe(player, id, description);
+				if (!name.equals(Hubs.name(server, hub))) Hubs.rename(server, id, marker, name);
+				if (!description.equals(Hubs.description(server, hub))) Hubs.describe(server, id, description);
 				String dye = in.getStringOr("color", "");
-				if (Hubs.COLORS.containsKey(dye) && !dye.equals(Hubs.dye(hub))) Hubs.recolor(player, id, marker, dye);
+				if (Hubs.COLORS.containsKey(dye) && !dye.equals(Hubs.dye(hub))) Hubs.recolor(server, id, marker, dye);
 				player.level().playSound(null, marker.blockPosition(), SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.PLAYERS, 1f, 1f);
 				main(player, id);
 			}
@@ -311,7 +311,7 @@ public final class HubDialogs {
 				main(player, id);
 			}
 			case "access" -> {
-				Hubs.setPublic(player, id, !Hubs.isPublic(hub));
+				Hubs.setPublic(server, id, !Hubs.isPublic(hub));
 				player.level().playSound(null, marker.blockPosition(), SoundEvents.CHEST_LOCKED, SoundSource.PLAYERS, 0.4f, 1.5f);
 				main(player, id);
 			}
@@ -345,7 +345,7 @@ public final class HubDialogs {
 				List<String> trusted = new ArrayList<>(Hubs.trusted(hub));
 				// The pack compares names exactly, so the trusted name is spelled as the game knows the player.
 				if (!trusted.contains(who.name())) trusted.add(who.name());
-				Hubs.setTrusted(player, id, trusted);
+				Hubs.setTrusted(server, id, trusted);
 				ClaimTool.tell(player, who.name() + " may now travel to " + Hubs.name(server, hub) + ".", ChatFormatting.GREEN);
 				trust(player, id, Hubs.hub(server, id));
 			}
@@ -353,7 +353,7 @@ public final class HubDialogs {
 				List<String> trusted = new ArrayList<>(Hubs.trusted(hub));
 				String name = in.getStringOr("name", "");
 				if (trusted.remove(name)) {
-					Hubs.setTrusted(player, id, trusted);
+					Hubs.setTrusted(server, id, trusted);
 					ClaimTool.tell(player, name + " is no longer trusted at " + Hubs.name(server, hub) + ".", ChatFormatting.GRAY);
 				}
 				trust(player, id, Hubs.hub(server, id));

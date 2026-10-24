@@ -677,7 +677,8 @@ public final class DashboardServer {
 					return Map.of("ok", true);
 				}));
 			}
-			// The website through the panel (which checked who the player is): their bank, and buying from it.
+			// The website through the panel (which checked who the player is): their bank, buying from it, taking
+			// their listings back, and their waypoint hubs.
 			case "/api/market/web" -> {
 				if (!requirePost(exchange)) {
 					return;
@@ -687,6 +688,9 @@ public final class DashboardServer {
 				sendJson(exchange, onServerThread(() -> switch (action) {
 					case "account" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.account(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
 					case "buy" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.buy(minecraft, body);
+					case "withdraw" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.withdraw(minecraft, body);
+					case "hubs" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.list(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
+					case "hub" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.edit(minecraft, body);
 					default -> Map.of("error", "Unknown action.");
 				}));
 			}

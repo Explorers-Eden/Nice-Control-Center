@@ -75,7 +75,42 @@ public final class MarketWeb {
 		out.put("commandsBought", bought);
 		Pets.Owner owner = PetStore.data().owners.get(uuid);
 		out.put("pets", owner == null ? List.of() : owner.pets.stream().map(p -> p.pet).toList());
+		List<Map<String, Object>> listings = new ArrayList<>();
+		for (Market.Listing l : data.listings.values()) {
+			if (!uuid.equals(l.seller)) continue;
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("id", l.id);
+			row.put("name", l.item.name);
+			row.put("item", l.item.id);
+			row.put("amount", l.amount);
+			row.put("price", l.price);
+			row.put("per", l.lot());
+			row.put("expires", l.expires);
+			listings.add(row);
+		}
+		out.put("listings", listings);
 		return out;
+	}
+
+	/** Takes one of the player's own listings off the market; what's left goes to their mailbox. */
+	public static Map<String, Object> withdraw(MinecraftServer server, JsonObject in) {
+		String uuid = in.has("uuid") ? in.get("uuid").getAsString() : "";
+		if (!validUuid(uuid)) return Map.of("error", "Unknown player.");
+		Market.Data data = MarketStore.data();
+		String id = in.has("id") ? in.get("id").getAsString() : "";
+		Market.Listing l = data.listings.get(id);
+		if (l == null) l = data.listings.values().stream().filter(x -> id.equals(x.id)).findFirst().orElse(null);
+		if (l == null) return Map.of("error", "That listing is gone (sold out or ended).");
+		if (!uuid.equals(l.seller)) return Map.of("error", "That isn't your listing.");
+		int amount = l.amount;
+		String name = l.item.name;
+		data.withdraw(l);
+		MarketStore.saveNow();
+		ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(uuid));
+		if (online != null) {
+			online.sendSystemMessage(Component.literal("Your " + name + " listing was taken off the market on the website; the items wait in /market → Mailbox.").withStyle(ChatFormatting.GRAY));
+		}
+		return Map.of("ok", true, "message", String.format(Locale.ROOT, "%,d × %s went to your mailbox. Collect them with /market → Mailbox in game.", amount, name));
 	}
 
 	/**

@@ -207,6 +207,41 @@ public final class Hubs {
 		return null;
 	}
 
+	/**
+	 * The hub's marker found from its stored position, for changes made away from the hub (the website).
+	 * Loads the hub's chunk if it isn't loaded; null when the marker isn't there.
+	 */
+	public static Marker markerAt(MinecraftServer server, int id, CompoundTag hub) {
+		CompoundTag pos = hub.getCompoundOrEmpty("pos");
+		Identifier dim = Identifier.tryParse(dimension(hub));
+		ServerLevel level = dim == null ? null : server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, dim));
+		if (level == null) return null;
+		double x = pos.getDoubleOr("x", 0), y = pos.getDoubleOr("y", 0), z = pos.getDoubleOr("z", 0);
+		level.getChunk(net.minecraft.util.Mth.floor(x) >> 4, net.minecraft.util.Mth.floor(z) >> 4);
+		Objective objective = level.getScoreboard().getObjective(ID_SCORE);
+		if (objective == null) return null;
+		for (Marker m : level.getEntitiesOfClass(Marker.class, new AABB(x - 3, y - 3, z - 3, x + 3, y + 3, z + 3), m -> m.entityTags().contains(MARKER))) {
+			ReadOnlyScoreInfo score = level.getScoreboard().getPlayerScoreInfo(m, objective);
+			if (score != null && score.value() == id) return m;
+		}
+		return null;
+	}
+
+	/** Every hub the player owns, as (id, storage entry). */
+	public static java.util.Map<Integer, CompoundTag> ownedHubs(MinecraftServer server, UUID player) {
+		java.util.Map<Integer, CompoundTag> out = new java.util.TreeMap<>();
+		CompoundTag hubs = database(server).getCompoundOrEmpty("waypoints").getCompoundOrEmpty("hubs");
+		for (String key : hubs.keySet()) {
+			if (!(hubs.get(key) instanceof CompoundTag hub) || !ownedBy(hub, player)) continue;
+			try {
+				out.put(Integer.parseInt(key), hub);
+			} catch (NumberFormatException e) {
+				// Not a hub id.
+			}
+		}
+		return out;
+	}
+
 	// ---------------------------------------------------------------- changing
 
 	/** Characters that would break the pack's menu once its macros paste the text into JSON. */
@@ -216,15 +251,15 @@ public final class Hubs {
 	}
 
 	/** Like a renamed name tag: storage, the marker's name and the floating text (its colour stays). */
-	public static void rename(ServerPlayer player, int id, Marker marker, String name) {
-		MinecraftServer server = player.level().getServer();
+	public static void rename(MinecraftServer server, int id, Marker marker, String name) {
 		CompoundTag database = database(server);
 		CompoundTag hub = hubIn(database, id);
 		if (hub == null) return;
 		hub.putString("waypoint_name", name);
 		save(server, database);
+		if (marker == null) return;
 		marker.setCustomName(Component.literal(name));
-		Display.TextDisplay text = textDisplay(player, marker);
+		Display.TextDisplay text = textDisplay(marker);
 		if (text != null) {
 			TextDisplayAccessor acc = (TextDisplayAccessor) text;
 			Component old = acc.nicecontrolcenter$getText();
@@ -233,15 +268,14 @@ public final class Hubs {
 	}
 
 	/** The hub's floating name, the text display closest to its marker. */
-	private static Display.TextDisplay textDisplay(ServerPlayer player, Marker marker) {
+	private static Display.TextDisplay textDisplay(Marker marker) {
 		AABB around = marker.getBoundingBox().inflate(3);
-		return player.level().getEntitiesOfClass(Display.TextDisplay.class, around, d -> d.entityTags().contains(DISPLAY)).stream()
+		return marker.level().getEntitiesOfClass(Display.TextDisplay.class, around, d -> d.entityTags().contains(DISPLAY)).stream()
 				.min(java.util.Comparator.comparingDouble(d -> d.distanceToSqr(marker))).orElse(null);
 	}
 
 	/** Like a renamed book (empty = no description). */
-	public static void describe(ServerPlayer player, int id, String description) {
-		MinecraftServer server = player.level().getServer();
+	public static void describe(MinecraftServer server, int id, String description) {
 		CompoundTag database = database(server);
 		CompoundTag hub = hubIn(database, id);
 		if (hub == null) return;
@@ -251,15 +285,15 @@ public final class Hubs {
 	}
 
 	/** Like a dye: storage and the floating name's colour. */
-	public static void recolor(ServerPlayer player, int id, Marker marker, String dye) {
+	public static void recolor(MinecraftServer server, int id, Marker marker, String dye) {
 		String hex = COLORS.get(dye);
-		MinecraftServer server = player.level().getServer();
 		CompoundTag database = database(server);
 		CompoundTag hub = hubIn(database, id);
 		if (hub == null || hex == null) return;
 		hub.putString("color", hex);
 		save(server, database);
-		Display.TextDisplay text = textDisplay(player, marker);
+		if (marker == null) return;
+		Display.TextDisplay text = textDisplay(marker);
 		if (text != null) {
 			TextDisplayAccessor acc = (TextDisplayAccessor) text;
 			Component old = acc.nicecontrolcenter$getText();
@@ -316,8 +350,7 @@ public final class Hubs {
 	}
 
 	/** Like the waypoint lock. */
-	public static void setPublic(ServerPlayer player, int id, boolean open) {
-		MinecraftServer server = player.level().getServer();
+	public static void setPublic(MinecraftServer server, int id, boolean open) {
 		CompoundTag database = database(server);
 		CompoundTag hub = hubIn(database, id);
 		if (hub == null) return;
@@ -326,8 +359,7 @@ public final class Hubs {
 	}
 
 	/** Like a "trust Name" / "untrust Name" paper; keeps the pack's ", " entries between names. */
-	public static void setTrusted(ServerPlayer player, int id, List<String> names) {
-		MinecraftServer server = player.level().getServer();
+	public static void setTrusted(MinecraftServer server, int id, List<String> names) {
 		CompoundTag database = database(server);
 		CompoundTag hub = hubIn(database, id);
 		if (hub == null) return;
