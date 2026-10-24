@@ -64,7 +64,7 @@ public final class AfkTabList {
 		if (tick % 20 == 0) {
 			int limit = s.afk.minutes * 1200;
 			for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-				boolean now = s.afk.enabled && PlayerActivity.idleTicks(p) > limit;
+				boolean now = s.afk.enabled && (PlayerActivity.idleTicks(p) > limit || PlayerActivity.isAway(p));
 				boolean changed = now ? afk.add(p.getUUID()) : afk.remove(p.getUUID());
 				// While AFK, refresh now and then so a team change (another race) shows too.
 				if (changed || now && tick % 1200 == 0) update(server, p);

@@ -101,6 +101,7 @@ With LuckPerms or another Fabric permissions mod you can give parts to other pla
 | `nicecontrolcenter.claims.use` | `/claim` (everyone by default) |
 | `nicecontrolcenter.claims.admin` | `/claim admin …`: bypass claims, delete claims, change claim blocks |
 | `nicecontrolcenter.market.use` | `/market` (everyone by default) |
+| `nicecontrolcenter.afk` | `/afk` (everyone by default) |
 | `nicecontrolcenter.pets.use` | `/pets` (everyone by default) |
 | `nicecontrolcenter.pets.admin` | `/pets grant` and `/pets revoke` (operators level 2 by default) |
 | `nicecontrolcenter.links.use` | `/info` and the own link commands (everyone by default) |

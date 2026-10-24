@@ -1715,7 +1715,7 @@
       return `<button type="button" class="np-player-row ${playerKey(p) === playersState.selected ? 'active' : ''}" data-player="${esc(playerKey(p))}">
         ${face(p, 32)}<span class="np-player-name"><b>${esc(p.name)}${p.banned ? ' <span class="np-banned">banned</span>' : ''}</b><small>${esc(sub || '')}</small>
           ${p.client || (p.xray && p.xray.length) ? `<span class="np-player-badges">${p.client ? `<span class="np-client">${esc(p.client)}</span>` : ''}${p.xray && p.xray.length ? '<span class="np-xray" title="Mined unusually little stone per ore; see the player card">x-ray hint</span>' : ''}</span>` : ''}</span>
-        ${p.unread ? `<span class="np-tab-badge warn" title="${p.unread} new ${p.unread === 1 ? 'answer' : 'answers'}">${p.unread}</span>` : `<span class="np-live-dot ${p.online ? (p.afk ? 'afk' : 'on') : ''}" title="${p.online ? (p.afk ? `AFK for ${p.idleMinutes} min` : 'Online') : 'Offline'}"></span>`}</button>`;
+        ${p.unread ? `<span class="np-tab-badge warn" title="${p.unread} new ${p.unread === 1 ? 'answer' : 'answers'}">${p.unread}</span>` : `<span class="np-live-dot ${p.online ? (p.afk ? 'afk' : 'on') : ''}" title="${p.online ? (p.afk ? 'AFK' : 'Online') : 'Offline'}"></span>`}</button>`;
     }).join('') || '<div class="np-empty">No players match.</div>'));
   }
 
@@ -1916,7 +1916,7 @@
     if (!tabs.some((t) => t[0] === playersState.tab)) playersState.tab = 'overview';
     const tab = tabs.find((t) => t[0] === playersState.tab);
     const changed = patchHtml(box, `<div class="np-player-head">${face(p, 64)}<div>
-        <h3>${esc(p.name)} <span class="np-level ${p.online ? 'good' : 'info'}">${p.online ? 'Online' : 'Offline'}</span>${p.online && p.afk ? ` <span class="np-level warn" title="Did nothing for ${num(p.idleMinutes)} minutes">AFK ${num(p.idleMinutes)} min</span>` : ''}${p.ban ? ' <span class="np-level poor">Banned</span>' : ''}</h3>
+        <h3>${esc(p.name)} <span class="np-level ${p.online ? 'good' : 'info'}">${p.online ? 'Online' : 'Offline'}</span>${p.online && p.afk ? ` <span class="np-level warn" title="Did nothing for ${num(p.idleMinutes)} minutes">AFK${p.idleMinutes ? ` ${num(p.idleMinutes)} min` : ''}</span>` : ''}${p.ban ? ' <span class="np-level poor">Banned</span>' : ''}</h3>
         <p class="np-loc-sub">${[p.race, p.class].filter(Boolean).map(esc).join(' · ')}</p>
         ${seenLine(p)}
         ${p.uuid ? `<p class="np-loc-sub np-mono">${esc(p.uuid)}</p>` : ''}</div></div>

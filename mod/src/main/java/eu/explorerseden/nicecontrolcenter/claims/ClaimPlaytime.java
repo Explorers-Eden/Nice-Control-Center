@@ -48,7 +48,8 @@ public final class ClaimPlaytime {
 		long now = System.currentTimeMillis();
 		boolean any = false;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			boolean afk = s.afkMinutes > 0 && eu.explorerseden.nicecontrolcenter.core.PlayerActivity.idleTicks(p) > s.afkMinutes * MINUTE;
+			boolean afk = s.afkMinutes > 0 && (eu.explorerseden.nicecontrolcenter.core.PlayerActivity.idleTicks(p) > s.afkMinutes * MINUTE
+					|| eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAway(p));
 			if (afk) continue;
 			ClaimStore.data().accrue(p.getStringUUID(), p.getPlainTextName(), s, now);
 			any = true;
