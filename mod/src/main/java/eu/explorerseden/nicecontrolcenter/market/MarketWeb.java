@@ -86,10 +86,97 @@ public final class MarketWeb {
 			row.put("price", l.price);
 			row.put("per", l.lot());
 			row.put("expires", l.expires);
+			int[] have = spare(server, l);
+			row.put("canAdd", have[0] + have[1]);
 			listings.add(row);
 		}
 		out.put("listings", listings);
+		out.put("maxPrice", MarketStore.settings().maxPrice);
 		return out;
+	}
+
+	/** Items the predicate counts as the listing's item (same item, same components). */
+	private static java.util.function.Predicate<Market.Item> sameAs(MinecraftServer server, Market.Item item) {
+		net.minecraft.world.item.ItemStack like = MarketStore.stack(server, item, 1);
+		return other -> !like.isEmpty() && (other.stack.equals(item.stack)
+				|| net.minecraft.world.item.ItemStack.isSameItemSameComponents(MarketStore.stack(server, other, 1), like));
+	}
+
+	/** How many more of the listing's item the seller has: in their mailbox, and in their inventory while online. */
+	private static int[] spare(MinecraftServer server, Market.Listing l) {
+		int mail = MarketStore.data().mailboxCount(l.seller, sameAs(server, l.item));
+		ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(l.seller));
+		net.minecraft.world.item.ItemStack like = MarketStore.stack(server, l.item, 1);
+		int carried = online == null || like.isEmpty() ? 0 : MarketStore.count(online, like);
+		return new int[] { mail, carried };
+	}
+
+	/**
+	 * The seller changes one of their listings: the price, how many it's for, and the amount. Fewer items go back to
+	 * the mailbox; more are taken from the mailbox first, then (while online) the inventory, like "Add more" in the
+	 * menu: whole lots only, and the listing runs for its full time again.
+	 */
+	public static Map<String, Object> editListing(MinecraftServer server, JsonObject in) {
+		String uuid = in.has("uuid") ? in.get("uuid").getAsString() : "";
+		if (!validUuid(uuid)) return Map.of("error", "Unknown player.");
+		Market.Data data = MarketStore.data();
+		String id = in.has("id") ? in.get("id").getAsString() : "";
+		Market.Listing l = data.listings.get(id);
+		if (l == null) l = data.listings.values().stream().filter(x -> id.equals(x.id)).findFirst().orElse(null);
+		if (l == null) return Map.of("error", "That listing is gone (sold out or ended).");
+		if (!uuid.equals(l.seller)) return Map.of("error", "That isn't your listing.");
+		int price, per, amount;
+		try {
+			price = in.has("price") ? in.get("price").getAsInt() : l.price;
+			per = in.has("per") ? in.get("per").getAsInt() : l.lot();
+			amount = in.has("amount") ? in.get("amount").getAsInt() : l.amount;
+		} catch (RuntimeException e) {
+			return Map.of("error", "Type whole numbers.");
+		}
+		var s = MarketStore.settings();
+		// The same checks update() makes, before any items move.
+		if (amount < 1) return Map.of("error", "Keep at least one item on the market, or take the listing back.");
+		if (price < 1 || price > s.maxPrice) return Map.of("error", "The price is 1 to " + s.maxPrice + ".");
+		if (per < 1 || per > amount) return Map.of("error", "The price is for 1 to " + amount + " items.");
+		if (amount % per != 0) return Map.of("error", amount + " don't split into lots of " + per + ": make the amount a multiple of \"For how many\".");
+		int add = amount - l.amount;
+		int fromMail = 0, fromInventory = 0;
+		if (add > 0) {
+			int[] have = spare(server, l);
+			if (add > have[0] + have[1]) {
+				return Map.of("error", String.format(Locale.ROOT, "You have %,d more %s (%,d in your mailbox%s). Bring more in game with /market.",
+						have[0] + have[1], l.item.name, have[0], server.getPlayerList().getPlayer(UUID.fromString(uuid)) == null ? "; your inventory counts while you're online" : ", " + have[1] + " in your inventory"));
+			}
+			fromMail = data.takeFromMailbox(uuid, sameAs(server, l.item), add);
+			fromInventory = add - fromMail;
+			if (fromInventory > 0) {
+				ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(uuid));
+				net.minecraft.world.item.ItemStack like = MarketStore.stack(server, l.item, 1);
+				if (online == null || like.isEmpty() || !MarketStore.take(online, like, fromInventory)) {
+					// Put back what came out of the mailbox.
+					if (fromMail > 0) {
+						Market.Parcel p = new Market.Parcel();
+						p.item = l.item;
+						p.amount = fromMail;
+						data.mailbox(uuid, l.sellerName).parcels.add(p);
+					}
+					return Map.of("error", "Those items aren't there any more. Try again.");
+				}
+			}
+		}
+		int spare = l.amount - amount;
+		String problem = data.update(l, amount, price, per, s, System.currentTimeMillis());
+		if (problem != null) return Map.of("error", problem);
+		MarketStore.saveNow();
+		ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(uuid));
+		if (online != null && fromInventory > 0) {
+			online.sendSystemMessage(Component.literal(String.format(Locale.ROOT, "%,d × %s from your inventory went onto your market listing (changed on the website).", fromInventory, l.item.name)).withStyle(ChatFormatting.GRAY));
+		}
+		String message = spare > 0 ? String.format(Locale.ROOT, "Saved. %,d × %s went to your mailbox.", spare, l.item.name)
+				: add > 0 ? String.format(Locale.ROOT, "Saved. %,d more on the market (%s); it runs %d days again.", add,
+						fromInventory == 0 ? "from your mailbox" : fromMail == 0 ? "from your inventory" : fromMail + " from your mailbox, " + fromInventory + " from your inventory", s.listingDays)
+				: "Saved.";
+		return Map.of("ok", true, "message", message);
 	}
 
 	/** Takes one of the player's own listings off the market; what's left goes to their mailbox. */

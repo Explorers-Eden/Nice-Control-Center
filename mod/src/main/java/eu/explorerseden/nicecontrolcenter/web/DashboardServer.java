@@ -689,6 +689,7 @@ public final class DashboardServer {
 					case "account" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.account(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
 					case "buy" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.buy(minecraft, body);
 					case "withdraw" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.withdraw(minecraft, body);
+					case "listing" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.editListing(minecraft, body);
 					case "hubs" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.list(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
 					case "hub" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.edit(minecraft, body);
 					default -> Map.of("error", "Unknown action.");

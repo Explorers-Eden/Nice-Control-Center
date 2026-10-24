@@ -1,3 +1,6 @@
+## 1.29.0
+- Website: players change their market listings on My SMP Profile (price, lot size, amount) while the server runs; in the audit log (mod 1.36.0)
+
 ## 1.28.0
 - Claims: an Expires column (the owner's last visit plus "Claims of players away … days"), claims that go within 30 days highlighted (red within a week) with an "Expiring soon" filter. The claim editor tells when and why, and extends it by 30 days, 90 days or a year (or removes the extension). Server claims never expire (mod 1.35.0)
 

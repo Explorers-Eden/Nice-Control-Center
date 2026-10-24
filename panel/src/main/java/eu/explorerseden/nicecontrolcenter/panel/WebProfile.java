@@ -67,6 +67,7 @@ final class WebProfile {
 				}
 				JsonObject account = mod("account", link, null);
 				if (account != null && account.has("listings")) out.put("listings", account.get("listings"));
+				if (account != null && account.has("maxPrice")) out.put("maxPrice", account.get("maxPrice"));
 			} else {
 				Market.Data offline = market.worldData();
 				List<Map<String, Object>> listings = new ArrayList<>();
@@ -195,6 +196,20 @@ final class WebProfile {
 			JsonObject answer = mod("hub", link, body);
 			if (!answered(ctx, answer)) return;
 			audit.log("website", "hubs.web", link.name() + " changed hub " + Web.str(answer, "name"), Web.clientIp(ctx));
+			json(ctx, answer);
+		});
+
+		routes.post("/info/web/listing", ctx -> {
+			JsonObject in = shop.authorized(ctx);
+			Discord.Link link = in == null ? null : linkOf(ctx, in);
+			if (link == null || !slowDown(ctx, in) || !running(ctx, "Listings can be changed while the server runs.")) return;
+			JsonObject body = new JsonObject();
+			body.addProperty("id", Web.str(in, "id"));
+			for (String k : List.of("price", "per", "amount")) if (in.has(k) && !in.get(k).isJsonNull()) body.add(k, in.get(k));
+			JsonObject answer = mod("listing", link, body);
+			if (!answered(ctx, answer)) return;
+			audit.log("website", "market.webedit", link.name() + " changed a listing: " + Web.str(answer, "message"), Web.clientIp(ctx));
+			market.syncSoon();
 			json(ctx, answer);
 		});
 

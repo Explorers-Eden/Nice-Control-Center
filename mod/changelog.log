@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.36.0
+- Market listings can be changed on the website (My SMP Profile): price, how many it's for, and the amount. Fewer items go back to the mailbox; more come from the same items in the mailbox, then the inventory while online, in whole lots, and the listing runs its full time again (like "Add more"). Same limits as the menus
+
 ## 1.35.0
 - Claims can be kept longer: an admin extends how long a claim stays while its owner is away (from the panel); the inactive-players check leaves it alone until then. Server claims and subclaims never expire, as before
 

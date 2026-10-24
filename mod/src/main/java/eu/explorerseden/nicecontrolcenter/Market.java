@@ -503,6 +503,60 @@ public final class Market {
 			return sale;
 		}
 
+		/** How many items the predicate counts as the same wait in the player's mailbox. */
+		public int mailboxCount(String uuid, java.util.function.Predicate<Item> same) {
+			Mailbox m = mail.get(uuid);
+			if (m == null) return 0;
+			long n = 0;
+			for (Parcel p : m.parcels) if (same.test(p.item)) n += p.amount;
+			return (int) Math.min(Integer.MAX_VALUE, n);
+		}
+
+		/** Takes up to amount such items out of the player's mailbox; returns how many it took. */
+		public int takeFromMailbox(String uuid, java.util.function.Predicate<Item> same, int amount) {
+			Mailbox m = mail.get(uuid);
+			if (m == null || amount <= 0) return 0;
+			int left = amount;
+			for (var it = m.parcels.iterator(); it.hasNext() && left > 0;) {
+				Parcel p = it.next();
+				if (!same.test(p.item)) continue;
+				int t = Math.min(left, p.amount);
+				p.amount -= t;
+				left -= t;
+				if (p.amount <= 0) it.remove();
+			}
+			if (left < amount) m.rev = bump();
+			return amount - left;
+		}
+
+		/**
+		 * Price, lot size and amount at once (the website's listing editor), with the menus' rules. Fewer items: the
+		 * rest goes to the seller's mailbox. More: the caller has already taken them from the seller, and the listing
+		 * runs for its full time again, like "Add more". Error for the player, or null.
+		 */
+		public String update(Listing l, int amount, int price, int per, Settings s, long now) {
+			if (amount < 1) return "Keep at least one item on the market, or take the listing back.";
+			if (price < 1 || price > s.maxPrice) return "The price is 1 to " + s.maxPrice + ".";
+			if (per < 1 || per > amount) return "The price is for 1 to " + amount + " items.";
+			if (amount % per != 0) return amount + " don't split into lots of " + per + ": make the amount a multiple of \"For how many\".";
+			int spare = l.amount - amount;
+			if (spare > 0) {
+				Mailbox m = mailbox(l.seller, l.sellerName);
+				Parcel p = new Parcel();
+				p.item = l.item;
+				p.amount = spare;
+				m.parcels.add(p);
+				m.rev = bump();
+			} else if (spare < 0) {
+				l.expires = now + s.listingDays * 86_400_000L;
+			}
+			l.amount = amount;
+			l.price = price;
+			l.per = per;
+			l.rev = bump();
+			return null;
+		}
+
 		/** Sends some of a listing back to the seller's mailbox (the spare items when the lot size changes). */
 		public void trim(Listing l, int spare) {
 			if (spare <= 0 || spare >= l.amount) return;
