@@ -5559,11 +5559,48 @@
     clMembers = c ? c.members.map((m) => ({ ...m })) : [];
     renderClMembers();
     if (c) renderClExpiry(c);
+    renderClAdmin(c);
     const editable = can('claims.manage');
     f.querySelectorAll('input, select, button[type=submit], #pn-cl-delete, #pn-cl-add-btn').forEach((el) => { if (el.id !== 'pn-cl-close') el.disabled = !editable || (el === f.ownerName && c && c.parent); });
     Dirty.reset('claim');
     $('pn-cl-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  /** Game-area options: on server claims and their subclaims (saved at once, apart from the form). */
+  function renderClAdmin(c) {
+    const parent = c && c.parent ? clData.claims.find((x) => x.id === c.parent) : null;
+    const server = c && c.id && !(parent ? parent.owner : c.owner);
+    $('pn-cl-admin').hidden = !server;
+    if (!server) return;
+    const a = c.admin || {};
+    $('pn-cl-admin').querySelectorAll('[data-admin]').forEach((el) => { el.checked = !!a[el.dataset.admin]; el.disabled = !can('claims.manage'); });
+    $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering.` : 'No kit: be in game with the items in your inventory, then:';
+    $('pn-cl-kit-clear').hidden = !a.kit;
+    if (!$('pn-cl-kit-from').value && me) $('pn-cl-kit-from').value = me.user;
+  }
+
+  async function clAdminSend(body, done) {
+    try {
+      await api('api/claims/action', { claim: clOpen.id, ...body });
+      formMsg('pn-cl-msg', done, true);
+      await loadClaims();
+      const fresh = clData.claims.find((x) => x.id === clOpen.id);
+      if (fresh) { clOpen = fresh; renderClAdmin(fresh); }
+    } catch (err) {
+      formMsg('pn-cl-msg', err.message, false);
+      renderClAdmin(clOpen);
+    }
+  }
+  $('pn-cl-admin').addEventListener('change', (e) => {
+    const k = e.target.dataset.admin;
+    if (k && clOpen && clOpen.id) clAdminSend({ action: 'admin', [k]: e.target.checked }, 'Saved.');
+  });
+  $('pn-cl-kit-set').addEventListener('click', () => {
+    if (clOpen && clOpen.id) clAdminSend({ action: 'kit', from: $('pn-cl-kit-from').value.trim() }, 'Kit saved from your inventory.');
+  });
+  $('pn-cl-kit-clear').addEventListener('click', () => {
+    if (clOpen && clOpen.id && confirm('Clear the kit?')) clAdminSend({ action: 'admin', clearKit: true }, 'Kit cleared.');
+  });
 
   /** The editor's Expiry line and the extend buttons (owned claims, with a limit set). */
   function renderClExpiry(c) {
@@ -5864,6 +5901,10 @@
 
   /** The tab list's dimension names and colours: one row per dimension of the world. */
   function twDims() {
+    // Nice Actions homes: a box per dimension (none ticked = everywhere).
+    const homes = (twData.settings.homes && twData.settings.homes.dimensions) || [];
+    $('pn-home-dims').innerHTML = (twData.dimensions || []).map((d) => `<label class="np-check"><input type="checkbox" value="${esc(d.id)}" ${homes.includes(d.id) ? 'checked' : ''} ${can('settings.server') ? '' : 'disabled'}> ${esc(d.name)} <small><code>${esc(d.id)}</code></small></label>`).join('')
+      || '<p class="pn-hint">No dimensions found yet: start the server once.</p>';
     const set = twData.settings.tabList.dimensions || {};
     const pretty = (id) => { const p = id.replace(/^[^:]*:/, '').replace(/^the_/, '').replace(/_/g, ' '); return p.charAt(0).toUpperCase() + p.slice(1); };
     const editable = can('settings.server');
@@ -5894,6 +5935,10 @@
         dims[tr.dataset.dim] = { name: tr.querySelector('[data-f=name]').value.trim(), color: tr.querySelector('[data-f=color]').value.toUpperCase() };
       });
       next.tabList.dimensions = dims;
+    }
+    if (e.target.contains($('pn-home-dims'))) {
+      next.homes = next.homes || {};
+      next.homes.dimensions = [...$('pn-home-dims').querySelectorAll('input:checked')].map((i) => i.value);
     }
     for (const el of e.target.elements) {
       if (!el.name || !el.name.includes('.')) continue;

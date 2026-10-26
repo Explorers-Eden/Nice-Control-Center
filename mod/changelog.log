@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.43.0
+- Game areas (admin options on server claims and their subclaims, for minigames): inventory, armour, off hand, XP and effects put aside on entering and given back on leaving; a kit on entering (/claim admin kit set|clear, or from the panel); items picked up inside vanish on leaving or go to the inbox; on death no grave (keepinv:has_died is blocked there), picked-up items drop or go to the inbox; logging out inside sends the player to their home or respawn point
+- No Nice Actions homes, beds or anchors in game areas, and /back can't lead into them; a dimension whitelist for Nice Actions homes (Gameplay → World & nature)
+- /inbox opens the market mailbox
+- Warping Wonders admins (tag wawo.admin) may place waypoint hubs in dimensions where players can't
+
 ## 1.42.0
 - /reward: one admin command for non-item rewards (also offline players): fly, claimblocks, pet (… remove), petslots, listings, coupons, spotlight, joinmessage, xp, haste, blockboost, bondboost, toolcare, off for each, info, and give <rule> for reward rules. Replaces /claim admin blocks and /pets grant|revoke
 - Timed perks run only while they work (online, not AFK; haste only in their claims): XP boost from orbs, Haste in your claims, claim-block boost, pet bond boost, tool care (half wear)

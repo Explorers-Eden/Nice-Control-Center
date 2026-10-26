@@ -131,6 +131,7 @@ final class Commands {
 			Map.entry("reward", "Give players non-item rewards: flight time, claim blocks, pets and pet slots, listing slots, shop coupons, spotlight, join messages and timed perks (XP, haste, claim-block and bond boosts, tool care); give gives a reward rule by name."),
 			Map.entry("perks", "See your rewards: flight time, perks and how long they last, coupons, extra slots."),
 			Map.entry("joinmessage", "Set your own join line (a reward), or off for the normal one."),
+			Map.entry("inbox", "Open your inbox: items from the market, from game areas and other things waiting for you."),
 			Map.entry("merl", "Ask Merl anything about the server or vanilla Minecraft: she finds the right wiki page, guides you to places, quizzes you and chats."),
 			Map.entry("nicemerl", "Merl's settings for yourself (her comments and celebrations on or off), guide trails and quiz answers; admins also rebuild her wiki index and place her mannequin."),
 			Map.entry("discord", "Discord JustSync: see which Discord account you're linked to or unlink it; admins look up other players, send a message to Discord and reload the bridge."),

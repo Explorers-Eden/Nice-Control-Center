@@ -61,6 +61,31 @@ public final class ClaimCommand {
 				})))
 				.then(Commands.literal("admin")
 						.requires(Permissions.require(PERMISSION_ADMIN, PermissionLevel.GAMEMASTERS))
+						// Game claims: the claim you stand in hands out what you carry now as its kit.
+						.then(Commands.literal("kit")
+								.then(Commands.literal("set").executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
+									if (c == null) {
+										ClaimTool.tell(p, "Stand in the claim (or subclaim) first.", ChatFormatting.RED);
+										return 0;
+									}
+									int n = GameClaims.setKit(p, c);
+									ClaimTool.tell(p, c.displayName() + " now hands out " + n + " stack" + (n == 1 ? "" : "s") + " on entering (what you carry now).", ChatFormatting.GOLD);
+									return 1;
+								}))
+								.then(Commands.literal("clear").executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
+									if (c == null || c.admin == null || c.admin.kit.isEmpty()) {
+										ClaimTool.tell(p, "No kit here.", ChatFormatting.RED);
+										return 0;
+									}
+									c.admin.kit = new java.util.ArrayList<>();
+									ClaimStore.changed();
+									ClaimTool.tell(p, "The kit of " + c.displayName() + " is gone.", ChatFormatting.GOLD);
+									return 1;
+								})))
 						.then(Commands.literal("bypass").executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							boolean on = ClaimTool.toggleBypass(p);

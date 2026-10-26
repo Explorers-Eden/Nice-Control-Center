@@ -36,6 +36,22 @@ public final class ClaimApi {
 
 	public static Map<String, Object> action(JsonObject body, String by) {
 		ClaimStore.reloadSettings();
+		// The kit from an online admin's inventory (needs the game, so not in Claims).
+		if ("kit".equals(body.has("action") ? body.get("action").getAsString() : "")) {
+			Claim c = ClaimStore.data().claims.get(body.has("claim") ? body.get("claim").getAsString() : "");
+			if (c == null) return Map.of("error", "That claim doesn't exist any more.");
+			var server = ClaimStore.server();
+			String name = body.has("from") ? body.get("from").getAsString() : "";
+			var p = server == null ? null : server.getPlayerList().getPlayerByName(name);
+			if (p == null) return Map.of("error", "\"" + name + "\" isn't online: be in game with the items in your inventory.");
+			int n = GameClaims.setKit(p, c);
+			NiceControlCenter.LOGGER.info("Claims: kit of {} set from {}'s inventory ({} stacks) by {}", c.displayName(), name, n, by);
+			Map<String, Object> out = new java.util.LinkedHashMap<>();
+			out.put("ok", true);
+			out.put("claim", c);
+			out.put("kit", n);
+			return out;
+		}
 		Map<String, Object> result = Claims.apply(ClaimStore.data(), ClaimStore.settings(), body, System.currentTimeMillis());
 		if (result.containsKey("ok")) {
 			ClaimStore.changed();

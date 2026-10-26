@@ -1,3 +1,8 @@
+## 1.34.0
+- Claims: "Game area" options on server claims and their subclaims (put things aside, pickups, death drops, no homes, kit from your inventory) (mod 1.43.0)
+- Gameplay → World & nature: where Nice Actions homes may be set
+- Command list: /inbox
+
 ## 1.33.0
 - Rewards: "Rewards" per rule with quick options (flight, claim blocks, pet, pet slots, listing slots, coupons, spotlight, join message, XP, haste, claim-block and bond boosts, tool care), "only in their claims", the triggers for entering/leaving claims and "Given with /reward give", and new examples (mod 1.42.0)
 - Website market: spotlight listings first, coupons on server-shop buys (through the panel)

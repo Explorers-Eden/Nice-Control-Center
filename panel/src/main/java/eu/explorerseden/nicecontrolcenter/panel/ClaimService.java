@@ -393,6 +393,9 @@ final class ClaimService {
 				m.put("updated", c.updated);
 				m.put("expires", all.expiresAt(c, s));
 				m.put("keepUntil", c.keepUntil);
+				// Game-claim options (server claims and their subclaims); the kit as a count only.
+				if (c.admin != null) m.put("admin", Map.of("inventory", c.admin.inventory, "removePickups", c.admin.removePickups,
+						"dropPickupsOnDeath", c.admin.dropPickupsOnDeath, "noHomes", c.admin.noHomes, "kit", c.admin.kit == null ? 0 : c.admin.kit.size()));
 				Claims.PlayerBlocks owner = c.owner == null ? null : data.players.get(c.owner);
 				m.put("ownerLastSeen", owner == null ? 0 : owner.lastSeen);
 				claims.add(m);
@@ -430,7 +433,7 @@ final class ClaimService {
 		routes.post("/api/claims/action", guard(Permissions.CLAIMS_MANAGE, (ctx, me) -> {
 			JsonObject body = Web.body(ctx);
 			String action = Web.str(body, "action");
-			if (!List.of("create", "resize", "delete", "update", "member_set", "member_remove", "transfer", "blocks", "keep").contains(action)) {
+			if (!List.of("create", "resize", "delete", "update", "member_set", "member_remove", "transfer", "blocks", "keep", "admin", "kit").contains(action)) {
 				error(ctx, HttpStatus.BAD_REQUEST, "Unknown action.");
 				return;
 			}

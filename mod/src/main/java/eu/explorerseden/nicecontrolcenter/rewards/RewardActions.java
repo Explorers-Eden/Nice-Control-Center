@@ -235,6 +235,11 @@ public final class RewardActions {
 		})));
 		d.register(root);
 
+		// The market's mailbox, also where game claims and others leave items.
+		d.register(Commands.literal("inbox").requires(Everyone.unless("nicecontrolcenter.inbox.use")).executes(ctx -> {
+			eu.explorerseden.nicecontrolcenter.market.MarketDialogs.openInbox(ctx.getSource().getPlayerOrException());
+			return 1;
+		}));
 		d.register(Commands.literal("perks").requires(Everyone.unless("nicecontrolcenter.perks.use")).executes(ctx -> {
 			ServerPlayer p = ctx.getSource().getPlayerOrException();
 			List<String> lines = summary(p.getUUID());

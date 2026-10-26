@@ -22,6 +22,13 @@ public abstract class AdvancementRewardMixin {
 	@Shadow
 	public abstract AdvancementProgress getOrStartProgress(AdvancementHolder holder);
 
+	/** Inside a game claim that puts inventories aside, a data pack's grave advancement (keepinv:has_died…) doesn't fire. */
+	@Inject(method = "award", at = @At("HEAD"), cancellable = true)
+	private void nicecontrolcenter$noGrave(AdvancementHolder holder, String criterion, CallbackInfoReturnable<Boolean> cir) {
+		if (eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl.settings().homes.graveAdvancements.contains(holder.id().toString())
+				&& eu.explorerseden.nicecontrolcenter.claims.GameClaims.inInventoryClaim(player)) cir.setReturnValue(false);
+	}
+
 	@Inject(method = "award", at = @At("RETURN"))
 	private void nicecontrolcenter$reward(AdvancementHolder holder, String criterion, CallbackInfoReturnable<Boolean> cir) {
 		if (!cir.getReturnValueZ() || holder.value().display().isEmpty() || !getOrStartProgress(holder).isDone()) return;

@@ -782,6 +782,11 @@ public final class MarketDialogs {
 		menu(player, "Market · My listings", body, List.of(), List.of(), back("home", args()));
 	}
 
+	/** /inbox: the mailbox straight away. */
+	public static void openInbox(ServerPlayer player) {
+		mail(player);
+	}
+
 	private static void mail(ServerPlayer player) {
 		Market.Mailbox m = MarketStore.data().mail.get(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();

@@ -107,7 +107,8 @@ public final class Hubs {
 		}
 		if (why == null) return false;
 		var near = level.getNearestPlayer(e.getX(), e.getY(), e.getZ(), 8, false);
-		if (near instanceof ServerPlayer player && ClaimTool.bypassing(player)) return false;
+		// Admins bypassing claims and Warping Wonders admins (tag wawo.admin) may place hubs anywhere.
+		if (near instanceof ServerPlayer player && (ClaimTool.bypassing(player) || player.entityTags().contains("wawo.admin"))) return false;
 		if (near instanceof ServerPlayer player) {
 			ClaimTool.bar(player, why, ChatFormatting.RED);
 			level.playSound(null, player.blockPosition(), SoundEvents.CHICKEN_EGG, SoundSource.NEUTRAL, 0.6f, 2f);

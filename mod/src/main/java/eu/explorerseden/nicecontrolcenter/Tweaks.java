@@ -256,6 +256,14 @@ public final class Tweaks {
 		public boolean suspiciousBlocks = false;
 	}
 
+	/** Nice Actions homes and game claims. */
+	public static final class Homes {
+		/** Dimensions where Nice Actions homes may be set; empty = everywhere. */
+		public List<String> dimensions = new ArrayList<>();
+		/** Advancements that make a grave on death (data packs), blocked inside game claims that put inventories aside. */
+		public List<String> graveAdvancements = new ArrayList<>(List.of("keepinv:has_died"));
+	}
+
 	public static final class Sleep {
 		/** AFK players (see Afk.minutes) don't count when working out how many need to sleep to skip the night. */
 		public boolean ignoreAfk = false;
@@ -297,6 +305,7 @@ public final class Tweaks {
 		public Mending mending = new Mending();
 		public Crafting crafting = new Crafting();
 		public Sleep sleep = new Sleep();
+		public Homes homes = new Homes();
 		public AntiXray antiXray = new AntiXray();
 
 		public Settings fill() {
@@ -318,6 +327,9 @@ public final class Tweaks {
 			if (mending == null) mending = new Mending();
 			if (crafting == null) crafting = new Crafting();
 			if (sleep == null) sleep = new Sleep();
+			if (homes == null) homes = new Homes();
+			homes.dimensions = ids(homes.dimensions);
+			if (homes.graveAdvancements == null) homes.graveAdvancements = new ArrayList<>(List.of("keepinv:has_died"));
 			sleep.worlds = ids(sleep.worlds);
 			if (antiXray == null) antiXray = new AntiXray();
 			antiXray.blocks = ids(antiXray.blocks);

@@ -51,6 +51,8 @@
 		"ExperienceBoostMixin",
 		"ToolCareMixin",
 		"JoinMessageMixin",
+		"GameClaimPickupMixin",
+		"GameClaimSpawnMixin",
 		"AntiXrayChunkMixin",
 		"AntiXrayRevealMixin",
 		"AnvilTweakMixin",

@@ -342,6 +342,32 @@ public final class Claims {
 		}
 	}
 
+	/**
+	 * A claim (or subclaim) for games, set by admins only: what players carry is put aside on entering and given
+	 * back on leaving, a kit is handed out, and items picked up inside are removed or sent to the inbox.
+	 */
+	public static final class AdminOptions {
+		/** Inventory, armour, off hand, XP and effects are put aside on entering and given back on leaving. */
+		public boolean inventory = false;
+		/** Items (as the game writes them, JSON) handed out on entering. */
+		public List<String> kit = new ArrayList<>();
+		/** Items picked up inside vanish on leaving (otherwise they go to the market inbox). */
+		public boolean removePickups = false;
+		/** Items picked up inside drop where the player dies (otherwise they go to the inbox). */
+		public boolean dropPickupsOnDeath = false;
+		/** No homes (Nice Actions), beds or anchors set a spawn inside, and /back can't lead here. */
+		public boolean noHomes = false;
+
+		/** Does anything at all. */
+		public boolean active() {
+			return inventory || removePickups || noHomes || (kit != null && !kit.isEmpty());
+		}
+
+		public boolean blocksHomes() {
+			return noHomes || inventory;
+		}
+	}
+
 	public static final class Claim {
 		public String id;
 		/** The claim this one sits in; null for a claim of its own. */
@@ -357,6 +383,8 @@ public final class Claims {
 		public String name = "";
 		public int color = 0xF2B233;
 		public Flags flags = new Flags();
+		/** Game-claim options only admins set (for minigames): null when none. */
+		public AdminOptions admin;
 		/** UUID → member. */
 		public Map<String, Member> members = new LinkedHashMap<>();
 		public long created;
@@ -831,6 +859,24 @@ public final class Claims {
 					}
 					data.setFlags(c, f, now);
 				}
+			}
+			case "admin" -> {
+				// Game-claim options (admins only; the panel and /claim admin).
+				if (c.admin == null) c.admin = new AdminOptions();
+				for (String k : List.of("inventory", "removePickups", "dropPickupsOnDeath", "noHomes")) {
+					var v = a.get(k);
+					if (v == null || !v.isJsonPrimitive()) continue;
+					boolean on = v.getAsBoolean();
+					switch (k) {
+						case "inventory" -> c.admin.inventory = on;
+						case "removePickups" -> c.admin.removePickups = on;
+						case "dropPickupsOnDeath" -> c.admin.dropPickupsOnDeath = on;
+						default -> c.admin.noHomes = on;
+					}
+				}
+				if (a.has("clearKit") && a.get("clearKit").getAsBoolean()) c.admin.kit = new ArrayList<>();
+				if (!c.admin.active() && !c.admin.dropPickupsOnDeath) c.admin = null;
+				data.touch(c, now);
 			}
 			case "member_set" -> {
 				String uuid = str(a, "uuid");
