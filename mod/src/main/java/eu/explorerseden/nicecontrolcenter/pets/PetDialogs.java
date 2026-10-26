@@ -259,6 +259,12 @@ public final class PetDialogs {
 					.append(Component.literal("\n" + (extra.isEmpty() ? "" : extra + "\n")).withStyle(ChatFormatting.GRAY))
 					.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
 							: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
+			// Extra pets out at once (a reward): along with the main one.
+			if (!out && owner.slots > 0 && shown != null) {
+				boolean also = owner.alsoOut != null && owner.alsoOut.contains(o.pet);
+				desc.append(Component.literal("  ")).append(also ? link("Put back", "It stops coming along", "alsoaway", args("id", o.pet), ChatFormatting.YELLOW)
+						: link("Also out", "It comes along with " + PetStore.name(shown) + " (" + (owner.slots + 1) + " pets out at most)", "also", args("id", o.pet), ChatFormatting.GREEN));
+			}
 			if (PetStore.settings().names) desc.append(Component.literal("  ")).append(link("Name", "Give it a name and a colour (shown above it)", "name", args("id", o.pet), ChatFormatting.AQUA));
 			body.add(headRow(player, PetStore.texture(o), desc));
 		}
@@ -443,6 +449,14 @@ public final class PetDialogs {
 			String price = pet.price == 0 ? "free" : amount(pet.price);
 			String label = pet.price == 0 ? "Get it free" : "Buy · " + price;
 			buttons.add(button(label, pet.price == 0 ? "It's yours for good" : "Pay " + price + " from your bank, then your inventory; it's yours for good", "buy", market ? args("id", pet.id, "from", "market") : args("id", pet.id)));
+			// A shop coupon (reward): one button more with the lower price.
+			int coupon = eu.explorerseden.nicecontrolcenter.players.Perks.bestCoupon(player.getStringUUID(), pet.price);
+			if (coupon > 0 && pet.price > 0) {
+				long cheaperPrice = eu.explorerseden.nicecontrolcenter.players.Perks.discounted(pet.price, coupon);
+				String cheaper = cheaperPrice == 0 ? "free" : amount((int) cheaperPrice);
+				buttons.add(button("Buy · " + cheaper + " (" + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) + ")", "Uses one of your " + eu.explorerseden.nicecontrolcenter.players.Perks.couponCount(player.getStringUUID()) + " coupons",
+						"buy", market ? args("id", pet.id, "from", "market", "coupon", String.valueOf(coupon)) : args("id", pet.id, "coupon", String.valueOf(coupon))));
+			}
 		}
 		ActionButton back = market ? new ActionButton(new CommonButtonData(Component.literal("Back"), Optional.of(Component.literal("Back to the server shop")), WIDTH),
 				Optional.of(new CustomAll(Identifier.fromNamespaceAndPath("nicecontrolcenter", "market/server"), Optional.of(new CompoundTag()))))
@@ -513,6 +527,16 @@ public final class PetDialogs {
 				PetStore.changed();
 				mine(player, null);
 			}
+			case "also", "alsoaway" -> {
+				if (owned == null || owner == null) {
+					mine(player, "You don't have that pet any more.");
+					return;
+				}
+				boolean done = owner.alsoOut(owned.pet, what.equals("also"));
+				PetStore.changed();
+				mine(player, what.equals("also") ? (done ? "✔ " + PetStore.name(owned) + " comes along too." : "No free slot: put another pet back first.")
+						: "✔ " + PetStore.name(owned) + " stays home.");
+			}
 			case "moves", "view" -> {
 				if (owner == null || owner.pets.isEmpty()) home(player, null);
 				else moves(player, null);
@@ -544,7 +568,7 @@ public final class PetDialogs {
 				PetStore.changed();
 				trails(player, t == Pets.Trail.OFF ? "✔ No particles." : "✔ Particles: " + t.label + ".");
 			}
-			case "buy" -> buy(player, PetStore.settings().pet(str(in, "id")), "market".equals(str(in, "from")));
+			case "buy" -> buy(player, PetStore.settings().pet(str(in, "id")), "market".equals(str(in, "from")), str(in, "coupon"));
 			case "perks" -> perks(player, null);
 			case "bag" -> {
 				String why = PetBag.open(player);
@@ -604,7 +628,7 @@ public final class PetDialogs {
 		}
 	}
 
-	private static void buy(ServerPlayer player, Pets.Pet pet, boolean market) {
+	private static void buy(ServerPlayer player, Pets.Pet pet, boolean market, String couponArg) {
 		if (pet == null) {
 			shop(player, 0, "That pet isn't for sale any more.");
 			return;
@@ -615,16 +639,23 @@ public final class PetDialogs {
 			item(player, pet, why, market);
 			return;
 		}
-		if (pet.price > 0 && !MarketStore.pay(player, pet.price)) {
-			item(player, pet, "You need " + money(pet.price) + ".", market);
+		int coupon = couponArg == null || couponArg.isEmpty() ? 0 : Integer.parseInt(couponArg);
+		if (coupon > 0 && !eu.explorerseden.nicecontrolcenter.players.Perks.hasCoupon(player.getStringUUID(), coupon)) {
+			item(player, pet, "You don't have that coupon any more.", market);
 			return;
 		}
+		long price = coupon > 0 ? eu.explorerseden.nicecontrolcenter.players.Perks.discounted(pet.price, coupon) : pet.price;
+		if (price > 0 && !MarketStore.pay(player, price)) {
+			item(player, pet, "You need " + money((int) price) + ".", market);
+			return;
+		}
+		if (coupon > 0) eu.explorerseden.nicecontrolcenter.players.Perks.useCoupon(player.getStringUUID(), coupon);
 		data.buy(player.getStringUUID(), player.getPlainTextName(), pet, System.currentTimeMillis());
 		Pets.Owner owner = data.owners.get(player.getStringUUID());
 		// A first pet comes out right away.
 		boolean out = owner.active == null;
 		if (out) owner.active = pet.id;
 		PetStore.saveNow();
-		home(player, "✔ " + (pet.price == 0 ? "Got " : "Bought ") + pet.name + (pet.price == 0 ? "" : " for " + money(pet.price)) + "." + (out ? " It's out now." : ""));
+		home(player, "✔ " + (price == 0 ? "Got " : "Bought ") + pet.name + (price == 0 ? "" : " for " + money((int) price)) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + "." + (out ? " It's out now." : ""));
 	}
 }

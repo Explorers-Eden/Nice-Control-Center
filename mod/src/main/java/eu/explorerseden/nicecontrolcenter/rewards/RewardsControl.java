@@ -28,6 +28,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import eu.explorerseden.nicecontrolcenter.Rewards;
+import eu.explorerseden.nicecontrolcenter.players.Perks;
 import eu.explorerseden.nicecontrolcenter.core.WorldClock;
 
 /** Runs the event rewards (see {@link Rewards}): hooks for each trigger, "once" bookkeeping and the commands. */
@@ -39,6 +40,8 @@ public final class RewardsControl {
 	private static boolean dirty;
 	/** Last seen XP level per player, to notice a level being reached. */
 	private static final Map<UUID, Integer> levels = new HashMap<>();
+	/** Whether each player was in one of their claims at the last look, for enterClaim / leaveClaim. */
+	private static final Map<UUID, Boolean> inClaim = new HashMap<>();
 	private static double lastMinute = -1;
 	private static String lastDate;
 	/** Interval rules: when each last ran (counting starts when the server starts or the rule is added). */
@@ -59,6 +62,7 @@ public final class RewardsControl {
 			try {
 				Rewards.State s = Files.exists(stateFile) ? Json.GSON.fromJson(Files.readString(stateFile), Rewards.State.class) : null;
 				state = s != null && s.ran != null ? s : new Rewards.State();
+				if (state.waiting == null) state.waiting = new LinkedHashMap<>();
 			} catch (IOException | RuntimeException e) {
 				state = new Rewards.State();
 			}
@@ -75,6 +79,7 @@ public final class RewardsControl {
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			fire(server, "leave", handler.player, null);
 			levels.remove(handler.player.getUUID());
+			inClaim.remove(handler.player.getUUID());
 		});
 		ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, from, to) ->
 				fire(to.getServer(), "dimension", player, to.dimension().identifier().toString()));
@@ -121,6 +126,24 @@ public final class RewardsControl {
 		Rewards.Settings s = settings;
 		if (!s.enabled || s.rules.isEmpty()) return;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+			boolean in = Perks.inOwnClaim(p);
+			Boolean was = inClaim.put(p.getUUID(), in);
+			if (was != null && was != in) {
+				var claim = eu.explorerseden.nicecontrolcenter.claims.ClaimStore.claimAt(p.level(), p.blockPosition());
+				fire(server, in ? "enterClaim" : "leaveClaim", p, claim != null ? claim.displayName() : "");
+			}
+			// Rules given with /reward give that waited for this player.
+			List<String> waits = state.waiting.get(p.getStringUUID());
+			if (waits != null && !waits.isEmpty()) {
+				for (String id : List.copyOf(waits)) {
+					Rewards.Rule r = s.rules.stream().filter(x -> x.id.equals(id)).findFirst().orElse(null);
+					if (r != null && r.claimsOnly && !in) continue;
+					waits.remove(id);
+					dirty = true;
+					if (r != null && r.enabled) run(server, r, p, r.name);
+				}
+				if (waits.isEmpty()) state.waiting.remove(p.getStringUUID());
+			}
 			int level = p.experienceLevel;
 			Integer before = levels.put(p.getUUID(), level);
 			if (before != null && level > before) {
@@ -199,7 +222,7 @@ public final class RewardsControl {
 
 	/** World triggers: once with no player, or once per player for commands that use {player}. */
 	private static void runWorld(MinecraftServer server, Rewards.Rule r, String value) {
-		boolean perPlayer = r.who.equals("player") || r.commands.stream().anyMatch(c -> c.contains("{player}") || c.contains("{uuid}")) || (!r.message.isBlank() && !r.messageEveryone);
+		boolean perPlayer = r.who.equals("player") || r.claimsOnly || r.commands.stream().anyMatch(c -> c.contains("{player}") || c.contains("{uuid}")) || (!r.message.isBlank() && !r.messageEveryone);
 		if (!perPlayer) {
 			if (r.repeat.equals("once") || r.trigger.equals("gameDay")) {
 				if (ranFor(r, "*")) return;
@@ -214,6 +237,7 @@ public final class RewardsControl {
 
 	private static void run(MinecraftServer server, Rewards.Rule r, ServerPlayer p, String value) {
 		if (r.who.equals("player") && !p.getGameProfile().name().equalsIgnoreCase(r.player)) return;
+		if (r.claimsOnly && !Perks.inOwnClaim(p)) return;
 		String key = p.getUUID().toString();
 		long now = System.currentTimeMillis();
 		switch (r.repeat) {
@@ -244,26 +268,67 @@ public final class RewardsControl {
 		dirty = true;
 	}
 
+	public static Rewards.Settings settings() {
+		return settings;
+	}
+
+	/** The rules that /reward give hands out (trigger "Given with /reward give"). */
+	public static List<Rewards.Rule> manualRules() {
+		return settings.rules.stream().filter(r -> r.enabled && r.trigger.equals("manual")).toList();
+	}
+
+	/** /reward give: runs the rule for the player now, or when they're online / in their claims. Returns what happened. */
+	public static String giveManual(MinecraftServer server, UUID uuid, ServerPlayer online, String ruleName) {
+		Rewards.Rule r = manualRules().stream().filter(x -> x.name.equalsIgnoreCase(ruleName.strip())).findFirst().orElse(null);
+		if (r == null) throw new RewardActions.Refused("there's no reward rule \"" + ruleName + "\" given with /reward give.");
+		if (online != null && (!r.claimsOnly || Perks.inOwnClaim(online))) {
+			run(server, r, online, r.name);
+			return "\"" + r.name + "\" given";
+		}
+		state.waiting.computeIfAbsent(uuid.toString(), k -> new java.util.ArrayList<>()).add(r.id);
+		dirty = true;
+		save();
+		return "\"" + r.name + "\" waits until they're " + (online == null ? "online" + (r.claimsOnly ? " in their claims" : "") : "in their claims");
+	}
+
 	private static void execute(MinecraftServer server, Rewards.Rule r, ServerPlayer p, String value) {
+		// Non-item rewards first (they need a player); their lines go into {rewards}.
+		List<String> got = new java.util.ArrayList<>();
+		if (p != null) {
+			for (Rewards.Action a : r.actions) {
+				try {
+					got.add(RewardActions.give(server, p.getUUID(), p.getGameProfile().name(), p, a, "rule " + r.name));
+				} catch (RewardActions.Refused e) {
+					NiceControlCenter.LOGGER.info("Reward \"{}\" for {}: {}", r.name, p.getGameProfile().name(), e.getMessage());
+				}
+			}
+		}
+		String rewards = String.join(", ", got);
+		run(server, p, r.commands, value, "Reward \"" + r.name + "\"");
+		String message = r.message.isBlank() && !got.isEmpty() ? "§bYou got: {rewards}" : r.message;
+		if (message.isBlank()) return;
+		Component msg = Component.literal(fill(server, message.replace("{rewards}", rewards), p, value));
+		if (r.messageEveryone || p == null) server.getPlayerList().broadcastSystemMessage(msg, false);
+		else p.sendSystemMessage(msg);
+	}
+
+	/** Runs commands as the server at the player, with the variables filled in. */
+	private static void run(MinecraftServer server, ServerPlayer p, List<String> commands, String value, String what) {
 		var source = server.createCommandSourceStack();
 		if (p != null) source = source.withEntity(p).withPosition(p.position()).withRotation(p.getRotationVector()).withLevel(p.level());
-		for (String c : r.commands) {
+		for (String c : commands) {
 			String cmd = fill(server, c, p, value);
 			if (p == null && (cmd.contains("{player}") || cmd.contains("{uuid}"))) continue;
 			try {
 				server.getCommands().performPrefixedCommand(source, cmd);
 			} catch (RuntimeException e) {
-				NiceControlCenter.LOGGER.warn("Reward \"{}\": /{} failed: {}", r.name, cmd, e.getMessage());
+				NiceControlCenter.LOGGER.warn("{}: /{} failed: {}", what, cmd, e.getMessage());
 			}
 		}
-		if (r.message.isBlank()) return;
-		Component msg = Component.literal(fill(server, r.message, p, value));
-		if (r.messageEveryone || p == null) server.getPlayerList().broadcastSystemMessage(msg, false);
-		else p.sendSystemMessage(msg);
 	}
 
-	/** {player} {uuid} {x} {y} {z} {dimension} {value} {day} {time} {date} {online}. */
-	static String fill(MinecraftServer server, String text, ServerPlayer p, String value) {
+	/** {player} {uuid} {x} {y} {z} {dimension} {value} {day} {time} {date} {online} (and {rewards} in rule messages). */
+	public static String fill(MinecraftServer server, String text, ServerPlayer p, String value) {
 		long clock = server.overworld().getOverworldClockTime();
 		WorldClock.Clock wc = WorldClock.current();
 		String out = text.replace("{day}", String.valueOf(clock / 24_000)).replace("{time}", wc != null ? wc.time() : clockText(clock % 24_000))

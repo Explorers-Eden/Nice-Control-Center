@@ -542,11 +542,16 @@ public final class Claims {
 
 		/** One minute of play: blocksPerHour / 60, up to the limit. */
 		public void accrue(String uuid, String name, Settings s, long now) {
+			accrue(uuid, name, s, now, 1.0);
+		}
+
+		/** factor: a claim-block boost reward (2 = twice as many blocks this minute). */
+		public void accrue(String uuid, String name, Settings s, long now, double factor) {
 			PlayerBlocks p = ensurePlayer(uuid, name, s);
 			p.playMinutes++;
 			p.lastSeen = now;
 			if (p.accrued < s.maxAccruedBlocks) {
-				p.partial += s.blocksPerHour / 60.0;
+				p.partial += s.blocksPerHour / 60.0 * factor;
 				int whole = (int) p.partial;
 				p.partial -= whole;
 				p.accrued = Math.min(s.maxAccruedBlocks, p.accrued + whole);

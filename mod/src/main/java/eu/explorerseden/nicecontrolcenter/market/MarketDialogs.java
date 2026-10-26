@@ -327,7 +327,8 @@ public final class MarketDialogs {
 			case "name" -> Comparator.comparing((Market.Listing l) -> l.item.name.toLowerCase(Locale.ROOT));
 			default -> Comparator.comparingDouble((Market.Listing l) -> (double) l.price / l.lot());
 		};
-		all.sort(order);
+		// Sellers with a market spotlight (reward) come first, in the chosen order among themselves.
+		all.sort(Comparator.comparing((Market.Listing l) -> !l.spotlight).thenComparing(order));
 		int pages = Math.max(1, (all.size() + PAGE - 1) / PAGE);
 		int p = Math.max(0, Math.min(page, pages - 1));
 		String sortName = switch (sort) {
@@ -353,7 +354,9 @@ public final class MarketDialogs {
 		body.add(text((all.isEmpty() ? "Nothing found" : shown) + (q.isEmpty() ? "" : " for \"" + query.strip() + "\"") + " · " + sortName, ChatFormatting.GRAY));
 		for (Market.Listing l : all.subList(p * PAGE, Math.min(all.size(), (p + 1) * PAGE))) {
 			boolean own = l.seller.equals(player.getStringUUID());
+			boolean spot = l.spotlight;
 			Component desc = Component.empty()
+					.append(Component.literal(spot ? "★ " : "").withStyle(ChatFormatting.GOLD))
 					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
 					.append(Component.literal("\n"))
@@ -521,6 +524,12 @@ public final class MarketDialogs {
 			// Typed like a player listing's amount: packs of o.blocks claim blocks.
 			inputs.add(new Input("amount", new TextInput(120, Component.literal(o.blocks == 1 ? "How many" : "Packs of " + o.blocks), true, "1", 9, Optional.empty())));
 			buttons.add(button("Buy", "Pay for the claim blocks you picked; they're yours right away", "claims_buy", offerArgs(index, o)));
+			int coupon = eu.explorerseden.nicecontrolcenter.players.Perks.bestCoupon(player.getStringUUID(), o.price);
+			if (coupon > 0) {
+				CompoundTag withCoupon = offerArgs(index, o);
+				withCoupon.putString("coupon", String.valueOf(coupon));
+				buttons.add(button("Buy with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon), coupon + " off the whole purchase (never below 0); you have " + eu.explorerseden.nicecontrolcenter.players.Perks.couponCount(player.getStringUUID()) + " coupons", "claims_buy", withCoupon));
+			}
 		}
 		menu(player, "Claim blocks", body, inputs, buttons, back("server", args()));
 	}
@@ -543,11 +552,17 @@ public final class MarketDialogs {
 			claimOffer(player, index, o, "You can't buy that many.");
 			return;
 		}
-		long cost = (long) n * o.price;
+		int coupon = Math.max(0, num(in, "coupon"));
+		if (coupon > 0 && !eu.explorerseden.nicecontrolcenter.players.Perks.hasCoupon(me, coupon)) {
+			claimOffer(player, index, o, "You don't have that coupon any more.");
+			return;
+		}
+		long cost = eu.explorerseden.nicecontrolcenter.players.Perks.discounted((long) n * o.price, coupon);
 		if (!MarketStore.pay(player, cost)) {
 			claimOffer(player, index, o, "You need " + money(cost) + ".");
 			return;
 		}
+		if (coupon > 0) eu.explorerseden.nicecontrolcenter.players.Perks.useCoupon(me, coupon);
 		ClaimStore.data().buy(me, player.getPlainTextName(), (int) blocks, ClaimStore.settings());
 		ClaimStore.touched();
 		MarketStore.data().serverSale(o.id, false, String.format(Locale.ROOT, "%,d claim blocks", o.blocks), o.icon, MarketStore.settings().serverName, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
@@ -588,6 +603,9 @@ public final class MarketDialogs {
 			// Typed like a player listing's amount when more than one can be bought.
 			if (max > 1) inputs.add(new Input("amount", new TextInput(120, Component.literal("How many"), true, "1", 9, Optional.empty())));
 			buttons.add(button("Buy", money(o.price) + " each", "command_buy", args("id", o.id, "price", String.valueOf(o.price))));
+			int coupon = eu.explorerseden.nicecontrolcenter.players.Perks.bestCoupon(me, o.price);
+			if (coupon > 0) buttons.add(button("Buy with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon), money(eu.explorerseden.nicecontrolcenter.players.Perks.discounted(o.price, coupon)) + " for one (" + coupon + " off the whole purchase, never below 0); you have " + eu.explorerseden.nicecontrolcenter.players.Perks.couponCount(me) + " coupons",
+					"command_buy", args("id", o.id, "price", String.valueOf(o.price), "coupon", String.valueOf(coupon))));
 		}
 		menu(player, o.name, body, inputs, buttons, back("server", args()));
 	}
@@ -610,17 +628,23 @@ public final class MarketDialogs {
 			commandOffer(player, o, "You can't buy that many.");
 			return;
 		}
-		long cost = (long) n * o.price;
+		int coupon = Math.max(0, num(in, "coupon"));
+		if (coupon > 0 && !eu.explorerseden.nicecontrolcenter.players.Perks.hasCoupon(me, coupon)) {
+			commandOffer(player, o, "You don't have that coupon any more.");
+			return;
+		}
+		long cost = eu.explorerseden.nicecontrolcenter.players.Perks.discounted((long) n * o.price, coupon);
 		if (!MarketStore.pay(player, cost)) {
 			commandOffer(player, o, "You need " + money(cost) + ".");
 			return;
 		}
+		if (coupon > 0) eu.explorerseden.nicecontrolcenter.players.Perks.useCoupon(me, coupon);
 		// Counted before the commands run, so a command that reopens the menu sees it.
 		MarketStore.data().serverSale(o.id, true, o.name, o.icon, MarketStore.settings().serverName, me, player.getPlainTextName(), n, (int) cost, System.currentTimeMillis());
 		MarketStore.saveNow();
 		runCommands(player, o.name, o.commands, n);
 		if (player.isRemoved()) return;
-		commandOffer(player, o, "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + ".");
+		commandOffer(player, o, "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + ".");
 	}
 
 	/** Runs the listing's commands as the console, once per one bought, with the variables filled in for the buyer. */
@@ -950,8 +974,9 @@ public final class MarketDialogs {
 			sellItem(player, in, "That item can't be sold here.");
 			return;
 		}
-		if (MarketStore.data().of(player.getStringUUID()).size() >= s.maxListings) {
-			sellItem(player, in, "You already have " + s.maxListings + " listings.");
+		int max = MarketStore.data().maxListings(player.getStringUUID(), s);
+		if (MarketStore.data().of(player.getStringUUID()).size() >= max) {
+			sellItem(player, in, "You already have " + max + " listings.");
 			return;
 		}
 		if (!MarketStore.take(player, like, amount)) {

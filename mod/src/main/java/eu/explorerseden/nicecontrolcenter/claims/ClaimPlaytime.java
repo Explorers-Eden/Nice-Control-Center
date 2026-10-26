@@ -51,7 +51,8 @@ public final class ClaimPlaytime {
 			boolean afk = s.afkMinutes > 0 && (eu.explorerseden.nicecontrolcenter.core.PlayerActivity.idleTicks(p) > s.afkMinutes * MINUTE
 					|| eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAway(p));
 			if (afk) continue;
-			ClaimStore.data().accrue(p.getStringUUID(), p.getPlainTextName(), s, now);
+			ClaimStore.data().accrue(p.getStringUUID(), p.getPlainTextName(), s, now,
+					eu.explorerseden.nicecontrolcenter.players.Perks.factor(p.getStringUUID(), eu.explorerseden.nicecontrolcenter.players.Perks.Kind.BLOCKBOOST));
 			any = true;
 		}
 		if (any) ClaimStore.touched();

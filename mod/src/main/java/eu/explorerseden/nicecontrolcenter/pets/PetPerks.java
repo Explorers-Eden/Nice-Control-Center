@@ -83,6 +83,8 @@ public final class PetPerks {
 		String pet;
 		int level = -1;
 		long bondSaved;
+		/** Fractions of a bond step from a bond boost (×1.5 adds one extra step every other time). */
+		double bondPart;
 		/** The fake light block clients were sent (never in the world). */
 		ServerLevel lightLevel;
 		BlockPos lightPos;
@@ -137,8 +139,11 @@ public final class PetPerks {
 				eyeOff(player, st);
 				continue;
 			}
-			// The bond grows; a new level is celebrated (not when another pet comes out).
-			owned.bond++;
+			// The bond grows (faster with a bond boost reward); a new level is celebrated (not when another pet comes out).
+			st.bondPart += eu.explorerseden.nicecontrolcenter.players.Perks.factor(player.getStringUUID(), eu.explorerseden.nicecontrolcenter.players.Perks.Kind.BONDBOOST);
+			int steps = (int) st.bondPart;
+			st.bondPart -= steps;
+			owned.bond += steps;
 			int level = Pets.level(owned.bond, s.perks);
 			if (!owned.pet.equals(st.pet)) {
 				st.pet = owned.pet;

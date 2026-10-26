@@ -78,16 +78,7 @@ public final class ClaimCommand {
 							ClaimStore.changed();
 							ClaimTool.tell(p, "Deleted " + c.displayName() + " (" + (c.ownerName == null ? "server" : c.ownerName) + ").", ChatFormatting.GOLD);
 							return 1;
-						}))
-						.then(Commands.literal("blocks")
-								.then(Commands.argument("player", StringArgumentType.word()).suggests(ONLINE)
-										.executes(ClaimCommand::blocks)
-										.then(Commands.literal("add").then(Commands.argument("amount", IntegerArgumentType.integer(-10_000_000, 10_000_000))
-												.executes(ctx -> blocks(ctx, true, 1))))
-										.then(Commands.literal("remove").then(Commands.argument("amount", IntegerArgumentType.integer(0, 10_000_000))
-												.executes(ctx -> blocks(ctx, true, -1))))
-										.then(Commands.literal("set").then(Commands.argument("amount", IntegerArgumentType.integer(-10_000_000, 10_000_000))
-												.executes(ctx -> blocks(ctx, false, 1))))))));
+						}))));
 	}
 
 	private static net.minecraft.nbt.CompoundTag tag(Claim c) {
@@ -189,36 +180,4 @@ public final class ClaimCommand {
 		return 1;
 	}
 
-	private static int blocks(CommandContext<CommandSourceStack> ctx) {
-		NameAndId who = find(ctx);
-		if (who == null) {
-			ctx.getSource().sendFailure(Component.literal("Unknown player."));
-			return 0;
-		}
-		Claims.Data data = ClaimStore.data();
-		Claims.PlayerBlocks pb = data.player(who.id().toString());
-		String id = who.id().toString();
-		ctx.getSource().sendSuccess(() -> Component.literal(who.name() + ": " + data.available(id) + " available · "
-				+ (pb == null ? "0 from playing" : pb.accrued + " from playing, " + pb.bought + " bought, " + pb.bonus + " bonus")
-				+ ", " + data.used(id) + " used"), false);
-		return 1;
-	}
-
-	/** add: change the bonus by sign × amount; otherwise set it to amount. */
-	private static int blocks(CommandContext<CommandSourceStack> ctx, boolean add, int sign) {
-		NameAndId who = find(ctx);
-		if (who == null) {
-			ctx.getSource().sendFailure(Component.literal("Unknown player."));
-			return 0;
-		}
-		int amount = sign * IntegerArgumentType.getInteger(ctx, "amount");
-		Claims.Data data = ClaimStore.data();
-		String id = who.id().toString();
-		Claims.PlayerBlocks pb = data.player(id);
-		int bonus = add ? (pb == null ? 0 : pb.bonus) + amount : amount;
-		data.setBonus(id, who.name(), bonus);
-		ClaimStore.touched();
-		ctx.getSource().sendSuccess(() -> Component.literal(who.name() + "'s bonus claim blocks: " + bonus + " (" + data.available(id) + " available)"), true);
-		return 1;
-	}
 }

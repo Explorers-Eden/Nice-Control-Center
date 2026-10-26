@@ -1,4 +1,14 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.42.0
+- /reward: one admin command for non-item rewards (also offline players): fly, claimblocks, pet (… remove), petslots, listings, coupons, spotlight, joinmessage, xp, haste, blockboost, bondboost, toolcare, off for each, info, and give <rule> for reward rules. Replaces /claim admin blocks and /pets grant|revoke
+- Timed perks run only while they work (online, not AFK; haste only in their claims): XP boost from orbs, Haste in your claims, claim-block boost, pet bond boost, tool care (half wear)
+- Shop coupons worth N diamonds off one server-shop purchase (claim blocks, command offers, pets), in game and on the website; whole items, never below 0
+- Market spotlight: the seller's listings first with a ★ in /market and on the website; extra market listing slots
+- Own join message (/joinmessage <text>) as a reward, also announced to the panel/Discord
+- Up to 3 pets out at once (pet slots): extra pets share the owner's move in their own spots and never overlap; "Also out" in /pets and on the website
+- Rules: rewards to give (the same list as /reward, shown in {rewards}), an "only in their claims" condition, triggers "Enters one of their claims", "Leaves their claims" and "Given with /reward give" (waits for offline players or until they're in their claims)
+- /perks lists what a player has; the panel's player card shows it too
+
 ## 1.41.0
 - Flight is now a time credit for claims only: /ncc fly <players> <time> adds time (it adds up), /ncc fly <players> off takes it
 - Players switch it with /fly inside a claim they own or are at least a Builder in; leaving the claim switches it off. The time only runs while it's on and they're not AFK; without time, /fly says so

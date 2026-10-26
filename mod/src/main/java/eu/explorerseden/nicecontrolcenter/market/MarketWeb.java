@@ -37,6 +37,10 @@ public final class MarketWeb {
 		out.put("currency", MarketStore.settings().currency);
 		out.put("currencyName", MarketStore.currencyName());
 		out.put("balance", data.balance(uuid));
+		// Shop coupons (rewards): worth → how many, for the website's buy dialog.
+		var perks = eu.explorerseden.nicecontrolcenter.players.Perks.holder(uuid);
+		if (perks != null && !perks.coupons.isEmpty()) out.put("coupons", perks.coupons);
+		out.put("maxListings", data.maxListings(uuid, MarketStore.settings()));
 		out.put("online", server.getPlayerList().getPlayer(UUID.fromString(uuid)) != null);
 		Market.Mailbox m = data.mail.get(uuid);
 		List<Map<String, Object>> parcels = new ArrayList<>();
@@ -218,11 +222,14 @@ public final class MarketWeb {
 		String id = str(in, "id");
 		int amount = num(in, "amount", 1);
 		int price = num(in, "price", -1);
+		// A shop coupon (reward, worth N currency items off one server-shop purchase).
+		int coupon = Math.max(0, num(in, "coupon", 0));
+		if (coupon > 0 && !eu.explorerseden.nicecontrolcenter.players.Perks.hasCoupon(uuid, coupon)) return error("You don't have that coupon any more.");
 		String done = switch (str(in, "kind")) {
 			case "listing" -> listing(server, uuid, name, id, amount, price, num(in, "per", -1));
-			case "claims" -> claims(uuid, name, id, amount, price);
-			case "command" -> command(uuid, name, id, amount, price);
-			case "pet" -> pet(uuid, name, id, price);
+			case "claims" -> claims(uuid, name, id, amount, price, coupon);
+			case "command" -> command(uuid, name, id, amount, price, coupon);
+			case "pet" -> pet(uuid, name, id, price, coupon);
 			default -> "!What should be bought?";
 		};
 		if (done.startsWith("!")) return error(done.substring(1));
@@ -266,37 +273,39 @@ public final class MarketWeb {
 		return "Bought " + items + " × " + item.name + " for " + money(cost) + ". Collect it from your mailbox in /market.";
 	}
 
-	private static String claims(String uuid, String name, String id, int packs, int price) {
+	private static String claims(String uuid, String name, String id, int packs, int price, int coupon) {
 		if (!MarketDialogs.sellsClaimBlocks()) return "!Claim blocks aren't for sale right now.";
 		Market.ClaimOffer o = MarketStore.settings().claimBlocks.stream().filter(c -> c.id.equals(id) && c.onSale()).findFirst().orElse(null);
 		if (o == null || o.price != price) return "!That listing is gone or changed.";
 		if (packs < 1 || packs > 64) return "!Type a number from 1 to 64.";
 		long blocks = (long) packs * o.blocks;
 		if (blocks > ClaimStore.data().blocksLeft(uuid, MarketStore.settings().claimBlocksMax)) return "!You can't buy that many.";
-		long cost = (long) packs * o.price;
-		if (!MarketStore.data().debit(uuid, cost)) return "!You need " + money(cost) + " in your bank.";
+		long cost = eu.explorerseden.nicecontrolcenter.players.Perks.discounted((long) packs * o.price, coupon);
+		if (cost > 0 && !MarketStore.data().debit(uuid, cost)) return "!You need " + money(cost) + " in your bank.";
+		if (coupon > 0) eu.explorerseden.nicecontrolcenter.players.Perks.useCoupon(uuid, coupon);
 		ClaimStore.data().buy(uuid, name, (int) blocks, ClaimStore.settings());
 		ClaimStore.touched();
 		MarketStore.data().serverSale(o.id, false, String.format(Locale.ROOT, "%,d claim blocks", o.blocks), o.icon, MarketStore.settings().serverName, uuid, name, packs, (int) cost, System.currentTimeMillis());
-		return String.format(Locale.ROOT, "Bought %,d claim blocks for %s.", blocks, money(cost));
+		return String.format(Locale.ROOT, "Bought %,d claim blocks for %s", blocks, money(cost)) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + ".";
 	}
 
-	private static String command(String uuid, String name, String id, int n, int price) {
+	private static String command(String uuid, String name, String id, int n, int price, int coupon) {
 		Market.CommandOffer o = MarketStore.settings().commandOffer(id);
 		if (o == null || !o.onSale() || o.price != price) return "!That listing is gone or changed.";
 		if (n < 1 || n > 64) return "!Type a number from 1 to 64.";
 		Market.Data data = MarketStore.data();
 		int left = o.perPlayer > 0 ? Math.max(0, o.perPlayer - data.serverBought(o.id, uuid)) : Integer.MAX_VALUE;
 		if (n > left) return left == 0 ? "!You've bought as many as you can." : "!You can only buy " + left + " more.";
-		long cost = (long) n * o.price;
-		if (!data.debit(uuid, cost)) return "!You need " + money(cost) + " in your bank.";
+		long cost = eu.explorerseden.nicecontrolcenter.players.Perks.discounted((long) n * o.price, coupon);
+		if (cost > 0 && !data.debit(uuid, cost)) return "!You need " + money(cost) + " in your bank.";
+		if (coupon > 0) eu.explorerseden.nicecontrolcenter.players.Perks.useCoupon(uuid, coupon);
 		long now = System.currentTimeMillis();
 		data.serverSale(o.id, true, o.name, o.icon, MarketStore.settings().serverName, uuid, name, n, (int) cost, now);
 		data.order(uuid, name, o, n, now);
-		return "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + ". Claim it from your mailbox in /market.";
+		return "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + ". Claim it from your mailbox in /market.";
 	}
 
-	private static String pet(String uuid, String name, String id, int price) {
+	private static String pet(String uuid, String name, String id, int price, int coupon) {
 		if (!PetStore.enabled()) return "!The pet shop is closed.";
 		Pets.Pet pet = PetStore.settings().pet(id);
 		if (pet == null) return "!That pet isn't for sale any more.";
@@ -304,13 +313,15 @@ public final class MarketWeb {
 		Pets.Data pets = PetStore.data();
 		String why = pets.cannotBuy(uuid, pet);
 		if (why != null) return "!" + why;
-		if (pet.price > 0 && !MarketStore.data().debit(uuid, pet.price)) return "!You need " + money(pet.price) + " in your bank.";
+		long cost = eu.explorerseden.nicecontrolcenter.players.Perks.discounted(pet.price, coupon);
+		if (cost > 0 && !MarketStore.data().debit(uuid, cost)) return "!You need " + money(cost) + " in your bank.";
+		if (coupon > 0) eu.explorerseden.nicecontrolcenter.players.Perks.useCoupon(uuid, coupon);
 		pets.buy(uuid, name, pet, System.currentTimeMillis());
 		Pets.Owner owner = pets.owners.get(uuid);
 		// A first pet comes out right away (or when they next join).
 		if (owner.active == null) owner.active = pet.id;
 		PetStore.saveNow();
-		return (pet.price == 0 ? "Got " : "Bought ") + pet.name + (pet.price == 0 ? "" : " for " + money(pet.price)) + ". See /pets.";
+		return (cost == 0 ? "Got " : "Bought ") + pet.name + (cost == 0 ? "" : " for " + money(cost)) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + ". See /pets.";
 	}
 
 	private static Map<String, Object> error(String message) {

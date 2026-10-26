@@ -44,6 +44,7 @@ public final class PetWeb {
 			m.put("nextLevelMinutes", level >= s.perks.maxLevel ? 0 : Math.max(1, Pets.minutesFor(level + 1, s.perks) - p.bond / 1200));
 			m.put("since", p.since);
 			m.put("active", p.pet.equals(o.active));
+			m.put("alsoOut", o.alsoOut != null && o.alsoOut.contains(p.pet));
 			m.put("head", Pets.skinHash(PetStore.texture(p)));
 			Pets.Pet shop = s.pet(p.pet);
 			List<Map<String, Object>> perks = new ArrayList<>();
@@ -61,6 +62,8 @@ public final class PetWeb {
 		out.put("behavior", Pets.Behavior.of(o == null ? null : o.behavior).name());
 		out.put("trail", Pets.Trail.of(o == null ? null : o.trail).name());
 		out.put("random", o != null && o.random);
+		// Extra pets out at once (a reward): how many may come along with the main one.
+		out.put("slots", o == null ? 0 : o.slots);
 		out.put("reactions", o == null || o.reactions);
 		out.put("showName", o == null || o.showName);
 		List<Map<String, Object>> moves = new ArrayList<>();
@@ -93,6 +96,13 @@ public final class PetWeb {
 			case "away" -> {
 				o.putAway();
 				message = "Your pet is put away.";
+			}
+			case "also" -> {
+				if (owned == null) return Map.of("error", "Pick a pet.");
+				boolean on = bool(in, "on", true);
+				if (on && o.active == null) return Map.of("error", "Take a pet out first; the others come along with it.");
+				if (!o.alsoOut(owned.pet, on) && on) return Map.of("error", o.slots == 0 ? "Only one pet can be out at a time." : "No free slot: put another pet back first.");
+				message = PetStore.name(owned) + (on ? " comes along too." : " stays home.");
 			}
 			case "random" -> {
 				if (o.pets.size() < 2) return Map.of("error", "A random pet needs at least two pets.");

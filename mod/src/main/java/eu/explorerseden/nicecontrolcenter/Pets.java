@@ -685,8 +685,11 @@ public final class Pets {
 	public static final class Owner {
 		public String name;
 		public List<Owned> pets = new ArrayList<>();
-		/** The pet that's out, or null. */
+		/** The pet that's out, or null (its perks are the ones that work). */
 		public String active;
+		/** Extra pets allowed out at once (a reward, 0–2), and which ones are out besides the active one. */
+		public int slots;
+		public List<String> alsoOut = new ArrayList<>();
 		/** How their pet moves, and its particle trail (for whichever pet is out). */
 		public String behavior;
 		public String trail;
@@ -708,6 +711,17 @@ public final class Pets {
 		 * pet: nothing in it is lost when the pet is taken away or the perk is off (only opening it needs the perk).
 		 */
 		public List<String> bag = new ArrayList<>();
+
+		/** An extra pet out besides the main one (a reward): false when no slot is free or it's the main pet. */
+		public boolean alsoOut(String pet, boolean on) {
+			if (alsoOut == null) alsoOut = new ArrayList<>();
+			if (!on) return alsoOut.remove(pet);
+			if (pet.equals(active) || alsoOut.contains(pet) || owned(pet) == null) return false;
+			alsoOut.removeIf(id -> owned(id) == null || id.equals(active));
+			if (alsoOut.size() >= Math.min(2, slots)) return false;
+			alsoOut.add(pet);
+			return true;
+		}
 
 		/** Puts the pet away, remembering it for /pets on. */
 		public void putAway() {

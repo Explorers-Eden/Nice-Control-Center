@@ -166,6 +166,8 @@ final class PetFollowers {
 	}
 
 	private static final Map<UUID, Follower> followers = new HashMap<>();
+	/** Extra pets out at once (a reward, Pets.Owner.alsoOut): up to two more per player, without reactions or outings. */
+	private static final Map<UUID, List<Follower>> extras = new HashMap<>();
 	/** True while a display of ours is being added (it isn't in followers yet). */
 	private static boolean spawning;
 
@@ -391,6 +393,162 @@ final class PetFollowers {
 			Pets.Trail trail = Pets.Trail.of(owner.trail);
 			trail(player, trail == Pets.Trail.RANDOM ? f.rolledTrail : trail, f, t, size);
 		}
+		tickExtras(server, time);
+	}
+
+	/** Behaviours that move along a path around the player: extra pets take the same path, spread out along it. */
+	private static final java.util.Set<Pets.Behavior> PATHS = java.util.EnumSet.of(Pets.Behavior.ORBIT, Pets.Behavior.HALO, Pets.Behavior.SPIRAL,
+			Pets.Behavior.FIGURE_EIGHT, Pets.Behavior.WANDER, Pets.Behavior.SATELLITE, Pets.Behavior.DART, Pets.Behavior.SPIN);
+
+	/**
+	 * Extra pets: the owner's move, each in its own spot (spread along a path, or on the other side / behind for a
+	 * fixed spot), then pushed apart so no two heads touch, and kept out of the player.
+	 */
+	private static void tickExtras(MinecraftServer server, long time) {
+		Iterator<Map.Entry<UUID, List<Follower>>> it = extras.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry<UUID, List<Follower>> e = it.next();
+			ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
+			Pets.Owner owner = p == null ? null : PetStore.data().owners.get(p.getStringUUID());
+			if (p == null || !PetStore.enabled() || owner == null || owner.alsoOut.isEmpty() || !shown(p) || shownOwned(p.getUUID()) == null) {
+				for (Follower f : e.getValue()) discard(f, p);
+				it.remove();
+			}
+		}
+		if (!PetStore.enabled()) return;
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			Pets.Owner owner = PetStore.data().owners.get(player.getStringUUID());
+			Follower main = followers.get(player.getUUID());
+			if (owner == null || owner.alsoOut.isEmpty() || main == null || shownOwned(player.getUUID()) == null || main.pos == null) continue;
+			// Which pets: the ones they still own, not the main one, as many as their slots allow.
+			List<Pets.Owned> pets = new java.util.ArrayList<>();
+			for (String id : owner.alsoOut) {
+				Pets.Owned o = owner.owned(id);
+				if (o != null && main.owned != null && !o.pet.equals(main.owned.pet) && pets.size() < Math.min(2, owner.slots)) pets.add(o);
+			}
+			List<Follower> list = extras.computeIfAbsent(player.getUUID(), k -> new java.util.ArrayList<>());
+			while (list.size() > pets.size()) discard(list.remove(list.size() - 1), player);
+			while (list.size() < pets.size()) list.add(new Follower(player.getRandom().nextInt(1000)));
+			if (pets.isEmpty()) continue;
+			Vec3 base = player.position();
+			double h = player.getBbHeight();
+			Pets.Behavior chosen = Pets.Behavior.of(owner.behavior);
+			Pets.Behavior behavior = chosen == Pets.Behavior.RANDOM ? main.rolledMove : chosen;
+			if (behavior == null) behavior = Pets.Behavior.FLOAT;
+			boolean afk = eu.explorerseden.nicecontrolcenter.core.PlayerActivity.isAfk(player);
+			int n = pets.size() + 1;
+			Vec3[] goals = new Vec3[pets.size()];
+			float[] yaws = new float[pets.size()];
+			double[] sizes = new double[pets.size()];
+			for (int i = 0; i < pets.size(); i++) {
+				Follower f = list.get(i);
+				f.owned = pets.get(i);
+				sizes[i] = PetStore.size(f.owned);
+				long t = time + main.phase;
+				Target goal = afk ? roam(player, (t + 400L * (i + 1)) * PACE, f) : target(player, behavior, t * PACE, f);
+				Vec3 off = goal.stay ? goal.offset : slot(goal.offset, behavior, i + 1, n, player.getYRot());
+				goals[i] = off;
+				yaws[i] = goal.yaw;
+			}
+			separate(main.offset == null ? main.pos.subtract(base) : main.offset, main.size, goals, sizes, h, player.getYRot());
+			for (int i = 0; i < pets.size(); i++) {
+				Follower f = list.get(i);
+				String texture = PetStore.texture(f.owned);
+				double size = sizes[i];
+				Vec3 want = base.add(goals[i]);
+				boolean fresh = f.display == null || f.display.isRemoved() || f.display.level() != player.level() || !texture.equals(f.texture) || size != f.size
+						|| f.pos == null || f.pos.distanceToSqr(want) > JUMP * JUMP;
+				if (fresh) {
+					if (time < f.retryAt) continue;
+					discard(f, player);
+					f.offset = goals[i];
+					f.pos = want;
+					f.display = spawn(player.level(), want, texture, size);
+					f.texture = texture;
+					f.size = size;
+					f.spawned = time;
+					if (f.display == null) {
+						f.retryAt = time + 1200;
+						continue;
+					}
+					pose(f, yaws[i], 0, size, 0);
+					f.shown = want;
+					f.yawShown = yaws[i];
+					continue;
+				}
+				f.offset = clear(f.offset.add(goals[i].subtract(f.offset).scale(0.3)), h, size, player.getYRot());
+				f.pos = base.add(f.offset);
+				Vec3 lead = main.pace.scale(LEAD);
+				Vec3 shownAt = f.pos.add(lead);
+				if (Float.isNaN(f.yawShown)) f.yawShown = yaws[i];
+				f.yawShown += (float) (net.minecraft.util.Mth.wrapDegrees(yaws[i] - f.yawShown) * TURN_EASE);
+				if ((time + f.phase) % KEY == 0) {
+					if (f.display.position().distanceToSqr(shownAt) > 1e-6) f.display.setPos(shownAt);
+					pose(f, f.yawShown, 0, size, GLIDE);
+					f.shown = shownAt;
+				}
+				label(f, player, owner, size, time, f.shown == null ? shownAt : f.shown);
+				Pets.Trail trail = Pets.Trail.of(owner.trail);
+				trail(player, trail == Pets.Trail.RANDOM ? main.rolledTrail : trail, f, time + f.phase, size);
+			}
+		}
+	}
+
+	/** An extra pet's spot: along a path a share of a turn further, else mirrored to the other side (slot 1) or behind and higher (slot 2). */
+	private static Vec3 slot(Vec3 off, Pets.Behavior behavior, int slot, int n, float look) {
+		if (PATHS.contains(behavior)) {
+			double a = 2 * Math.PI * slot / n;
+			double cos = Math.cos(a), sin = Math.sin(a);
+			return new Vec3(off.x * cos - off.z * sin, off.y, off.x * sin + off.z * cos);
+		}
+		double yaw = Math.toRadians(look);
+		double fx = -Math.sin(yaw), fz = Math.cos(yaw);
+		double rx = -fz, rz = fx;
+		// The spot in the player's own right / forward terms.
+		double right = off.x * rx + off.z * rz;
+		double forward = off.x * fx + off.z * fz;
+		if (slot == 1) right = -right;
+		else {
+			right = right * 0.2;
+			forward = forward - 0.9;
+		}
+		if (Math.abs(right) < 0.35 && slot == 1) right = right < 0 ? -0.6 : 0.6;
+		return new Vec3(rx * right + fx * forward, off.y + (slot == 2 ? 0.35 : 0), rz * right + fz * forward);
+	}
+
+	/**
+	 * Pushes the extra pets' spots apart (and away from the main pet's) until every two heads are at least their
+	 * sizes apart, a few rounds, then keeps them out of the player. The main pet doesn't move.
+	 */
+	private static void separate(Vec3 mainOff, double mainSize, Vec3[] goals, double[] sizes, double h, float look) {
+		for (int round = 0; round < 4; round++) {
+			for (int i = 0; i < goals.length; i++) {
+				// Away from the main pet.
+				goals[i] = apart(goals[i], mainOff, (sizes[i] + mainSize) * 0.5 + 0.15, 1.0);
+				for (int j = 0; j < goals.length; j++) {
+					if (i == j) continue;
+					double need = (sizes[i] + sizes[j]) * 0.5 + 0.15;
+					Vec3 d = goals[i].subtract(goals[j]);
+					if (d.lengthSqr() >= need * need) continue;
+					// Both move half the way.
+					Vec3 pushed = apart(goals[i], goals[j], need, 0.5);
+					Vec3 moved = pushed.subtract(goals[i]);
+					goals[i] = pushed;
+					goals[j] = goals[j].subtract(moved);
+				}
+			}
+		}
+		for (int i = 0; i < goals.length; i++) goals[i] = clear(goals[i], h, sizes[i], look);
+	}
+
+	/** a moved away from b to at least need apart (share: how much of the gap a takes). */
+	private static Vec3 apart(Vec3 a, Vec3 b, double need, double share) {
+		Vec3 d = a.subtract(b);
+		double len = d.length();
+		if (len >= need) return a;
+		// Right on top of each other: apart sideways.
+		Vec3 dir = len < 1e-3 ? new Vec3(1, 0, 0) : d.scale(1 / len);
+		return a.add(dir.scale((need - len) * share));
 	}
 
 	/** Where an outing takes the pet now (a spot in the world), running its steps on the way. */
@@ -904,16 +1062,21 @@ final class PetFollowers {
 	static void remove(UUID player) {
 		Follower f = followers.remove(player);
 		if (f != null) discard(f, null);
+		List<Follower> more = extras.remove(player);
+		if (more != null) for (Follower x : more) discard(x, null);
 	}
 
 	static void removeAll() {
 		for (Follower f : followers.values()) discard(f, null);
 		followers.clear();
+		for (List<Follower> more : extras.values()) for (Follower x : more) discard(x, null);
+		extras.clear();
 	}
 
 	/** A pet display of ours from a session that's over: gone. */
 	static boolean leftOver(Entity e) {
 		return !spawning && (e instanceof Display.ItemDisplay || e instanceof Display.TextDisplay) && e.entityTags().contains(TAG)
-				&& followers.values().stream().noneMatch(f -> f.display == e || f.label == e);
+				&& followers.values().stream().noneMatch(f -> f.display == e || f.label == e)
+				&& extras.values().stream().flatMap(List::stream).noneMatch(f -> f.display == e || f.label == e);
 	}
 }

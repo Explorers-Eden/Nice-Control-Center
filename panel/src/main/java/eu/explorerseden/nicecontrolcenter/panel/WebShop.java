@@ -110,7 +110,7 @@ final class WebShop {
 			b.addProperty("uuid", uuid);
 			b.addProperty("name", link.name());
 			b.addProperty("kind", kind);
-			for (String k : List.of("id", "amount", "price", "per")) b.addProperty(k, Web.str(in, k));
+			for (String k : List.of("id", "amount", "price", "per", "coupon")) b.addProperty(k, Web.str(in, k));
 			JsonObject answer = dashboard.postForJson("/api/market/web", b, null);
 			if (answer == null) {
 				error(ctx, HttpStatus.SERVICE_UNAVAILABLE, "The server doesn't answer right now. Try again in a moment.");

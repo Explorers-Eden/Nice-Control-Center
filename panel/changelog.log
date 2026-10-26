@@ -1,3 +1,8 @@
+## 1.33.0
+- Rewards: "Rewards" per rule with quick options (flight, claim blocks, pet, pet slots, listing slots, coupons, spotlight, join message, XP, haste, claim-block and bond boosts, tool care), "only in their claims", the triggers for entering/leaving claims and "Given with /reward give", and new examples (mod 1.42.0)
+- Website market: spotlight listings first, coupons on server-shop buys (through the panel)
+- Command list: /reward, /perks, /joinmessage
+
 ## 1.32.1
 - /fly in the command list (mod 1.41.0)
 

@@ -496,6 +496,8 @@ public final class DashboardServer {
 					result.put("detail", detail);
 					if (detail instanceof Map<?, ?> d && d.get("uuid") instanceof String u) {
 						result.put("pets", onServerThread(() -> eu.explorerseden.nicecontrolcenter.pets.PetStore.forPlayer(u)));
+						// Non-item rewards they hold (flight, perks, coupons, slots).
+						result.put("rewards", onServerThread(() -> eu.explorerseden.nicecontrolcenter.rewards.RewardActions.summary(java.util.UUID.fromString(u))));
 						result.put("claims", onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.PlayerExtras.claims(u)));
 						result.put("market", onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.PlayerExtras.market(u)));
 					}

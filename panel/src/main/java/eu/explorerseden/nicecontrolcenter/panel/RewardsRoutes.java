@@ -25,8 +25,11 @@ final class RewardsRoutes {
 	}
 
 	void register(JavalinDefaultRoutingApi routes) {
-		routes.get("/api/rewards", guard(Permissions.SERVER_VIEW, (ctx, me) ->
-				json(ctx, Map.of("settings", Rewards.read(file()), "triggers", Rewards.TRIGGERS))));
+		routes.get("/api/rewards", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
+			// The pets admins can give (by name), for the "Also give" picker.
+			var pets = eu.explorerseden.nicecontrolcenter.Pets.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Pets.FILE)).pets.stream().map(p -> p.name).toList();
+			json(ctx, Map.of("settings", Rewards.read(file()), "triggers", Rewards.TRIGGERS, "actions", Rewards.ACTIONS, "pets", pets));
+		}));
 		routes.post("/api/rewards", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Rewards.Settings next;
 			try {

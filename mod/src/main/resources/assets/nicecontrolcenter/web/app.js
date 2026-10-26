@@ -1938,6 +1938,7 @@
     if (d.market) bits.push(['market', 'bi-bank', `${num(d.market.mailbox.balance || 0)} ${d.market.currency} in the bank`]);
     if (d.market && (d.market.listings.length || d.market.sales.length)) bits.push(['market', 'bi-shop', `${num(d.market.listings.length)} on the market · ${num(d.market.sales.length)} recent trades`]);
     if (d.pets && d.pets.owned.length) bits.push(['pets', 'bi-emoji-smile', `${num(d.pets.owned.length)} pet${d.pets.owned.length === 1 ? '' : 's'}`]);
+    if (d.rewards && d.rewards.length) bits.push(['', 'bi-gift', d.rewards.length === 1 ? d.rewards[0] : `${d.rewards.length} rewards: ${d.rewards.join(' · ')}`]);
     if (p.waypoints && p.waypoints.length) bits.push(['places', 'bi-signpost-2', `${num(p.waypoints.length)} waypoint${p.waypoints.length === 1 ? '' : 's'}`]);
     if (p.mining && p.mining.flags && p.mining.flags.length) bits.push(['checks', 'bi-exclamation-triangle', 'x-ray hint']);
     return bits.length ? `<div class="np-chips np-player-summary">${bits.map(([tab, icon, text]) => `<button type="button" class="np-tag" data-player-tab="${tab}"><i class="bi ${icon}"></i>${esc(text)}</button>`).join('')}</div>` : '';

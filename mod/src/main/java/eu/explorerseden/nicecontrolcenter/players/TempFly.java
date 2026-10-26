@@ -35,8 +35,8 @@ import eu.explorerseden.nicecontrolcenter.command.Everyone;
 import eu.explorerseden.nicecontrolcenter.core.PlayerActivity;
 
 /**
- * Flight time as a credit, for inside claims only. Admins give it with /ncc fly &lt;players&gt; &lt;time&gt; (time like /tick:
- * 100t, 30s, 1d = one in-game day; more time adds up) and take it with /ncc fly &lt;players&gt; off. Players switch it on
+ * Flight time as a credit, for inside claims only. Admins give it with /reward fly &lt;players&gt; &lt;time&gt; (time like /tick:
+ * 100t, 30s, 1d = one in-game day; more time adds up) and take it with /reward fly &lt;players&gt; off. Players switch it on
  * with /fly inside a claim they own or are at least a Builder in; leaving such a claim switches it off. The time only runs down
  * while it's on and they're not AFK. When it's used up, switched off or they leave, they float down with Slow Falling.
  * Kept over logouts and restarts.
@@ -68,14 +68,6 @@ public final class TempFly {
 
 	public static void register() {
 		CommandRegistrationCallback.EVENT.register((dispatcher, access, env) -> {
-			for (String root : new String[] { "ncc", "nicecontrolcenter" }) {
-				dispatcher.register(Commands.literal(root).then(Commands.literal("fly")
-						.requires(Permissions.require(PERMISSION, PermissionLevel.GAMEMASTERS))
-						.then(Commands.argument("players", EntityArgument.players())
-								.then(Commands.literal("off").executes(ctx -> off(ctx, EntityArgument.getPlayers(ctx, "players"))))
-								.then(Commands.argument("time", TimeArgument.time(1))
-										.executes(ctx -> grant(ctx, EntityArgument.getPlayers(ctx, "players"), ctx.getArgument("time", Integer.class)))))));
-			}
 			dispatcher.register(Commands.literal("fly")
 					.requires(Everyone.unless(PERMISSION_USE))
 					.executes(ctx -> toggle(ctx.getSource())));
@@ -96,39 +88,32 @@ public final class TempFly {
 
 	// ---------------------------------------------------------------- commands
 
-	private static int grant(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players, int ticks) {
-		long ms = ticks * 50L;
-		for (ServerPlayer p : players) {
-			Grant g = grants.computeIfAbsent(p.getUUID(), k -> new Grant(0, false));
-			g.left += ms;
+	/** Adds flight time (for /reward and rules); the player may be offline. Returns the time they have now. */
+	public static long add(java.util.UUID uuid, ServerPlayer online, long ms) {
+		Grant g = grants.computeIfAbsent(uuid, k -> new Grant(0, false));
+		g.left += ms;
+		if (online != null) {
 			// Switched on right away when they stand in one of their claims; otherwise /fly there.
-			boolean inside = inOwnClaim(p);
+			boolean inside = inOwnClaim(online);
 			if (inside) {
 				g.on = true;
-				allow(p);
+				allow(online);
 			}
-			p.sendSystemMessage(Component.literal("You got " + human(ms) + " of flight (" + human(g.left) + " in all) for your claims and the ones you're a Builder (or more) in. "
+			online.sendSystemMessage(Component.literal("You got " + human(ms) + " of flight (" + human(g.left) + " in all) for your claims and the ones you're a Builder (or more) in. "
 					+ (inside ? "It's on: double-tap jump to take off. " : "Type /fly inside one of them. ") + "/fly switches it on and off; the time only runs while it's on.")
 					.withStyle(ChatFormatting.AQUA));
 		}
 		save();
-		ctx.getSource().sendSuccess(() -> Component.literal("Gave " + human(ms) + " (" + ticks + " ticks) of flight in their claims to "
-				+ (players.size() == 1 ? players.iterator().next().getGameProfile().name() : players.size() + " players") + "."), true);
-		return players.size();
+		return g.left;
 	}
 
-	private static int off(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players) {
-		int n = 0;
-		for (ServerPlayer p : players) {
-			Grant g = grants.remove(p.getUUID());
-			if (g == null) continue;
-			if (g.on) land(p, "Your flight time was taken away.");
-			n++;
-		}
+	/** Takes all flight time away; false when they had none. */
+	public static boolean take(java.util.UUID uuid, ServerPlayer online) {
+		Grant g = grants.remove(uuid);
+		if (g == null) return false;
+		if (online != null && g.on) land(online, "Your flight time was taken away.");
 		save();
-		int count = n;
-		ctx.getSource().sendSuccess(() -> Component.literal(count == 0 ? "None of them had flight time." : "Took the flight time of " + count + " player" + (count == 1 ? "" : "s") + "."), true);
-		return n;
+		return true;
 	}
 
 	/** /fly: switch your flight on or off. */
@@ -202,12 +187,8 @@ public final class TempFly {
 		if (ended || now - lastSave > 60_000) save();
 	}
 
-	/** Inside a claim (or subclaim) the player owns or is at least a Builder in. */
 	private static boolean inOwnClaim(ServerPlayer p) {
-		var claim = eu.explorerseden.nicecontrolcenter.claims.ClaimStore.claimAt(p.level(), p.blockPosition());
-		if (claim == null) return false;
-		var role = eu.explorerseden.nicecontrolcenter.claims.ClaimStore.data().roleOf(claim, p.getUUID().toString());
-		return role != null && role.includes(eu.explorerseden.nicecontrolcenter.Claims.Role.BUILD);
+		return Perks.inOwnClaim(p);
 	}
 
 	private static void allow(ServerPlayer p) {

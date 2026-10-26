@@ -236,6 +236,8 @@ public final class Market {
 	public static final class Listing {
 		public String id;
 		public String seller;
+		/** The seller has a market spotlight (reward): shown first, with a ★ (kept up to date by the mod). */
+		public boolean spotlight;
 		public String sellerName;
 		public Item item;
 		/** Items left to buy (any number, several stacks). */
@@ -315,9 +317,28 @@ public final class Market {
 		public Map<String, Long> tombstones = new LinkedHashMap<>();
 		/** How many of each command listing (by id) each player (uuid) bought, for {@link CommandOffer#perPlayer}. */
 		public Map<String, Map<String, Integer>> serverBought = new LinkedHashMap<>();
+		/** Extra listing slots a player got as a reward (uuid → slots on top of maxListings). */
+		public Map<String, Integer> extraListings = new LinkedHashMap<>();
+
+		public int extraListings(String uuid) {
+			return extraListings == null ? 0 : extraListings.getOrDefault(uuid, 0);
+		}
+
+		public void addExtraListings(String uuid, int n) {
+			if (extraListings == null) extraListings = new LinkedHashMap<>();
+			int next = Math.max(0, extraListings(uuid) + n);
+			if (next == 0) extraListings.remove(uuid);
+			else extraListings.put(uuid, next);
+		}
+
+		/** How many listings this player may have up. */
+		public int maxListings(String uuid, Settings s) {
+			return s.maxListings + extraListings(uuid);
+		}
 
 		public Data fill() {
 			if (worldId == null || worldId.isBlank()) worldId = UUID.randomUUID().toString();
+			if (extraListings == null) extraListings = new LinkedHashMap<>();
 			if (listings == null) listings = new LinkedHashMap<>();
 			if (mail == null) mail = new LinkedHashMap<>();
 			if (sales == null) sales = new ArrayList<>();
@@ -440,7 +461,7 @@ public final class Market {
 			if (per < 1 || per > amount) return "The price is for 1 to " + amount + " items.";
 			if (amount % per != 0) return "Sell a multiple of " + per + " (they're bought " + per + " at a time).";
 			if (s.bannedItems.contains(item.id)) return "That item can't be sold here.";
-			if (of(seller).size() >= s.maxListings) return "You already have " + s.maxListings + " listings.";
+			if (of(seller).size() >= maxListings(seller, s)) return "You already have " + maxListings(seller, s) + " listings.";
 			Listing l = new Listing();
 			l.id = UUID.randomUUID().toString();
 			l.seller = seller;

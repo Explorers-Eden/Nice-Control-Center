@@ -155,11 +155,14 @@ final class MarketService {
 			m.put("sellerUuid", l.seller);
 			m.put("created", l.created);
 			m.put("expires", l.expires);
+			if (l.spotlight) m.put("spotlight", true);
 			String icon = icons.iconFor(l.item.stack);
 			if (icon != null) m.put("icon", icon);
 			out.add(m);
 		}
-		out.sort((a, b) -> String.valueOf(a.get("name")).compareToIgnoreCase(String.valueOf(b.get("name"))));
+		// Spotlit listings (a reward) first.
+		out.sort(java.util.Comparator.comparing((Map<String, Object> a) -> !Boolean.TRUE.equals(a.get("spotlight")))
+				.thenComparing((a, b) -> String.valueOf(a.get("name")).compareToIgnoreCase(String.valueOf(b.get("name")))));
 		return out;
 	}
 

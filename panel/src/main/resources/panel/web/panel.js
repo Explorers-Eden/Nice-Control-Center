@@ -1771,10 +1771,44 @@
 
   // ── Event rewards ──────────────────────────────────────────────────────
 
-  const rw = { settings: null, triggers: [], dirty: false };
+  const rw = { settings: null, triggers: [], actions: [], pets: [], dirty: false };
+  // "Also give": non-item rewards a rule hands out (the same as /reward). Time is kept in seconds.
+  const RW_UNITS = [['s', 1, 'seconds'], ['m', 60, 'minutes'], ['h', 3600, 'hours'], ['d', 86400, 'days']];
+  const rwUnit = (sec) => RW_UNITS.slice().reverse().find(([, f]) => sec > 0 && sec % f === 0) || RW_UNITS[1];
+  const RW_DEFAULT = { fly: { seconds: 1800 }, claimblocks: { amount: 500 }, pet: {}, petslots: { amount: 1 }, listings: { amount: 2 }, coupons: { amount: 1, level: 3 },
+    spotlight: { seconds: 86400 }, joinmessage: { seconds: 0 }, xp: { level: 2, seconds: 3600 }, haste: { level: 2, seconds: 3600 }, blockboost: { level: 2, seconds: 7200 },
+    bondboost: { level: 2, seconds: 7200 }, toolcare: { seconds: 3600 } };
+  const RW_ICONS = { fly: 'bi-feather', claimblocks: 'bi-bounding-box', pet: 'bi-emoji-smile', petslots: 'bi-people', listings: 'bi-shop', coupons: 'bi-ticket-perforated',
+    spotlight: 'bi-star', joinmessage: 'bi-megaphone', xp: 'bi-stars', haste: 'bi-lightning', blockboost: 'bi-graph-up-arrow', bondboost: 'bi-heart', toolcare: 'bi-tools' };
+
+  function rwActionRow(a, ri, ai) {
+    const type = rw.actions.find((x) => x.id === a.type) || { fields: '', label: a.type };
+    const f = type.fields;
+    const amountLabel = { claimblocks: 'Blocks (minus takes)', petslots: 'Extra pets (1–2)', listings: 'Extra slots', coupons: 'How many coupons' }[a.type] || 'Amount';
+    const levelLabel = a.type === 'haste' ? 'Level (1–3)' : a.type === 'coupons' ? 'Each worth (currency items)' : 'Multiplier (×)';
+    const [unit, factor] = rwUnit(a.seconds);
+    const forever = a.type === 'joinmessage' && !a.seconds;
+    const fields = [
+      f.includes('t') ? `<label class="pn-field"><span>Pet</span><select data-a="${ai}" data-ak="target">${rw.pets.map((n) => `<option ${n === a.target ? 'selected' : ''}>${esc(n)}</option>`).join('') || '<option value="">no pets yet</option>'}</select></label>` : '',
+      f.includes('a') ? `<label class="pn-field"><span>${amountLabel}</span><input type="number" data-a="${ai}" data-ak="amount" value="${a.amount}"></label>` : '',
+      f.includes('l') ? `<label class="pn-field"><span>${levelLabel}</span><input type="number" data-a="${ai}" data-ak="level" value="${a.level}" step="${a.type === 'coupons' || a.type === 'haste' ? 1 : 0.5}" min="1"></label>` : '',
+      f.includes('s') ? (forever ? `<label class="pn-field"><span>For how long</span><span class="pn-rw-forever">for good <button type="button" class="np-link-btn" data-a="${ai}" data-ak="timed">set a time</button></span></label>`
+        : `<label class="pn-field"><span>For how long</span><span class="pn-rw-time"><input type="number" data-a="${ai}" data-ak="time" value="${a.seconds / factor}" min="1"><select data-a="${ai}" data-ak="unit">${RW_UNITS.map(([u, , l]) => `<option value="${u}" ${u === unit ? 'selected' : ''}>${l}</option>`).join('')}</select>${a.type === 'joinmessage' ? `<button type="button" class="np-link-btn" data-a="${ai}" data-ak="forever">for good</button>` : ''}</span></label>`) : '',
+    ].join('');
+    return `<div class="pn-rw-give" data-rule="${ri}">
+      <span class="pn-rw-give-icon"><i class="bi ${RW_ICONS[a.type] || 'bi-gift'}"></i></span><b>${esc(type.label)}</b>
+      <div class="pn-rw-give-fields">${fields}</div>
+      <button type="button" class="np-btn small danger" data-a="${ai}" data-ak="remove" title="Remove"><i class="bi bi-x-lg"></i></button>
+    </div>`;
+  }
   const newId = () => Math.random().toString(36).slice(2, 10);
   const REWARD_TEMPLATES = {
     welcome: { name: 'Welcome kit', trigger: 'firstJoin', repeat: 'oncePerPlayer', commands: ['give {player} minecraft:bread 16', 'give {player} minecraft:stone_sword'], message: '§aWelcome to the server, {player}! Here is a little something to get you started.' },
+    dailyfly: { name: 'Daily flight', trigger: 'join', repeat: 'always', cooldownMinutes: 1200, commands: [], message: '', actions: [{ type: 'fly', amount: 0, level: 0, seconds: 600, target: '' }] },
+    xp30: { name: 'Level 30 boost', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§b{player} reached level 30!', messageEveryone: true, actions: [{ type: 'xp', amount: 0, level: 2, seconds: 3600, target: '' }] },
+    veteran: { name: 'Veteran: a second pet', trigger: 'playtime', number: 100, repeat: 'oncePerPlayer', commands: [], message: '', actions: [{ type: 'petslots', amount: 1, level: 0, seconds: 0, target: '' }] },
+    homehaste: { name: 'Haste at home', trigger: 'enterClaim', repeat: 'always', cooldownMinutes: 30, commands: [], message: '', actions: [{ type: 'haste', amount: 0, level: 1, seconds: 600, target: '' }] },
+    giftpack: { name: 'Starter pack', trigger: 'manual', repeat: 'oncePerPlayer', commands: [], message: '', actions: [{ type: 'claimblocks', amount: 500, level: 0, seconds: 0, target: '' }, { type: 'coupons', amount: 2, level: 3, seconds: 0, target: '' }] },
     daily: { name: 'Daily login reward', trigger: 'join', repeat: 'always', cooldownMinutes: 1200, commands: ['give {player} minecraft:emerald 1'], message: '§6Thanks for coming back! Here is your daily emerald.' },
     nether: { name: 'First trip to the Nether', trigger: 'dimension', value: 'minecraft:the_nether', repeat: 'oncePerPlayer', commands: ['effect give {player} minecraft:fire_resistance 120'], message: '§c{player} entered the Nether for the first time!', messageEveryone: true },
     level30: { name: 'Level 30', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§b{player} reached level 30!', messageEveryone: true },
@@ -1790,6 +1824,8 @@
       const d = await api('api/rewards');
       rw.settings = d.settings;
       rw.triggers = d.triggers;
+      rw.actions = d.actions || [];
+      rw.pets = d.pets || [];
       rw.dirty = false;
       renderRewards();
     } catch (err) {
@@ -1825,8 +1861,15 @@
           <label class="pn-field"><span>How often</span><select data-k="repeat">
             <option value="always">every time</option><option value="oncePerPlayer" ${r.repeat === 'oncePerPlayer' ? 'selected' : ''}>once per player</option><option value="once" ${r.repeat === 'once' ? 'selected' : ''}>once for the whole server</option></select></label>
           <label class="pn-field" title="Minutes before it can run again for the same player; 0 = no wait"><span>Cooldown (minutes)</span><input type="number" data-k="cooldownMinutes" value="${r.cooldownMinutes}" min="0"></label>
+          <label class="np-check pn-rw-claims" title="Only while the player stands in a claim they own or are a Builder (or more) in${r.trigger === 'manual' ? '; given outside, it waits until they are' : ''}"><input type="checkbox" data-k="claimsOnly" ${r.claimsOnly ? 'checked' : ''}> only in their claims</label>
         </div>
+        ${r.trigger === 'manual' ? `<p class="pn-hint">Given by hand with <code>/reward give &lt;players&gt; ${esc(r.name || 'name')}</code> (works for offline players too: it waits until they're on${r.claimsOnly ? ' and in their claims' : ''}).</p>` : ''}
         ${t.world ? `<p class="pn-hint">${{ dayTime: 'The Nice Actions clock when the pack is installed, else the Minecraft day. ', date: 'Like "December 24" or "Sunday", on the Nice Actions calendar. ', interval: 'Real minutes, counted from when the server starts. ' }[r.trigger] || ''}Runs once on its own; commands with {player} (and a message to the player) run for everyone online.</p>` : ''}
+        <div class="pn-rw-gives">
+          <div class="pn-rw-gives-head"><b><i class="bi bi-gift"></i> Rewards</b>
+            <select data-addaction aria-label="Add a reward"><option value="">+ Add a reward…</option>${rw.actions.map((x) => `<option value="${x.id}">${esc(x.label)}</option>`).join('')}</select></div>
+          ${(r.actions || []).map((a, ai) => rwActionRow(a, i, ai)).join('') || '<p class="pn-hint">Flight time, claim blocks, a pet, perks, coupons… pick one above. They show in the message as <code>{rewards}</code>.</p>'}
+        </div>
         <label class="pn-field"><span>Commands (one per line, without /; run as the server at the player)</span><textarea data-k="commands" rows="${Math.max(2, r.commands.length + 1)}" spellcheck="false" placeholder="give {player} minecraft:diamond 1">${esc(r.commands.join('\n'))}</textarea></label>
         <div class="pn-rw-msgrow">
           <label class="pn-field"><span>Message (optional; § colour codes)</span><input type="text" data-k="message" value="${esc(r.message)}" maxlength="1000" placeholder="§aWell done, {player}!"></label>
@@ -1845,7 +1888,46 @@
     if (rerender) renderRewards();
   }
 
+  // The "Also give" rows of a rule.
+  function rwAction(e) {
+    const el = e.target.closest('[data-ak]');
+    const add = e.target.closest('[data-addaction]');
+    const box = e.target.closest('section[data-rule]');
+    if (!box || (!el && !add)) return false;
+    const r = rw.settings.rules[+box.dataset.rule];
+    r.actions = r.actions || [];
+    if (add) {
+      if (e.type !== 'change' || !add.value) return true;
+      r.actions.push({ type: add.value, amount: 0, level: 0, seconds: 0, target: add.value === 'pet' ? (rw.pets[0] || '') : '', ...(RW_DEFAULT[add.value] || {}) });
+      add.value = '';
+      rwChanged(true);
+      return true;
+    }
+    const a = r.actions[+el.dataset.a];
+    const k = el.dataset.ak;
+    if (e.type === 'click' && ['remove', 'forever', 'timed'].includes(k)) {
+      if (k === 'remove') r.actions.splice(+el.dataset.a, 1);
+      if (k === 'forever') a.seconds = 0;
+      if (k === 'timed') a.seconds = 86400;
+      rwChanged(true);
+      return true;
+    }
+    if (e.type === 'click') return true;
+    if (k === 'time' || k === 'unit') {
+      const row = el.closest('.pn-rw-time');
+      const n = Number(row.querySelector('[data-ak="time"]').value) || 0;
+      const f = RW_UNITS.find(([u]) => u === row.querySelector('[data-ak="unit"]').value)[1];
+      a.seconds = Math.round(n * f);
+    } else if (k === 'target') a.target = el.value;
+    else a[k] = Number(el.value) || 0;
+    rwChanged(false);
+    return true;
+  }
+  $('pn-rw-rules').addEventListener('change', (e) => { if (e.target.closest('[data-addaction]')) rwAction(e); });
+
   $('pn-rw-rules').addEventListener('input', (e) => {
+    if (e.target.closest('[data-addaction]')) return;
+    if (rwAction(e)) return;
     const box = e.target.closest('[data-rule]');
     const k = e.target.dataset.k;
     if (!box || !k) return;
@@ -1858,6 +1940,7 @@
     rwChanged(e.target.tagName === 'SELECT');
   });
   $('pn-rw-rules').addEventListener('click', (e) => {
+    if (e.target.closest('[data-ak]') && rwAction(e)) return;
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const i = +b.closest('[data-rule]').dataset.rule;
@@ -1877,7 +1960,7 @@
     const k = e.target.value;
     e.target.value = '';
     if (!k) return;
-    const base = { id: newId(), name: '', enabled: true, trigger: 'join', value: '', number: 0, who: 'everyone', player: '', repeat: 'always', cooldownMinutes: 0, commands: [], message: '', messageEveryone: false };
+    const base = { id: newId(), name: '', enabled: true, trigger: 'join', value: '', number: 0, who: 'everyone', player: '', repeat: 'always', cooldownMinutes: 0, commands: [], message: '', messageEveryone: false, claimsOnly: false, actions: [] };
     rw.settings.rules.push({ ...base, ...(k === 'blank' ? {} : structuredClone(REWARD_TEMPLATES[k])) });
     rwChanged(true);
     $('pn-rw-rules').lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });

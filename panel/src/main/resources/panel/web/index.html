@@ -1175,7 +1175,7 @@
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-gift"></i> Rewards</h3>
 					<p class="np-card-intro">Run commands and send a message when something happens: a player's first join, every login, a first trip to the Nether, an advancement, a level, an in-game time or date (the Nice Actions clock and calendar when the pack is installed), or simply every few minutes. Each rule can be for everyone or for one player, and run every time, once per player or once at all.</p>
-					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{date}</code> <code>{online}</code>. Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
+					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{date}</code> <code>{online}</code> <code>{rewards}</code> (what the rule gave). Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
 					<div class="np-filters pn-rw-top">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-rw-enabled"><span></span></span> Rewards on</label>
 						<select id="pn-rw-add" aria-label="Add a rule">
@@ -1189,6 +1189,11 @@
 								<option value="night">Nightfall warning</option>
 								<option value="day100">Day 100 celebration</option>
 								<option value="tip">Hourly tip</option>
+								<option value="dailyfly">Daily login: 10 min flight</option>
+								<option value="xp30">Level 30: double XP for an hour</option>
+								<option value="veteran">100 hours played: a second pet out</option>
+								<option value="homehaste">Haste while at home (entering a claim)</option>
+								<option value="giftpack">Starter pack given with /reward give</option>
 								<option value="holiday">Gift on December 24</option>
 							</optgroup>
 						</select>
@@ -1455,7 +1460,7 @@
 				<div class="pn-stack">
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-emoji-smile"></i> Pets</h3>
-					<p class="np-card-intro">Floating heads that follow their owner. Add pets here, then sell them in <b>Market → Server shop</b> or give them with <code>/pets grant &lt;player&gt; &lt;pet&gt;</code>. Players keep them for good.</p>
+					<p class="np-card-intro">Floating heads that follow their owner. Add pets here, then sell them in <b>Market → Server shop</b> or give them with <code>/reward pet &lt;player&gt; &lt;pet&gt;</code> (or as a reward in Rewards). Players keep them for good.</p>
 					<form id="pn-pt-form" autocomplete="off">
 						<div class="np-form-grid">
 							<label class="np-form-row"><b>Pets on</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
