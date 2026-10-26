@@ -1,3 +1,6 @@
+## 1.32.1
+- /fly in the command list (mod 1.41.0)
+
 ## 1.32.0
 - Setting explanations are "?" tooltips now (hover, focus or tap)
 - Event rewards are just "Rewards": time of day as HH:MM, in-game date or weekday, every few minutes; tidier fields

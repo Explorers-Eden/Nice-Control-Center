@@ -31,30 +31,37 @@ import net.minecraft.world.level.storage.LevelResource;
 
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
+import eu.explorerseden.nicecontrolcenter.command.Everyone;
+import eu.explorerseden.nicecontrolcenter.core.PlayerActivity;
 
 /**
- * /ncc fly &lt;players&gt; &lt;time&gt; [everywhere|claims]: creative flight in survival for a while (time like /tick: 100t,
- * 30s, 1d = one in-game day), either everywhere or only inside claims the player owns or is a member of (outside them
- * it pauses). /ncc fly &lt;players&gt; off ends it. Survives logging out and restarts; when it runs out (or the player
- * leaves their claims) they float down with Slow Falling.
+ * Flight time as a credit, for inside claims only. Admins give it with /ncc fly &lt;players&gt; &lt;time&gt; (time like /tick:
+ * 100t, 30s, 1d = one in-game day; more time adds up) and take it with /ncc fly &lt;players&gt; off. Players switch it on
+ * with /fly inside a claim they own or are at least a Builder in; leaving such a claim switches it off. The time only runs down
+ * while it's on and they're not AFK. When it's used up, switched off or they leave, they float down with Slow Falling.
+ * Kept over logouts and restarts.
  */
 public final class TempFly {
 	public static final String PERMISSION = "nicecontrolcenter.fly";
-	/** A player's flight: when it ends (epoch millis) and whether only in their claims. */
-	static final class Grant {
-		long until;
-		boolean claims;
-		/** Claims only: currently outside them, flight paused (not saved). */
-		transient boolean paused;
+	public static final String PERMISSION_USE = "nicecontrolcenter.fly.use";
 
-		Grant(long until, boolean claims) {
-			this.until = until;
-			this.claims = claims;
+	/** A player's flight credit. */
+	static final class Grant {
+		/** Flight time left, in milliseconds. */
+		long left;
+		/** Switched on with /fly. */
+		boolean on;
+
+		Grant(long left, boolean on) {
+			this.left = left;
+			this.on = on;
 		}
 	}
 
-	private static final Map<UUID, Grant> until = new HashMap<>();
+	private static final Map<UUID, Grant> grants = new HashMap<>();
 	private static Path file;
+	private static long lastTick;
+	private static long lastSave;
 
 	private TempFly() {
 	}
@@ -67,90 +74,140 @@ public final class TempFly {
 						.then(Commands.argument("players", EntityArgument.players())
 								.then(Commands.literal("off").executes(ctx -> off(ctx, EntityArgument.getPlayers(ctx, "players"))))
 								.then(Commands.argument("time", TimeArgument.time(1))
-										.executes(ctx -> grant(ctx, EntityArgument.getPlayers(ctx, "players"), ctx.getArgument("time", Integer.class), false))
-										.then(Commands.literal("everywhere").executes(ctx -> grant(ctx, EntityArgument.getPlayers(ctx, "players"), ctx.getArgument("time", Integer.class), false)))
-										.then(Commands.literal("claims").executes(ctx -> grant(ctx, EntityArgument.getPlayers(ctx, "players"), ctx.getArgument("time", Integer.class), true)))))));
+										.executes(ctx -> grant(ctx, EntityArgument.getPlayers(ctx, "players"), ctx.getArgument("time", Integer.class)))))));
 			}
+			dispatcher.register(Commands.literal("fly")
+					.requires(Everyone.unless(PERMISSION_USE))
+					.executes(ctx -> toggle(ctx.getSource())));
 		});
 		ServerLifecycleEvents.SERVER_STARTED.register(TempFly::load);
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> save());
 		// Every quarter second, so leaving a claim while flying is noticed quickly.
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			if (server.getTickCount() % 5 == 0 && !until.isEmpty()) tick(server, server.getTickCount() % 20 == 0);
+			if (server.getTickCount() % 5 == 0) tick(server, server.getTickCount() % 20 == 0);
 		});
 	}
 
-	private static int grant(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players, int ticks, boolean claims) {
-		long ms = ticks * 50L;
-		long end = System.currentTimeMillis() + ms;
-		for (ServerPlayer p : players) {
-			Grant g = new Grant(end, claims);
-			until.put(p.getUUID(), g);
-			if (!claims || inOwnClaim(p)) allow(p);
-			else g.paused = true;
-			p.sendSystemMessage(Component.literal(claims
-					? "You can fly in your claims (and ones you're a member of) for " + human(ms) + ". Double-tap jump to take off."
-					: "You can fly for " + human(ms) + ". Double-tap jump to take off.").withStyle(ChatFormatting.AQUA));
-		}
-		save();
-		ctx.getSource().sendSuccess(() -> Component.literal("Flight for " + (players.size() == 1 ? players.iterator().next().getGameProfile().name() : players.size() + " players")
-				+ " for " + human(ms) + " (" + ticks + " ticks)" + (claims ? ", only in their claims." : ", everywhere.")), true);
-		return players.size();
+	/** Seconds of flight a player has left (for other features); 0 when none. */
+	public static long secondsLeft(UUID uuid) {
+		Grant g = grants.get(uuid);
+		return g == null ? 0 : g.left / 1000;
 	}
 
-	/** Inside a claim (or subclaim) the player owns or has any role in. */
-	private static boolean inOwnClaim(ServerPlayer p) {
-		var claim = eu.explorerseden.nicecontrolcenter.claims.ClaimStore.claimAt(p.level(), p.blockPosition());
-		return claim != null && eu.explorerseden.nicecontrolcenter.claims.ClaimStore.data().roleOf(claim, p.getUUID().toString()) != null;
+	// ---------------------------------------------------------------- commands
+
+	private static int grant(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players, int ticks) {
+		long ms = ticks * 50L;
+		for (ServerPlayer p : players) {
+			Grant g = grants.computeIfAbsent(p.getUUID(), k -> new Grant(0, false));
+			g.left += ms;
+			// Switched on right away when they stand in one of their claims; otherwise /fly there.
+			boolean inside = inOwnClaim(p);
+			if (inside) {
+				g.on = true;
+				allow(p);
+			}
+			p.sendSystemMessage(Component.literal("You got " + human(ms) + " of flight (" + human(g.left) + " in all) for your claims and the ones you're a Builder (or more) in. "
+					+ (inside ? "It's on: double-tap jump to take off. " : "Type /fly inside one of them. ") + "/fly switches it on and off; the time only runs while it's on.")
+					.withStyle(ChatFormatting.AQUA));
+		}
+		save();
+		ctx.getSource().sendSuccess(() -> Component.literal("Gave " + human(ms) + " (" + ticks + " ticks) of flight in their claims to "
+				+ (players.size() == 1 ? players.iterator().next().getGameProfile().name() : players.size() + " players") + "."), true);
+		return players.size();
 	}
 
 	private static int off(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> players) {
 		int n = 0;
 		for (ServerPlayer p : players) {
-			if (until.remove(p.getUUID()) == null) continue;
-			land(p, "Your flight has ended.");
+			Grant g = grants.remove(p.getUUID());
+			if (g == null) continue;
+			if (g.on) land(p, "Your flight time was taken away.");
 			n++;
 		}
 		save();
 		int count = n;
-		ctx.getSource().sendSuccess(() -> Component.literal(count == 0 ? "Nobody of them had timed flight." : "Flight ended for " + count + " player" + (count == 1 ? "" : "s") + "."), true);
+		ctx.getSource().sendSuccess(() -> Component.literal(count == 0 ? "None of them had flight time." : "Took the flight time of " + count + " player" + (count == 1 ? "" : "s") + "."), true);
 		return n;
 	}
 
+	/** /fly: switch your flight on or off. */
+	private static int toggle(CommandSourceStack source) {
+		ServerPlayer p = source.getPlayer();
+		if (p == null) {
+			source.sendFailure(Component.literal("Only players can fly."));
+			return 0;
+		}
+		Grant g = grants.get(p.getUUID());
+		if (g == null || g.left <= 0) {
+			source.sendFailure(Component.literal("You have no flight time. It's given as a reward or by an admin."));
+			return 0;
+		}
+		if (p.isCreative() || p.isSpectator()) {
+			source.sendFailure(Component.literal("You can fly in this game mode anyway; your flight time stays as it is (" + human(g.left) + ")."));
+			return 0;
+		}
+		if (!g.on && !inOwnClaim(p)) {
+			source.sendFailure(Component.literal("You can only fly inside your claims and the ones you're a Builder (or more) in (" + human(g.left) + " of flight left)."));
+			return 0;
+		}
+		g.on = !g.on;
+		if (g.on) {
+			allow(p);
+			source.sendSuccess(() -> Component.literal("Flight on: " + human(g.left) + " left. Double-tap jump to take off; leaving the claim switches it off.")
+					.withStyle(ChatFormatting.AQUA), false);
+		} else {
+			land(p, null);
+			source.sendSuccess(() -> Component.literal("Flight off. " + human(g.left) + " saved for later.").withStyle(ChatFormatting.YELLOW), false);
+		}
+		save();
+		return 1;
+	}
+
+	// ---------------------------------------------------------------- the clock
+
 	private static void tick(MinecraftServer server, boolean second) {
 		long now = System.currentTimeMillis();
-		boolean changed = false;
+		long elapsed = lastTick == 0 ? 0 : Math.min(5_000, now - lastTick);
+		lastTick = now;
+		if (grants.isEmpty()) return;
+		boolean ended = false;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			Grant g = until.get(p.getUUID());
-			if (g == null) continue;
-			long left = g.until - now;
-			if (left <= 0) {
-				until.remove(p.getUUID());
-				if (!g.paused) land(p, "Your flight has ended.");
-				else p.sendSystemMessage(Component.literal("Your flight has ended.").withStyle(ChatFormatting.YELLOW));
-				changed = true;
+			Grant g = grants.get(p.getUUID());
+			if (g == null || !g.on) continue;
+			if (p.isCreative() || p.isSpectator()) continue;
+			if (!inOwnClaim(p)) {
+				// Out of their claims: flight goes off (and the time stops) until they switch it on again inside one.
+				g.on = false;
+				land(p, "You left the claim, so your flight is off (" + human(g.left) + " left). /fly switches it on again inside your claims.");
+				ended = true;
 				continue;
-			}
-			if (g.claims) {
-				boolean inside = inOwnClaim(p);
-				if (!inside && !g.paused) {
-					g.paused = true;
-					land(p, "You left your claims: no flying here. It comes back inside them.");
-					continue;
-				}
-				if (inside && g.paused) {
-					g.paused = false;
-					allow(p);
-					p.sendOverlayMessage(Component.literal("You can fly here").withStyle(ChatFormatting.AQUA));
-				}
-				if (g.paused) continue;
 			}
 			// Game mode changes and respawns reset the abilities: give flight back.
 			if (!p.getAbilities().mayfly) allow(p);
+			// AFK players keep their time.
+			if (PlayerActivity.isAfk(p)) continue;
+			g.left -= elapsed;
+			if (g.left <= 0) {
+				grants.remove(p.getUUID());
+				land(p, "Your flight time is used up.");
+				ended = true;
+				continue;
+			}
 			if (!second) continue;
-			long s = left / 1000;
-			if (s == 60 || s == 10 || (s <= 5 && s > 0)) p.sendOverlayMessage(Component.literal("Flight ends in " + s + " s").withStyle(ChatFormatting.YELLOW));
+			long s = g.left / 1000;
+			if (s == 60 || s == 10 || (s <= 5 && s > 0)) p.sendOverlayMessage(Component.literal("Flight time left: " + s + " s").withStyle(ChatFormatting.YELLOW));
 		}
-		if (changed) save();
+		// The time left is saved now and then (and on stop), not every quarter second.
+		if (ended || now - lastSave > 60_000) save();
+	}
+
+	/** Inside a claim (or subclaim) the player owns or is at least a Builder in. */
+	private static boolean inOwnClaim(ServerPlayer p) {
+		var claim = eu.explorerseden.nicecontrolcenter.claims.ClaimStore.claimAt(p.level(), p.blockPosition());
+		if (claim == null) return false;
+		var role = eu.explorerseden.nicecontrolcenter.claims.ClaimStore.data().roleOf(claim, p.getUUID().toString());
+		return role != null && role.includes(eu.explorerseden.nicecontrolcenter.Claims.Role.BUILD);
 	}
 
 	private static void allow(ServerPlayer p) {
@@ -166,11 +223,11 @@ public final class TempFly {
 		p.getAbilities().flying = false;
 		p.onUpdateAbilities();
 		if (wasFlying || !p.onGround()) p.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0, false, false, true));
-		p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.YELLOW));
+		if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.YELLOW));
 	}
 
 	private static String human(long ms) {
-		long s = ms / 1000;
+		long s = Math.max(0, ms) / 1000;
 		if (s < 120) return s + " seconds";
 		long m = s / 60;
 		if (m < 120) return m + " minutes";
@@ -178,35 +235,45 @@ public final class TempFly {
 		return h < 48 ? h + " hours" + (m % 60 > 0 ? " " + m % 60 + " min" : "") : h / 24 + " days";
 	}
 
+	// ---------------------------------------------------------------- storage
+
 	private static void load(MinecraftServer server) {
 		file = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-fly.json");
-		until.clear();
+		grants.clear();
+		lastTick = 0;
 		try {
-			if (Files.exists(file)) {
-				// {uuid: {until, claims}}; files from 1.39.0 hold just the end time.
-				var saved = com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-				for (var e : saved.entrySet()) {
-					var v = e.getValue();
-					Grant g = v.isJsonObject() ? new Grant(v.getAsJsonObject().get("until").getAsLong(), v.getAsJsonObject().has("claims") && v.getAsJsonObject().get("claims").getAsBoolean())
-							: new Grant(v.getAsLong(), false);
-					until.put(UUID.fromString(e.getKey()), g);
+			if (!Files.exists(file)) return;
+			long now = System.currentTimeMillis();
+			var saved = com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+			for (var e : saved.entrySet()) {
+				var v = e.getValue();
+				Grant g;
+				if (v.isJsonObject() && v.getAsJsonObject().has("left")) {
+					var o = v.getAsJsonObject();
+					g = new Grant(o.get("left").getAsLong(), o.has("on") && o.get("on").getAsBoolean());
+				} else {
+					// 1.39/1.40 kept the end time: what's left of it becomes the credit.
+					long until = v.isJsonObject() ? v.getAsJsonObject().get("until").getAsLong() : v.getAsLong();
+					g = new Grant(until - now, false);
 				}
+				if (g.left > 0) grants.put(UUID.fromString(e.getKey()), g);
 			}
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not read timed flights: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Could not read flight times: {}", e.getMessage());
 		}
 	}
 
 	private static void save() {
+		lastSave = System.currentTimeMillis();
 		if (file == null) return;
 		Map<String, Map<String, Object>> out = new HashMap<>();
-		until.forEach((k, v) -> out.put(k.toString(), Map.of("until", v.until, "claims", v.claims)));
+		grants.forEach((k, v) -> out.put(k.toString(), Map.of("left", v.left, "on", v.on)));
 		try {
 			Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 			Files.writeString(tmp, Json.GSON.toJson(out), StandardCharsets.UTF_8);
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save timed flights: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Could not save flight times: {}", e.getMessage());
 		}
 	}
 }

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.41.0
+- Flight is now a time credit for claims only: /ncc fly <players> <time> adds time (it adds up), /ncc fly <players> off takes it
+- Players switch it with /fly inside a claim they own or are at least a Builder in; leaving the claim switches it off. The time only runs while it's on and they're not AFK; without time, /fly says so
+- Flights from 1.39/1.40 carry over as credit
+
 ## 1.40.0
 - /ncc fly <players> <time> [everywhere|claims]: "claims" lets them fly only inside claims they own or are a member of; outside, flight pauses (they float down with Slow Falling) and comes back when they return. Everywhere stays the default
 

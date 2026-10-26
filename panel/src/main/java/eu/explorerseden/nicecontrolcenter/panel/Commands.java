@@ -127,6 +127,7 @@ final class Commands {
 			Map.entry("ncc", "Nice Control Center: server status, what costs the most, the dashboard link, the lag monitor, recordings and mod updates."),
 			Map.entry("nccreply", "Answer a private message the admins sent you from the panel."),
 			Map.entry("claim", "Land claims: opens the claim menu (members, what everyone else may do, name and colour, your claim blocks)."),
+			Map.entry("fly", "Switch your flight time on or off (given as a reward or by an admin): only inside your claims and ones you're a Builder in; the time only runs while it's on and you're not AFK."),
 			Map.entry("merl", "Ask Merl anything about the server or vanilla Minecraft: she finds the right wiki page, guides you to places, quizzes you and chats."),
 			Map.entry("nicemerl", "Merl's settings for yourself (her comments and celebrations on or off), guide trails and quiz answers; admins also rebuild her wiki index and place her mannequin."),
 			Map.entry("discord", "Discord JustSync: see which Discord account you're linked to or unlink it; admins look up other players, send a message to Discord and reload the bridge."),
