@@ -67,6 +67,7 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.core.PlayerActivity.register();
 		eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl.register();
 		eu.explorerseden.nicecontrolcenter.rewards.RewardsControl.register();
+		eu.explorerseden.nicecontrolcenter.players.TempFly.register();
 		eu.explorerseden.nicecontrolcenter.market.MarketStore.register();
 		eu.explorerseden.nicecontrolcenter.pets.PetStore.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.

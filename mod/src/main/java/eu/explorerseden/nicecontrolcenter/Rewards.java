@@ -29,14 +29,28 @@ public final class Rewards {
 			new Trigger("firstJoin", "First join", "", "", false),
 			new Trigger("join", "Joins", "", "", false),
 			new Trigger("leave", "Leaves", "", "", false),
-			new Trigger("dimension", "Enters a dimension", "Dimension (empty = any)", "", false),
-			new Trigger("advancement", "Earns an advancement", "Advancement id (empty = any)", "", false),
+			new Trigger("dimension", "Enters a dimension", "Dimension (empty: any)", "", false),
+			new Trigger("advancement", "Earns an advancement", "Advancement (empty: any)", "", false),
 			new Trigger("death", "Dies", "", "", false),
-			new Trigger("kill", "Kills a mob or player", "Entity id (empty = any mob)", "", false),
+			new Trigger("kill", "Kills a mob or player", "Mob (empty: any)", "", false),
 			new Trigger("level", "Reaches an XP level", "", "Level", false),
 			new Trigger("playtime", "Has played for a while", "", "Hours played", false),
-			new Trigger("dayTime", "In-game time of day", "", "Time (0 = 6:00, 6000 = noon, 13000 = night, 18000 = midnight)", true),
-			new Trigger("gameDay", "In-game day reached", "", "Day", true));
+			new Trigger("dayTime", "In-game time of day", "Time of day (HH:MM)", "", true),
+			new Trigger("date", "In-game date or weekday", "Date or weekday", "", true),
+			new Trigger("gameDay", "In-game day number reached", "", "Day", true),
+			new Trigger("interval", "Every few minutes", "", "Every … minutes", true));
+
+	/** dayTime: the minute of the day (0-1439) from "HH:MM", or from the old tick number; -1 when unreadable. */
+	public static double minuteOf(Rule r) {
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\s*(\\d{1,2}):(\\d{2})\\s*").matcher(r.value == null ? "" : r.value);
+		if (m.matches()) {
+			int h = Integer.parseInt(m.group(1));
+			int min = Integer.parseInt(m.group(2));
+			return h < 24 && min < 60 ? h * 60 + min : -1;
+		}
+		// Rules from before HH:MM: ticks, 0 = 06:00.
+		return r.value == null || r.value.isBlank() ? ((r.number % 24_000) * 1440.0 / 24_000 + 360) % 1440 : -1;
+	}
 
 	public static Trigger trigger(String id) {
 		for (Trigger t : TRIGGERS) if (t.id().equals(id)) return t;
@@ -119,7 +133,9 @@ public final class Rewards {
 			for (String c : r.commands) if (c.length() > 1000) return n + ": a command is longer than 1000 characters.";
 			if (r.message.length() > 1000) return n + ": the message is longer than 1000 characters.";
 			if (r.cooldownMinutes < 0 || r.cooldownMinutes > 525_600) return n + ": the cooldown is 0 to 525,600 minutes.";
-			if (r.trigger.equals("dayTime") && (r.number < 0 || r.number > 23_999)) return n + ": the time of day is 0 to 23999.";
+			if (r.trigger.equals("dayTime") && minuteOf(r) < 0) return n + ": write the time of day like 18:30.";
+			if (r.trigger.equals("date") && r.value.isBlank()) return n + ": write a date like December 24, or a weekday.";
+			if (r.trigger.equals("interval") && (r.number < 1 || r.number > 10_080)) return n + ": every 1 to 10080 minutes.";
 			if ((r.trigger.equals("level") || r.trigger.equals("playtime") || r.trigger.equals("gameDay")) && (r.number < 1 || r.number > 1_000_000)) return n + " needs a number of at least 1.";
 		}
 		return null;

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.39.0
+- /ncc fly <players> <time>: flight in survival for a while (time like /tick: 100t, 30s, 1d), /ncc fly <players> off; kept over logouts and restarts, warns before it ends and lets the player float down
+- Rewards: the time of day as HH:MM and a new in-game date or weekday trigger, both on the Nice Actions clock and calendar when the pack is installed; a trigger that simply repeats every few minutes; {date} variable
+- Firework rockets and stars keep their flight duration and explosions for the website market (also listings already up)
+
 ## 1.38.0
 - Event rewards: commands and a message when a player joins (first time or every time), leaves, enters a dimension, earns an advancement, dies, kills a mob, reaches an XP level or a playtime, or at an in-game time or day; for everyone or one player, every time, once per player or once at all, with a cooldown and variables
 - Own commands: besides links, texts (/rules) and aliases (/spawn, with {player} and {args}, optionally with the server's rights), each with an operator level or a permission node

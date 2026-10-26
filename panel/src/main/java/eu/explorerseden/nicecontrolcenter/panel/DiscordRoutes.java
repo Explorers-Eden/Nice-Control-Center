@@ -96,6 +96,23 @@ final class DiscordRoutes {
 			json(ctx, Map.of("ok", true));
 		}));
 
+		routes.post("/api/discord/testdm", guard(Permissions.DISCORD_MANAGE, (ctx, me) -> {
+			String name = str(body(ctx), "player").strip();
+			Discord.Link link = discord.links().stream().filter(l -> l.name().equalsIgnoreCase(name)).findFirst().orElse(null);
+			if (link == null) {
+				error(ctx, io.javalin.http.HttpStatus.BAD_REQUEST, name.isEmpty() ? "Type the name of a linked player." : name + " hasn't linked a Discord account.");
+				return;
+			}
+			String problem = discord.dmNow(link.discordId(), "👋 This is a test message from the server panel (sent by " + me.name()
+					+ "). Messages like this tell you about your market sales, mailbox, expiring claims and admin messages; switch them on My SMP Profile.");
+			if (problem != null) {
+				error(ctx, io.javalin.http.HttpStatus.BAD_GATEWAY, problem);
+				return;
+			}
+			audit.log(me.name(), "discord.testdm", link.name(), clientIp(ctx));
+			json(ctx, java.util.Map.of("ok", true, "to", link.discordName() == null ? link.name() : link.discordName()));
+		}));
+
 		routes.post("/api/discord/links/{uuid}/delete", guard(Permissions.DISCORD_MANAGE, (ctx, me) -> {
 			String uuid = ctx.pathParam("uuid");
 			String name = discord.links().stream().filter(l -> l.uuid().equals(uuid)).map(Discord.Link::name).findFirst().orElse(uuid);

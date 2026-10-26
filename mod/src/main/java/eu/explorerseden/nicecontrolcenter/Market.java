@@ -339,7 +339,7 @@ public final class Market {
 			return this;
 		}
 
-		long bump() {
+		public long bump() {
 			return ++rev;
 		}
 

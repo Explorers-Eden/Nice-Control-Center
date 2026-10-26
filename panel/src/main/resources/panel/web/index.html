@@ -28,7 +28,7 @@
 		<div class="navbar-inner">
 			<button type="button" class="np-btn pn-menu-btn" id="pn-menu-btn" aria-label="Menu" hidden><i class="bi bi-list"></i></button>
 			<h1 class="np-brand">
-				<span class="np-brand-mark" aria-hidden="true"><svg class="np-brand-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 27 10v12L16 28 5 22V10z" fill="rgba(255,255,255,.16)"/><path d="M16 4 27 10 16 16 5 10z" fill="#fff"/><path d="M5 10l11 6v12L5 22z" fill="rgba(255,255,255,.55)"/><path d="M27 10 16 16v12l11-6z" fill="rgba(255,255,255,.32)"/><path d="M8.5 19.2l2.3 1.3 1.6-3.4 2 5.2 1.4-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+				<span class="np-brand-mark pn-brand-gif" aria-hidden="true"><img src="brand.gif" alt="" width="48" height="48" decoding="async"></span>
 				<span class="np-brand-text" id="pn-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
 				<img class="pn-brand-logo" id="pn-brand-logo" alt="" src="branding/panel" hidden>
 			</h1>
@@ -96,21 +96,26 @@
 
 			<section class="pn-home" id="pn-home" hidden>
 				<div class="pn-hero" id="pn-hero">
-					<div class="pn-hero-text">
-						<div class="pn-hero-hello">
-							<span class="pn-avatar pn-hero-avatar" id="pn-hero-avatar"></span>
-							<div><p class="pn-hero-greet" id="pn-hero-greet">Welcome back</p><p class="pn-hero-date" id="pn-hero-date"></p></div>
-						</div>
+					<div class="pn-hero-main">
+						<p class="pn-hero-date" id="pn-hero-date"></p>
+						<p class="pn-hero-greet" id="pn-hero-greet">Welcome back</p>
 						<div class="pn-hero-health" id="pn-hero-health" hidden>
 							<p class="pn-hero-status"><span class="np-status-dot info" id="pn-hero-dot"></span><span id="pn-hero-title"></span></p>
 							<p class="pn-hero-headline" id="pn-hero-headline"></p>
 							<p class="pn-hero-summary" id="pn-hero-summary"></p>
 						</div>
-						<div class="pn-hero-motd" id="pn-hero-motd"></div>
+						<div class="pn-hero-facts" id="pn-hero-facts"></div>
 					</div>
 					<div class="pn-hero-side">
 						<div class="np-window" id="pn-hero-window" role="tablist" aria-label="Time window" hidden></div>
-						<div class="pn-hero-facts" id="pn-hero-facts"></div>
+						<div class="pn-hero-server" title="How the server looks in the multiplayer list">
+							<img class="pn-hero-server-icon" id="pn-hero-icon" src="api/serverlist/icon/normal" alt="" width="64" height="64" onerror="this.onerror=null;this.src='brand.gif'">
+							<div class="pn-hero-server-text">
+								<div class="pn-hero-server-top"><b id="pn-hero-name">Minecraft Server</b><span id="pn-hero-count"></span></div>
+								<div class="pn-hero-motd" id="pn-hero-motd"></div>
+							</div>
+						</div>
+						<small class="pn-hero-server-note">in the multiplayer list</small>
 					</div>
 				</div>
 				<div class="np-card pn-attention" id="pn-attention" hidden>
@@ -996,7 +1001,7 @@
 						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
 						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
 						<label class="np-form-row"><span>AFK players don't count for sleeping<span class="pn-comment">Skipping the night only needs the share of players who aren't AFK (after the minutes above; also when the tag is off).</span></span><span class="np-switch"><input type="checkbox" name="sleep.ignoreAfk"><span></span></span></label>
-						<label class="np-form-row"><span>One night across worlds<span class="pn-comment">Players in the worlds below count together for the sleeping percentage, and a bed in any of them helps skip the night. Vanilla counts each world on its own.</span></span><span class="np-switch"><input type="checkbox" name="sleep.shared"><span></span></span></label>
+						<label class="np-form-row"><span>One night across worlds<span class="pn-comment">Players in the worlds below count together for the sleeping percentage, and a bed in any of them helps skip the night. Without it, the game only counts the players in the world where someone sleeps: players in the Nether, the End or another world are ignored, and nobody there can help skip it.</span></span><span class="np-switch"><input type="checkbox" name="sleep.shared"><span></span></span></label>
 						<label class="np-form-row"><span>Worlds that share the night<span class="pn-comment">Dimension ids, separated by commas (worlds with their own day and night).</span></span><input type="text" name="sleep.worlds"></label>
 						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
 						<label class="np-form-row"><span>Empty line around the player list<span class="pn-comment">Between the header, the players and the footer.</span></span><span class="np-switch"><input type="checkbox" name="tabList.gap"><span></span></span></label>
@@ -1168,9 +1173,9 @@
 
 			<div class="np-tab-panel" data-tab="rewards" hidden>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-gift"></i> Event rewards</h3>
-					<p class="np-card-intro">Run commands and send a message when something happens: a player's first join, every login, a first trip to the Nether, an advancement, a level, or an in-game time. Each rule can be for everyone or for one player, and run every time, once per player or once at all.</p>
-					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{online}</code>. Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
+					<h3 class="np-card-title"><i class="bi bi-gift"></i> Rewards</h3>
+					<p class="np-card-intro">Run commands and send a message when something happens: a player's first join, every login, a first trip to the Nether, an advancement, a level, an in-game time or date (the Nice Actions clock and calendar when the pack is installed), or simply every few minutes. Each rule can be for everyone or for one player, and run every time, once per player or once at all.</p>
+					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{date}</code> <code>{online}</code>. Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
 					<div class="np-filters pn-rw-top">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-rw-enabled"><span></span></span> Rewards on</label>
 						<select id="pn-rw-add" aria-label="Add a rule">
@@ -1183,6 +1188,8 @@
 								<option value="level30">Announce level 30</option>
 								<option value="night">Nightfall warning</option>
 								<option value="day100">Day 100 celebration</option>
+								<option value="tip">Hourly tip</option>
+								<option value="holiday">Gift on December 24</option>
 							</optgroup>
 						</select>
 						<button type="button" class="np-btn primary" id="pn-rw-save" disabled><i class="bi bi-check2"></i> Save</button>
@@ -1567,6 +1574,7 @@
 						<label class="np-form-row">Discord → game chat<span class="np-switch"><input type="checkbox" name="chatToGame"><span></span></span></label>
 						<label class="np-form-row">Bot status shows the server<span class="np-switch"><input type="checkbox" name="presence"><span></span></span></label>
 							<label class="np-form-row"><span>DMs to players<span class="pn-comment">Linked players get a Discord message when they sold something, when items wait in their market mailbox, a week before a claim expires, and when an admin writes to them. Each player switches the kinds on My SMP Profile.</span></span><span class="np-switch"><input type="checkbox" name="playerDms"><span></span></span></label>
+							<div class="np-form-row pn-dm-test"><span>Test a DM<span class="pn-comment">Sends a test message to a linked player and shows Discord's answer, e.g. when they block DMs from server members.</span></span><span class="pn-dm-test-row"><input type="text" id="pn-dm-test-name" placeholder="Player name" maxlength="16"><button type="button" class="np-btn small" id="pn-dm-test">Send</button></span></div>
 					</div>
 					<label class="pn-field"><span>How Discord messages look in game <small class="pn-hint">tags like <code>&lt;aqua&gt;…&lt;/aqua&gt;</code>, <code>&lt;#ff8800&gt;</code>, <code>&lt;bold&gt;</code>; <code>%user%</code> and <code>%msg%</code></small></span>
 						<input type="text" name="gameFormat" maxlength="300" spellcheck="false"></label>

@@ -101,6 +101,7 @@ public final class MarketStore {
 		settingsModified = -1;
 		reloadSettings();
 		dirty = false;
+		if (backfillDetails(s)) saveNow();
 	}
 
 	private static void tick(MinecraftServer s) {
@@ -170,7 +171,41 @@ public final class MarketStore {
 			ItemEnchantments e = one.get(type);
 			if (e != null) for (var entry : e.entrySet()) item.enchantments.add(Enchantment.getFullname(entry.getKey(), entry.getIntValue()).getString());
 		}
+		details(one, item, player.registryAccess());
 		return item;
+	}
+
+	/** Lines the game shows for fireworks ("Flight Duration: 2", the stars' shapes and colours), kept with the enchantments for the web. */
+	private static boolean details(ItemStack one, Market.Item item, net.minecraft.core.HolderLookup.Provider registries) {
+		java.util.List<String> lines = new java.util.ArrayList<>();
+		var ctx = net.minecraft.world.item.Item.TooltipContext.of(registries);
+		var fireworks = one.get(DataComponents.FIREWORKS);
+		if (fireworks != null) fireworks.addToTooltip(ctx, c -> lines.add(c.getString()), net.minecraft.world.item.TooltipFlag.NORMAL, one);
+		var star = one.get(DataComponents.FIREWORK_EXPLOSION);
+		if (star != null) star.addToTooltip(ctx, c -> lines.add(c.getString()), net.minecraft.world.item.TooltipFlag.NORMAL, one);
+		boolean added = false;
+		for (String l : lines) {
+			String t = l.strip();
+			if (!t.isEmpty() && !item.enchantments.contains(t)) {
+				item.enchantments.add(t);
+				added = true;
+			}
+		}
+		return added;
+	}
+
+	/** Listings from before the firework lines: filled in once when the market loads. */
+	private static boolean backfillDetails(MinecraftServer s) {
+		boolean changed = false;
+		for (Market.Listing l : data.listings.values()) {
+			if (l.item == null || l.item.id == null || !l.item.id.contains("firework")) continue;
+			ItemStack one = stack(s, l.item, 1);
+			if (!one.isEmpty() && details(one, l.item, s.registryAccess())) {
+				l.rev = data.bump();
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	/** A stored item back as a stack of count (EMPTY when it can't be read any more, e.g. its mod is gone). */

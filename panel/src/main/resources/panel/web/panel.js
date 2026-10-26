@@ -137,8 +137,8 @@
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
-      { id: 'rewards', hue: '#7ee0a1', label: 'Event rewards', icon: 'bi-gift', subs: [
-        { tab: 'rewards', label: 'Event rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
+      { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
+        { tab: 'rewards', label: 'Rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
@@ -322,8 +322,7 @@
     /* The player list runs as long as the open card (at least 640px) and scrolls inside. */
     body.embedded .np-inspector { align-items: stretch !important; }
     /* Console, chat and the player list grow with the browser window (the panel passes its height in as --pn-vh). */
-    body.embedded .np-inspector-list { height: auto !important; min-height: max(480px, calc(var(--pn-vh, 900px) - 330px)); contain: size; position: static !important; }
-    body.embedded .np-console-log { height: max(320px, calc(var(--pn-vh, 900px) - 340px)) !important; }
+    body.embedded .np-inspector-list { height: auto !important; contain: size; position: static !important; }
     /* Kick and ban live on Players → Whitelist & bans. */
     body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }
     /* On Home the health banner is part of the panel's greeting card; on pages without a time window it's left out. */
@@ -350,9 +349,10 @@
             const h = Math.max(160, Math.ceil(doc.body.scrollHeight));
             if (Math.abs(h - frame.offsetHeight) > 2) frame.style.height = h + 'px';
           };
-          const vh = () => doc.documentElement.style.setProperty('--pn-vh', window.innerHeight + 'px');
+          const vh = () => { doc.documentElement.style.setProperty('--pn-vh', window.innerHeight + 'px'); fitHeights(); };
           vh();
           window.addEventListener('resize', vh);
+          frame.contentWindow.addEventListener('hashchange', () => setTimeout(fitHeights, 50));
           frameResize = new ResizeObserver(fit);
           frameResize.observe(doc.body);
           fit();
@@ -369,6 +369,58 @@
       frame.src = 'dashboard/#' + page;
     }
   }
+
+  /**
+   * Console, chat, log files and the player list fill the window down to its bottom edge: each box gets the
+   * room from where it starts (on the page, or inside the frame) to the bottom, minus what sits below it.
+   */
+  function fitHeights() {
+    const pageTop = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const set = (el, top, below, min) => {
+      if (!el || !el.offsetParent) return;
+      el.style.setProperty('height', Math.max(min, Math.floor(window.innerHeight - top - below)) + 'px', 'important');
+    };
+    set($('pn-log'), pageTop($('pn-log')), 92, 260);
+    const logf = document.querySelector('.pn-logf-lines');
+    if (logf) set(logf, pageTop(logf), 40, 260);
+    const frame = $('pn-dashboard-frame');
+    try {
+      if (!frame.offsetParent) return;
+      const doc = frame.contentDocument;
+      const top = pageTop(frame);
+      const inner = (el) => el.getBoundingClientRect().top + doc.defaultView.scrollY;
+      doc.querySelectorAll('.np-console-log').forEach((el) => set(el, top + inner(el), el.id === 'np-chat-log' ? 96 : 92, 260));
+      doc.querySelectorAll('.np-inspector-list').forEach((el) => set(el, top + inner(el), 36, 360));
+    } catch (e) { /* frame not ready */ }
+  }
+  window.addEventListener('resize', fitHeights);
+
+  // ── Descriptions as "?" tooltips ──
+  // A setting's explanation (.pn-comment) turns into a small "?" that shows it on hover, focus or tap. Ones the
+  // code fills in (with an id) stay as text, since they change.
+  function helpify(root) {
+    root.querySelectorAll('.pn-comment:not([id]):not(.pn-help)').forEach((c) => {
+      const text = c.textContent.replace(/\s+/g, ' ').trim();
+      if (!text) return;
+      c.dataset.tip = text;
+      c.setAttribute('tabindex', '0');
+      c.setAttribute('aria-label', text);
+      c.textContent = '?';
+      c.classList.add('pn-help');
+    });
+  }
+  helpify(document.body);
+  new MutationObserver((list) => {
+    for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1) helpify(n.matches && n.matches('.pn-comment') ? n.parentElement || n : n);
+  }).observe(document.body, { childList: true, subtree: true });
+  // A "?" inside a label mustn't flip the switch next to it; a tap opens it on touch screens.
+  document.addEventListener('click', (e) => {
+    const h = e.target.closest('.pn-help');
+    document.querySelectorAll('.pn-help.open').forEach((x) => { if (x !== h) x.classList.remove('open'); });
+    if (!h) return;
+    e.preventDefault();
+    h.classList.toggle('open');
+  });
 
   // The mod pages' Save/Cancel bar: the panel's own bar under the frame does what the hidden one inside would.
   let frameSaveWatch = null;
@@ -525,6 +577,9 @@
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
     if (tab === 'logfiles') loadLogFiles();
+    // Boxes that fill the window are measured once the page shows (and again when the frame has drawn).
+    setTimeout(fitHeights, 80);
+    setTimeout(fitHeights, 700);
     if (tab === 'account') { renderAccount(); renderThemes(); }
     if (tab === 'appearance') loadLogos();
     if (tab === 'server') { const log = $('pn-log'); log.scrollTop = log.scrollHeight; }
@@ -1648,6 +1703,16 @@
   });
   $('pn-audit-more').addEventListener('click', () => loadAudit(false));
 
+  $('pn-dm-test').addEventListener('click', async () => {
+    const player = $('pn-dm-test-name').value.trim();
+    try {
+      const r = await api('api/discord/testdm', { player });
+      formMsg('pn-discord-msg', `Test DM sent to ${r.to}.`, true);
+    } catch (err) {
+      formMsg('pn-discord-msg', err.message, false);
+    }
+  });
+
   // ── Code of conduct ────────────────────────────────────────────────────
 
   const conduct = { texts: {}, lang: 'en_us' };
@@ -1713,7 +1778,9 @@
     daily: { name: 'Daily login reward', trigger: 'join', repeat: 'always', cooldownMinutes: 1200, commands: ['give {player} minecraft:emerald 1'], message: '§6Thanks for coming back! Here is your daily emerald.' },
     nether: { name: 'First trip to the Nether', trigger: 'dimension', value: 'minecraft:the_nether', repeat: 'oncePerPlayer', commands: ['effect give {player} minecraft:fire_resistance 120'], message: '§c{player} entered the Nether for the first time!', messageEveryone: true },
     level30: { name: 'Level 30', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§b{player} reached level 30!', messageEveryone: true },
-    night: { name: 'Nightfall warning', trigger: 'dayTime', number: 12500, repeat: 'always', commands: [], message: '§7The sun is setting. Mobs come out soon.', messageEveryone: true },
+    night: { name: 'Nightfall warning', trigger: 'dayTime', value: '18:30', repeat: 'always', commands: [], message: '§7The sun is setting. Mobs come out soon.', messageEveryone: true },
+    tip: { name: 'Hourly tip', trigger: 'interval', number: 60, repeat: 'always', commands: [], message: '§bTip: type /market to buy and sell with other players.', messageEveryone: true },
+    holiday: { name: 'Winter holiday', trigger: 'date', value: 'December 24', repeat: 'always', commands: ['give {player} minecraft:cake'], message: '§cHappy holidays, {player}!' },
     day100: { name: 'Day 100', trigger: 'gameDay', number: 100, repeat: 'once', commands: ['title @a title {"text":"Day 100!","color":"gold"}'], message: '' },
   };
 
@@ -1750,16 +1817,16 @@
           </span>
         </div>
         <div class="pn-rw-grid">
-          <label class="pn-field"><span>When a player…</span><select data-k="trigger">${opts}</select></label>
-          ${t.value ? `<label class="pn-field"><span>${esc(t.value)}</span><input type="text" data-k="value" value="${esc(r.value)}" placeholder="${r.trigger === 'dimension' ? 'minecraft:the_nether' : r.trigger === 'kill' ? 'minecraft:ender_dragon' : 'minecraft:story/mine_diamond'}"></label>` : ''}
+          <label class="pn-field"><span>When…</span><select data-k="trigger">${opts}</select></label>
+          ${t.value ? `<label class="pn-field"><span>${esc(t.value)}</span><input type="text" data-k="value" value="${esc(r.value)}" placeholder="${{ dimension: 'minecraft:the_nether', kill: 'minecraft:ender_dragon', dayTime: '18:30', date: 'December 24' }[r.trigger] || 'minecraft:story/mine_diamond'}"></label>` : ''}
           ${t.number ? `<label class="pn-field"><span>${esc(t.number)}</span><input type="number" data-k="number" value="${r.number}" min="0"></label>` : ''}
           <label class="pn-field"><span>For</span><select data-k="who"><option value="everyone">everyone</option><option value="player" ${r.who === 'player' ? 'selected' : ''}>one player</option></select></label>
           ${r.who === 'player' ? `<label class="pn-field"><span>Player</span><input type="text" data-k="player" value="${esc(r.player)}" maxlength="16" placeholder="Name"></label>` : ''}
           <label class="pn-field"><span>How often</span><select data-k="repeat">
             <option value="always">every time</option><option value="oncePerPlayer" ${r.repeat === 'oncePerPlayer' ? 'selected' : ''}>once per player</option><option value="once" ${r.repeat === 'once' ? 'selected' : ''}>once for the whole server</option></select></label>
-          <label class="pn-field"><span>Wait between (minutes, per player)</span><input type="number" data-k="cooldownMinutes" value="${r.cooldownMinutes}" min="0"></label>
+          <label class="pn-field" title="Minutes before it can run again for the same player; 0 = no wait"><span>Cooldown (minutes)</span><input type="number" data-k="cooldownMinutes" value="${r.cooldownMinutes}" min="0"></label>
         </div>
-        ${t.world ? '<p class="pn-hint">Runs once on its own; commands with {player} (and a message to the player) run for everyone online.</p>' : ''}
+        ${t.world ? `<p class="pn-hint">${{ dayTime: 'The Nice Actions clock when the pack is installed, else the Minecraft day. ', date: 'Like "December 24" or "Sunday", on the Nice Actions calendar. ', interval: 'Real minutes, counted from when the server starts. ' }[r.trigger] || ''}Runs once on its own; commands with {player} (and a message to the player) run for everyone online.</p>` : ''}
         <label class="pn-field"><span>Commands (one per line, without /; run as the server at the player)</span><textarea data-k="commands" rows="${Math.max(2, r.commands.length + 1)}" spellcheck="false" placeholder="give {player} minecraft:diamond 1">${esc(r.commands.join('\n'))}</textarea></label>
         <div class="pn-rw-msgrow">
           <label class="pn-field"><span>Message (optional; § colour codes)</span><input type="text" data-k="message" value="${esc(r.message)}" maxlength="1000" placeholder="§aWell done, {player}!"></label>
@@ -1874,6 +1941,7 @@
       $('pn-logf-body').innerHTML = `<div class="np-console-log pn-log pn-logf-lines">${d.entries.map((e) => `<div class="${cls(e.level)}">[${esc(e.time)}] [${esc(e.thread)}/${esc(e.level)}]: ${esc(e.message)}${e.more.length ? `<details><summary>${e.more.length} more line${e.more.length === 1 ? '' : 's'}</summary>${e.more.map((m) => esc(m)).join('\n')}</details>` : ''}</div>`).join('')
         || '<div class="np-empty">Nothing matches.</div>'}</div>`;
       const box = $('pn-logf-body').querySelector('.pn-logf-lines');
+      fitHeights();
       box.scrollTop = box.scrollHeight;
     } catch (err) {
       $('pn-logf-body').innerHTML = `<p class="np-empty">${esc(err.message)}</p>`;
@@ -3937,17 +4005,13 @@
     $('pn-hero-greet').textContent = `${part}, ${me ? me.user : ''}`;
     const icon = h < 5 || h >= 21 ? 'bi-moon-stars' : h < 8 ? 'bi-sunrise' : h < 18 ? 'bi-sun' : 'bi-sunset';
     $('pn-hero-date').innerHTML = `<i class="bi ${icon}"></i> ${esc(new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }))}`;
-    const av = $('pn-hero-avatar');
-    if (me && av.dataset.avatar !== me.user) {
-      av.dataset.avatar = me.user;
-      av.textContent = me.user.slice(0, 1).toUpperCase();
-      loadAvatars(av.parentElement);
-    }
     setHtml($('pn-hero-motd'), motdHtml(d.motd));
+    $('pn-hero-count').textContent = d.players != null ? `${d.players}/${d.maxPlayers}` : `–/${d.maxPlayers}`;
     // Server state and the game clock are always in the navbar, so they aren't repeated here.
+    const tile = (icon, label, value) => `<span class="pn-hero-fact"><i class="bi ${icon}"></i><span><small>${label}</small><b>${value}</b></span></span>`;
     heroFacts = [];
-    if (d.players != null) heroFacts.push(`<span class="pn-hero-fact"><i class="bi bi-people-fill"></i>${d.players} / ${esc(d.maxPlayers)} playing</span>`);
-    if (d.uptime7d != null) heroFacts.push(`<span class="pn-hero-fact"><i class="bi bi-activity"></i>${d.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })}% up this week</span>`);
+    if (d.players != null) heroFacts.push(tile('bi-people-fill', 'Playing', `${d.players} <em>/ ${esc(d.maxPlayers)}</em>`));
+    if (d.uptime7d != null) heroFacts.push(tile('bi-activity', 'Up this week', `${d.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`));
     syncHeroHealth();
   }
   let heroFacts = [];
@@ -3980,11 +4044,16 @@
       // Version, mods and a running lag report from the banner's chips (the server name is the message above).
       doc.querySelectorAll('#np-meta .np-tag').forEach((t) => {
         if (t.querySelector('.bi-hdd-network, .bi-clock-history')) return;
-        extra.push(`<span class="pn-hero-fact${t.classList.contains('np-tag--lag') ? ' warn' : ''}">${t.innerHTML}</span>`);
+        const i = t.querySelector('.bi');
+        const text = t.textContent.trim();
+        const lag = t.classList.contains('np-tag--lag');
+        const m = text.match(/^(\d+)\s+mods?$/i);
+        const [label, value] = lag ? ['Recording', text] : m ? ['Mods', m[1]] : /^\d/.test(text) ? ['Minecraft', text] : ['', text];
+        extra.push(`<span class="pn-hero-fact${lag ? ' warn' : ''}">${i ? i.outerHTML : ''}<span>${label ? `<small>${esc(label)}</small>` : ''}<b>${esc(value)}</b></span></span>`);
       });
     }
     const facts = heroFacts.concat(extra).join('');
-    if ($('pn-hero-facts').innerHTML !== facts) $('pn-hero-facts').innerHTML = facts;
+    setHtml($('pn-hero-facts'), facts);
   }
   $('pn-hero-window').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-window]');

@@ -1,3 +1,11 @@
+## 1.32.0
+- Setting explanations are "?" tooltips now (hover, focus or tap)
+- Event rewards are just "Rewards": time of day as HH:MM, in-game date or weekday, every few minutes; tidier fields
+- Greeting card on Home redone: status pill, server-list preview, stat tiles
+- Console, chat, log files and the player list fit the window exactly; the sidebar's scrollbar is thin and only shows while hovering
+- Discord: failed DMs are logged with the reason, and a "Test a DM" button shows Discord's answer
+- The animated Mount Eden logo in the corner
+
 ## 1.31.0
 - New sidebar entry Logs & reports: errors & warnings, the log files of earlier days (grouped or line by line, filter and search) and the lag reports
 - Event rewards page (Community) and Own commands page (Console: links, texts and aliases with permissions; moved out of the info page)

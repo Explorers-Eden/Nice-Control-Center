@@ -444,10 +444,30 @@ public final class Discord implements Notifier {
 		if (j == null || discordId == null || discordId.isBlank()) return;
 		try {
 			j.retrieveUserById(discordId).flatMap(u -> u.openPrivateChannel()).flatMap(ch -> ch.sendMessage(text.length() > 1900 ? text.substring(0, 1900) + "…" : text))
-					.queue(ok -> { }, err -> { });
+					.queue(ok -> { }, err -> System.err.println("[notice] DM to " + discordId + " failed: " + dmProblem(err)));
 		} catch (RuntimeException e) {
-			// Not sent.
+			System.err.println("[notice] DM to " + discordId + " failed: " + e.getMessage());
 		}
+	}
+
+	/** Sends a DM and waits for Discord's answer: null when it arrived, else why not (for the panel's test button). */
+	String dmNow(String discordId, String text) {
+		JDA j = jda;
+		if (j == null) return "The Discord bot isn't connected (Discord → bridge on, with a token).";
+		try {
+			j.retrieveUserById(discordId).flatMap(u -> u.openPrivateChannel()).flatMap(ch -> ch.sendMessage(text)).complete();
+			return null;
+		} catch (RuntimeException e) {
+			return dmProblem(e);
+		}
+	}
+
+	private static String dmProblem(Throwable e) {
+		String m = String.valueOf(e.getMessage());
+		if (m.contains("50007") || m.toLowerCase(java.util.Locale.ROOT).contains("cannot send messages to this user"))
+			return "Discord refused: the player blocks DMs from server members (User Settings → Privacy) or shares no server with the bot.";
+		if (m.contains("10013") || m.toLowerCase(java.util.Locale.ROOT).contains("unknown user")) return "Discord doesn't know that account any more.";
+		return m;
 	}
 
 	// ── Settings and links ─────────────────────────────────────────────────

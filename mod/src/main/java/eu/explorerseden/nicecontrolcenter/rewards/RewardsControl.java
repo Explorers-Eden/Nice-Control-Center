@@ -28,6 +28,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import eu.explorerseden.nicecontrolcenter.Rewards;
+import eu.explorerseden.nicecontrolcenter.core.WorldClock;
 
 /** Runs the event rewards (see {@link Rewards}): hooks for each trigger, "once" bookkeeping and the commands. */
 public final class RewardsControl {
@@ -38,7 +39,10 @@ public final class RewardsControl {
 	private static boolean dirty;
 	/** Last seen XP level per player, to notice a level being reached. */
 	private static final Map<UUID, Integer> levels = new HashMap<>();
-	private static long lastDayTime = -1;
+	private static double lastMinute = -1;
+	private static String lastDate;
+	/** Interval rules: when each last ran (counting starts when the server starts or the rule is added). */
+	private static final Map<String, Long> lastInterval = new HashMap<>();
 
 	private RewardsControl() {
 	}
@@ -58,7 +62,9 @@ public final class RewardsControl {
 			} catch (IOException | RuntimeException e) {
 				state = new Rewards.State();
 			}
-			lastDayTime = -1;
+			lastMinute = -1;
+			lastDate = null;
+			lastInterval.clear();
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> save());
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -129,21 +135,49 @@ public final class RewardsControl {
 			}
 		}
 		ServerLevel overworld = server.overworld();
-		long clock = overworld.getOverworldClockTime();
-		long day = clock / 24_000;
-		long time = clock % 24_000;
-		long before = lastDayTime;
-		lastDayTime = clock;
-		if (before < 0 || clock < before) return;
+		long day = overworld.getOverworldClockTime() / 24_000;
+		// The Nice Actions clock when the pack is installed, else the vanilla one (see WorldClock).
+		WorldClock.Clock clock = WorldClock.current();
+		double minute = clock != null ? clock.minuteOfDay() : ((overworld.getOverworldClockTime() % 24_000) * 1440.0 / 24_000 + 360) % 1440;
+		String date = clock != null ? clock.date() : "";
+		String weekday = clock != null && clock.weekday() != null ? clock.weekday() : "";
+		double beforeMinute = lastMinute;
+		String beforeDate = lastDate;
+		lastMinute = minute;
+		lastDate = date;
+		long now = System.currentTimeMillis();
 		for (Rewards.Rule r : s.rules) {
 			if (!r.enabled) continue;
-			if (r.trigger.equals("dayTime")) {
-				// Crossed the time since the last check (also across midnight, and when the night was skipped).
-				long target = (before / 24_000) * 24_000 + r.number;
-				if (target <= before) target += 24_000;
-				if (target <= clock) runWorld(server, r, String.valueOf(time));
-			} else if (r.trigger.equals("gameDay") && day >= r.number && !ranFor(r, "*")) {
-				runWorld(server, r, String.valueOf(day));
+			switch (r.trigger) {
+				case "dayTime" -> {
+					if (beforeMinute < 0) continue;
+					double target = Rewards.minuteOf(r);
+					if (target < 0) continue;
+					// Crossed since the last check, also across midnight (and when the night was skipped).
+					boolean crossed = minute >= beforeMinute ? beforeMinute < target && target <= minute : target > beforeMinute || target <= minute;
+					if (crossed && minute != beforeMinute) runWorld(server, r, clock != null ? clock.time() : String.valueOf((long) minute));
+				}
+				case "gameDay" -> {
+					if (day >= r.number && !ranFor(r, "*")) runWorld(server, r, String.valueOf(day));
+				}
+				case "date" -> {
+					// Once when the calendar turns to that date (or weekday).
+					if (beforeDate == null || date.isEmpty() || date.equals(beforeDate)) continue;
+					String want = r.value.strip().toLowerCase(java.util.Locale.ROOT);
+					String d = date.toLowerCase(java.util.Locale.ROOT);
+					if (d.equals(want) || d.startsWith(want + ",") || weekday.equalsIgnoreCase(want)) runWorld(server, r, date);
+				}
+				case "interval" -> {
+					Long last = lastInterval.get(r.id);
+					if (last == null) {
+						lastInterval.put(r.id, now);
+					} else if (now - last >= r.number * 60_000L) {
+						lastInterval.put(r.id, now);
+						runWorld(server, r, String.valueOf(r.number));
+					}
+				}
+				default -> {
+				}
 			}
 		}
 	}
@@ -228,10 +262,12 @@ public final class RewardsControl {
 		else p.sendSystemMessage(msg);
 	}
 
-	/** {player} {uuid} {x} {y} {z} {dimension} {value} {day} {time} {online}. */
+	/** {player} {uuid} {x} {y} {z} {dimension} {value} {day} {time} {date} {online}. */
 	static String fill(MinecraftServer server, String text, ServerPlayer p, String value) {
 		long clock = server.overworld().getOverworldClockTime();
-		String out = text.replace("{day}", String.valueOf(clock / 24_000)).replace("{time}", clockText(clock % 24_000))
+		WorldClock.Clock wc = WorldClock.current();
+		String out = text.replace("{day}", String.valueOf(clock / 24_000)).replace("{time}", wc != null ? wc.time() : clockText(clock % 24_000))
+				.replace("{date}", wc != null ? wc.date() : "Day " + (clock / 24_000 + 1))
 				.replace("{online}", String.valueOf(server.getPlayerCount())).replace("{value}", value == null ? "" : value);
 		if (p == null) return out;
 		return out.replace("{player}", p.getGameProfile().name()).replace("{uuid}", p.getUUID().toString())
