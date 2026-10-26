@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.45.0
+- Mini-game templates (/game): infinite parkour (jumps made ahead of you, harder as you go, each player in their own lane, blocks cleaned up), race course (checkpoints in order; running, boat or elytra), dropper (land in the water at the bottom, back to the top otherwise) and maze (generated, made new daily or after each run); start pads or /game join, /game leave, /game top, /game list; admins: /game create <type> <name>, /game edit … (start, top, finish, checkpoint add|clear, size, build), /game delete
+- Personal bests per arena; Rewards triggers "Finishes a game" (at least … jumps / within … seconds) and "Sets a personal best" with {score} and {game}
+
 ## 1.44.0
 - Per-dimension tuning (Tuning → Per dimension): no natural mob spawning, no random ticks, mobs and block entities frozen while nobody is in the dimension, quicker item despawn; a one-click minigame profile for eden:flying_fair
 

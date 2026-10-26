@@ -150,6 +150,21 @@ final class DashboardProxy {
 		}
 	}
 
+	/** A GET to the mod whose answer may be a list; null when it doesn't answer. */
+	com.google.gson.JsonElement getElement(String path) {
+		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+				.timeout(Duration.ofSeconds(10)).header("X-NCC-Secret", secret).GET().build();
+		try {
+			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			return response.statusCode() == 200 ? com.google.gson.JsonParser.parseString(response.body()) : null;
+		} catch (IOException | RuntimeException e) {
+			return null;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		}
+	}
+
 	/** A GET to the mod from the panel itself (stats); null when it doesn't answer. */
 	JsonObject get(String path) {
 		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))

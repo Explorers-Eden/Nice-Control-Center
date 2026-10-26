@@ -220,6 +220,30 @@ public final class RewardsControl {
 		}
 	}
 
+	/** For game triggers: {score} and {game} while their rules run. */
+	private static final ThreadLocal<Map<String, String>> extra = ThreadLocal.withInitial(Map::of);
+
+	/**
+	 * A game run ended (gameFinished) or set a personal best (gameRecord): rules for that arena (value, empty = any)
+	 * whose number is met: at least that many jumps, or (timed games) within that many seconds; 0 = any.
+	 */
+	public static void fireGame(MinecraftServer server, String trigger, ServerPlayer player, String arena, long score, boolean timed) {
+		Rewards.Settings s = settings;
+		if (server == null || !s.enabled) return;
+		String shown = timed ? eu.explorerseden.nicecontrolcenter.games.GameRuntime.clock(score) : String.valueOf(score);
+		extra.set(Map.of("{score}", shown, "{game}", arena));
+		try {
+			for (Rewards.Rule r : s.rules) {
+				if (!r.enabled || !r.trigger.equals(trigger)) continue;
+				if (!r.value.isBlank() && !r.value.strip().equalsIgnoreCase(arena)) continue;
+				if (r.number > 0 && (timed ? score > r.number * 1000L : score < r.number)) continue;
+				run(server, r, player, arena);
+			}
+		} finally {
+			extra.remove();
+		}
+	}
+
 	/** World triggers: once with no player, or once per player for commands that use {player}. */
 	private static void runWorld(MinecraftServer server, Rewards.Rule r, String value) {
 		boolean perPlayer = r.who.equals("player") || r.claimsOnly || r.commands.stream().anyMatch(c -> c.contains("{player}") || c.contains("{uuid}")) || (!r.message.isBlank() && !r.messageEveryone);
@@ -329,6 +353,7 @@ public final class RewardsControl {
 
 	/** {player} {uuid} {x} {y} {z} {dimension} {value} {day} {time} {date} {online} (and {rewards} in rule messages). */
 	public static String fill(MinecraftServer server, String text, ServerPlayer p, String value) {
+		for (Map.Entry<String, String> e : extra.get().entrySet()) text = text.replace(e.getKey(), e.getValue());
 		long clock = server.overworld().getOverworldClockTime();
 		WorldClock.Clock wc = WorldClock.current();
 		String out = text.replace("{day}", String.valueOf(clock / 24_000)).replace("{time}", wc != null ? wc.time() : clockText(clock % 24_000))

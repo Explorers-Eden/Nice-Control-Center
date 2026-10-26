@@ -137,6 +137,8 @@
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
+      { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
+        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes): settings and the best players.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
@@ -551,6 +553,7 @@
     if (tab === 'serverlist') loadServerList();
     if (tab === 'conduct') loadConduct();
     if (tab === 'rewards') loadRewards();
+    if (tab === 'games') loadGames();
     if (tab === 'owncommands') loadOwnCommands();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
@@ -1766,6 +1769,118 @@
       formMsg('pn-coc-msg', serverRunning ? 'Saved. The server shows it from the next restart.' : 'Saved.', true);
     } catch (err) {
       formMsg('pn-coc-msg', err.message, false);
+    }
+  });
+
+  // ── Games ──────────────────────────────────────────────────────────────
+
+  const gm = { settings: null, live: null, scores: null, dirty: false };
+  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3' };
+  const gmClock = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${Math.floor((ms % 1000) / 100)}`; };
+
+  async function loadGames() {
+    if (gm.dirty && gm.settings) { renderArenas(); return; }
+    try {
+      const d = await api('api/games');
+      gm.settings = d.settings;
+      gm.live = d.live || null;
+      gm.scores = d.scores || null;
+      gm.dirty = false;
+      renderArenas();
+    } catch (err) {
+      formMsg('pn-gm-msg', err.message, false);
+    }
+  }
+
+  function renderArenas() {
+    const edit = can('settings.server');
+    const s = gm.settings;
+    $('pn-gm-enabled').checked = s.enabled;
+    $('pn-gm-enabled').disabled = !edit;
+    $('pn-gm-list').innerHTML = s.arenas.map((a, i) => {
+      const live = gm.live ? gm.live.find((x) => x.id === a.id) : null;
+      const top = live ? live.top : Object.values((gm.scores || {})[a.id] || {}).sort((x, y) => a.type === 'parkour' ? y.best - x.best : x.best - y.best).slice(0, 10);
+      const where = a.start ? `${dimShort(a.start.dim)} · ${Math.round(a.start.x)}, ${Math.round(a.start.y)}, ${Math.round(a.start.z)}` : 'no start yet';
+      const field = (k, label, html) => `<label class="pn-field"><span>${label}</span>${html}</label>`;
+      const num = (k, min, max) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}">`;
+      const fields = {
+        parkour: field('palette', 'Blocks (ids, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
+          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes', num('laneSpacing', 16, 256)),
+        race: field('mode', 'Race by', `<select data-g="mode">${[['run', 'running'], ['boat', 'boat'], ['elytra', 'elytra']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
+          + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
+        dropper: `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
+        maze: field('size', 'Cells per side', num('size', 4, 40)) + field('wall', 'Wall block', `<input type="text" data-g="wall" value="${esc(a.wall)}">`)
+          + field('floor', 'Floor block', `<input type="text" data-g="floor" value="${esc(a.floor)}">`)
+          + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
+          + `<p class="pn-hint">After changing the size or blocks: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
+      }[a.type] || '';
+      const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${a.type === 'parkour' ? `${t.best} jumps` : gmClock(t.best)}</span><small>${t.runs} run${t.runs === 1 ? '' : 's'}</small></li>`).join('')}</ol>` : '<p class="pn-hint">No runs yet.</p>';
+      return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
+        <div class="pn-rw-head">
+          <span class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></span>
+          <span class="pn-rw-give-icon"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
+          <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} playing</span>` : ''}
+          <span class="pn-rw-actions">
+            <button type="button" class="np-btn small" data-gact="reset" title="Clear the best scores"><i class="bi bi-trophy"></i> Reset scores</button>
+            <button type="button" class="np-btn small danger" data-gact="delete" title="Remove the arena (what it built stays)"><i class="bi bi-trash"></i></button>
+          </span>
+        </div>
+        <p class="pn-hint"><i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · players join with <code>/game join ${esc(a.name)}</code> or by stepping on it.</p>
+        <div class="pn-gm-body"><div class="pn-rw-grid">${fields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
+      </section>`;
+    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze).</p>';
+    $('pn-gm-list').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-gm-save').disabled = !edit || !gm.dirty;
+  }
+
+  function gmChanged(rerender) {
+    gm.dirty = true;
+    $('pn-gm-save').disabled = false;
+    formMsg('pn-gm-msg', 'Not saved yet.', true);
+    if (rerender) renderArenas();
+  }
+
+  $('pn-gm-list').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-arena]');
+    const k = e.target.dataset.g;
+    if (!card || !k) return;
+    const a = gm.settings.arenas[+card.dataset.arena];
+    if (e.target.type === 'checkbox') a[k] = e.target.checked;
+    else if (e.target.type === 'number') a[k] = Number(e.target.value) || 0;
+    else if (k === 'palette') a[k] = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
+    else a[k] = e.target.value;
+    if (k === 'enabled') card.classList.toggle('off', !a.enabled);
+    gmChanged(false);
+  });
+  $('pn-gm-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-gact]');
+    if (!b) return;
+    const a = gm.settings.arenas[+b.closest('[data-arena]').dataset.arena];
+    if (b.dataset.gact === 'delete') {
+      if (!confirm(`Remove ${a.name}? Its scores stay in the world file; what it built stays in the world.`)) return;
+      gm.settings.arenas = gm.settings.arenas.filter((x) => x !== a);
+      gmChanged(true);
+    } else if (b.dataset.gact === 'reset') {
+      if (!confirm(`Clear all best scores of ${a.name}?`)) return;
+      try {
+        await api('api/games/reset', { id: a.id });
+        formMsg('pn-gm-msg', 'Scores cleared.', true);
+        gm.dirty = false;
+        loadGames();
+      } catch (err) {
+        formMsg('pn-gm-msg', err.message, false);
+      }
+    }
+  });
+  $('pn-gm-enabled').addEventListener('change', (e) => { gm.settings.enabled = e.target.checked; gmChanged(false); });
+  $('pn-gm-save').addEventListener('click', async () => {
+    try {
+      await api('api/games', gm.settings);
+      gm.dirty = false;
+      formMsg('pn-gm-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+      loadGames();
+    } catch (err) {
+      formMsg('pn-gm-msg', err.message, false);
     }
   });
 

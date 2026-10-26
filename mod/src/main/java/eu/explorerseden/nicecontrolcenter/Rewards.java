@@ -32,6 +32,8 @@ public final class Rewards {
 			new Trigger("leave", "Leaves", "", "", false),
 			new Trigger("dimension", "Enters a dimension", "Dimension (empty: any)", "", false),
 			new Trigger("enterClaim", "Enters one of their claims", "", "", false),
+			new Trigger("gameFinished", "Finishes a game", "Arena (empty: any)", "At least … jumps / within … seconds (0: any)", false),
+			new Trigger("gameRecord", "Sets a personal best in a game", "Arena (empty: any)", "", false),
 			new Trigger("leaveClaim", "Leaves their claims", "", "", false),
 			new Trigger("advancement", "Earns an advancement", "Advancement (empty: any)", "", false),
 			new Trigger("death", "Dies", "", "", false),

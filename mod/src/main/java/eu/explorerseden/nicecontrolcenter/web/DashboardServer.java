@@ -606,6 +606,15 @@ public final class DashboardServer {
 								: eu.explorerseden.nicecontrolcenter.core.Cleanup.excess(minecraft, perChunk, run))
 						: eu.explorerseden.nicecontrolcenter.core.Cleanup.items(minecraft, run)));
 			}
+			case "/api/games" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.games.GameRuntime::view));
+			case "/api/games/reset" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String id = body.has("id") ? body.get("id").getAsString() : "";
+				sendJson(exchange, onServerThread(() -> Map.of("ok", eu.explorerseden.nicecontrolcenter.games.GameRuntime.resetScores(id))));
+			}
 			case "/api/cleanup/census" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Cleanup.census(minecraft)));
 			case "/api/entitytypes" -> sendJson(exchange, onServerThread(() -> {
 				List<Map<String, Object>> types = new ArrayList<>();
