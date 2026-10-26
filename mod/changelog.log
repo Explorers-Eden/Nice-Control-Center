@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.40.0
+- /ncc fly <players> <time> [everywhere|claims]: "claims" lets them fly only inside claims they own or are a member of; outside, flight pauses (they float down with Slow Falling) and comes back when they return. Everywhere stays the default
+
 ## 1.39.0
 - /ncc fly <players> <time>: flight in survival for a while (time like /tick: 100t, 30s, 1d), /ncc fly <players> off; kept over logouts and restarts, warns before it ends and lets the player float down
 - Rewards: the time of day as HH:MM and a new in-game date or weekday trigger, both on the Nice Actions clock and calendar when the pack is installed; a trigger that simply repeats every few minutes; {date} variable
