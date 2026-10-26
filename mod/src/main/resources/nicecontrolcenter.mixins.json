@@ -53,6 +53,7 @@
 		"JoinMessageMixin",
 		"GameClaimPickupMixin",
 		"GameClaimSpawnMixin",
+		"DimRandomTickMixin",
 		"AntiXrayChunkMixin",
 		"AntiXrayRevealMixin",
 		"AnvilTweakMixin",

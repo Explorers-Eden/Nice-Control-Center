@@ -4280,17 +4280,56 @@
     }
   });
 
+  let dimTuneDims = [];
   async function loadTuning() {
     loadProfiles();
     try {
       perfSettings = await api('api/perf/settings');
       fillPerf(perfSettings);
+      try { dimTuneDims = (await api('api/tweaks')).dimensions || []; } catch (e) { /* only the tuned ones */ }
+      renderDimTune();
     } catch (e) {
       formMsg('pn-perf-msg', e.message, false);
     }
     loadPerfLive();
     loadTypes();
   }
+
+  /** Per-dimension tuning: one row per dimension (switches show what still happens there). */
+  function renderDimTune() {
+    const set = (perfSettings && perfSettings.dimensions) || {};
+    const ids = [...new Set([...dimTuneDims.map((d) => d.id), ...Object.keys(set)])];
+    const name = (id) => (dimTuneDims.find((d) => d.id === id) || {}).name || id;
+    const editable = can('settings.server');
+    $('pn-dimtune').innerHTML = ids.map((id) => {
+      const d = set[id] || {};
+      const on = (k, def) => (d[k] === undefined ? def : d[k]);
+      const sw = (k, def) => `<td><span class="np-switch"><input type="checkbox" data-dt="${k}" ${on(k, def) ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></span></td>`;
+      return `<tr data-dim="${esc(id)}"><td class="name">${esc(name(id))}<small>${esc(id)}</small></td>${sw('naturalSpawns', true)}${sw('randomTicks', true)}${sw('freezeWhenEmpty', false)}
+        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td></tr>`;
+    }).join('') || '<tr><td colspan="5">No dimensions found yet: start the server once.</td></tr>';
+  }
+
+  /** The rows back into settings: only dimensions that differ from normal are kept. */
+  function readDimTune() {
+    const out = {};
+    $('pn-dimtune').querySelectorAll('tr[data-dim]').forEach((tr) => {
+      const v = (k) => tr.querySelector(`[data-dt="${k}"]`);
+      const d = { naturalSpawns: v('naturalSpawns').checked, randomTicks: v('randomTicks').checked, freezeWhenEmpty: v('freezeWhenEmpty').checked,
+        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)) };
+      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds) out[tr.dataset.dim] = d;
+    });
+    return out;
+  }
+
+  $('pn-dimtune').addEventListener('change', () => { formMsg('pn-perf-msg', 'Not saved yet.', true); });
+  $('pn-dimtune-fair').addEventListener('click', () => {
+    const id = 'eden:flying_fair';
+    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60 } };
+    if (!dimTuneDims.some((d) => d.id === id)) dimTuneDims.push({ id, name: 'Flying Fair' });
+    renderDimTune();
+    formMsg('pn-perf-msg', 'Flying Fair set as a minigame world: save to use it.', true);
+  });
 
   /** World → Chunks: the laggiest chunks (frozen ones from the Tuning settings), loaded without players, clean-ups. */
   async function loadChunks() {
@@ -4467,6 +4506,7 @@
     s.rules = readRules();
     s.despawn = { ...(s.despawn || {}), items: junk.slice() };
     s.saveLimits = { ...(s.saveLimits || {}), limits: readSaveLimits() };
+    s.dimensions = readDimTune();
     try {
       await api('api/perf/settings', s);
       perfSettings = s;

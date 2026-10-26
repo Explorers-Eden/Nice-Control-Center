@@ -223,7 +223,8 @@ public final class PerfControl {
 		int n = 0;
 		for (boolean b : on) if (b) n++;
 		String frozen = s.frozen.isEmpty() ? "" : ", " + s.frozen.size() + " frozen chunk" + (s.frozen.size() == 1 ? "" : "s");
-		return (n == 0 ? "all off" : n + " of " + on.length + " on") + frozen;
+		String dims = s.dimensions.isEmpty() ? "" : ", " + s.dimensions.size() + " tuned dimension" + (s.dimensions.size() == 1 ? "" : "s");
+		return (n == 0 ? "all off" : n + " of " + on.length + " on") + frozen + dims;
 	}
 
 	// ── Dynamic distances ──────────────────────────────────────────────
@@ -390,6 +391,8 @@ public final class PerfControl {
 	 * each dimension on its own ticks. Worked out once per tick and level (every chunk gets the same list).
 	 */
 	public static java.util.List<net.minecraft.world.entity.MobCategory> spawnCategories(ServerLevel level, java.util.List<net.minecraft.world.entity.MobCategory> all) {
+		Performance.DimTuning dt = dim(level);
+		if (dt != null && !dt.naturalSpawns) return java.util.List.of();
 		Performance.Spawning sp = settings.spawning;
 		if (!sp.enabled || all.isEmpty()) return all;
 		long time = level.getGameTime();
@@ -450,7 +453,32 @@ public final class PerfControl {
 
 	// ── Ticking: frozen chunks and activation range ────────────────────────
 
+	/** This dimension's tuning, or null. */
+	public static Performance.DimTuning dim(ServerLevel level) {
+		if (settings.dimensions.isEmpty()) return null;
+		return settings.dimensions.get(level.dimension().identifier().toString());
+	}
+
+	/** A dimension set to freeze while nobody is in it, and nobody is. */
+	public static boolean frozenEmpty(ServerLevel level) {
+		Performance.DimTuning dt = dim(level);
+		return dt != null && dt.freezeWhenEmpty && level.players().isEmpty();
+	}
+
+	/** Random ticks for this level: 0 when switched off for the dimension (or it's frozen while empty). */
+	public static int randomTicks(ServerLevel level, int speed) {
+		Performance.DimTuning dt = dim(level);
+		return dt != null && (!dt.randomTicks || dt.freezeWhenEmpty && level.players().isEmpty()) ? 0 : speed;
+	}
+
+	/** Item despawn in ticks for this dimension, 0 = the usual. */
+	public static int itemDespawnTicks(ServerLevel level) {
+		Performance.DimTuning dt = dim(level);
+		return dt == null ? 0 : dt.itemDespawnSeconds * 20;
+	}
+
 	public static boolean frozen(ServerLevel level, int chunkX, int chunkZ) {
+		if (frozenEmpty(level)) return true;
 		if (frozen.isEmpty()) return false;
 		LongSet set = frozen.get(level.dimension().identifier().toString());
 		return set != null && set.contains(ChunkPos.pack(chunkX, chunkZ));
@@ -460,7 +488,7 @@ public final class PerfControl {
 	public static boolean skip(ServerLevel level, Entity entity) {
 		if (entity instanceof Player) return false;
 		// A vehicle may carry a player, who must keep ticking.
-		if (!frozen.isEmpty() && !entity.isVehicle() && frozen(level, entity.getBlockX() >> 4, entity.getBlockZ() >> 4)) return true;
+		if ((!frozen.isEmpty() || !settings.dimensions.isEmpty()) && !entity.isVehicle() && frozen(level, entity.getBlockX() >> 4, entity.getBlockZ() >> 4)) return true;
 		if (entity instanceof ArmorStand stand && settings.decor.armorStands) return stillStand(level, stand);
 		Performance.Activation a = settings.activation;
 		if (!a.enabled || !(entity instanceof Mob mob)) return false;

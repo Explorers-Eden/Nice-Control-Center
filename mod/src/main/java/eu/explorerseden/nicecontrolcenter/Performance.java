@@ -202,6 +202,18 @@ public final class Performance {
 		}
 	}
 
+	/** One dimension made light (e.g. a minigame world): what it doesn't do. */
+	public static final class DimTuning {
+		/** Monsters and animals spawn on their own. */
+		public boolean naturalSpawns = true;
+		/** Random ticks: crops, leaves, ice, grass spreading… */
+		public boolean randomTicks = true;
+		/** Mobs and block entities stop while no player is in the dimension. */
+		public boolean freezeWhenEmpty = false;
+		/** Dropped items go after this many seconds (0 = the usual 5 minutes). */
+		public int itemDespawnSeconds = 0;
+	}
+
 	public static final class Settings {
 		public Dynamic dynamic = new Dynamic();
 		public Activation activation = new Activation();
@@ -221,6 +233,8 @@ public final class Performance {
 		public Decor decor = new Decor();
 		public Smooth smooth = new Smooth();
 		public Spawning spawning = new Spawning();
+		/** Per-dimension tuning (dimension id → what's switched off there). */
+		public Map<String, DimTuning> dimensions = new java.util.LinkedHashMap<>();
 		public Selectors selectors = new Selectors();
 
 		/** Missing parts (older file, partial JSON) get their defaults. */
@@ -252,6 +266,9 @@ public final class Performance {
 			if (decor == null) decor = new Decor();
 			if (smooth == null) smooth = new Smooth();
 			if (spawning == null) spawning = new Spawning();
+			if (dimensions == null) dimensions = new java.util.LinkedHashMap<>();
+			dimensions.values().removeIf(d -> d == null);
+			for (DimTuning d : dimensions.values()) d.itemDespawnSeconds = Math.max(0, Math.min(3600, d.itemDespawnSeconds));
 			spawning.monstersEvery = Math.max(1, Math.min(40, spawning.monstersEvery));
 			spawning.waterEvery = Math.max(1, Math.min(40, spawning.waterEvery));
 			spawning.ambientEvery = Math.max(1, Math.min(40, spawning.ambientEvery));

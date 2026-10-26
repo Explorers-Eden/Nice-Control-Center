@@ -18,6 +18,12 @@ public abstract class ItemDespawnMixin {
 		ItemEntity self = (ItemEntity) (Object) this;
 		if (self.isRemoved() || !(self.level() instanceof ServerLevel)) return;
 		int ticks = PerfControl.junkTicks(self.getItem());
-		if (ticks > 0 && self.getAge() >= ticks) self.discard();
+		if (ticks > 0 && self.getAge() >= ticks) {
+			self.discard();
+			return;
+		}
+		// A dimension with its own item despawn time (per-dimension tuning).
+		int dim = PerfControl.itemDespawnTicks((ServerLevel) self.level());
+		if (dim > 0 && self.getAge() >= dim) self.discard();
 	}
 }

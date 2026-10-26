@@ -1039,3 +1039,6 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 
 .pn-home-dims { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; }
 .pn-home-dims small { color: var(--muted); }
+
+.pn-dimtune td small { display: block; color: var(--muted); font-size: var(--fs-xs, 11px); }
+.pn-dimtune input[type=number] { width: 90px; height: 32px; box-sizing: border-box; padding: 0 8px; font: inherit; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; }
