@@ -138,6 +138,10 @@ public final class Panel {
 		// The player market, with item icons drawn from the game's textures and the server's resource pack.
 		ItemIcons icons = new ItemIcons(dataDir, serverDir, () -> versions.installed().mc());
 		MarketService market = new MarketService(serverDir, dataDir, db, server, dashboard, audit, icons);
+		// Discord DMs to linked players about their own things (sales, mailbox, claims expiring, admin messages).
+		PlayerNotices notices = new PlayerNotices(dataDir, discord, dashboard, claims, market, server);
+		dashboard.useNotices(notices);
+		notices.start();
 		market.start();
 		// Player tags, stats and advancements and the command storage, for a website (smp_* tables).
 		new SmpData(serverDir, db).start();
@@ -347,7 +351,7 @@ public final class Panel {
 			WebShop webShop = new WebShop(env("WEBSITE_TOKEN", ""), market, discord, dashboard, server, audit);
 			webShop.register(routes);
 			// My SMP Profile on the website: claims, hubs and listings players change there (same token).
-			new WebProfile(webShop, claims, market, dashboard, server, audit).register(routes);
+			new WebProfile(webShop, claims, market, dashboard, server, audit, notices).register(routes);
 			pets.register(routes);
 			new PackMirror(serverDir).register(routes);
 			new TweaksRoutes(serverDir, server, audit, map).register(routes);

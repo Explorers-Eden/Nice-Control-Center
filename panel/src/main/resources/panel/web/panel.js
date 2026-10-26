@@ -2726,6 +2726,7 @@
     const s = discordData.settings;
     const form = $('pn-discord-form');
     for (const key of ['enabled', 'requireLink', 'requireMember', 'opsBypass', 'chatToDiscord', 'chatToGame', 'presence', 'topicOn']) form[key].checked = !!s[key];
+    form.playerDms.checked = s.playerDms !== false;
     form.topicChannelId.value = s.topicChannelId || '';
     form.topicFormat.value = s.topicFormat || '';
     form.topicOffline.value = s.topicOffline || '';
@@ -2836,7 +2837,7 @@
       requireLink: form.requireLink.checked, requireMember: form.requireMember.checked, opsBypass: form.opsBypass.checked,
       bypass: [], kickMessage: form.kickMessage.value,
       notMemberMessage: discordData.settings.notMemberMessage,
-      chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, events, templates, eventChannels,
+      chatToDiscord: form.chatToDiscord.checked, chatToGame: form.chatToGame.checked, presence: form.presence.checked, playerDms: form.playerDms.checked, events, templates, eventChannels,
       gameFormat: form.gameFormat.value, nameFormat: form.nameFormat.value.trim(),
       linkedRoleId: form.linkedRoleId.value.trim(), discordInvite: form.discordInvite.value.trim(),
       topicOn: form.topicOn.checked, topicChannelId: form.topicChannelId.value.trim(), topicFormat: form.topicFormat.value.trim(), topicOffline: form.topicOffline.value.trim(),

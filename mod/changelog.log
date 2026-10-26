@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.37.0
+- Pets on the website (My SMP Profile, through the panel): which pet is out, how pets move, the particle trail, a random pet, perks on/off, reactions, the name above the pet, and each pet's name and colour. Same rules as /pets
+- The website's profile shows when the player first joined, and lore and enchantments on their listings
+
 ## 1.36.0
 - Market listings can be changed on the website (My SMP Profile): price, how many it's for, and the amount. Fewer items go back to the mailbox; more come from the same items in the mailbox, then the inventory while online, in whole lots, and the listing runs its full time again (like "Add more"). Same limits as the menus
 

@@ -1,3 +1,7 @@
+## 1.30.0
+- Discord DMs for players (Discord → "DMs to players", on by default): a linked player gets a message when something of theirs sold (bundled), when items wait in their market mailbox, a week before one of their claims expires, and when an admin writes to them from the panel. Each player switches the kinds on My SMP Profile
+- My SMP Profile: pets can be changed (mod 1.37.0); claims show their expiry date and the player's claim blocks (earned, bonus, bought, used, left); member since; the switches for Discord messages
+
 ## 1.29.0
 - Website: players change their market listings on My SMP Profile (price, lot size, amount) while the server runs; in the audit log (mod 1.36.0)
 

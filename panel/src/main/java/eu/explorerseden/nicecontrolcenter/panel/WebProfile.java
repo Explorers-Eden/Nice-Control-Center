@@ -32,10 +32,12 @@ final class WebProfile {
 	private final DashboardProxy dashboard;
 	private final Supervisor server;
 	private final Audit audit;
+	private final PlayerNotices notices;
 	/** discordId → last change (ms), a few per second at most. */
 	private final Map<String, Long> lastEdit = new ConcurrentHashMap<>();
 
-	WebProfile(WebShop shop, ClaimService claims, MarketService market, DashboardProxy dashboard, Supervisor server, Audit audit) {
+	WebProfile(WebShop shop, ClaimService claims, MarketService market, DashboardProxy dashboard, Supervisor server, Audit audit, PlayerNotices notices) {
+		this.notices = notices;
 		this.shop = shop;
 		this.claims = claims;
 		this.market = market;
@@ -52,6 +54,8 @@ final class WebProfile {
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("running", running);
 			out.put("claims", claimsOf(link.uuid()));
+			out.put("claimBlocks", blocksOf(link.uuid()));
+			out.put("notices", Map.of("available", notices.available(), "kinds", notices.prefs(link.uuid())));
 			Claims.Settings cs = claims.settings();
 			out.put("claimsOn", cs.enabled);
 			out.put("claimColors", cs.colors);
@@ -68,6 +72,9 @@ final class WebProfile {
 				JsonObject account = mod("account", link, null);
 				if (account != null && account.has("listings")) out.put("listings", account.get("listings"));
 				if (account != null && account.has("maxPrice")) out.put("maxPrice", account.get("maxPrice"));
+				if (account != null && account.has("seen")) out.put("seen", account.get("seen"));
+				JsonObject pets = mod("pets", link, null);
+				if (pets != null && !pets.has("error")) out.put("pets", pets);
 			} else {
 				Market.Data offline = market.worldData();
 				List<Map<String, Object>> listings = new ArrayList<>();
@@ -213,6 +220,32 @@ final class WebProfile {
 			json(ctx, answer);
 		});
 
+		routes.post("/info/web/pet", ctx -> {
+			JsonObject in = shop.authorized(ctx);
+			Discord.Link link = in == null ? null : linkOf(ctx, in);
+			if (link == null || !slowDown(ctx, in) || !running(ctx, "Pets can be changed while the server runs.")) return;
+			JsonObject body = new JsonObject();
+			for (String k : List.of("change", "pet", "how", "perk", "nickname", "color")) if (in.has(k) && !in.get(k).isJsonNull()) body.addProperty(k, Web.str(in, k));
+			if (in.has("on") && !in.get("on").isJsonNull()) body.addProperty("on", in.get("on").getAsBoolean());
+			JsonObject answer = mod("pet", link, body);
+			if (!answered(ctx, answer)) return;
+			audit.log("website", "pets.web", link.name() + ": " + Web.str(answer, "message"), Web.clientIp(ctx));
+			json(ctx, answer);
+		});
+
+		routes.post("/info/web/notices", ctx -> {
+			JsonObject in = shop.authorized(ctx);
+			Discord.Link link = in == null ? null : linkOf(ctx, in);
+			if (link == null || !slowDown(ctx, in)) return;
+			String kind = Web.str(in, "kindName");
+			if (!PlayerNotices.KINDS.contains(kind) || !in.has("on")) {
+				error(ctx, HttpStatus.BAD_REQUEST, "Which messages?");
+				return;
+			}
+			notices.setPref(link.uuid(), kind, in.get("on").getAsBoolean());
+			json(ctx, Map.of("ok", true, "kinds", notices.prefs(link.uuid())));
+		});
+
 		routes.post("/info/web/withdraw", ctx -> {
 			JsonObject in = shop.authorized(ctx);
 			Discord.Link link = in == null ? null : linkOf(ctx, in);
@@ -232,6 +265,8 @@ final class WebProfile {
 		ClaimService.Changes now = claims.current();
 		Claims.Data data = new Claims.Data();
 		for (Claims.Claim c : now.claims) data.claims.put(c.id, c);
+		data.players = now.players;
+		Claims.Settings settings = claims.settings();
 		String me = uuid.toLowerCase(Locale.ROOT);
 		List<Map<String, Object>> out = new ArrayList<>();
 		for (Claims.Claim c : now.claims) {
@@ -260,6 +295,8 @@ final class WebProfile {
 			m.put("roleLabel", role.label);
 			m.put("canEdit", role.includes(Claims.Role.MANAGE));
 			m.put("isOwner", role == Claims.Role.OWNER);
+			m.put("expires", data.expiresAt(c, settings));
+			m.put("keepUntil", c.keepUntil);
 			out.add(m);
 		}
 		// Claims first, each followed by its subclaims.
@@ -268,6 +305,23 @@ final class WebProfile {
 			String kb = (b.get("parent") == null ? b.get("id") : b.get("parent")) + (b.get("parent") == null ? "0" : "1" + b.get("displayName"));
 			return ka.compareTo(kb);
 		});
+		return out;
+	}
+
+	/** The player's claim blocks: earned by playing, given by admins, bought, used by their claims, and left. */
+	private Map<String, Object> blocksOf(String uuid) throws java.io.IOException {
+		ClaimService.Changes now = claims.current();
+		String me = uuid.toLowerCase(Locale.ROOT);
+		Claims.PlayerBlocks p = now.players.get(me);
+		long used = 0;
+		for (Claims.Claim c : now.claims) if (c.parent == null && me.equals(c.owner)) used += c.box().area();
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("earned", p == null ? 0 : p.accrued);
+		out.put("bonus", p == null ? 0 : p.bonus);
+		out.put("bought", p == null ? 0 : p.bought);
+		out.put("used", used);
+		out.put("left", (p == null ? 0L : (long) p.accrued + p.bonus + p.bought) - used);
+		out.put("inactiveDays", claims.settings().inactiveDays);
 		return out;
 	}
 

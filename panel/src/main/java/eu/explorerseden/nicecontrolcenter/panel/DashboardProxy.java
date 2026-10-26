@@ -70,6 +70,11 @@ final class DashboardProxy {
 
 	/** Gets what admins say from the Chat tab, like player chat. */
 	private volatile Discord discord;
+	private volatile PlayerNotices notices;
+
+	void useNotices(PlayerNotices notices) {
+		this.notices = notices;
+	}
 
 	void useDiscord(Discord discord) {
 		this.discord = discord;
@@ -226,6 +231,20 @@ final class DashboardProxy {
 		response.headers().firstValue("Content-Disposition").ifPresent(v -> ctx.header("Content-Disposition", v));
 		ctx.header("Cache-Control", response.headers().firstValue("Cache-Control").orElse("no-store"));
 		ctx.result(response.body());
+		// A private message from an admin to a player: also a Discord DM, when they want those.
+		PlayerNotices n = notices;
+		if (n != null && path.equals("/api/players/action") && response.statusCode() == 200) {
+			try {
+				JsonObject answer = com.google.gson.JsonParser.parseString(new String(response.body(), java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+				if (answer.has("error") && !answer.get("error").isJsonNull()) throw new IllegalStateException("not sent");
+				JsonObject sent = com.google.gson.JsonParser.parseString(ctx.body()).getAsJsonObject();
+				if ("message".equals(sent.has("action") ? sent.get("action").getAsString() : "") && sent.has("uuid") && sent.has("text")) {
+					n.adminMessage(sent.get("uuid").getAsString(), me.name(), sent.get("text").getAsString());
+				}
+			} catch (RuntimeException e) {
+				// Not told.
+			}
+		}
 		// A message from the Chat tab that reached the players goes to Discord too.
 		Discord d = discord;
 		if (d != null && path.equals("/api/chat/send") && response.statusCode() == 200

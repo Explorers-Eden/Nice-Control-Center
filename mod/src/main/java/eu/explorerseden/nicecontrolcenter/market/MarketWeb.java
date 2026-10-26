@@ -86,12 +86,16 @@ public final class MarketWeb {
 			row.put("price", l.price);
 			row.put("per", l.lot());
 			row.put("expires", l.expires);
+			row.put("lore", l.item.lore);
+			row.put("enchantments", l.item.enchantments);
 			int[] have = spare(server, l);
 			row.put("canAdd", have[0] + have[1]);
 			listings.add(row);
 		}
 		out.put("listings", listings);
 		out.put("maxPrice", MarketStore.settings().maxPrice);
+		// "Member since" and the last visit, for the website's profile.
+		out.put("seen", eu.explorerseden.nicecontrolcenter.players.Seen.view(server, UUID.fromString(uuid)));
 		return out;
 	}
 

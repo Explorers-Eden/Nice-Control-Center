@@ -81,6 +81,8 @@ public final class Discord implements Notifier {
 		/** The player's name on Discord for game chat: {player} and {race} (Fabled Roots; left out with its brackets when there's none). */
 		public String nameFormat = "{race} ┃ {player}";
 		public boolean presence = true;
+		/** DMs to linked players about their own things (sales, mailbox, claims expiring, admin messages); each player can switch kinds off. */
+		public boolean playerDms = true;
 		public Map<String, Boolean> events = new LinkedHashMap<>(Map.of("join", true, "leave", true, "death", true, "advancement", true,
 				"start", true, "stop", true, "crash", true));
 
@@ -431,6 +433,18 @@ public final class Discord implements Notifier {
 				System.err.println("Could not update the Discord roles: " + e.getMessage());
 			}
 		}, 60, 300, TimeUnit.SECONDS);
+	}
+
+	/** A direct message to a Discord user (a linked player); quietly dropped when their DMs are closed. */
+	void dm(String discordId, String text) {
+		JDA j = jda;
+		if (j == null || discordId == null || discordId.isBlank()) return;
+		try {
+			j.retrieveUserById(discordId).flatMap(u -> u.openPrivateChannel()).flatMap(ch -> ch.sendMessage(text.length() > 1900 ? text.substring(0, 1900) + "…" : text))
+					.queue(ok -> { }, err -> { });
+		} catch (RuntimeException e) {
+			// Not sent.
+		}
 	}
 
 	// ── Settings and links ─────────────────────────────────────────────────

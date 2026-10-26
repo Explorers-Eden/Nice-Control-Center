@@ -692,6 +692,8 @@ public final class DashboardServer {
 					case "listing" -> eu.explorerseden.nicecontrolcenter.market.MarketWeb.editListing(minecraft, body);
 					case "hubs" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.list(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
 					case "hub" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.edit(minecraft, body);
+					case "pets" -> eu.explorerseden.nicecontrolcenter.pets.PetWeb.list(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
+					case "pet" -> eu.explorerseden.nicecontrolcenter.pets.PetWeb.edit(minecraft, body);
 					default -> Map.of("error", "Unknown action.");
 				}));
 			}
