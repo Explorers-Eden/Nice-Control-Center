@@ -83,9 +83,11 @@ public final class ClaimCommand {
 								.then(Commands.argument("player", StringArgumentType.word()).suggests(ONLINE)
 										.executes(ClaimCommand::blocks)
 										.then(Commands.literal("add").then(Commands.argument("amount", IntegerArgumentType.integer(-10_000_000, 10_000_000))
-												.executes(ctx -> blocks(ctx, true))))
+												.executes(ctx -> blocks(ctx, true, 1))))
+										.then(Commands.literal("remove").then(Commands.argument("amount", IntegerArgumentType.integer(0, 10_000_000))
+												.executes(ctx -> blocks(ctx, true, -1))))
 										.then(Commands.literal("set").then(Commands.argument("amount", IntegerArgumentType.integer(-10_000_000, 10_000_000))
-												.executes(ctx -> blocks(ctx, false))))))));
+												.executes(ctx -> blocks(ctx, false, 1))))))));
 	}
 
 	private static net.minecraft.nbt.CompoundTag tag(Claim c) {
@@ -202,13 +204,14 @@ public final class ClaimCommand {
 		return 1;
 	}
 
-	private static int blocks(CommandContext<CommandSourceStack> ctx, boolean add) {
+	/** add: change the bonus by sign × amount; otherwise set it to amount. */
+	private static int blocks(CommandContext<CommandSourceStack> ctx, boolean add, int sign) {
 		NameAndId who = find(ctx);
 		if (who == null) {
 			ctx.getSource().sendFailure(Component.literal("Unknown player."));
 			return 0;
 		}
-		int amount = IntegerArgumentType.getInteger(ctx, "amount");
+		int amount = sign * IntegerArgumentType.getInteger(ctx, "amount");
 		Claims.Data data = ClaimStore.data();
 		String id = who.id().toString();
 		Claims.PlayerBlocks pb = data.player(id);

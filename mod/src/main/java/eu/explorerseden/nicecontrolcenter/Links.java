@@ -34,8 +34,10 @@ public final class Links {
 		public List<Custom> custom = new ArrayList<>();
 	}
 
-	/** A link command of the server's own, like /discord. */
+	/** A command of the server's own: a link like /discord, a text like /rules, or an alias like /spawn. */
 	public static final class Custom {
+		/** "link" (a clickable address), "text" (lines of text) or "alias" (runs other commands). */
+		public String type = "link";
 		/** The command without the slash. */
 		public String command = "";
 		/** More names for the same command. */
@@ -45,6 +47,22 @@ public final class Links {
 		/** What the link says (the address without https:// when empty). */
 		public String label = "";
 		public String url = "";
+		/** Alias: the commands it runs, without the slash; {player} is who typed it, {args} what they typed after it. */
+		public List<String> run = new ArrayList<>();
+		/** Alias: run with the server's rights instead of the player's own. */
+		public boolean asServer = false;
+		/** Text: the lines it shows (§ colour codes). */
+		public String body = "";
+		/** Who may use it: 0 everyone, 1-4 the operator level; a permissions mod can decide with the node instead. */
+		public int level = 0;
+		/** The permission node; empty = nicecontrolcenter.command.&lt;command&gt;. */
+		public String permission = "";
+		/** What the panel's command list and the help say it does. */
+		public String description = "";
+
+		public String node() {
+			return permission == null || permission.isBlank() ? "nicecontrolcenter.command." + command : permission;
+		}
 
 		/** The command and its aliases. */
 		public List<String> names() {
@@ -69,11 +87,34 @@ public final class Links {
 			c.aliases = c.aliases.stream().filter(a -> a != null && !a.isBlank()).map(a -> a.strip().replaceFirst("^/", "").toLowerCase(Locale.ROOT)).distinct().toList();
 			c.text = c.text == null ? "" : c.text.strip();
 			c.label = c.label == null ? "" : c.label.strip();
-			if (c.command.isEmpty()) return "Every link needs a command.";
+			if (c.type == null || !List.of("link", "text", "alias").contains(c.type)) c.type = "link";
+			if (c.run == null) c.run = new ArrayList<>();
+			c.run = c.run.stream().filter(r -> r != null && !r.isBlank()).map(r -> r.strip().replaceFirst("^/", "")).toList();
+			c.body = c.body == null ? "" : c.body.replace("\r\n", "\n");
+			c.permission = c.permission == null ? "" : c.permission.strip();
+			c.description = c.description == null ? "" : c.description.strip();
+			if (c.level < 0 || c.level > 4) return "/" + c.command + ": the operator level is 0 to 4.";
+			if (!c.permission.isEmpty() && !c.permission.matches("[a-z0-9_.-]{1,100}")) return "/" + c.command + ": a permission node is letters, digits, dots, - and _.";
+			if (c.command.isEmpty()) return "Every command needs a name.";
 			for (String n : c.names()) {
 				if (!n.matches("[a-z0-9_-]{1,32}")) return "\"" + n + "\" can't be a command: use letters, digits, - and _ (up to 32).";
 				if (RESERVED.contains(n)) return "/" + n + " is already a command of the mod.";
 				if (!seen.add(n)) return "/" + n + " is used twice.";
+			}
+			if (c.type.equals("alias")) {
+				if (c.run.isEmpty()) return "/" + c.command + " needs at least one command to run.";
+				if (c.run.size() > 20) return "/" + c.command + ": at most 20 commands.";
+				for (String r : c.run) {
+					if (r.length() > 500) return "/" + c.command + ": a command is longer than 500 characters.";
+					String first = r.split(" ", 2)[0].toLowerCase(Locale.ROOT);
+					if (c.names().contains(first)) return "/" + c.command + " can't run itself.";
+				}
+				continue;
+			}
+			if (c.type.equals("text")) {
+				if (c.body.isBlank()) return "/" + c.command + " needs some text.";
+				if (c.body.length() > 4000) return "The text of /" + c.command + " is longer than 4000 characters.";
+				continue;
 			}
 			String u = url(c.url);
 			if (u == null || u.isEmpty()) return "The link for /" + c.command + " needs a web address, like https://example.com.";

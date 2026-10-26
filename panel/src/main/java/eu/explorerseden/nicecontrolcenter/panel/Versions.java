@@ -82,6 +82,11 @@ public final class Versions {
 	private volatile String phase = "";
 	private final List<String> log = new java.util.concurrent.CopyOnWriteArrayList<>();
 	private volatile String result;
+	/** Set while a downloaded update waits for the next restart; counted down by that start or a cancel. */
+	private volatile java.util.concurrent.CountDownLatch waiting;
+	private volatile boolean cancelled;
+	private volatile boolean locked;
+	private volatile String waitingFor;
 
 	public Versions(Path serverDir, Supervisor server, Backups backups, Companion companion, Audit audit,
 			java.util.function.Supplier<String> serverJar, Consumer<String> setServerJar, Path historyFile) {
@@ -319,12 +324,19 @@ public final class Versions {
 		out.put("phase", phase);
 		out.put("log", log);
 		out.put("result", result);
+		out.put("waiting", waiting != null);
+		out.put("waitingFor", waiting != null ? waitingFor : null);
 		out.put("history", history());
 		return out;
 	}
 
 	/** Starts the update in the background. actions: file name → keep/update/disable. Returns an error or null. */
 	public synchronized String start(String targetMc, String loader, Map<String, String> actions, String by, boolean backupFirst) {
+		return start(targetMc, loader, actions, by, backupFirst, false);
+	}
+
+	/** atRestart: download now, swap the files on the next server start (scheduled restart, manual start or restart). */
+	public synchronized String start(String targetMc, String loader, Map<String, String> actions, String by, boolean backupFirst, boolean atRestart) {
 		if (running) return "An update is already running.";
 		if (backups.busy()) return "A backup is running; try again in a moment.";
 		if (targetMc == null || loader == null || targetMc.isBlank() || loader.isBlank()) return "Choose a Minecraft and a Fabric Loader version.";
@@ -335,7 +347,7 @@ public final class Versions {
 		result = null;
 		Thread t = new Thread(() -> {
 			try {
-				result = run(targetMc, loader, actions == null ? Map.of() : actions, by, backupFirst);
+				result = run(targetMc, loader, actions == null ? Map.of() : actions, by, backupFirst, atRestart);
 			} catch (InterruptedException e) {
 				result = "Interrupted";
 				Thread.currentThread().interrupt();
@@ -344,6 +356,10 @@ public final class Versions {
 				step(result);
 			} finally {
 				phase = "";
+				waiting = null;
+				server.takeOverNextStart(null);
+				if (locked) server.unlock();
+				locked = false;
 				running = false;
 			}
 		}, "version-update");
@@ -357,7 +373,18 @@ public final class Versions {
 	 * works later). Without, the files the update replaces (mods, server jar) are kept aside in
 	 * .panel-tmp/update-old, and a failed start puts them back.
 	 */
-	private String run(String targetMc, String loader, Map<String, String> actions, String by, boolean backupFirst) throws IOException, InterruptedException {
+	/** Cancels an update that waits for the next restart. Returns an error or null. */
+	public synchronized String cancelScheduled(String by) {
+		java.util.concurrent.CountDownLatch w = waiting;
+		if (w == null) return "No update is waiting for a restart.";
+		cancelled = true;
+		server.takeOverNextStart(null);
+		w.countDown();
+		audit.log(by, "versions.cancel", waitingFor, null);
+		return null;
+	}
+
+	private String run(String targetMc, String loader, Map<String, String> actions, String by, boolean backupFirst, boolean atRestart) throws IOException, InterruptedException {
 		Installed before = installed();
 		String from = "Minecraft " + before.mc() + ", Fabric Loader " + before.loader();
 		String to = "Minecraft " + targetMc + ", Fabric Loader " + loader;
@@ -374,14 +401,9 @@ public final class Versions {
 
 		String backup = null;
 		String error;
-		if (backupFirst) {
-			phase = "Backing up";
-			step("Making a backup first");
-			error = backups.create("before update to " + targetMc + " " + loader, by);
-			if (error != null) return finish(from, to, by, null, "Stopped: the backup failed (" + error + "), nothing was changed.");
-			backup = backups.lastCreated();
-			backups.protect(backup);
-			step("Backup " + backup);
+		if (backupFirst && !atRestart) {
+			backup = backup(targetMc, loader, by);
+			if (backup == null) return finish(from, to, by, null, "Stopped: the backup failed (" + backups.lastError() + "), nothing was changed.");
 		}
 		Path aside = serverDir.resolve(ServerFiles.TMP).resolve("update-old");
 		if (!backupFirst) {
@@ -404,6 +426,38 @@ public final class Versions {
 			download(m.url, target, m.newSha1);
 			downloaded.put(m, target);
 			step("Downloaded " + m.name + " " + m.newVersion);
+		}
+
+		if (atRestart) {
+			cancelled = false;
+			waitingFor = to;
+			java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+			waiting = latch;
+			server.takeOverNextStart(() -> {
+				latch.countDown();
+				return true;
+			});
+			phase = "Waiting for the next restart";
+			step("Everything is downloaded. The update is applied the next time the server starts (scheduled restart, Restart or Start)");
+			latch.await();
+			waiting = null;
+			if (cancelled) {
+				ServerFiles.deleteRecursively(tmpDir);
+				return finish(from, to, by, null, "Cancelled: the scheduled update was called off, nothing was changed.");
+			}
+			// The start that released the latch did nothing; keep others from starting while files move.
+			server.lock("The scheduled update is being applied.");
+			locked = true;
+			server.awaitState(10 * 60_000L, Supervisor.State.STOPPED, Supervisor.State.CRASHED);
+			if (backupFirst) {
+				backup = backup(targetMc, loader, by);
+				if (backup == null) {
+					server.unlock();
+					locked = false;
+					server.start();
+					return finish(from, to, by, null, "Stopped: the backup failed (" + backups.lastError() + "), nothing was changed; the server starts on the old version.");
+				}
+			}
 		}
 
 		phase = "Stopping the server";
@@ -440,6 +494,8 @@ public final class Versions {
 		}
 		step("Server jar is now " + jarName);
 
+		if (locked) server.unlock();
+		locked = false;
 		phase = "Starting";
 		step("Starting the server (the first start of a new version downloads and prepares Minecraft, which can take a few minutes)");
 		error = server.start();
@@ -478,6 +534,17 @@ public final class Versions {
 		step("Restored; starting the old version again");
 		server.start();
 		return finish(from, to, by, backup, "Rolled back: the new version didn't start, so the backup was restored. The console shows why.");
+	}
+
+	/** Backs the server up and protects it for the update. Returns its name or null when it failed. */
+	private String backup(String targetMc, String loader, String by) {
+		phase = "Backing up";
+		step("Making a backup first");
+		if (backups.create("before update to " + targetMc + " " + loader, by) != null) return null;
+		String backup = backups.lastCreated();
+		backups.protect(backup);
+		step("Backup " + backup);
+		return backup;
 	}
 
 	private String finish(String from, String to, String by, String backup, String outcome) {

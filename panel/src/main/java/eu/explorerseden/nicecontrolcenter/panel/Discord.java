@@ -143,6 +143,9 @@ public final class Discord implements Notifier {
 			// /tellraw @a from data packs and /say: off by default, they can be chatty.
 			events.put("broadcast", false);
 			templates.put("broadcast", "📢 {message}");
+			// A player's very first time on the server (after linking): on Discord and in the game's chat.
+			events.put("firstJoin", true);
+			templates.put("firstJoin", "🎉 Welcome **{player}**, who joined for the first time!");
 		}
 		public String kickMessage = "Link your Discord account to play on this server.\n\nJoin our Discord: {invite}\nThen post this code {where}:\n\n{code}\n\nThe code works for 15 minutes.";
 		/** The default before {invite}; saved settings with it get the new one. */
@@ -882,12 +885,32 @@ public final class Discord implements Notifier {
 			return;
 		}
 		if (type.equals("broadcast") && !broadcastAllowed(e.has("text") ? e.get("text").getAsString() : "")) return;
+		if (type.equals("firstJoin")) {
+			welcome(name);
+			return;
+		}
 		Map<String, String> values = new LinkedHashMap<>();
 		values.put("player", name);
 		values.put("message", e.has("text") ? e.get("text").getAsString() : "");
 		values.put("advancement", e.has("advancement") ? e.get("advancement").getAsString() : "");
 		post(type, values);
 		lastPresence = "";
+	}
+
+	/** The first-join message: posted to Discord like any event, and said in the game's chat (without the Markdown). */
+	private void welcome(String name) {
+		if (!Boolean.TRUE.equals(settings.events.get("firstJoin"))) return;
+		Map<String, String> values = new LinkedHashMap<>();
+		values.put("player", name);
+		values.put("message", "");
+		values.put("advancement", "");
+		post("firstJoin", values);
+		String text = settings.templates.getOrDefault("firstJoin", "").replace("{player}", name).replace("**", "").replace("__", "").strip();
+		if (text.isEmpty()) return;
+		JsonObject tell = new JsonObject();
+		tell.addProperty("text", text);
+		tell.addProperty("color", "gold");
+		server.quietCommand("tellraw @a " + tell);
 	}
 
 	/** Recent broadcasts: the same text again within a minute is skipped, and at most 20 a minute go out. */

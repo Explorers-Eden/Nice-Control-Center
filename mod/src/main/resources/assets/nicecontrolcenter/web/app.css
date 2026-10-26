@@ -130,6 +130,7 @@ button { font: inherit; }
   gap: 11px;
   white-space: nowrap;
 }
+.np-brand-svg { width: 72%; height: 72%; display: block; color: var(--accent-strong, #1b2a6b); filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
 .np-brand-mark {
   width: 38px;
   height: 38px;

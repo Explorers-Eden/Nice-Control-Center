@@ -72,6 +72,39 @@ public final class HeapHistogram {
 		});
 	}
 
+	/**
+	 * A heap dump of the live objects (what "jcmd GC.heap_dump" writes), gzipped, in the server folder's
+	 * nicecontrolcenter/heapdumps (download it from the panel's Files). Shows who holds on to objects, which a
+	 * histogram can't. Pauses the server while it's written; only the newest two are kept. Off the server thread.
+	 */
+	public static CompletableFuture<java.nio.file.Path> dump(java.nio.file.Path serverDir) {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				java.nio.file.Path dir = serverDir.resolve("nicecontrolcenter").resolve("heapdumps");
+				java.nio.file.Files.createDirectories(dir);
+				String name = "heap-" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+				java.nio.file.Path raw = dir.resolve(name + ".hprof");
+				java.nio.file.Files.deleteIfExists(raw);
+				ManagementFactory.newPlatformMXBeanProxy(ManagementFactory.getPlatformMBeanServer(), "com.sun.management:type=HotSpotDiagnostic",
+						com.sun.management.HotSpotDiagnosticMXBean.class).dumpHeap(raw.toString(), true);
+				java.nio.file.Path gz = dir.resolve(name + ".hprof.gz");
+				try (var in = java.nio.file.Files.newInputStream(raw);
+						var out = new java.util.zip.GZIPOutputStream(java.nio.file.Files.newOutputStream(gz), 1 << 16)) {
+					in.transferTo(out);
+				}
+				java.nio.file.Files.delete(raw);
+				try (var files = java.nio.file.Files.list(dir)) {
+					List<java.nio.file.Path> old = files.filter(f -> f.getFileName().toString().endsWith(".hprof.gz"))
+							.sorted(java.util.Comparator.comparing(java.nio.file.Path::toString).reversed()).skip(2).toList();
+					for (java.nio.file.Path f : old) java.nio.file.Files.deleteIfExists(f);
+				}
+				return gz;
+			} catch (Exception e) {
+				throw new IllegalStateException(e.getMessage() == null ? e.toString() : e.getMessage(), e);
+			}
+		});
+	}
+
 	/** " 1:  123456  98765432  [B (java.base@25)" lines, then "Total  instances  bytes". */
 	static Result parse(String text, long time, Result previous) {
 		List<Row> rows = new ArrayList<>();

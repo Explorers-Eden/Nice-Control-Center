@@ -28,7 +28,7 @@
 		<div class="navbar-inner">
 			<button type="button" class="np-btn pn-menu-btn" id="pn-menu-btn" aria-label="Menu" hidden><i class="bi bi-list"></i></button>
 			<h1 class="np-brand">
-				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-hdd-rack"></i></span>
+				<span class="np-brand-mark" aria-hidden="true"><svg class="np-brand-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 27 10v12L16 28 5 22V10z" fill="rgba(255,255,255,.16)"/><path d="M16 4 27 10 16 16 5 10z" fill="#fff"/><path d="M5 10l11 6v12L5 22z" fill="rgba(255,255,255,.55)"/><path d="M27 10 16 16v12l11-6z" fill="rgba(255,255,255,.32)"/><path d="M8.5 19.2l2.3 1.3 1.6-3.4 2 5.2 1.4-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
 				<span class="np-brand-text" id="pn-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
 				<img class="pn-brand-logo" id="pn-brand-logo" alt="" src="branding/panel" hidden>
 			</h1>
@@ -97,7 +97,10 @@
 			<section class="pn-home" id="pn-home" hidden>
 				<div class="pn-hero" id="pn-hero">
 					<div class="pn-hero-text">
-						<p class="pn-hero-greet" id="pn-hero-greet">Welcome back</p>
+						<div class="pn-hero-hello">
+							<span class="pn-avatar pn-hero-avatar" id="pn-hero-avatar"></span>
+							<div><p class="pn-hero-greet" id="pn-hero-greet">Welcome back</p><p class="pn-hero-date" id="pn-hero-date"></p></div>
+						</div>
 						<div class="pn-hero-health" id="pn-hero-health" hidden>
 							<p class="pn-hero-status"><span class="np-status-dot info" id="pn-hero-dot"></span><span id="pn-hero-title"></span></p>
 							<p class="pn-hero-headline" id="pn-hero-headline"></p>
@@ -281,6 +284,7 @@
 							<label class="np-btn small"><i class="bi bi-upload"></i> Upload<input type="file" id="pn-upload" multiple hidden></label>
 							<button type="button" class="np-btn small" id="pn-newfile"><i class="bi bi-file-earmark-plus"></i> New file</button>
 							<button type="button" class="np-btn small" id="pn-mkdir"><i class="bi bi-folder-plus"></i> New folder</button>
+							<button type="button" class="np-btn small" id="pn-download-selected" disabled title="Download the selected files (several come as one zip)"><i class="bi bi-download"></i> Download</button>
 							<button type="button" class="np-btn small" id="pn-zip-selected" disabled><i class="bi bi-file-zip"></i> Zip</button>
 							<button type="button" class="np-btn small danger" id="pn-delete-selected" disabled><i class="bi bi-trash"></i> Delete</button>
 						</div>
@@ -350,6 +354,7 @@
 						</table></div>
 						<p class="np-card-intro pn-hint">Mods turned off get a <code>.disabled</code> ending (Fabric skips them); rename them back in Files to turn them on again. "Not on Modrinth" means the panel can't check that mod; it stays as it is.</p>
 						<label class="np-check pn-backup-first"><input type="checkbox" id="pn-update-backup"> Back up first (lets you undo the update later, also the world)</label>
+						<label class="np-check pn-backup-first"><input type="checkbox" id="pn-update-later"> Wait for the next restart (download now, apply when the server next starts)</label>
 						<div class="np-form-actions">
 							<button type="button" class="np-btn primary" id="pn-update-go"><i class="bi bi-arrow-up-circle"></i> <span id="pn-update-label">Update</span></button>
 						</div>
@@ -358,6 +363,7 @@
 				<section class="np-card" id="pn-update-progress" hidden>
 					<h3 class="np-card-title"><i class="bi bi-hourglass-split"></i> <span id="pn-update-phase">Update</span></h3>
 					<ol class="pn-update-log" id="pn-update-log"></ol>
+					<div class="np-form-actions"><button type="button" class="np-btn danger small" id="pn-update-cancel" hidden><i class="bi bi-x-circle"></i> Call off</button></div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-clock-history"></i> History</h3>
@@ -405,7 +411,7 @@
 						</div>
 					</form>
 					<form id="pn-pl-ipform" class="pn-pl-add" autocomplete="off">
-						<label class="pn-field">Ban an IP address<input type="text" name="ip" maxlength="45" placeholder="e.g. 203.0.113.7" required></label>
+						<label class="pn-field">Ban an IP address<input type="text" name="ip" maxlength="45" placeholder="e.g. 203.0.113.7" required pattern="((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)|[0-9a-fA-F:.]*:[0-9a-fA-F:.]*" title="An IPv4 address like 203.0.113.7, or an IPv6 address"></label>
 						<label class="pn-field">Reason<input type="text" name="reason" maxlength="200" placeholder="optional"></label>
 						<button type="submit" class="np-btn danger"><i class="bi bi-slash-circle"></i> Ban IP</button>
 					</form>
@@ -648,7 +654,7 @@
 							<span class="np-form-msg" id="pn-mt-msg"></span>
 						</div>
 					</form>
-					<p class="pn-hint">The icon shown during maintenance is set under <a href="#settings/server-list">Settings → Server list</a>. To switch maintenance on a schedule, add a <b>Maintenance</b> step in Schedule.</p>
+					<p class="pn-hint">The icon shown during maintenance is set under <a href="#settings/server-list">Server → Server list</a>. To switch maintenance on a schedule, add a <b>Maintenance</b> step in Schedule.</p>
 				</section>
 			</div>
 
@@ -660,7 +666,7 @@
 						<input type="search" id="pn-cl-search" placeholder="Find a claim, owner or member" autocomplete="off">
 						<select id="pn-cl-dim" aria-label="Dimension"></select>
 						<label class="np-check" title="Claims whose owner has been away so long that they go within 30 days"><input type="checkbox" id="pn-cl-soon"> Expiring soon <span class="pn-count" id="pn-cl-soon-count"></span></label>
-						<button type="button" class="np-btn small" id="pn-cl-new" data-perm="claims.manage"><i class="bi bi-plus-lg"></i> Server claim</button>
+						<button type="button" class="np-btn small" id="pn-cl-new" data-perm="claims.manage"><i class="bi bi-plus-lg"></i> Add claim</button>
 					</div>
 					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-claims-table"></table></div>
 				</section>
@@ -990,6 +996,8 @@
 						<label class="np-form-row">AFK after … minutes<input type="number" name="afk.minutes" min="1" max="120"></label>
 						<label class="np-form-row">Tag<input type="text" name="afk.tag" maxlength="16"></label>
 						<label class="np-form-row"><span>AFK players don't count for sleeping<span class="pn-comment">Skipping the night only needs the share of players who aren't AFK (after the minutes above; also when the tag is off).</span></span><span class="np-switch"><input type="checkbox" name="sleep.ignoreAfk"><span></span></span></label>
+						<label class="np-form-row"><span>One night across worlds<span class="pn-comment">Players in the worlds below count together for the sleeping percentage, and a bed in any of them helps skip the night. Vanilla counts each world on its own.</span></span><span class="np-switch"><input type="checkbox" name="sleep.shared"><span></span></span></label>
+						<label class="np-form-row"><span>Worlds that share the night<span class="pn-comment">Dimension ids, separated by commas (worlds with their own day and night).</span></span><input type="text" name="sleep.worlds"></label>
 						<label class="np-form-row"><b>Tab list header and footer</b><span class="np-switch"><input type="checkbox" name="tabList.enabled"><span></span></span></label>
 						<label class="np-form-row"><span>Empty line around the player list<span class="pn-comment">Between the header, the players and the footer.</span></span><span class="np-switch"><input type="checkbox" name="tabList.gap"><span></span></span></label>
 					</div>
@@ -1145,6 +1153,59 @@
 				</div>
 			</div>
 
+			<div class="np-tab-panel" data-tab="owncommands" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-terminal-plus"></i> Own commands</h3>
+					<p class="np-card-intro">Commands of your own: a <b>link</b> answers with a clickable address (<code>/discord</code>), a <b>text</b> with a few lines (<code>/rules</code>), an <b>alias</b> runs other commands (<code>/spawn</code>). Each can have more names and be limited to operators or a permission node. A name another command already uses is skipped. They change in game within a few seconds of saving.</p>
+					<div class="np-filters">
+						<select id="pn-own-add" aria-label="Add a command"><option value="">+ Add a command…</option><option value="link">Link</option><option value="text">Text</option><option value="alias">Alias</option></select>
+						<button type="button" class="np-btn primary" id="pn-own-save" disabled><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-own-msg"></span>
+					</div>
+				</section>
+				<div id="pn-own" class="pn-rw-list"></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="rewards" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-gift"></i> Event rewards</h3>
+					<p class="np-card-intro">Run commands and send a message when something happens: a player's first join, every login, a first trip to the Nether, an advancement, a level, or an in-game time. Each rule can be for everyone or for one player, and run every time, once per player or once at all.</p>
+					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{online}</code>. Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
+					<div class="np-filters pn-rw-top">
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-rw-enabled"><span></span></span> Rewards on</label>
+						<select id="pn-rw-add" aria-label="Add a rule">
+							<option value="">+ Add a rule…</option>
+							<option value="blank">Empty rule</option>
+							<optgroup label="Examples">
+								<option value="welcome">Welcome kit on the first join</option>
+								<option value="daily">Daily login reward</option>
+								<option value="nether">First trip to the Nether</option>
+								<option value="level30">Announce level 30</option>
+								<option value="night">Nightfall warning</option>
+								<option value="day100">Day 100 celebration</option>
+							</optgroup>
+						</select>
+						<button type="button" class="np-btn primary" id="pn-rw-save" disabled><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-rw-msg"></span>
+					</div>
+				</section>
+				<div id="pn-rw-rules" class="pn-rw-list"></div>
+			</div>
+
+			<section class="np-card np-tab-panel" data-tab="conduct" hidden>
+				<h3 class="np-card-title"><i class="bi bi-file-earmark-check"></i> Code of conduct</h3>
+				<p class="np-card-intro">A text players read when they join and accept once. If the text changes, they're asked again. Players see the text in their game language, or the English one if there's none. The server reads it when it starts.</p>
+				<form id="pn-coc-form" autocomplete="off">
+					<label class="np-form-row"><span><b>Ask players to accept it</b><span class="pn-comment">Sets <code>enable-code-of-conduct</code> in server.properties.</span></span><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
+					<div class="np-filters"><span id="pn-coc-langs"></span><button type="button" class="np-btn small" id="pn-coc-add"><i class="bi bi-plus-lg"></i> Language</button><button type="button" class="np-btn small danger" id="pn-coc-remove" hidden><i class="bi bi-trash"></i> Remove this language</button></div>
+					<label class="pn-field"><span>Text (plain text; empty lines make paragraphs)</span><textarea id="pn-coc-text" rows="14" maxlength="20000" placeholder="Be kind to each other.&#10;No griefing, no stealing.&#10;Ask before building next to someone."></textarea></label>
+					<div class="np-form-actions">
+						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
+						<span class="np-form-msg" id="pn-coc-msg"></span>
+					</div>
+				</form>
+			</section>
+
 			<div class="np-tab-panel" data-tab="serverlist" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-ul"></i> Server list entry</h3>
@@ -1204,17 +1265,14 @@
 					<label class="pn-field">Text on top (blank lines start a new paragraph)<textarea name="intro" rows="4" maxlength="4000"></textarea></label>
 				</section>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> Links in the game</h3>
-					<p class="np-card-intro">Every player can type <code>/info</code> for a clickable link to this page, and the link commands you add below (like <code>/website</code> or <code>/discord</code>).</p>
+					<h3 class="np-card-title"><i class="bi bi-link-45deg"></i> /info in the game</h3>
+					<p class="np-card-intro">Every player can type <code>/info</code> for a clickable link to this page.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><span>Address for /info<small class="pn-comment" id="pn-info-auto">Empty: worked out by the panel</small></span><input type="text" name="infoAddress" maxlength="300"></label>
 						<label class="np-form-row">/info: text before the link<input type="text" name="infoText" maxlength="200" placeholder="Everything about how this server works:"></label>
 						<label class="np-form-row">/info: link text<input type="text" name="infoLabel" maxlength="80" placeholder="Server info"></label>
 					</div>
-					<h4 class="pn-pt-subhead">Own link commands</h4>
-					<p class="pn-hint">Each becomes a command for every player with a clickable link. A name another command already uses is skipped.</p>
-					<div class="pn-links" id="pn-links"></div>
-					<button type="button" class="np-btn small" id="pn-links-add"><i class="bi bi-plus-lg"></i> Add a link</button>
+					<p class="pn-hint">Own link commands like <code>/discord</code>, texts and aliases are under <a href="#owncommands" data-goto="owncommands">Console → Own commands</a>.</p>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-check"></i> What's on it</h3>
@@ -1314,19 +1372,28 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="chunks" hidden>
+				<div class="pn-chunk-summary" id="pn-chunk-summary"></div>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-snow"></i> Laggiest chunks <span class="pn-count" id="pn-frozen-count"></span></h3>
-					<p class="np-card-intro">The chunks that took the most time in the last 15 minutes. <b>Frozen</b> stops everything in a chunk until you switch it off again: a stopgap until you can fix what's there.</p>
-					<div class="np-table-wrap"><table class="np-table" id="pn-hotspots"></table></div>
+					<h3 class="np-card-title"><i class="bi bi-fire"></i> Laggiest chunks <span class="pn-count" id="pn-frozen-count"></span></h3>
+					<p class="np-card-intro">The chunks that took the most server time in the last 15 minutes, and what's in them. <b>Freeze</b> stops everything in a chunk until you switch it off again: a stopgap until you can fix what's there.</p>
+					<div class="np-table-wrap"><table class="np-table pn-chunks" id="pn-hotspots"></table></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-lightning-charge"></i> Redstone &amp; block updates</h3>
+					<p class="np-card-intro">Places with the most scheduled block ticks and block events in the last 15 minutes: redstone clocks, piston machines, flowing liquids. "Active" is how much of the time it was busy.</p>
+					<div class="np-table-wrap"><table class="np-table pn-chunks" id="pn-redstone"></table></div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-pin-map"></i> Loaded without players <span class="pn-count" id="pn-loaded-count"></span></h3>
 					<p class="np-card-intro">Kept loaded by <b>/forceload</b>, ender pearls, portals or the dragon fight. Ticking ones run farms and redstone all the time. <b>Release</b> lets go; a pearl or portal used again loads its chunk again.</p>
-					<div class="np-table-wrap"><table class="np-table" id="pn-loaded"></table></div>
+					<div class="np-table-wrap"><table class="np-table pn-chunks" id="pn-loaded"></table></div>
 				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="cleanup" hidden>
 				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Clean up now</h3>
-					<p class="np-card-intro">Check first to see how much would go. Named, tamed, leashed and persistent mobs stay. For regular clean-ups, add a <b>Clean up</b> step in Schedule.</p>
+					<h3 class="np-card-title"><i class="bi bi-stars"></i> Quick clean-up</h3>
+					<p class="np-card-intro">Check first to see how much would go. Named, tamed, leashed, ridden and persistent mobs always stay, and so do item frames, armor stands, minecarts and boats. For regular clean-ups, add a <b>Clean up</b> step in <a href="#schedule" data-goto="schedule">Schedule</a>; to stop things piling up in the first place, see <a href="#tuning" data-goto="tuning">Tuning</a> (mob limits and junk despawn).</p>
 					<div class="pn-cleanup-row">
 						<span class="pn-cleanup-label"><b>Dropped items and XP orbs</b><span id="pn-cl-items-note"></span></span>
 						<button type="button" class="np-btn small" data-cleanup="items" data-run="0">Check</button>
@@ -1338,6 +1405,16 @@
 						<button type="button" class="np-btn small danger" data-cleanup="excess" data-run="1">Remove</button>
 					</div>
 					<div class="np-table-wrap" id="pn-cl-table-wrap" hidden><table class="np-table" id="pn-cl-table"></table></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-list-ol"></i> What's out there <span class="pn-count" id="pn-census-total"></span></h3>
+					<p class="np-card-intro">Every kind of entity in the loaded chunks, most first, with the chunk that has the most of it. <b>Remove</b> takes all of a kind that may go (see above), in every dimension or only in the one you pick.</p>
+					<div class="np-filters">
+						<select id="pn-census-dim" aria-label="Dimension"><option value="">All dimensions</option></select>
+						<input type="search" class="np-console-search" id="pn-census-search" placeholder="Filter" aria-label="Filter kinds">
+						<button type="button" class="np-btn small" id="pn-census-reload"><i class="bi bi-arrow-clockwise"></i> Count again</button>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-chunks" id="pn-census"></table></div>
 				</section>
 			</div>
 
@@ -1357,7 +1434,7 @@
 							<label class="np-form-row">…with the in-game date and time (Nice Actions calendar)<span class="np-switch"><input type="checkbox" name="showClock"><span></span></span></label>
 							<label class="np-form-row">Waypoint hubs<select name="hubs"><option value="public">Public ones</option><option value="all">All</option><option value="none">None</option></select></label>
 						</div>
-						<div class="pn-field">Dimensions on the map<div class="np-chips pn-role-picks" id="pn-map-dims"></div></div>
+						<div class="pn-field">Dimensions on the map<div class="pn-map-dims" id="pn-map-dims"></div></div>
 						<div class="pn-sticky-save"><button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button></div>
 						<div class="np-form-actions">
 							<button type="button" class="np-btn" id="pn-map-rerender"><i class="bi bi-arrow-clockwise"></i> Draw everything again</button>
@@ -1591,12 +1668,36 @@
 				</section>
 			</div>
 
+			<section class="np-card np-tab-panel" data-tab="logfiles" hidden>
+				<h3 class="np-card-title"><i class="bi bi-journal-text"></i> Log files</h3>
+				<p class="np-card-intro">The server starts a new log each day and keeps the older ones zipped in <code>logs/</code>. "Grouped" counts each kind of error and warning once; "Lines" shows the log itself.</p>
+				<div class="np-filters" id="pn-logf-tools">
+					<select id="pn-logf-file" aria-label="Log file"></select>
+					<button type="button" class="np-filter" data-logf="view" data-value="grouped">Grouped</button>
+					<button type="button" class="np-filter" data-logf="view" data-value="lines">Lines</button>
+					<span class="pn-sep"></span>
+					<button type="button" class="np-filter" data-logf="level" data-value="errors">Errors</button>
+					<button type="button" class="np-filter" data-logf="level" data-value="warnings">Errors &amp; warnings</button>
+					<button type="button" class="np-filter" data-logf="level" data-value="all">Everything</button>
+					<input type="search" class="np-console-search" id="pn-logf-search" placeholder="Search" aria-label="Search the log file">
+					<label class="np-check"><input type="checkbox" id="pn-logf-harmless"> Show harmless</label>
+					<button type="button" class="np-btn small" id="pn-logf-reload" title="Read again"><i class="bi bi-arrow-clockwise"></i></button>
+					<button type="button" class="np-btn small" id="pn-logf-download" title="Download this file"><i class="bi bi-download"></i></button>
+				</div>
+				<div class="pn-logf-sum" id="pn-logf-sum"></div>
+				<div id="pn-logf-body"></div>
+			</section>
+
 			<section class="np-card np-tab-panel" data-tab="audit" hidden>
 				<h3 class="np-card-title"><i class="bi bi-journal-text"></i> Audit log</h3>
-				<p class="np-card-intro">Every login, server action, console command and settings change, newest first.</p>
-				<div class="np-filters"><input type="search" class="np-console-search" id="pn-audit-search" placeholder="Search the log" aria-label="Search the audit log"></div>
+				<p class="np-card-intro">Every login, server action, console command and settings change, newest first. Hover a time for the full date.</p>
+				<div class="np-filters">
+					<input type="search" class="np-console-search" id="pn-audit-search" placeholder="Search" aria-label="Search the audit log">
+					<select id="pn-audit-user" aria-label="User"><option value="">Everyone</option></select>
+				</div>
+				<div class="np-filters pn-audit-areas" id="pn-audit-areas"></div>
 				<div class="np-table-wrap"><table class="np-table pn-audit">
-					<thead><tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th><th>IP</th></tr></thead>
+					<thead><tr><th>Time</th><th>Who</th><th>What</th><th>Details</th></tr></thead>
 					<tbody id="pn-audit-rows"></tbody>
 				</table></div>
 				<div class="np-form-actions"><button type="button" class="np-btn" id="pn-audit-more" hidden>Load older entries</button></div>

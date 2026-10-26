@@ -123,6 +123,8 @@ public final class MarketStore {
 		if (now == settingsModified) return;
 		settingsModified = now;
 		settings = Market.read(f);
+		// A longer (or shorter) listing time applies to the listings already up too.
+		if (data != null && data.applyListingDays(settings.listingDays, System.currentTimeMillis())) saveNow();
 	}
 
 	public static void changed() {

@@ -81,6 +81,31 @@ final class InfoPage {
 		return panel.isEmpty() ? "" : panel + "/info/";
 	}
 
+	/** Own commands (links, texts, aliases): read and saved on their own page. */
+	void registerLinks(io.javalin.router.JavalinDefaultRoutingApi routes) {
+		routes.get("/api/links", guard(Permissions.SERVER_VIEW, (ctx, me) -> json(ctx, Map.of("links", settings.links == null ? List.of() : settings.links,
+				"reserved", Links.RESERVED))));
+		routes.post("/api/links", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			Links.Custom[] list;
+			try {
+				list = Json.GSON.fromJson(body(ctx).get("links"), Links.Custom[].class);
+			} catch (RuntimeException e) {
+				list = null;
+			}
+			List<Links.Custom> next = list == null ? new ArrayList<>() : new ArrayList<>(List.of(list));
+			String problem = Links.validate(next);
+			if (problem != null) {
+				error(ctx, HttpStatus.BAD_REQUEST, problem);
+				return;
+			}
+			settings.links = next;
+			Files.writeString(settingsFile, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(settings));
+			writeLinks();
+			audit.log(me.name(), "commands.own", next.size() + " own commands: " + String.join(", ", next.stream().map(c -> "/" + c.command).toList()), clientIp(ctx));
+			json(ctx, Map.of("ok", true, "links", next));
+		}));
+	}
+
 	/** The links for /info and the own link commands, in the server's config folder for the mod. */
 	void writeLinks() {
 		Links.Settings l = new Links.Settings();
@@ -511,12 +536,8 @@ final class InfoPage {
 				error(ctx, HttpStatus.BAD_REQUEST, "The /info texts are too long.");
 				return;
 			}
-			if (next.links == null) next.links = new ArrayList<>();
-			String linkProblem = Links.validate(next.links);
-			if (linkProblem != null) {
-				error(ctx, HttpStatus.BAD_REQUEST, linkProblem);
-				return;
-			}
+			// Own commands have their own page (/api/links) now.
+			next.links = settings.links == null ? new ArrayList<>() : settings.links;
 			Path config = serverDir.resolve("config").normalize();
 			for (String rel : next.configs) {
 				if (!serverDir.resolve(rel).normalize().startsWith(config)) {

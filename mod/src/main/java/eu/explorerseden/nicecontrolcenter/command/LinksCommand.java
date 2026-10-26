@@ -74,20 +74,17 @@ public final class LinksCommand {
 		pending = false;
 		CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
 		List<Links.Custom> custom = links().custom;
-		Set<String> wanted = new HashSet<>();
-		for (Links.Custom c : custom) wanted.addAll(c.names());
 		boolean changed = false;
+		// All of ours go and come back, so a changed type, level or permission takes effect.
 		for (String name : new ArrayList<>(registered.keySet())) {
-			if (wanted.contains(name)) continue;
 			// Only if it's still ours (another mod may have added to the same name).
 			CommandNode<CommandSourceStack> node = dispatcher.getRoot().getChild(name);
 			if (node != null && node.getCommand() == registered.get(name)) remove(dispatcher.getRoot(), name);
 			registered.remove(name);
 			changed = true;
 		}
-		int before = registered.size();
 		addCustom(dispatcher, custom);
-		changed |= registered.size() != before;
+		changed |= !registered.isEmpty();
 		if (changed) for (ServerPlayer p : server.getPlayerList().getPlayers()) server.getCommands().sendCommands(p);
 	}
 
@@ -100,19 +97,39 @@ public final class LinksCommand {
 					NiceControlCenter.LOGGER.warn("The link command /{} isn't added: another command has that name", name);
 					continue;
 				}
-				Command<CommandSourceStack> run = ctx -> custom(ctx.getSource(), name);
-				dispatcher.register(Commands.literal(name)
-						.requires(Everyone.unless(PERMISSION_USE))
-						.executes(run));
+				Command<CommandSourceStack> run = ctx -> custom(ctx.getSource(), name, "");
+				java.util.function.Predicate<CommandSourceStack> who = c.level <= 0
+						? Everyone.unless(c.node())
+						: me.lucko.fabric.api.permissions.v0.Permissions.require(c.node(), net.minecraft.server.permissions.PermissionLevel.values()[Math.min(4, c.level)]);
+				var literal = Commands.literal(name).requires(who).executes(run);
+				// Aliases take whatever follows as {args}.
+				if (c.type.equals("alias")) literal.then(Commands.argument("args", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+						.executes(ctx -> custom(ctx.getSource(), name, com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "args"))));
+				dispatcher.register(literal);
 				registered.put(name, run);
 			}
 		}
 	}
 
-	/** Answers an own link command with what the file says now. */
-	private static int custom(CommandSourceStack source, String name) {
+	/** Answers an own command with what the file says now. */
+	private static int custom(CommandSourceStack source, String name, String args) {
 		for (Links.Custom c : links().custom) {
 			if (!c.names().contains(name)) continue;
+			if (c.type.equals("text")) {
+				for (String line : c.body.split("\n", -1)) source.sendSuccess(() -> Component.literal(line), false);
+				if (source.getPlayer() != null) Plop.play(source.getPlayer());
+				return 1;
+			}
+			if (c.type.equals("alias")) {
+				ServerPlayer p = source.getPlayer();
+				CommandSourceStack as = c.asServer ? source.getServer().createCommandSourceStack().withEntity(source.getEntity()).withPosition(source.getPosition())
+						.withRotation(source.getRotation()).withLevel(source.getLevel()) : source;
+				String who = p != null ? p.getGameProfile().name() : "";
+				for (String cmd : c.run) {
+					source.getServer().getCommands().performPrefixedCommand(as, cmd.replace("{player}", who).replace("{args}", args).strip());
+				}
+				return 1;
+			}
 			String label = c.label.isEmpty() ? c.url.replaceFirst("(?i)^https?://", "").replaceFirst("/$", "") : c.label;
 			return send(source, c.text.isEmpty() ? "" : c.text + " ", label, c.url);
 		}

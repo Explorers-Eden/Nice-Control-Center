@@ -577,7 +577,6 @@
     renderHeadline(k);
     renderStats(k);
     renderNotesLink(view.diagnosis.notes || []);
-    setTabBadge('checks', (view.diagnosis.notes || []).length, (view.diagnosis.notes || []).some((n) => n.severity === 'WARN' || n.severity === 'POOR'));
     // Only the visible tab is drawn; the others catch up when they are opened.
     switch (activeTab) {
       case 'overview':
@@ -596,8 +595,8 @@
         break;
       case 'world':
         renderWorldgen(view.worldgen);
-        renderHotspots(view.hotspots);
-        renderBlockUpdates(view.blockUpdates);
+        if ($('np-hotspots')) renderHotspots(view.hotspots);
+        if ($('np-block-updates')) renderBlockUpdates(view.blockUpdates);
         renderPlayers(view.players);
         break;
       case 'checks':
@@ -694,7 +693,7 @@
     if (tab === 'console' && typeof openConsole === 'function') openConsole();
     if (tab === 'chat') openChat();
     if (tab === 'updates') loadUpdates();
-    if (tab === 'checks') loadErrors();
+    if (tab === 'logs') loadErrors();
     if (tab === 'server') {
       if (!propsState.data) loadProperties();
       if (!rulesState.data) loadGamerules();
@@ -1456,7 +1455,7 @@
       $('np-errors').innerHTML = `<div class="np-empty">Could not load the log: ${esc(e.message)}</div>`;
     }
     clearTimeout(errorsState.timer);
-    if (activeTab === 'checks') errorsState.timer = setTimeout(loadErrors, 5000);
+    if (activeTab === 'logs') errorsState.timer = setTimeout(loadErrors, 5000);
   }
 
   function renderErrors() {
@@ -1487,7 +1486,7 @@
         <div class="np-line-meta">Logger: ${esc(g.logger)} · first seen ${dateTime(g.first)}</div>
       </details>`;
     }).join('');
-    $('np-errors').innerHTML = toolbar + (rows || `<div class="np-empty">${d.groups.length ? 'Nothing matches the filter.' : 'No errors or warnings logged. 👍'}</div>`);
+    $('np-errors').innerHTML = toolbar + (rows || `<div class="np-empty">${!d.groups.length ? 'No errors or warnings logged. 👍' : !errorsState.harmless && d.groups.every((g) => g.harmless) ? 'Only harmless messages so far. 👍 Tick "Show harmless" to see them.' : 'Nothing matches the filter.'}</div>`);
   }
 
   function setupErrors() {

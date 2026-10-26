@@ -56,8 +56,11 @@ final class VersionRoutes {
 			if (body.has("actions") && body.get("actions").isJsonObject()) {
 				for (Map.Entry<String, JsonElement> e : body.getAsJsonObject("actions").entrySet()) actions.put(e.getKey(), e.getValue().getAsString());
 			}
-			result(ctx, versions.start(str(body, "mc"), str(body, "loader"), actions, me.name(), Boolean.TRUE.equals(bool(body, "backupFirst"))));
+			result(ctx, versions.start(str(body, "mc"), str(body, "loader"), actions, me.name(), Boolean.TRUE.equals(bool(body, "backupFirst")),
+					Boolean.TRUE.equals(bool(body, "atRestart"))));
 		}));
+
+		routes.post("/api/versions/cancel", guard(Permissions.VERSIONS_MANAGE, (ctx, me) -> result(ctx, versions.cancelScheduled(me.name()))));
 
 		routes.post("/api/versions/undo", guard(Permissions.VERSIONS_MANAGE, (ctx, me) -> result(ctx, versions.undo(str(body(ctx), "backup"), me.name()))));
 	}

@@ -308,6 +308,8 @@ public final class Market {
 		public long rev;
 		public long prunedRev;
 		public Map<String, Listing> listings = new LinkedHashMap<>();
+		/** The listing time (days) the listings' end dates follow; 0 in files from before it was kept. */
+		public int listingDays;
 		public Map<String, Mailbox> mail = new LinkedHashMap<>();
 		public List<Sale> sales = new ArrayList<>();
 		public Map<String, Long> tombstones = new LinkedHashMap<>();
@@ -555,6 +557,25 @@ public final class Market {
 			l.per = per;
 			l.rev = bump();
 			return null;
+		}
+
+		/**
+		 * The settings' listing time changed: every listing moves by the difference (at least an hour left). The
+		 * first time, with the old time unknown, each listing runs at least the new time from when it was put up.
+		 * True when something changed.
+		 */
+		public boolean applyListingDays(int days, long now) {
+			if (days <= 0 || days == listingDays) return false;
+			long day = 86_400_000L;
+			for (Listing l : listings.values()) {
+				long next = listingDays <= 0 ? Math.max(l.expires, l.created + days * day) : Math.max(now + 3_600_000L, l.expires + (long) (days - listingDays) * day);
+				if (next != l.expires) {
+					l.expires = next;
+					l.rev = bump();
+				}
+			}
+			listingDays = days;
+			return true;
 		}
 
 		/** Sends some of a listing back to the seller's mailbox (the spare items when the lot size changes). */

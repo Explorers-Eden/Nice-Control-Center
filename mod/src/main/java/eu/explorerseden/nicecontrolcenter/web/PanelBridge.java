@@ -197,6 +197,18 @@ public final class PanelBridge {
 		send(event);
 	}
 
+	/** A player's very first visit: the panel posts its "first join" message (Discord and chat). */
+	public static void firstJoin(MinecraftServer server, net.minecraft.server.level.ServerPlayer player) {
+		if (!active()) return;
+		JsonObject event = new JsonObject();
+		event.addProperty("type", "firstJoin");
+		event.addProperty("name", player.getGameProfile().name());
+		event.addProperty("uuid", player.getStringUUID());
+		event.addProperty("players", server.getPlayerCount());
+		event.addProperty("maxPlayers", server.getMaxPlayers());
+		send(event);
+	}
+
 	private static void send(JsonObject event) {
 		SENDER.submit(() -> {
 			try {

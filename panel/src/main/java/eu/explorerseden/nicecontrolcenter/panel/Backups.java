@@ -191,6 +191,10 @@ public final class Backups {
 		return create(label, by, true);
 	}
 
+	public String lastError() {
+		return lastError;
+	}
+
 	public void protect(String name) {
 		if (name != null) protectedNames.add(name);
 	}

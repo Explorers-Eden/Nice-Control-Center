@@ -46,6 +46,8 @@
 		"VillagerGolemMixin",
 		"CropRainMixin",
 		"SleepAfkMixin",
+		"SleepPoolMixin",
+		"AdvancementRewardMixin",
 		"AntiXrayChunkMixin",
 		"AntiXrayRevealMixin",
 		"AnvilTweakMixin",

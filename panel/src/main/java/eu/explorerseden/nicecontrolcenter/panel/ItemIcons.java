@@ -43,7 +43,7 @@ final class ItemIcons {
 	private static final String MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 	private static final int SIZE = 64;
 	/** 2: shulker boxes, chests, banners and other items the game draws with code. 3: block models drawn box by box (anvils, stairs, slabs…). */
-	private static final int RENDERER = 3;
+	private static final int RENDERER = 4;
 
 	private final Path assetsDir;
 	private final Path iconsDir;
@@ -517,11 +517,14 @@ final class ItemIcons {
 			// East (x = to): from z = to towards z = from, down from the top.
 			drewAny |= face(g, faces, "east", textures, tint, 0.62f, new double[] { 16 - b[2], 16 - b[1], 16 - a[2], 16 - a[1] }, b[0], b[1], b[2], 0, 0, -dz, 0, -dy, 0);
 			// Up (y = to): x one way, z the other.
-			drewAny |= face(g, faces, "up", textures, tint, 1f, new double[] { a[0], a[2], b[0], b[2] }, a[0], b[1], a[2], dx, 0, 0, 0, 0, dz);
+			drewAny |= face(g, faces, "up", textures, tint, TOP, new double[] { a[0], a[2], b[0], b[2] }, a[0], b[1], a[2], dx, 0, 0, 0, 0, dz);
 		}
 		g.dispose();
 		return drewAny ? out : null;
 	}
+
+	/** The top face a touch darker than full light, like the game's item light (light tops like the anvil's looked washed out). */
+	private static final float TOP = 0.9f;
 
 	private static double[] vec(JsonObject e, String key) {
 		JsonArray v = e.getAsJsonArray(key);
@@ -671,7 +674,7 @@ final class ItemIcons {
 		double c = Math.cos(Math.PI / 6);
 		double w = 2 * 16 * k * c;
 		double x0 = (SIZE - w) / 2;
-		draw(g, top, new AffineTransform(k * c, k * 0.5, -k * c, k * 0.5, x0 + w / 2, 0));
+		draw(g, shaded(top, TOP), new AffineTransform(k * c, k * 0.5, -k * c, k * 0.5, x0 + w / 2, 0));
 		draw(g, shaded(left, 0.8f), new AffineTransform(k * c, k * 0.5, 0, k, x0, 8 * k));
 		draw(g, shaded(right, 0.62f), new AffineTransform(k * c, -k * 0.5, 0, k, x0 + w / 2, 16 * k));
 		g.dispose();

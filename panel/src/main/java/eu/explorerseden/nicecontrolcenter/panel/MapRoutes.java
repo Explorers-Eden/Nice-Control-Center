@@ -76,7 +76,8 @@ final class MapRoutes {
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("settings", map.settings());
 			out.put("status", map.status());
-			out.put("dimensions", map.dimensions().stream().map(d -> Map.of("id", d.id(), "name", d.name(), "key", d.key())).toList());
+			out.put("dimensions", map.dimensions().stream().map(d -> Map.of("id", d.id(), "name", d.name(), "key", d.key(), "ceiling", d.ceiling(),
+					"gameCeiling", d.info() != null ? d.info().has("ceiling") && d.info().get("ceiling").getAsBoolean() : d.id().equals("minecraft:the_nether"))).toList());
 			out.put("host", mapHost);
 			json(ctx, out);
 		}));

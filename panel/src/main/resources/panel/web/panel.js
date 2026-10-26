@@ -107,20 +107,24 @@
       { id: 'console', hue: '#9fb0c8', label: 'Console', icon: 'bi-terminal', subs: [
         { tab: 'server', label: 'Console', perm: 'console.read', desc: 'The server log as it happens. Type commands below it.' },
         { tab: 'mod:chat', label: 'Chat', perm: 'dashboard.view', desc: 'What players write in game; you can answer from here.' },
-        { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server: who may use it and what it does.' }] },
+        { tab: 'commands', label: 'Commands', perm: 'server.view', desc: 'Every command on the server: who may use it and what it does.' },
+        { tab: 'owncommands', label: 'Own commands', perm: 'server.view', desc: 'Your own commands: links (/discord), texts (/rules) and aliases (/spawn), each with who may use it.' }] },
+      { id: 'logs', hue: '#ff8a80', label: 'Logs & reports', icon: 'bi-journal-medical', subs: [
+        { tab: 'mod:logs', label: 'Errors & warnings', perm: 'dashboard.view', desc: 'Problems logged since the server started, grouped by the mod or data pack they come from.' },
+        { tab: 'logfiles', label: 'Log files', perm: 'console.read', desc: 'The log of today and earlier days: read, filter and search them.' },
+        { tab: 'mod:reports', label: 'Lag reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' }] },
       { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
         { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' }] },
       { id: 'performance', hue: '#ffb35c', label: 'Performance', icon: 'bi-speedometer2', subs: [
         { tab: 'mod:performance', label: 'Live', perm: 'dashboard.view', desc: 'What takes the server\'s time right now, tick by tick.' },
         { tab: 'stats', label: 'History', perm: 'server.view', desc: 'TPS, players, memory and disk over days and weeks.' },
-        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' },
-        { tab: 'mod:checks', label: 'Checks', perm: 'dashboard.view', desc: 'Errors in the log, settings worth a look and leftovers that bloat the world.' }] },
+        { tab: 'mod:checks', label: 'Checks', perm: 'dashboard.view', desc: 'Settings worth a look and leftovers that bloat the world.' }] },
       { id: 'world', hue: '#4fd1c5', label: 'World', icon: 'bi-globe-americas', subs: [
         { tab: 'mod:world', label: 'Health', perm: 'dashboard.view', desc: 'New terrain, busy chunks and redstone, and what\'s loaded around players.' },
-        { tab: 'chunks', label: 'Chunks', perm: 'dashboard.view', desc: 'Freeze the laggiest chunks, release ones loaded with nobody near, clean up.' },
-        { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'The permanent area, pregeneration and resetting the outer wilds.' },
-        { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' }] },
+        { tab: 'chunks', label: 'Chunks', perm: 'dashboard.view', desc: 'The laggiest chunks and busiest redstone; freeze them, or release ones loaded with nobody near.' },
+        { tab: 'cleanup', label: 'Clean up', perm: 'dashboard.view', desc: 'Remove dropped items, crowds of mobs, or every one of a kind, and see what\'s out there.' },
+        { tab: 'world', label: 'Borders & reset', perm: 'world.trim', desc: 'The permanent area, pregeneration and resetting the outer wilds.' }] },
     ] },
     { group: 'Community', items: [
       { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
@@ -133,6 +137,8 @@
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
+      { id: 'rewards', hue: '#7ee0a1', label: 'Event rewards', icon: 'bi-gift', subs: [
+        { tab: 'rewards', label: 'Event rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
         { tab: 'discord', label: 'Discord', perm: 'discord.manage', desc: 'Chat bridge, alerts and account linking with your Discord server.' }] },
     ] },
@@ -141,6 +147,7 @@
         { tab: 'mod:server', label: 'Game', perm: 'dashboard.view', desc: 'server.properties and game rules.' },
         { tab: 'java', label: 'Startup & Java', perm: 'server.view', desc: 'Memory, Java and what happens when the server starts or crashes.' },
         { tab: 'serverlist', label: 'Server list', perm: 'server.view', desc: 'How the server looks in the multiplayer list: message and icon.' },
+        { tab: 'conduct', label: 'Code of conduct', perm: 'server.view', desc: 'Rules players read and accept once when they join.' },
         { tab: 'maintenance', label: 'Maintenance', perm: 'server.view', desc: 'Close the server for everyone but staff while you work on it.' }] },
       { id: 'gameplay', hue: '#c4a6ff', label: 'Gameplay', icon: 'bi-magic', subs: [
         { tab: 'tweaks', label: 'Items & tools', perm: 'server.view', desc: 'Tree felling, vein mining, anvil, grindstone, spawners and small tweaks.' },
@@ -153,6 +160,7 @@
         { tab: 'configs', label: 'Mod configs', permAny: 'files.config files.read', desc: 'The mods\' settings files, grouped by mod.' }] },
       { id: 'public', hue: '#ff8fa3', label: 'Public pages', icon: 'bi-globe2', subs: [
         { tab: 'info', label: 'Info page', perm: 'settings.server', desc: 'A public page where players can read up on the server\'s settings.' },
+        { tab: 'map', label: 'Map', perm: 'map.manage', desc: 'The public web map of the world.' },
         { tab: 'appearance', label: 'Appearance', permAny: 'users.admin map.manage settings.server', desc: 'Logos for the panel and the map, and the picture of the info page banner.' }] },
     ] },
     { group: 'Server', items: [
@@ -167,9 +175,8 @@
         { tab: 'mod:updates', label: 'Mods', perm: 'dashboard.view', desc: 'Newer versions of the installed mods and the resource pack.' }] },
     ] },
     { group: 'Admin', items: [
-      { id: 'users', hue: '#c4a6ff', label: 'Users & roles', icon: 'bi-person-gear', subs: [
-        { tab: 'users', label: 'Users & roles', perm: 'users.admin', desc: 'Who can log in to the panel and what they may do.' }] },
-      { id: 'audit', hue: '#b6c8ff', label: 'Audit log', icon: 'bi-journal-text', subs: [
+      { id: 'admin', hue: '#c4a6ff', label: 'Panel access', icon: 'bi-person-gear', subs: [
+        { tab: 'users', label: 'Users & roles', perm: 'users.admin', desc: 'Who can log in to the panel and what they may do.' },
         { tab: 'audit', label: 'Audit log', perm: 'audit.view', desc: 'Every change made through the panel, and by whom.' }] },
     ] },
   ];
@@ -178,7 +185,7 @@
     'tweaks': 'tweaks', 'tweaks/gameplay': 'tweaks', 'tweaks/trees-veins': 'felling', 'tweaks/trees-nature': 'felling', 'tweaks/market': 'market',
     'performance/tuning': 'tuning', 'settings/game': 'mod:server', 'settings/startup-java': 'java', 'settings/server-list': 'serverlist', 'settings/public-info': 'info',
     'files/all-files': 'files', 'files/mod-configs': 'configs', 'files/data-pack-settings': 'mod:packs', 'appearance': 'appearance', 'commands': 'commands',
-    'players/maintenance': 'maintenance',
+    'players/maintenance': 'maintenance', 'performance/reports': 'mod:reports', 'users': 'users', 'audit': 'audit', 'world/map': 'map',
   };
   /** Pages outside the sidebar (the user menu). */
   const EXTRA = { account: { tab: 'account', label: 'Account', desc: 'Your picture, theme, password and SSH keys for SFTP.' } };
@@ -310,10 +317,13 @@
     html, body { min-height: 0 !important; height: auto !important; }
     body.embedded { min-height: 0 !important; }
     body.embedded > .navbar, body.embedded .np-tabs, body.embedded .np-toasts { display: none !important; }
+    /* Busiest chunks and redstone are on the panel's Chunks page. */
+    body.embedded .np-chunk-cards { display: none !important; }
     /* The player list runs as long as the open card (at least 640px) and scrolls inside. */
     body.embedded .np-inspector { align-items: stretch !important; }
-    body.embedded .np-inspector-list { height: auto !important; min-height: 640px; contain: size; position: static !important; }
-    body.embedded .np-console-log { height: 520px !important; }
+    /* Console, chat and the player list grow with the browser window (the panel passes its height in as --pn-vh). */
+    body.embedded .np-inspector-list { height: auto !important; min-height: max(480px, calc(var(--pn-vh, 900px) - 330px)); contain: size; position: static !important; }
+    body.embedded .np-console-log { height: max(320px, calc(var(--pn-vh, 900px) - 340px)) !important; }
     /* Kick and ban live on Players → Whitelist & bans. */
     body.embedded .np-moderation, body.embedded .np-subhead:has(+ .np-moderation) { display: none !important; }
     /* On Home the health banner is part of the panel's greeting card; on pages without a time window it's left out. */
@@ -340,6 +350,9 @@
             const h = Math.max(160, Math.ceil(doc.body.scrollHeight));
             if (Math.abs(h - frame.offsetHeight) > 2) frame.style.height = h + 'px';
           };
+          const vh = () => doc.documentElement.style.setProperty('--pn-vh', window.innerHeight + 'px');
+          vh();
+          window.addEventListener('resize', vh);
           frameResize = new ResizeObserver(fit);
           frameResize.observe(doc.body);
           fit();
@@ -428,7 +441,7 @@
       doc.querySelectorAll('#np-tabs .np-tab').forEach((t) => {
         const src = t.querySelector('.np-tab-badge');
         // The Game page's count (settings worth a look) says nothing next to "Server"; Home lists those.
-        if (!src || t.dataset.tab === 'server') return;
+        if (!src || t.dataset.tab === 'server' || t.dataset.tab === 'checks') return;
         const warn = src.classList.contains('warn');
         let n = src.hidden ? '' : src.textContent.trim();
         // Players online come from the navbar's live data (the frame only counts when its page is open); unread answers win.
@@ -481,8 +494,12 @@
     if (tab === 'mod:overview') loadHome();
     if (tab === 'tuning') loadTuning();
     if (tab === 'chunks') loadChunks();
+    if (tab === 'cleanup') loadCensus();
     if (tab === 'maintenance') loadMaintenance();
     if (tab === 'serverlist') loadServerList();
+    if (tab === 'conduct') loadConduct();
+    if (tab === 'rewards') loadRewards();
+    if (tab === 'owncommands') loadOwnCommands();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
     if (tab === 'claims') loadClaims();
@@ -507,6 +524,7 @@
     if (tab === 'schedule') loadSchedule();
     if (tab === 'users') loadUsers();
     if (tab === 'audit') loadAudit(true);
+    if (tab === 'logfiles') loadLogFiles();
     if (tab === 'account') { renderAccount(); renderThemes(); }
     if (tab === 'appearance') loadLogos();
     if (tab === 'server') { const log = $('pn-log'); log.scrollTop = log.scrollHeight; }
@@ -794,7 +812,7 @@
   }
 
   function renderServer(st) {
-    const [label, dot, pill] = STATES[st.state] || [st.state, 'info', 'off'];
+    const [label, dot, pill] = st.state === 'RUNNING' && serverPaused ? ['Paused', 'good', 'paused'] : STATES[st.state] || [st.state, 'info', 'off'];
     $('pn-state-pill').className = 'np-live ' + pill;
     $('pn-state-text').textContent = label;
     // Uptime goes in the navbar badge; anything worth reading (crash, restart countdown, missing jar) in the note below it.
@@ -811,6 +829,7 @@
     $('pn-sub').hidden = !parts.length;
     $('pn-sub').className = 'pn-state-note ' + dot;
     serverRunning = st.state === 'RUNNING';
+    if (!serverRunning) serverPaused = false;
     if (serverRunning && !liveTimer && can('dashboard.view')) pollLive();
     if (!serverRunning) {
       liveOnline = 0;
@@ -864,6 +883,13 @@
     const cur = d.current;
     if (!p) return;
     liveOnline = p.players || 0;
+    // Paused (nobody online for a while: pause-when-empty-seconds) shows in the status capsule.
+    serverPaused = !!p.paused;
+    if (serverRunning) {
+      $('pn-state-text').textContent = serverPaused ? 'Paused' : STATES.RUNNING[0];
+      $('pn-state-pill').className = 'np-live ' + (serverPaused ? 'paused' : 'on');
+      if (serverPaused) $('pn-state-pill').title = 'Running, paused while nobody is online (pause-when-empty-seconds)';
+    }
     const budget = 50;
     const tpsClass = p.tps >= 19.4 ? 'good' : p.tps >= 17 ? 'warn' : 'poor';
     const msptClass = (v) => (v <= budget * 0.7 ? 'good' : v <= budget ? 'warn' : 'poor');
@@ -903,6 +929,8 @@
         showBusy ? `paused ${fixed(gcPct, 1)}%` : `${num(cur ? cur.gcCount : 0)} pauses`],
       ['Loaded', null, null, `<div class="np-mspt">${[['chunks', p.chunks], ['entities', p.entities], ['block ent.', p.blockEntities]]
         .map(([l, v]) => `<span>${num(v)}<small>${l}</small></span>`).join('')}</div>`],
+      ['Distances', null, null, `<div class="np-mspt">${[['view', p.view, ''], ['sim', p.sim, ''], ['mob cap', d.mobCap != null ? d.mobCap + '%' : '–', d.mobCap != null && d.mobCap < 100 ? 'warn' : '']]
+        .map(([l, v, cls]) => `<span class="${cls}" title="${l === 'mob cap' ? 'The mob cap right now (the lag ladder lowers it while the server lags)' : l === 'view' ? 'View distance (chunks)' : 'Simulation distance (chunks)'}">${v ?? '–'}<small>${l}</small></span>`).join('')}</div>`],
       ['Players', num(p.players), d.server && d.server.maxPlayers ? `online of ${num(d.server.maxPlayers)}` : 'online'],
     );
     $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}">
@@ -920,7 +948,8 @@
     const dim = (worldDims.find((x) => x.id === st.dimension) || {}).name
       || String(st.dimension || '').replace(/^minecraft:/, '').replace(/^[^:]*:/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     const pct = st.total ? Math.floor(st.done / st.total * 100) : 0;
-    const status = st.paused ? 'paused' : st.phase === 'lods' ? 'LODs' : st.counting ? 'counting…' : pct + '%';
+    const eta = !st.paused && st.phase !== 'lods' && !st.counting && st.etaSeconds > 0 ? ' · ' + duration(st.etaSeconds * 1000) : '';
+    const status = (st.paused ? 'paused' : st.phase === 'lods' ? 'LODs' : st.counting ? 'counting…' : pct + '%') + eta;
     const html = `<i class="bi bi-grid-3x3-gap"></i><b>${esc(dim)}:</b><span>${esc(status)}</span>`;
     if (pill.dataset.html !== html) { pill.innerHTML = html; pill.dataset.html = html; }
     pill.title = (st.phase === 'lods' ? `Pregenerating Distant Horizons LODs in ${dim}: ${st.lodStatus || 'working…'}` : `Pregenerating ${dim}: ${(st.done || 0).toLocaleString()} of ${(st.total || 0).toLocaleString()} chunks`)
@@ -994,7 +1023,7 @@
 
   function lineClass(line) {
     if (unstamped(line).startsWith('[panel] ')) return 'panel';
-    if (unstamped(line).startsWith('> ')) return 'cmd';
+    if (unstamped(line).startsWith('> ')) return 'panel cmd';
     if (/\b(ERROR|FATAL)\b|Exception|^\s+at /.test(line)) return 'poor';
     if (/\bWARN\b/.test(line)) return 'warn';
     return '';
@@ -1006,7 +1035,7 @@
 
   /** The line's level; stack trace lines ("at …", "Caused by") belong to the line above them. */
   function lineLevel(line) {
-    if (unstamped(line).startsWith('[panel] ')) return 'PANEL';
+    if (unstamped(line).startsWith('[panel] ') || unstamped(line).startsWith('> ')) return 'PANEL';
     const m = line.match(/\/(ERROR|FATAL|WARN|INFO|DEBUG|TRACE)\]/);
     if (m) return (lastLevel = m[1]);
     if (/^\s+at |^\s*Caused by:|^\s*\.\.\. \d+ more/.test(line)) return lastLevel;
@@ -1051,7 +1080,15 @@
       const div = document.createElement('div');
       div.className = lineClass(line);
       div.dataset.level = lineLevel(line);
-      div.textContent = line;
+      // Everything the panel itself writes (its notes and the commands sent from here) gets one "Panel" mark.
+      const rest = unstamped(line);
+      if (div.dataset.level === 'PANEL') {
+        const stamp = line.slice(0, line.length - rest.length);
+        const text = rest.startsWith('[panel] ') ? rest.slice(8) : '/' + rest.slice(2).replace(/^\//, '');
+        div.append(stamp, Object.assign(document.createElement('span'), { className: 'pn-log-tag', textContent: 'Panel' }), ' ' + text);
+      } else {
+        div.textContent = line;
+      }
       div.hidden = !lineVisible(div);
       frag.appendChild(div);
     }
@@ -1263,12 +1300,50 @@
   }
 
   /** Profile pictures for [data-avatar] elements; the first letter stays where there's none. */
+  // Remembered per page load, so a re-drawn list shows the picture at once instead of the letter first.
+  const avatarSeen = new Map();
   function loadAvatars(root) {
     root.querySelectorAll('[data-avatar]').forEach((el) => {
+      const url = `api/avatar/${encodeURIComponent(el.dataset.avatar)}`;
+      const show = () => { el.style.backgroundImage = `url("${url}")`; el.classList.add('pic'); };
+      const known = avatarSeen.get(url);
+      if (known === true) { show(); return; }
+      if (known === false) return;
       const img = new Image();
-      img.onload = () => { el.style.backgroundImage = `url("${img.src}")`; el.classList.add('pic'); };
-      img.src = `api/avatar/${encodeURIComponent(el.dataset.avatar)}`;
+      img.onload = () => { avatarSeen.set(url, true); show(); };
+      img.onerror = () => avatarSeen.set(url, false);
+      img.src = url;
     });
+  }
+
+  /**
+   * innerHTML for things re-drawn on a timer: nothing happens when it's the same, and pictures already
+   * on screen are kept (moved into the new markup) so they don't flash while reloading.
+   */
+  const drawn = new WeakMap();
+  function setHtml(el, html) {
+    if (!el) return false;
+    // Skipped only if nothing else wrote into it since (an error message, say).
+    const last = drawn.get(el);
+    if (last && last.html === html && last.first === el.firstChild) return false;
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    const old = new Map();
+    el.querySelectorAll('img[src]').forEach((img) => {
+      if (!old.has(img.src)) old.set(img.src, []);
+      old.get(img.src).push(img);
+    });
+    t.content.querySelectorAll('img[src]').forEach((img) => {
+      const reuse = old.get(img.src);
+      if (reuse && reuse.length) {
+        const keep = reuse.shift();
+        keep.className = img.className;
+        img.replaceWith(keep);
+      }
+    });
+    el.replaceChildren(t.content);
+    drawn.set(el, { html, first: el.firstChild });
+    return true;
   }
 
   function renderUsers() {
@@ -1498,29 +1573,331 @@
 
   let auditOldest = 0;
 
+  // Audit entries by area: the filter chips, and an icon and colour per row.
+  const AUDIT_AREAS = [
+    ['logins', 'Logins', 'bi-box-arrow-in-right', 'login,logout,account'],
+    ['server', 'Server & console', 'bi-terminal', 'server,console,maintenance,schedule'],
+    ['files', 'Files', 'bi-folder2', 'files,sftp'],
+    ['backups', 'Backups', 'bi-archive', 'backup'],
+    ['world', 'World', 'bi-globe-americas', 'world,map,performance,dashboard'],
+    ['community', 'Players & community', 'bi-people', 'players,claims,hubs,market,pets,discord'],
+    ['settings', 'Settings', 'bi-sliders', 'settings,serverlist,tweaks,rewards,info,branding,commands'],
+    ['updates', 'Updates', 'bi-cloud-arrow-down', 'versions'],
+    ['users', 'Users & roles', 'bi-person-gear', 'user,role'],
+  ];
+  const auditArea = (action) => {
+    const prefix = String(action).split('.')[0];
+    return AUDIT_AREAS.find((a) => a[3].split(',').includes(prefix));
+  };
+  const auditState = { area: '', user: '', lastDay: '' };
+
   async function loadAudit(fresh) {
-    if (fresh) auditOldest = 0;
+    if (fresh) { auditOldest = 0; auditState.lastDay = ''; }
     const q = $('pn-audit-search').value.trim();
+    const area = auditState.area ? AUDIT_AREAS.find((a) => a[0] === auditState.area)[3] : '';
     try {
-      const data = await api(`api/audit?before=${auditOldest}&q=${encodeURIComponent(q)}`);
-      const rows = data.entries.map((e) => `<tr><td>${esc(dateTime(e.time))}</td><td class="name">${esc(e.user || '–')}</td>
-        <td><span class="np-chip">${esc(e.action)}</span></td><td>${esc(e.detail || '')}</td><td>${esc(e.ip || '')}</td></tr>`).join('');
-      if (fresh) $('pn-audit-rows').innerHTML = rows || '<tr><td colspan="5" class="np-empty">Nothing logged yet.</td></tr>';
+      const data = await api(`api/audit?before=${auditOldest}&q=${encodeURIComponent(q)}&user=${encodeURIComponent(auditState.user)}&area=${encodeURIComponent(area)}`);
+      if (data.users) {
+        $('pn-audit-user').innerHTML = '<option value="">Everyone</option>' + data.users.map((u) => `<option value="${esc(u)}" ${u === auditState.user ? 'selected' : ''}>${esc(u)}</option>`).join('');
+      }
+      const today = new Date().toDateString();
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      let rows = '';
+      for (const e of data.entries) {
+        const d = new Date(e.time);
+        const day = d.toDateString();
+        if (day !== auditState.lastDay) {
+          auditState.lastDay = day;
+          const label = day === today ? 'Today' : day === yesterday ? 'Yesterday' : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+          rows += `<tr class="pn-audit-day"><td colspan="4">${esc(label)}</td></tr>`;
+        }
+        const a = auditArea(e.action);
+        const [prefix, ...rest] = String(e.action).split('.');
+        const what = rest.length ? rest.join(' ') : prefix;
+        const detail = e.detail || '';
+        rows += `<tr>
+          <td class="pn-audit-time" title="${esc(dateTime(e.time))}">${esc(d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }))}</td>
+          <td class="name">${esc(e.user || '–')}</td>
+          <td><span class="pn-audit-act" data-area="${a ? a[0] : ''}"><i class="bi ${a ? a[2] : 'bi-dot'}"></i>${esc(prefix)}${rest.length ? ` <b>${esc(what)}</b>` : ''}</span></td>
+          <td class="pn-audit-detail"><span title="${esc(detail)}">${esc(detail)}</span>${e.ip ? `<small>${esc(e.ip)}</small>` : ''}</td></tr>`;
+      }
+      if (fresh) $('pn-audit-rows').innerHTML = rows || '<tr><td colspan="4" class="np-empty">Nothing matches.</td></tr>';
       else $('pn-audit-rows').insertAdjacentHTML('beforeend', rows);
       if (data.entries.length) auditOldest = data.entries[data.entries.length - 1].id;
       $('pn-audit-more').hidden = data.entries.length < 100;
     } catch (err) {
-      $('pn-audit-rows').innerHTML = `<tr><td colspan="5" class="np-empty">${esc(err.message)}</td></tr>`;
+      $('pn-audit-rows').innerHTML = `<tr><td colspan="4" class="np-empty">${esc(err.message)}</td></tr>`;
       $('pn-audit-more').hidden = true;
     }
   }
 
+  $('pn-audit-areas').innerHTML = `<button type="button" class="np-filter active" data-area="">All</button>`
+    + AUDIT_AREAS.map((a) => `<button type="button" class="np-filter" data-area="${a[0]}"><i class="bi ${a[2]}"></i> ${esc(a[1])}</button>`).join('');
+  $('pn-audit-areas').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-area]');
+    if (!b) return;
+    auditState.area = b.dataset.area;
+    $('pn-audit-areas').querySelectorAll('[data-area]').forEach((x) => x.classList.toggle('active', x === b));
+    loadAudit(true);
+  });
+  $('pn-audit-user').addEventListener('change', (e) => { auditState.user = e.target.value; loadAudit(true); });
   let auditTimer = null;
   $('pn-audit-search').addEventListener('input', () => {
     clearTimeout(auditTimer);
     auditTimer = setTimeout(() => loadAudit(true), 300);
   });
   $('pn-audit-more').addEventListener('click', () => loadAudit(false));
+
+  // ── Code of conduct ────────────────────────────────────────────────────
+
+  const conduct = { texts: {}, lang: 'en_us' };
+
+  async function loadConduct() {
+    try {
+      const d = await api('api/conduct');
+      conduct.texts = d.texts;
+      if (!conduct.texts.en_us) conduct.texts.en_us = '';
+      conduct.lang = 'en_us';
+      $('pn-coc-form').elements.enabled.checked = d.enabled;
+      renderConduct();
+    } catch (err) {
+      formMsg('pn-coc-msg', err.message, false);
+    }
+    $('pn-coc-form').querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = !can('settings.server'); });
+  }
+
+  function renderConduct() {
+    $('pn-coc-langs').innerHTML = Object.keys(conduct.texts).sort((a, b) => (a === 'en_us' ? -1 : b === 'en_us' ? 1 : a.localeCompare(b)))
+      .map((l) => `<button type="button" class="np-filter ${l === conduct.lang ? 'active' : ''}" data-lang="${esc(l)}">${esc(l)}${l === 'en_us' ? ' (fallback)' : ''}</button>`).join('');
+    $('pn-coc-text').value = conduct.texts[conduct.lang] || '';
+    $('pn-coc-remove').hidden = conduct.lang === 'en_us';
+  }
+
+  $('pn-coc-text').addEventListener('input', (e) => { conduct.texts[conduct.lang] = e.target.value; });
+  $('pn-coc-langs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lang]');
+    if (!b) return;
+    conduct.lang = b.dataset.lang;
+    renderConduct();
+  });
+  $('pn-coc-add').addEventListener('click', () => {
+    const lang = (prompt('Language code, as in the game\'s language files (de_de, fr_fr, es_es…):') || '').trim().toLowerCase();
+    if (!lang) return;
+    if (!/^[a-z]{2,3}_[a-z]{2,4}$/.test(lang)) { formMsg('pn-coc-msg', `"${lang}" isn't a language code like de_de.`, false); return; }
+    if (!(lang in conduct.texts)) conduct.texts[lang] = conduct.texts.en_us || '';
+    conduct.lang = lang;
+    renderConduct();
+  });
+  $('pn-coc-remove').addEventListener('click', () => {
+    if (!confirm(`Remove the ${conduct.lang} text? Those players then see the English one.`)) return;
+    delete conduct.texts[conduct.lang];
+    conduct.lang = 'en_us';
+    renderConduct();
+  });
+  $('pn-coc-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('api/conduct', { enabled: e.target.elements.enabled.checked, texts: conduct.texts });
+      formMsg('pn-coc-msg', serverRunning ? 'Saved. The server shows it from the next restart.' : 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-coc-msg', err.message, false);
+    }
+  });
+
+  // ── Event rewards ──────────────────────────────────────────────────────
+
+  const rw = { settings: null, triggers: [], dirty: false };
+  const newId = () => Math.random().toString(36).slice(2, 10);
+  const REWARD_TEMPLATES = {
+    welcome: { name: 'Welcome kit', trigger: 'firstJoin', repeat: 'oncePerPlayer', commands: ['give {player} minecraft:bread 16', 'give {player} minecraft:stone_sword'], message: '§aWelcome to the server, {player}! Here is a little something to get you started.' },
+    daily: { name: 'Daily login reward', trigger: 'join', repeat: 'always', cooldownMinutes: 1200, commands: ['give {player} minecraft:emerald 1'], message: '§6Thanks for coming back! Here is your daily emerald.' },
+    nether: { name: 'First trip to the Nether', trigger: 'dimension', value: 'minecraft:the_nether', repeat: 'oncePerPlayer', commands: ['effect give {player} minecraft:fire_resistance 120'], message: '§c{player} entered the Nether for the first time!', messageEveryone: true },
+    level30: { name: 'Level 30', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§b{player} reached level 30!', messageEveryone: true },
+    night: { name: 'Nightfall warning', trigger: 'dayTime', number: 12500, repeat: 'always', commands: [], message: '§7The sun is setting. Mobs come out soon.', messageEveryone: true },
+    day100: { name: 'Day 100', trigger: 'gameDay', number: 100, repeat: 'once', commands: ['title @a title {"text":"Day 100!","color":"gold"}'], message: '' },
+  };
+
+  async function loadRewards() {
+    if (rw.dirty && rw.settings) { renderRewards(); return; }
+    try {
+      const d = await api('api/rewards');
+      rw.settings = d.settings;
+      rw.triggers = d.triggers;
+      rw.dirty = false;
+      renderRewards();
+    } catch (err) {
+      formMsg('pn-rw-msg', err.message, false);
+    }
+  }
+
+  function renderRewards() {
+    const s = rw.settings;
+    const edit = can('settings.server');
+    $('pn-rw-enabled').checked = s.enabled;
+    $('pn-rw-enabled').disabled = !edit;
+    const trig = (id) => rw.triggers.find((t) => t.id === id) || {};
+    $('pn-rw-rules').innerHTML = s.rules.map((r, i) => {
+      const t = trig(r.trigger);
+      const opts = rw.triggers.map((x) => `<option value="${x.id}" ${x.id === r.trigger ? 'selected' : ''}>${esc(x.label)}</option>`).join('');
+      return `<section class="pn-rw-rule ${r.enabled ? '' : 'off'}" data-rule="${i}">
+        <div class="pn-rw-head">
+          <span class="np-switch" title="On or off"><input type="checkbox" data-k="enabled" ${r.enabled ? 'checked' : ''}><span></span></span>
+          <input type="text" class="pn-rw-name" data-k="name" value="${esc(r.name)}" placeholder="Name this rule" maxlength="60">
+          <span class="pn-rw-actions">
+            <button type="button" class="np-btn small" data-act="again" title="Forget who it already ran for, so &quot;once&quot; rules run again"><i class="bi bi-arrow-repeat"></i></button>
+            <button type="button" class="np-btn small" data-act="copy" title="Duplicate"><i class="bi bi-copy"></i></button>
+            <button type="button" class="np-btn small danger" data-act="delete" title="Delete"><i class="bi bi-trash"></i></button>
+          </span>
+        </div>
+        <div class="pn-rw-grid">
+          <label class="pn-field"><span>When a player…</span><select data-k="trigger">${opts}</select></label>
+          ${t.value ? `<label class="pn-field"><span>${esc(t.value)}</span><input type="text" data-k="value" value="${esc(r.value)}" placeholder="${r.trigger === 'dimension' ? 'minecraft:the_nether' : r.trigger === 'kill' ? 'minecraft:ender_dragon' : 'minecraft:story/mine_diamond'}"></label>` : ''}
+          ${t.number ? `<label class="pn-field"><span>${esc(t.number)}</span><input type="number" data-k="number" value="${r.number}" min="0"></label>` : ''}
+          <label class="pn-field"><span>For</span><select data-k="who"><option value="everyone">everyone</option><option value="player" ${r.who === 'player' ? 'selected' : ''}>one player</option></select></label>
+          ${r.who === 'player' ? `<label class="pn-field"><span>Player</span><input type="text" data-k="player" value="${esc(r.player)}" maxlength="16" placeholder="Name"></label>` : ''}
+          <label class="pn-field"><span>How often</span><select data-k="repeat">
+            <option value="always">every time</option><option value="oncePerPlayer" ${r.repeat === 'oncePerPlayer' ? 'selected' : ''}>once per player</option><option value="once" ${r.repeat === 'once' ? 'selected' : ''}>once for the whole server</option></select></label>
+          <label class="pn-field"><span>Wait between (minutes, per player)</span><input type="number" data-k="cooldownMinutes" value="${r.cooldownMinutes}" min="0"></label>
+        </div>
+        ${t.world ? '<p class="pn-hint">Runs once on its own; commands with {player} (and a message to the player) run for everyone online.</p>' : ''}
+        <label class="pn-field"><span>Commands (one per line, without /; run as the server at the player)</span><textarea data-k="commands" rows="${Math.max(2, r.commands.length + 1)}" spellcheck="false" placeholder="give {player} minecraft:diamond 1">${esc(r.commands.join('\n'))}</textarea></label>
+        <div class="pn-rw-msgrow">
+          <label class="pn-field"><span>Message (optional; § colour codes)</span><input type="text" data-k="message" value="${esc(r.message)}" maxlength="1000" placeholder="§aWell done, {player}!"></label>
+          <label class="np-check"><input type="checkbox" data-k="messageEveryone" ${r.messageEveryone ? 'checked' : ''}> to everyone</label>
+        </div>
+      </section>`;
+    }).join('') || '<p class="np-empty">No rules yet. Add one, or start from an example.</p>';
+    $('pn-rw-rules').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-rw-save').disabled = !edit || !rw.dirty;
+  }
+
+  function rwChanged(rerender) {
+    rw.dirty = true;
+    $('pn-rw-save').disabled = false;
+    formMsg('pn-rw-msg', 'Not saved yet.', true);
+    if (rerender) renderRewards();
+  }
+
+  $('pn-rw-rules').addEventListener('input', (e) => {
+    const box = e.target.closest('[data-rule]');
+    const k = e.target.dataset.k;
+    if (!box || !k) return;
+    const r = rw.settings.rules[+box.dataset.rule];
+    if (e.target.type === 'checkbox') r[k] = e.target.checked;
+    else if (e.target.type === 'number') r[k] = Number(e.target.value) || 0;
+    else if (k === 'commands') r[k] = e.target.value.split('\n');
+    else r[k] = e.target.value;
+    if (k === 'enabled') box.classList.toggle('off', !r.enabled);
+    rwChanged(e.target.tagName === 'SELECT');
+  });
+  $('pn-rw-rules').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const i = +b.closest('[data-rule]').dataset.rule;
+    const rules = rw.settings.rules;
+    if (b.dataset.act === 'delete') {
+      if (!confirm(`Delete "${rules[i].name || 'this rule'}"?`)) return;
+      rules.splice(i, 1);
+    } else if (b.dataset.act === 'copy') {
+      rules.splice(i + 1, 0, { ...structuredClone(rules[i]), id: newId(), name: (rules[i].name || 'Rule') + ' (copy)' });
+    } else if (b.dataset.act === 'again') {
+      if (!confirm('Forget who this rule already ran for? "Once" rules then run again for everyone, after you save.')) return;
+      rules[i].id = newId();
+    }
+    rwChanged(true);
+  });
+  $('pn-rw-add').addEventListener('change', (e) => {
+    const k = e.target.value;
+    e.target.value = '';
+    if (!k) return;
+    const base = { id: newId(), name: '', enabled: true, trigger: 'join', value: '', number: 0, who: 'everyone', player: '', repeat: 'always', cooldownMinutes: 0, commands: [], message: '', messageEveryone: false };
+    rw.settings.rules.push({ ...base, ...(k === 'blank' ? {} : structuredClone(REWARD_TEMPLATES[k])) });
+    rwChanged(true);
+    $('pn-rw-rules').lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  $('pn-rw-enabled').addEventListener('change', (e) => { rw.settings.enabled = e.target.checked; rwChanged(false); });
+  $('pn-rw-save').addEventListener('click', async () => {
+    const s = structuredClone(rw.settings);
+    s.rules.forEach((r) => { r.commands = r.commands.map((c) => c.trim()).filter(Boolean); });
+    try {
+      const d = await api('api/rewards', s);
+      rw.settings = d.settings;
+      rw.dirty = false;
+      renderRewards();
+      formMsg('pn-rw-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-rw-msg', err.message, false);
+    }
+  });
+
+  // ── Log files ──────────────────────────────────────────────────────────
+
+  const logf = { level: 'warnings', view: 'grouped', harmless: false, files: null };
+
+  async function loadLogFiles() {
+    try {
+      const data = await api('api/logs');
+      const sel = $('pn-logf-file');
+      const keep = sel.value;
+      logf.files = data.files;
+      sel.innerHTML = data.files.map((f) => `<option value="${esc(f.name)}">${esc(f.name === 'latest.log' ? 'Today (latest.log)' : f.name.replace(/\.log(\.gz)?$/, ''))} · ${esc(bytes(f.size))}</option>`).join('')
+        || '<option value="">No log files yet</option>';
+      if (keep && data.files.some((f) => f.name === keep)) sel.value = keep;
+      showLogFile();
+    } catch (err) {
+      $('pn-logf-body').innerHTML = `<p class="np-empty">${esc(err.message)}</p>`;
+    }
+  }
+
+  async function showLogFile() {
+    const name = $('pn-logf-file').value;
+    document.querySelectorAll('[data-logf]').forEach((b) => b.classList.toggle('active', logf[b.dataset.logf] === b.dataset.value));
+    if (!name) {
+      $('pn-logf-body').innerHTML = '<p class="np-empty">The server writes its log to logs/ once it has run.</p>';
+      return;
+    }
+    $('pn-logf-body').innerHTML = '<p class="np-empty">Reading…</p>';
+    const q = $('pn-logf-search').value.trim();
+    try {
+      const d = await api(`api/logs/view?name=${encodeURIComponent(name)}&level=${logf.level}&q=${encodeURIComponent(q)}&harmless=${logf.harmless ? 1 : 0}`);
+      $('pn-logf-sum').innerHTML = `<span class="np-chip">${num(d.lines)} lines</span><span class="np-chip ${d.errors ? 'bad' : ''}">${num(d.errors)} errors</span><span class="np-chip ${d.warnings ? 'gold' : ''}">${num(d.warnings)} warnings</span>`
+        + (logf.view === 'lines' && d.matched > d.entries.length ? `<small>showing the last ${num(d.entries.length)} of ${num(d.matched)}</small>` : '');
+      const cls = (l) => (l === 'ERROR' || l === 'FATAL' ? 'poor' : l === 'WARN' ? 'warn' : '');
+      if (logf.view === 'grouped') {
+        const groups = q ? d.groups.filter((g) => g.example.toLowerCase().includes(q.toLowerCase())) : d.groups;
+        $('pn-logf-body').innerHTML = groups.length ? `<div class="np-table-wrap"><table class="np-table pn-logf-groups"><thead><tr><th>Message</th><th>Times</th><th>First – last</th></tr></thead><tbody>${groups.map((g) => `<tr>
+          <td><span class="np-mono ${cls(g.level)}">${esc(g.example)}</span>${g.harmless ? ' <span class="np-chip">harmless</span>' : ''}</td>
+          <td class="num">${num(g.count)}×</td><td class="pn-nowrap">${esc(g.first)}${g.last && g.last !== g.first ? ' – ' + esc(g.last) : ''}</td></tr>`).join('')}</tbody></table></div>`
+          : `<p class="np-empty">${d.errors + d.warnings ? 'Only harmless warnings in this file.' : 'No errors or warnings in this file. 👍'}</p>`;
+        return;
+      }
+      $('pn-logf-body').innerHTML = `<div class="np-console-log pn-log pn-logf-lines">${d.entries.map((e) => `<div class="${cls(e.level)}">[${esc(e.time)}] [${esc(e.thread)}/${esc(e.level)}]: ${esc(e.message)}${e.more.length ? `<details><summary>${e.more.length} more line${e.more.length === 1 ? '' : 's'}</summary>${e.more.map((m) => esc(m)).join('\n')}</details>` : ''}</div>`).join('')
+        || '<div class="np-empty">Nothing matches.</div>'}</div>`;
+      const box = $('pn-logf-body').querySelector('.pn-logf-lines');
+      box.scrollTop = box.scrollHeight;
+    } catch (err) {
+      $('pn-logf-body').innerHTML = `<p class="np-empty">${esc(err.message)}</p>`;
+    }
+  }
+
+  $('pn-logf-file').addEventListener('change', showLogFile);
+  $('pn-logf-reload').addEventListener('click', loadLogFiles);
+  $('pn-logf-download').addEventListener('click', () => {
+    const name = $('pn-logf-file').value;
+    if (name) location.href = 'api/files/download?path=' + encodeURIComponent('logs/' + name);
+  });
+  $('pn-logf-tools').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-logf]');
+    if (!b) return;
+    logf[b.dataset.logf] = b.dataset.value;
+    showLogFile();
+  });
+  $('pn-logf-harmless').addEventListener('change', (e) => { logf.harmless = e.target.checked; showLogFile(); });
+  let logfTimer = null;
+  $('pn-logf-search').addEventListener('input', () => {
+    clearTimeout(logfTimer);
+    logfTimer = setTimeout(showLogFile, 350);
+  });
 
   // ── Own account ────────────────────────────────────────────────────────
 
@@ -2137,6 +2514,7 @@
   function updateSelection() {
     const n = selected().length;
     $('pn-zip-selected').disabled = !n;
+    $('pn-download-selected').disabled = !n;
     $('pn-delete-selected').disabled = !n;
   }
 
@@ -2307,6 +2685,10 @@
     }
   });
 
+  $('pn-download-selected').addEventListener('click', () => {
+    const paths = selected();
+    if (paths.length) location.href = 'api/files/download?' + paths.map((p) => 'paths=' + encodeURIComponent(p)).join('&');
+  });
   $('pn-zip-selected').addEventListener('click', async () => {
     const paths = selected();
     const to = prompt('Name of the zip file:', (cwd ? cwd + '/' : '') + (paths.length === 1 ? paths[0].split('/').pop() : 'files') + '.zip');
@@ -2586,6 +2968,8 @@
     $('pn-update-phase').textContent = st.running ? (st.phase || 'Working…') : (st.result || 'Last update');
     $('pn-update-log').innerHTML = stepList(st.log, st.running);
     $('pn-update-go').disabled = st.running;
+    $('pn-update-cancel').hidden = !st.waiting || !can('versions.manage');
+    if (st.waiting) $('pn-update-phase').textContent = `Waiting for the next restart: ${st.waitingFor || 'update'}`;
     // Only the newest update can be undone, and only if it went through (a rollback already undid itself).
     const latestBackup = st.history.length && st.history[0].backup && st.history[0].result === 'Done' ? st.history[0] : null;
     $('pn-version-history').innerHTML = st.history.map((h, i) => `<div class="pn-task">
@@ -2666,11 +3050,13 @@
     const off = Object.values(actions).filter((a) => a === 'disable').length;
     const upd = Object.values(actions).filter((a) => a === 'update').length;
     const backupFirst = $('pn-update-backup').checked;
-    const steps = [backupFirst ? 'Backup' : null, 'Stop the server', `New server jar${upd ? `, ${upd} mod update${upd === 1 ? '' : 's'}` : ''}${off ? `, ${off} mod${off === 1 ? '' : 's'} turned off` : ''}`,
+    const atRestart = $('pn-update-later').checked;
+    const steps = [atRestart ? 'Download now, then wait until the server next starts (scheduled restart, Restart or Start)' : null,
+      backupFirst ? 'Backup' : null, atRestart ? null : 'Stop the server', `New server jar${upd ? `, ${upd} mod update${upd === 1 ? '' : 's'}` : ''}${off ? `, ${off} mod${off === 1 ? '' : 's'} turned off` : ''}`,
       `Start; if it doesn't come up, ${backupFirst ? 'the backup is restored' : 'the old mods and server jar are put back'}`].filter(Boolean);
     if (!confirm(`${$('pn-update-label').textContent}?\n\n${steps.map((t, i) => `${i + 1}. ${t}`).join('\n')}`)) return;
     try {
-      await api('api/versions/update', { mc, loader, actions, backupFirst });
+      await api('api/versions/update', { mc, loader, actions, backupFirst, atRestart });
       $('pn-mod-plan').hidden = true;
       loadVersions(false);
     } catch (err) {
@@ -2683,6 +3069,15 @@
   $('pn-loader').addEventListener('change', () => { $('pn-mod-plan').hidden = true; });
   $('pn-mods-check').addEventListener('click', checkMods);
   $('pn-update-go').addEventListener('click', startUpdate);
+  $('pn-update-cancel').addEventListener('click', async () => {
+    if (!confirm('Call off the update that waits for the next restart? The downloads are thrown away.')) return;
+    try {
+      await api('api/versions/cancel', {});
+      loadVersions(false);
+    } catch (err) {
+      formMsg('pn-versions-msg', err.message, false);
+    }
+  });
   $('pn-loader-hint').addEventListener('click', async (e) => {
     if (!e.target.closest('#pn-loader-quick')) return;
     $('pn-mc').value = versionState.installed.mc;
@@ -2703,13 +3098,13 @@
 
   // ── Discord ────────────────────────────────────────────────────────────
 
-  const EVENT_LABELS = { join: 'Join', leave: 'Leave', death: 'Death', advancement: 'Advancement', broadcast: '/tellraw @a and /say messages', start: 'Server online', stop: 'Server offline',
+  const EVENT_LABELS = { join: 'Join', firstJoin: 'First join (also said in game chat)', leave: 'Leave', death: 'Death', advancement: 'Advancement', broadcast: '/tellraw @a and /say messages', start: 'Server online', stop: 'Server offline',
     maintenance: 'Maintenance on/off', crash: 'Crash', lag: 'Lag', lagOver: 'Lag over', taskFailed: 'Task failed', backupFailed: 'Backup failed',
     trimDone: 'Outer wilds reset', diskLow: 'Disk almost full', memory: 'Memory pressure', perf: 'Distances stepped down or up' };
   /** Extra placeholders some events have, shown under their name. */
   const EVENT_VARS = { crash: '{mod} {message}', taskFailed: '{name} {message}', advancement: '{player} {advancement}', death: '{message}', broadcast: '{message} {player}' };
   const EVENT_GROUPS = [
-    ['Chat & server', ['join', 'leave', 'death', 'advancement', 'broadcast', 'start', 'stop', 'maintenance']],
+    ['Chat & server', ['join', 'firstJoin', 'leave', 'death', 'advancement', 'broadcast', 'start', 'stop', 'maintenance']],
     ['Alerts', ['crash', 'lag', 'lagOver', 'taskFailed', 'backupFailed', 'trimDone', 'diskLow', 'memory', 'perf']],
   ];
   let discordData = null;
@@ -2874,7 +3269,8 @@
     form.statusNames.checked = !!s.statusNames;
     form.showClock.checked = s.showClock !== false;
     form.hubs.value = s.hubs;
-    $('pn-map-dims').innerHTML = mapData.dimensions.map((d) => `<label><input type="checkbox" value="${esc(d.id)}" ${s.hidden.includes(d.id) ? '' : 'checked'}> ${esc(d.name)}</label>`).join('');
+    $('pn-map-dims').innerHTML = mapData.dimensions.map((d) => `<div class="pn-map-dim"><label><input type="checkbox" data-shown value="${esc(d.id)}" ${s.hidden.includes(d.id) ? '' : 'checked'}> ${esc(d.name)}</label>
+      <label class="pn-map-roof" title="${d.gameCeiling ? 'The game knows this one has a roof.' : 'For worlds with a solid roof (like a cave world): the map shows what is below it, like the Nether.'}"><input type="checkbox" data-roof value="${esc(d.id)}" ${d.ceiling ? 'checked' : ''} ${d.gameCeiling ? 'disabled' : ''}> has a roof</label></div>`).join('');
     $('pn-map-status').textContent = `${st.status} · ${st.rendered}/${st.regions} regions · colors: ${st.colors}`;
     $('pn-map-host').innerHTML = mapData.host
       ? `Public address: <a href="https://${esc(mapData.host)}/" target="_blank" rel="noopener">${esc(mapData.host)}</a>`
@@ -2885,12 +3281,13 @@
   $('pn-map-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const shown = [...$('pn-map-dims').querySelectorAll('input:checked')].map((i) => i.value);
+    const shown = [...$('pn-map-dims').querySelectorAll('input[data-shown]:checked')].map((i) => i.value);
+    const roofs = [...$('pn-map-dims').querySelectorAll('input[data-roof]:checked:not(:disabled)')].map((i) => i.value);
     try {
       await api('api/map/settings', {
         enabled: form.enabled.checked, title: form.title.value.trim(), showPlayers: form.showPlayers.checked, showClaims: form.showClaims.checked,
         showStatus: form.showStatus.checked, statusNames: form.statusNames.checked, showClock: form.showClock.checked,
-        hubs: form.hubs.value, hidden: mapData.dimensions.map((d) => d.id).filter((id) => !shown.includes(id)),
+        hubs: form.hubs.value, hidden: mapData.dimensions.map((d) => d.id).filter((id) => !shown.includes(id)), roofs,
       });
       formMsg('pn-map-msg', 'Saved.', true);
       loadMap();
@@ -2929,7 +3326,7 @@
     const btn = (action, target, label) => `<button type="button" class="np-btn small" data-pl="${action}" data-target="${esc(target)}">${label}</button>`;
     const set = (tableId, countId, list, headRow, row, empty) => {
       $(countId).textContent = list.length ? `(${list.length})` : '';
-      $(tableId).innerHTML = list.length ? `<thead><tr>${headRow}</tr></thead><tbody>${list.map(row).join('')}</tbody>` : `<tbody><tr><td>${empty}</td></tr></tbody>`;
+      setHtml($(tableId), list.length ? `<thead><tr>${headRow}</tr></thead><tbody>${list.map(row).join('')}</tbody>` : `<tbody><tr><td>${empty}</td></tr></tbody>`);
     };
     set('pn-pl-whitelist', 'pn-pl-wl-count', d.whitelist, '<th>Player</th><th></th>',
       (p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td><td class="num">${btn('whitelist-remove', p.name, 'Remove')}</td></tr>`, 'Nobody is on the whitelist.');
@@ -2953,10 +3350,10 @@
     $('pn-pl-online-card').hidden = !running;
     $('pn-pl-online-count').textContent = online.length ? `(${online.length})` : '';
     const banned = new Set((plData.bans || []).map((b) => b.name.toLowerCase()));
-    $('pn-pl-online').innerHTML = online.length
+    setHtml($('pn-pl-online'), online.length
       ? `<thead><tr><th>Player</th><th></th></tr></thead><tbody>${online.map((p) => `<tr><td class="name">${head(p.name)}${esc(p.name)}</td>
         <td class="num"><div class="pn-row-actions">${btn('kick', p.name, 'Kick')}${banned.has(p.name.toLowerCase()) ? '' : btn('ban', p.name, 'Ban')}</div></td></tr>`).join('')}</tbody>`
-      : '<tbody><tr><td>Nobody is online.</td></tr></tbody>';
+      : '<tbody><tr><td>Nobody is online.</td></tr></tbody>');
   }
 
   async function playerAction(body) {
@@ -3522,15 +3919,15 @@
     // Updates aren't listed: the Updates entry in the sidebar already counts them.
     const items = [...d.attention];
     $('pn-attention').hidden = !items.length;
-    $('pn-attn-list').innerHTML = items.map((i) => `<li class="pn-attn ${esc(i.level)}"><i class="bi ${i.level === 'bad' ? 'bi-x-circle-fill' : i.level === 'warn' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'}"></i>
-      <span>${esc(i.text)}</span><button type="button" class="np-btn small" data-goto="${esc(i.tab)}">${esc(i.action)} <i class="bi bi-arrow-right"></i></button></li>`).join('');
+    setHtml($('pn-attn-list'), items.map((i) => `<li class="pn-attn ${esc(i.level)}"><i class="bi ${i.level === 'bad' ? 'bi-x-circle-fill' : i.level === 'warn' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'}"></i>
+      <span>${esc(i.text)}</span><button type="button" class="np-btn small" data-goto="${esc(i.tab)}">${esc(i.action)} <i class="bi bi-arrow-right"></i></button></li>`).join(''));
     let hidden = false;
     try { hidden = localStorage.getItem(SETUP_KEY) === '1'; } catch (e) { /* shown */ }
     const open = d.setup.filter((x) => !x.done).length;
     $('pn-setup').hidden = hidden || !open;
     $('pn-setup-count').textContent = `${d.setup.length - open} of ${d.setup.length} done`;
-    $('pn-setup-list').innerHTML = d.setup.map((x) => `<li class="${x.done ? 'done' : ''}"><i class="bi ${x.done ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
-      <span>${esc(x.text)}</span>${x.done ? '' : `<button type="button" class="np-btn small" data-goto="${esc(x.tab)}">Set up <i class="bi bi-arrow-right"></i></button>`}</li>`).join('');
+    setHtml($('pn-setup-list'), d.setup.map((x) => `<li class="${x.done ? 'done' : ''}"><i class="bi ${x.done ? 'bi-check-circle-fill' : 'bi-circle'}"></i>
+      <span>${esc(x.text)}</span>${x.done ? '' : `<button type="button" class="np-btn small" data-goto="${esc(x.tab)}">Set up <i class="bi bi-arrow-right"></i></button>`}</li>`).join(''));
   }
 
   /** The greeting banner on Home: time of day, the server list message as players see it, a few facts. */
@@ -3538,7 +3935,15 @@
     const h = new Date().getHours();
     const part = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('pn-hero-greet').textContent = `${part}, ${me ? me.user : ''}`;
-    $('pn-hero-motd').innerHTML = motdHtml(d.motd);
+    const icon = h < 5 || h >= 21 ? 'bi-moon-stars' : h < 8 ? 'bi-sunrise' : h < 18 ? 'bi-sun' : 'bi-sunset';
+    $('pn-hero-date').innerHTML = `<i class="bi ${icon}"></i> ${esc(new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }))}`;
+    const av = $('pn-hero-avatar');
+    if (me && av.dataset.avatar !== me.user) {
+      av.dataset.avatar = me.user;
+      av.textContent = me.user.slice(0, 1).toUpperCase();
+      loadAvatars(av.parentElement);
+    }
+    setHtml($('pn-hero-motd'), motdHtml(d.motd));
     // Server state and the game clock are always in the navbar, so they aren't repeated here.
     heroFacts = [];
     if (d.players != null) heroFacts.push(`<span class="pn-hero-fact"><i class="bi bi-people-fill"></i>${d.players} / ${esc(d.maxPlayers)} playing</span>`);
@@ -3546,6 +3951,7 @@
     syncHeroHealth();
   }
   let heroFacts = [];
+  let serverPaused = false;
 
   /**
    * The mod's health banner ("The server is running smoothly", TPS line, summary, time window) shown
@@ -3590,9 +3996,11 @@
     syncHeroHealth();
   });
 
-  $('pn-home').addEventListener('click', (e) => {
+  document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-goto]');
-    if (b) selectTab(b.dataset.goto);
+    if (!b || b.closest('#pn-dashboard-frame')) return;
+    e.preventDefault();
+    selectTab(b.dataset.goto);
   });
   $('pn-setup-hide').addEventListener('click', () => {
     try { localStorage.setItem(SETUP_KEY, '1'); } catch (e) { /* hidden for now */ }
@@ -3739,7 +4147,8 @@
     } catch (e) { /* the list shows without the frozen marks */ }
     renderFrozen();
     loadHotspots();
-    loadLoaded();
+    await loadLoaded();
+    renderChunkSummary();
   }
 
   // Mob limits, junk items and save limits: lists the form can't hold in "section.key" fields.
@@ -3919,13 +4328,53 @@
 
   /** The laggiest chunks and the frozen ones in one list; each row has its own Frozen switch. */
   let hotspots = null;
+  let blockUpdates = null;
   async function loadHotspots() {
     try {
-      hotspots = (await api('dashboard/api/window?m=15')).hotspots || [];
+      const w = await api('dashboard/api/window?m=15');
+      hotspots = w.hotspots || [];
+      blockUpdates = w.blockUpdates || [];
     } catch (e) {
       hotspots = null;
+      blockUpdates = null;
     }
     renderFrozen();
+    renderRedstone();
+    renderChunkSummary();
+  }
+
+  /** Copy-a-teleport and open-on-the-map buttons for a spot. */
+  function spotActions(dim, x, y, z) {
+    const tp = `/execute in ${dim} run tp @s ${x} ${y == null ? '~' : y + 1} ${z}`;
+    return `<span class="pn-spot-actions"><button type="button" class="np-btn small" data-copy="${esc(tp)}" title="Copy: ${esc(tp)}"><i class="bi bi-clipboard"></i> Teleport</button>`
+      + `<a class="np-btn small" href="map/#${esc(dim.replace(':', '_').replace(/[^a-z0-9_.-]/g, '_'))}/${x}/${z}/2" target="_blank" rel="noopener" title="Show on the map"><i class="bi bi-map"></i></a></span>`;
+  }
+
+  function renderRedstone() {
+    const table = $('pn-redstone');
+    if (!blockUpdates || !blockUpdates.length) {
+      table.innerHTML = `<tbody><tr><td>${blockUpdates ? 'Nothing busy right now. 👍' : 'Shows while the server runs.'}</td></tr></tbody>`;
+      return;
+    }
+    table.innerHTML = `<thead><tr><th>Where</th><th>Block</th><th class="num">Updates/s</th><th class="num">Active</th><th></th></tr></thead><tbody>${blockUpdates.map((u) => `<tr>
+      <td>${esc(dimLabel(u.dimension))} <small>${u.x}, ${u.y}, ${u.z}</small></td>
+      <td>${u.block ? esc(shortId(u.block).replace(/_/g, ' ')) : '–'}</td>
+      <td class="num">${u.perSecond >= 10 ? Math.round(u.perSecond) : Number(u.perSecond).toFixed(1)}</td>
+      <td class="num"><span class="pn-bar" style="--v:${Math.min(100, u.activePercent)}%"></span>${Math.round(u.activePercent)}%</td>
+      <td class="num">${spotActions(u.dimension, u.x, u.y, u.z)}</td></tr>`).join('')}</tbody>`;
+  }
+
+  function renderChunkSummary() {
+    const box = $('pn-chunk-summary');
+    if (!hotspots) { box.innerHTML = ''; return; }
+    const top = hotspots[0];
+    const frozen = ((perfSettings && perfSettings.frozen) || []).length;
+    const busy = blockUpdates && blockUpdates[0];
+    const tile = (icon, label, value, sub, cls) => `<div class="pn-csum ${cls || ''}"><i class="bi ${icon}"></i><span><small>${label}</small><b>${value}</b>${sub ? `<small>${sub}</small>` : ''}</span></div>`;
+    box.innerHTML = tile('bi-fire', 'Laggiest chunk', top ? `${top.ms.toFixed(2)} ms` : '–', top ? `${esc(dimLabel(top.dimension))} · x ${top.blockX}, z ${top.blockZ}` : 'nothing stands out', top && top.ms > 5 ? 'warn' : '')
+      + tile('bi-lightning-charge', 'Busiest redstone', busy ? `${Math.round(busy.perSecond)}/s` : '–', busy ? `${esc(busy.block ? shortId(busy.block).replace(/_/g, ' ') : '')} · ${busy.x}, ${busy.y}, ${busy.z}` : 'quiet', busy && busy.perSecond > 200 ? 'warn' : '')
+      + tile('bi-snow', 'Frozen chunks', String(frozen), frozen ? 'stopped until you unfreeze them' : 'none', frozen ? 'cold' : '')
+      + tile('bi-pin-map', 'Loaded without players', $('pn-loaded-count').textContent || '0', 'see below');
   }
 
   const chunkKey = (dim, x, z) => `${dim}|${x}|${z}`;
@@ -3943,14 +4392,15 @@
       table.innerHTML = `<tbody><tr><td>${hotspots ? 'No data yet. The live monitor finds these (Performance → Live); it needs a few minutes.' : 'Shows while the server runs.'}</td></tr></tbody>`;
       return;
     }
-    table.innerHTML = `<thead><tr><th>Where</th><th class="num">ms per tick</th><th class="num">Mobs</th><th class="num">Block entities</th><th>Most</th><th class="num">Frozen</th></tr></thead><tbody>${rows.map((r) => {
+    const typeName = (t) => (t && !t.includes('<null>') ? shortId(t).replace(/_/g, ' ') : '');
+    table.innerHTML = `<thead><tr><th>Where</th><th class="num">ms per tick</th><th class="num">Mobs</th><th class="num">Block entities</th><th>Most of it</th><th></th><th class="num">Frozen</th></tr></thead><tbody>${rows.map((r) => {
       const on = frozenKeys.has(chunkKey(r.dim, r.x, r.z));
       const h = r.h;
       const where = `${esc(dimLabel(r.dim))} <small>x ${h ? h.blockX : r.x * 16 + 8}, z ${h ? h.blockZ : r.z * 16 + 8} · chunk ${r.x}, ${r.z}</small>`;
       const stats = h
-        ? `<td class="num">${h.ms.toFixed(2)}</td><td class="num">${h.entities}</td><td class="num">${h.blockEntities}</td><td>${h.topType ? `${esc(h.topType.replace('minecraft:', ''))} × ${h.topTypeCount}` : ''}</td>`
+        ? `<td class="num">${h.ms.toFixed(2)}</td><td class="num">${h.entities}</td><td class="num">${h.blockEntities}</td><td>${typeName(h.topType) ? `${esc(typeName(h.topType))} × ${h.topTypeCount}` : '<span class="pn-muted">mixed</span>'}</td>`
         : '<td class="num pn-muted">–</td><td class="num pn-muted">–</td><td class="num pn-muted">–</td><td class="pn-muted">not ticking</td>';
-      return `<tr class="pn-chunk${on ? ' frozen' : ''}"><td>${where}</td>${stats}
+      return `<tr class="pn-chunk${on ? ' frozen' : ''}"><td>${where}</td>${stats}<td class="num">${spotActions(r.dim, h ? h.blockX : r.x * 16 + 8, null, h ? h.blockZ : r.z * 16 + 8)}</td>
         <td class="num"><label class="np-switch" title="Freeze this chunk"><input type="checkbox" data-freeze data-dim="${esc(r.dim)}" data-x="${r.x}" data-z="${r.z}"${on ? ' checked' : ''}><span></span></label></td></tr>`;
     }).join('')}</tbody>`;
   }
@@ -3978,7 +4428,70 @@
     }
   });
 
-  document.querySelector('.np-tab-panel[data-tab="chunks"]').addEventListener('click', async (e) => {
+  // Copy buttons anywhere in the panel (teleport commands and the like).
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-copy]');
+    if (!b || b.closest('#pn-dashboard-frame')) return;
+    try {
+      await navigator.clipboard.writeText(b.dataset.copy);
+      const was = b.innerHTML;
+      b.innerHTML = '<i class="bi bi-check2"></i> Copied';
+      setTimeout(() => { b.innerHTML = was; }, 1400);
+    } catch (err) { prompt('Copy this:', b.dataset.copy); }
+  });
+
+  // What's out there: every kind of entity, with Remove per kind.
+  let census = null;
+  async function loadCensus() {
+    try {
+      census = await api('dashboard/api/cleanup/census');
+    } catch (err) {
+      census = null;
+    }
+    const dims = (worldDims || []).length ? worldDims.map((d) => d.id || d) : [...new Set(((census && census.types) || []).map((t) => t.topDimension).filter(Boolean))];
+    const sel = $('pn-census-dim');
+    if (sel.options.length <= 1 && dims.length) sel.innerHTML = '<option value="">All dimensions</option>' + dims.map((d) => `<option value="${esc(d)}">${esc(dimLabel(d))}</option>`).join('');
+    renderCensus();
+  }
+
+  function renderCensus() {
+    const table = $('pn-census');
+    if (!census) { table.innerHTML = '<tbody><tr><td>Shows while the server runs.</td></tr></tbody>'; $('pn-census-total').textContent = ''; return; }
+    $('pn-census-total').textContent = `${num(census.total)} entities`;
+    const q = $('pn-census-search').value.trim().toLowerCase();
+    const rows = census.types.filter((t) => !q || t.type.includes(q));
+    const max = Math.max(1, ...census.types.map((t) => t.count));
+    table.innerHTML = rows.length ? `<thead><tr><th>Kind</th><th class="num">How many</th><th class="num">May go</th><th>Most in one chunk</th><th></th></tr></thead><tbody>${rows.map((t) => `<tr>
+      <td class="name">${esc(shortId(t.type).replace(/_/g, ' '))}<small>${esc(t.type)}</small></td>
+      <td class="num"><span class="pn-bar" style="--v:${(t.count / max) * 100}%"></span>${num(t.count)}</td>
+      <td class="num">${t.removable ? num(t.removable) : '<span class="pn-muted">0</span>'}</td>
+      <td>${t.topDimension ? `<span class="pn-census-top"><span><b>${t.topCount}</b><small>${esc(dimLabel(t.topDimension))} · x ${t.topX * 16 + 8}, z ${t.topZ * 16 + 8}</small></span>${spotActions(t.topDimension, t.topX * 16 + 8, null, t.topZ * 16 + 8)}</span>` : ''}</td>
+      <td class="num">${t.removable && can('settings.server') ? `<button type="button" class="np-btn small danger" data-census-remove="${esc(t.type)}">Remove</button>` : ''}</td></tr>`).join('')}</tbody>`
+      : '<tbody><tr><td>Nothing matches.</td></tr></tbody>';
+  }
+
+  $('pn-census-search').addEventListener('input', renderCensus);
+  $('pn-census-reload').addEventListener('click', loadCensus);
+  $('pn-census').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-census-remove]');
+    if (!b) return;
+    const type = b.dataset.censusRemove;
+    const dim = $('pn-census-dim').value;
+    const q = `kind=type&type=${encodeURIComponent(type)}${dim ? '&dimension=' + encodeURIComponent(dim) : ''}`;
+    try {
+      const p = await api('dashboard/api/cleanup/preview?' + q);
+      if (p.error) { alert(p.error); return; }
+      if (!p.remove) { alert('None of these may go (named, tamed, leashed, ridden or persistent).'); return; }
+      if (!confirm(`Remove ${p.remove} × ${shortId(type)}${dim ? ' in ' + dimLabel(dim) : ''}?${p.kept ? ` ${p.kept} stay (named, tamed, leashed…).` : ''}`)) return;
+      const r = await api('dashboard/api/cleanup/run?' + q, {});
+      b.closest('td').innerHTML = `<span class="good">Removed ${r.remove}</span>`;
+      setTimeout(loadCensus, 1500);
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.querySelector('.np-tab-panel[data-tab="cleanup"]').addEventListener('click', async (e) => {
     const c = e.target.closest('[data-cleanup]');
     if (!c) return;
     const kind = c.dataset.cleanup;
@@ -4055,10 +4568,10 @@
     players.sort((a, b) => (b.op - a.op) || (mtStaff.has(b.name.toLowerCase()) - mtStaff.has(a.name.toLowerCase())) || a.name.localeCompare(b.name));
     const shown = players.filter((p) => !q || p.name.toLowerCase().includes(q));
     const editable = can('players.manage');
-    $('pn-mt-staff').innerHTML = shown.map((p) => `<label class="pn-staff-item${p.op ? ' op' : ''}">
+    setHtml($('pn-mt-staff'), shown.map((p) => `<label class="pn-staff-item${p.op ? ' op' : ''}">
         <input type="checkbox" data-staff="${esc(p.name.toLowerCase())}" ${p.op || mtStaff.has(p.name.toLowerCase()) ? 'checked' : ''} ${p.op || !editable ? 'disabled' : ''}>
         <img src="https://mc-heads.net/avatar/${encodeURIComponent(p.name)}/20" alt="" width="20" height="20" loading="lazy"><span>${esc(p.name)}</span>${p.op ? '<small>operator</small>' : ''}</label>`).join('')
-      || `<p class="pn-hint">${q ? 'Nobody by that name yet: add it above.' : 'Nobody has joined yet: add names above.'}</p>`;
+      || `<p class="pn-hint">${q ? 'Nobody by that name yet: add it above.' : 'Nobody has joined yet: add names above.'}</p>`);
   }
 
   $('pn-mt-filter').addEventListener('input', renderStaff);
@@ -4282,7 +4795,6 @@
     f.infoText.value = s.infoText || '';
     f.infoLabel.value = s.infoLabel || '';
     f.infoAddress.value = s.infoAddress || '';
-    renderLinks(s.links || []);
     f.infoAddress.placeholder = infoData.autoAddress || 'https://info.example.com';
     $('pn-info-auto').textContent = infoData.autoAddress ? `Empty: ${infoData.autoAddress}` : 'Set this, INFO_HOST or PANEL_PUBLIC_URL, or /info has no link';
     // While it's off, the button opens an admin preview here (the public address shows "switched off").
@@ -4308,34 +4820,101 @@
       || '<p class="pn-hint">No config files found.</p>';
   }
 
-  // Own link commands: one row each, read back when saving.
-  function renderLinks(links) {
-    $('pn-links').innerHTML = links.map((l) => `<div class="pn-link-row">
-      <label class="pn-field">Command<input type="text" data-k="command" value="${esc(l.command)}" placeholder="discord" maxlength="32"></label>
-      <label class="pn-field">More names<input type="text" data-k="aliases" value="${esc((l.aliases || []).join(', '))}" placeholder="dc, chat"></label>
-      <label class="pn-field">Text before the link<input type="text" data-k="text" value="${esc(l.text)}" placeholder="Join our Discord:" maxlength="200"></label>
-      <label class="pn-field">Link text<input type="text" data-k="label" value="${esc(l.label)}" placeholder="the address" maxlength="80"></label>
-      <label class="pn-field">Address<input type="text" data-k="url" value="${esc(l.url)}" placeholder="https://discord.gg/…" maxlength="300"></label>
-      <button type="button" class="np-btn small danger" data-link-remove title="Remove this link"><i class="bi bi-trash"></i></button>
-    </div>`).join('') || '<p class="pn-hint">No own links yet.</p>';
+  // ── Own commands: links, texts and aliases ──
+
+  const own = { list: [], dirty: false };
+  const OWN_TYPES = { link: ['bi-link-45deg', 'Link'], text: ['bi-card-text', 'Text'], alias: ['bi-arrow-return-right', 'Alias'] };
+  const OWN_LEVELS = ['Everyone', 'Level 1 (moderators)', 'Level 2 (game masters)', 'Level 3 (admins)', 'Level 4 (owners)'];
+
+  async function loadOwnCommands() {
+    if (own.dirty) return;
+    try {
+      own.list = (await api('api/links')).links;
+      renderOwn();
+    } catch (err) {
+      formMsg('pn-own-msg', err.message, false);
+    }
   }
 
-  function readLinks() {
-    return [...$('pn-links').querySelectorAll('.pn-link-row')].map((row) => {
-      const v = (k) => row.querySelector(`[data-k="${k}"]`).value.trim();
-      return { command: v('command'), aliases: v('aliases').split(',').map((a) => a.trim()).filter(Boolean), text: v('text'), label: v('label'), url: v('url') };
-    }).filter((l) => l.command || l.url || l.text || l.label || l.aliases.length);
+  function renderOwn() {
+    const edit = can('settings.server');
+    $('pn-own').innerHTML = own.list.map((c, i) => {
+      const t = c.type || 'link';
+      const fields = t === 'link' ? `
+          <label class="pn-field"><span>Text before the link</span><input type="text" data-k="text" value="${esc(c.text)}" placeholder="Join our Discord:" maxlength="200"></label>
+          <label class="pn-field"><span>Link text</span><input type="text" data-k="label" value="${esc(c.label)}" placeholder="the address" maxlength="80"></label>
+          <label class="pn-field pn-own-wide"><span>Address</span><input type="text" data-k="url" value="${esc(c.url)}" placeholder="https://discord.gg/…" maxlength="300"></label>`
+        : t === 'text' ? `
+          <label class="pn-field pn-own-wide"><span>Text (§ colour codes; each line is a chat line)</span><textarea data-k="body" rows="${Math.max(3, (c.body || '').split('\n').length + 1)}" maxlength="4000" placeholder="§6Server rules§r&#10;1. Be kind&#10;2. No griefing">${esc(c.body || '')}</textarea></label>`
+        : `
+          <label class="pn-field pn-own-wide"><span>Runs (one command per line, without /; <code>{player}</code> who typed it, <code>{args}</code> what came after)</span><textarea data-k="run" rows="${Math.max(2, (c.run || []).length + 1)}" spellcheck="false" placeholder="warp spawn">${esc((c.run || []).join('\n'))}</textarea></label>
+          <label class="np-check"><input type="checkbox" data-k="asServer" ${c.asServer ? 'checked' : ''}> Run with the server's rights (lets players use commands they couldn't themselves; aim them at <code>{player}</code>)</label>`;
+      return `<section class="pn-own-card" data-own="${i}">
+        <div class="pn-own-head">
+          <span class="pn-own-type"><i class="bi ${OWN_TYPES[t][0]}"></i></span>
+          <span class="pn-own-slash">/</span><input type="text" class="pn-own-name" data-k="command" value="${esc(c.command)}" placeholder="name" maxlength="32">
+          <select data-k="type" aria-label="Kind">${Object.entries(OWN_TYPES).map(([k, [, l]]) => `<option value="${k}" ${k === t ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <button type="button" class="np-btn small danger" data-own-remove title="Remove"><i class="bi bi-trash"></i></button>
+        </div>
+        <div class="pn-own-grid">
+          <label class="pn-field"><span>More names</span><input type="text" data-k="aliases" value="${esc((c.aliases || []).join(', '))}" placeholder="dc, chat"></label>
+          <label class="pn-field"><span>Who may use it</span><select data-k="level">${OWN_LEVELS.map((l, n) => `<option value="${n}" ${n === (c.level || 0) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <label class="pn-field"><span>Permission node (permissions mods)</span><input type="text" data-k="permission" value="${esc(c.permission || '')}" placeholder="nicecontrolcenter.command.${esc(c.command || 'name')}" maxlength="100"></label>
+          ${fields}
+        </div>
+      </section>`;
+    }).join('') || '<p class="np-empty">No own commands yet. Add a link (like /discord), a text (like /rules) or an alias (like /spawn).</p>';
+    $('pn-own').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-own-save').disabled = !edit || !own.dirty;
   }
 
-  $('pn-links-add').addEventListener('click', () => {
-    renderLinks([...readLinks(), { command: '', aliases: [], text: '', label: '', url: '' }]);
-    $('pn-links').querySelector('.pn-link-row:last-child [data-k="command"]').focus();
+  function ownChanged(rerender) {
+    own.dirty = true;
+    $('pn-own-save').disabled = false;
+    formMsg('pn-own-msg', 'Not saved yet.', true);
+    if (rerender) renderOwn();
+  }
+
+  $('pn-own').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-own]');
+    const k = e.target.dataset.k;
+    if (!card || !k) return;
+    const c = own.list[+card.dataset.own];
+    if (k === 'aliases') c.aliases = e.target.value.split(',').map((a) => a.trim()).filter(Boolean);
+    else if (k === 'run') c.run = e.target.value.split('\n');
+    else if (k === 'level') c.level = Number(e.target.value);
+    else if (e.target.type === 'checkbox') c[k] = e.target.checked;
+    else c[k] = e.target.value;
+    ownChanged(k === 'type');
   });
-  $('pn-links').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-link-remove]');
+  $('pn-own').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-own-remove]');
     if (!b) return;
-    b.closest('.pn-link-row').remove();
-    if (!$('pn-links').querySelector('.pn-link-row')) renderLinks([]);
+    const i = +b.closest('[data-own]').dataset.own;
+    if (!confirm(`Remove /${own.list[i].command || 'this command'}?`)) return;
+    own.list.splice(i, 1);
+    ownChanged(true);
+  });
+  $('pn-own-add').addEventListener('change', (e) => {
+    const t = e.target.value;
+    e.target.value = '';
+    if (!t) return;
+    const base = { type: t, command: '', aliases: [], text: '', label: '', url: '', run: [], asServer: false, body: '', level: 0, permission: '', description: '' };
+    const ex = { link: { command: 'discord', text: 'Join our Discord:', url: '' }, text: { command: 'rules', body: '§6§lServer rules\n§71. Be kind to each other\n§72. No griefing or stealing' }, alias: { command: 'spawn', run: ['execute in minecraft:overworld run tp {player} 0 100 0'], asServer: true } }[t];
+    own.list.push({ ...base, ...ex });
+    ownChanged(true);
+    $('pn-own').lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  $('pn-own-save').addEventListener('click', async () => {
+    const list = own.list.map((c) => ({ ...c, run: (c.run || []).map((r) => r.trim()).filter(Boolean) }));
+    try {
+      own.list = (await api('api/links', { links: list })).links;
+      own.dirty = false;
+      renderOwn();
+      formMsg('pn-own-msg', serverRunning ? 'Saved. The commands change in game within a few seconds.' : 'Saved.', true);
+    } catch (err) {
+      formMsg('pn-own-msg', err.message, false);
+    }
   });
 
   $('pn-info-filter').addEventListener('input', renderInfoFiles);
@@ -4355,7 +4934,6 @@
       hiddenProperties: [...$('pn-info-props').querySelectorAll('input:checked')].map((i) => i.value),
       configs: infoData.settings.configs,
       infoAddress: f.infoAddress.value.trim(), infoText: f.infoText.value.trim(), infoLabel: f.infoLabel.value.trim(),
-      links: readLinks(),
     };
     try {
       await api('api/info', body);
@@ -4815,7 +5393,7 @@
     const isNew = !c;
     const f = $('pn-cl-form');
     $('pn-cl-detail').hidden = false;
-    $('pn-cl-title').textContent = isNew ? 'New server claim' : c.displayName;
+    $('pn-cl-title').textContent = isNew ? 'New claim' : c.displayName;
     $('pn-cl-sub').textContent = isNew ? 'A claim the server owns: no claim blocks needed, members as you like. Leave the owner empty, or give it to a player.'
       : `${c.parent ? 'Subclaim · ' : ''}${dimShort(c.dim)} · ${c.width} × ${c.length} (${c.area.toLocaleString()} blocks) · made ${dateTime(c.created)}`;
     f.querySelectorAll('[data-new]').forEach((el) => { el.hidden = !isNew; });

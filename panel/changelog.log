@@ -1,3 +1,15 @@
+## 1.31.0
+- New sidebar entry Logs & reports: errors & warnings, the log files of earlier days (grouped or line by line, filter and search) and the lag reports
+- Event rewards page (Community) and Own commands page (Console: links, texts and aliases with permissions; moved out of the info page)
+- Code of conduct editor (Settings → Server): the text players accept once, per language
+- Minecraft updates can wait for the next restart (download now, swap on the next start), and be called off
+- Chunks page: summary, laggiest chunks with teleport and map buttons, redstone & block updates (moved from Health); Clean up has its own page with a census and remove-by-kind
+- Map: in Public pages; dimensions with a roof (like Deep Blue) can be drawn below it
+- Audit log: by day, coloured areas, filters by area and user, readable on phones
+- Files: download several selected files as one zip; IP bans only accept real addresses
+- Discord: first-join welcome in chat and the channel; console marks everything from the panel with one "Panel" tag
+- Top bar: view/simulation distance and mob cap tile, "Paused" in the status capsule, ETA on the pregen capsule; greeting banner redone; icons no longer flicker on refresh; chat and player windows follow the window height
+
 ## 1.30.0
 - Discord DMs for players (Discord → "DMs to players", on by default): a linked player gets a message when something of theirs sold (bundled), when items wait in their market mailbox, a week before one of their claims expires, and when an admin writes to them from the panel. Each player switches the kinds on My SMP Profile
 - My SMP Profile: pets can be changed (mod 1.37.0); claims show their expiry date and the player's claim blocks (earned, bonus, bought, used, left); member since; the switches for Discord messages

@@ -581,6 +581,16 @@ public final class DashboardServer {
 					return;
 				}
 				String kind = query.getOrDefault("kind", "items");
+				if (kind.equals("type")) {
+					String type = query.getOrDefault("type", "");
+					String dimension = query.get("dimension");
+					if (!type.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") || type.equals("minecraft:player")) {
+						sendJson(exchange, Map.of("error", "Pick a kind of entity."));
+						return;
+					}
+					sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Cleanup.ofType(minecraft, type, dimension, run)));
+					return;
+				}
 				// Without perChunk: the mob limits from the performance settings.
 				String per = query.get("perChunk");
 				int perChunk = (int) Math.max(1, Math.min(500, parseLong(per, 24)));
@@ -594,6 +604,7 @@ public final class DashboardServer {
 								: eu.explorerseden.nicecontrolcenter.core.Cleanup.excess(minecraft, perChunk, run))
 						: eu.explorerseden.nicecontrolcenter.core.Cleanup.items(minecraft, run)));
 			}
+			case "/api/cleanup/census" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Cleanup.census(minecraft)));
 			case "/api/entitytypes" -> sendJson(exchange, onServerThread(() -> {
 				List<Map<String, Object>> types = new ArrayList<>();
 				for (var type : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE) {
@@ -817,6 +828,8 @@ public final class DashboardServer {
 		result.put("lagging", eu.explorerseden.nicecontrolcenter.alert.AlertWatcher.lagging());
 		result.put("lagSince", eu.explorerseden.nicecontrolcenter.alert.AlertWatcher.lagSince());
 		result.put("replies", eu.explorerseden.nicecontrolcenter.players.Conversations.unreadReplies());
+		// The lag ladder's mob cap right now (100 = normal), for the panel's distances tile.
+		result.put("mobCap", eu.explorerseden.nicecontrolcenter.core.PerfControl.mobCap());
 		// Only while a pregeneration runs: the panel shows its progress next to the game clock.
 		if (eu.explorerseden.nicecontrolcenter.core.Pregen.active()) result.put("pregen", eu.explorerseden.nicecontrolcenter.core.Pregen.status());
 		return result;

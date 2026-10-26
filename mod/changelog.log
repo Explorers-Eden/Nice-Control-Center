@@ -1,4 +1,14 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.38.0
+- Event rewards: commands and a message when a player joins (first time or every time), leaves, enters a dimension, earns an advancement, dies, kills a mob, reaches an XP level or a playtime, or at an in-game time or day; for everyone or one player, every time, once per player or once at all, with a cooldown and variables
+- Own commands: besides links, texts (/rules) and aliases (/spawn, with {player} and {args}, optionally with the server's rights), each with an operator level or a permission node
+- Shared night: chosen worlds count their players together for the sleeping percentage
+- First joins are reported to the panel (welcome in chat and on Discord)
+- /ncc heap dump writes a heap dump for memory analysis; /claim admin blocks <player> remove <amount>
+- Clean-up: an entity census (every kind in loaded chunks) and removing all of one kind
+- Errors & warnings have their own page; more harmless noise recognised (block-break mismatches, "moved wrongly", ender pearls of players logging out, missing optional recipes)
+- Longer market listing times now apply to listings already up; more pet reaction lines; the mob cap in the live data; laggiest chunks no longer show "<null>"
+
 ## 1.37.0
 - Pets on the website (My SMP Profile, through the panel): which pet is out, how pets move, the particle trail, a random pet, perks on/off, reactions, the name above the pet, and each pet's name and colour. Same rules as /pets
 - The website's profile shows when the player first joined, and lore and enchantments on their listings

@@ -66,6 +66,7 @@ public class NiceControlCenter implements ModInitializer {
 		// Who is active (claim blocks, AFK tag) and the gameplay tweaks from the panel.
 		eu.explorerseden.nicecontrolcenter.core.PlayerActivity.register();
 		eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl.register();
+		eu.explorerseden.nicecontrolcenter.rewards.RewardsControl.register();
 		eu.explorerseden.nicecontrolcenter.market.MarketStore.register();
 		eu.explorerseden.nicecontrolcenter.pets.PetStore.register();
 		// Pregeneration runs on its own thread; the tick only keeps players inside the hard border.
@@ -96,7 +97,10 @@ public class NiceControlCenter implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> UpdateManager.stop());
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			sendLaterMessages(handler.player);
-			eu.explorerseden.nicecontrolcenter.players.Seen.joined(server, handler.player.getUUID());
+			// A player's very first visit: the panel welcomes them in chat and on Discord.
+			boolean first = eu.explorerseden.nicecontrolcenter.players.Seen.joined(server, handler.player.getUUID());
+			if (first) eu.explorerseden.nicecontrolcenter.web.PanelBridge.firstJoin(server, handler.player);
+			eu.explorerseden.nicecontrolcenter.rewards.RewardsControl.joined(server, handler.player, first);
 		});
 		ServerLifecycleEvents.SERVER_STARTED.register(eu.explorerseden.nicecontrolcenter.players.Seen::load);
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {

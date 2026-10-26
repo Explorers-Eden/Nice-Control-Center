@@ -337,6 +337,9 @@ public final class Panel {
 			jobs.register(routes);
 			new FileRoutes(files, cleanup, audit, jobs).register(routes);
 			new VersionRoutes(versions).register(routes);
+			new LogRoutes(serverDir).register(routes);
+			new CodeOfConduct(serverDir, audit).register(routes);
+			new RewardsRoutes(serverDir, audit).register(routes);
 			new DiscordRoutes(discord, dashboard.secret(), audit).register(routes);
 			mapRoutes.register(routes);
 			new WorldRoutes(trimmer, jobs).register(routes);
@@ -345,6 +348,7 @@ public final class Panel {
 			tuning.register(routes);
 			home.register(routes);
 			info.register(routes);
+			info.registerLinks(routes);
 			claims.register(routes);
 			market.register(routes);
 			// The website's market (balance and buying); off unless WEBSITE_TOKEN is set.

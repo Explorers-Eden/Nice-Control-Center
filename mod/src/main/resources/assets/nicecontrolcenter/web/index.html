@@ -28,7 +28,7 @@
 	<header class="navbar">
 		<div class="navbar-inner">
 			<h1 class="np-brand">
-				<span class="np-brand-mark" aria-hidden="true"><i class="bi bi-speedometer2"></i></span>
+				<span class="np-brand-mark" aria-hidden="true"><svg class="np-brand-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 27 10v12L16 28 5 22V10z" fill="rgba(255,255,255,.16)"/><path d="M16 4 27 10 16 16 5 10z" fill="#fff"/><path d="M5 10l11 6v12L5 22z" fill="rgba(255,255,255,.55)"/><path d="M27 10 16 16v12l11-6z" fill="rgba(255,255,255,.32)"/><path d="M8.5 19.2l2.3 1.3 1.6-3.4 2 5.2 1.4-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
 				<span class="np-brand-text"><span class="np-brand-small">Nice</span><span class="np-brand-big">Control Center</span></span>
 			</h1>
 			<div class="np-nav-right">
@@ -74,6 +74,7 @@
 			<button type="button" role="tab" class="np-tab" data-tab="world" id="tabbtn-world" aria-controls="tab-world"><i class="bi bi-globe-americas"></i><span>World</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="players" id="tabbtn-players" aria-controls="tab-players"><i class="bi bi-people"></i><span>Players</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="checks" id="tabbtn-checks" aria-controls="tab-checks"><i class="bi bi-clipboard-check"></i><span>Checks</span><span class="np-tab-badge" hidden></span></button>
+			<button type="button" role="tab" class="np-tab" data-tab="logs" id="tabbtn-logs" aria-controls="tab-logs"><i class="bi bi-exclamation-octagon"></i><span>Errors</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="server" id="tabbtn-server" aria-controls="tab-server"><i class="bi bi-hdd-stack"></i><span>Server</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="packs" id="tabbtn-packs" aria-controls="tab-packs"><i class="bi bi-toggles"></i><span>Data packs</span><span class="np-tab-badge" hidden></span></button>
 			<button type="button" role="tab" class="np-tab" data-tab="updates" id="tabbtn-updates" aria-controls="tab-updates"><i class="bi bi-cloud-arrow-down"></i><span>Updates</span><span class="np-tab-badge" hidden></span></button>
@@ -157,13 +158,13 @@
 			</section>
 		</section>
 		<section class="np-tab-panel" id="tab-world" data-tab="world" role="tabpanel" hidden>
-			<p class="np-tab-intro">Where things happen: new terrain, crowded chunks, busy redstone and what is loaded around players.</p>
+			<p class="np-tab-intro">New terrain and what is loaded around players.</p>
 			<section class="np-card" id="np-worldgen-card">
 				<h3 class="np-card-title"><i class="bi bi-globe2"></i> World generation</h3>
 				<p class="np-card-intro">Runs on worker threads: it doesn't slow the tick, but players wait for terrain. Times are per new chunk.</p>
 				<div id="np-worldgen"></div>
 			</section>
-			<div class="np-columns">
+			<div class="np-columns np-chunk-cards">
 				<div class="np-column">
 					<section class="np-card">
 						<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Busiest chunks</h3>
@@ -198,11 +199,6 @@
 			</section>
 		</section>
 		<section class="np-tab-panel" id="tab-checks" data-tab="checks" role="tabpanel" hidden>
-			<section class="np-card" id="np-errors-card">
-				<h3 class="np-card-title"><i class="bi bi-exclamation-octagon"></i> Errors &amp; warnings</h3>
-				<p class="np-card-intro">From the server log, grouped by the data pack or mod they come from.</p>
-				<div id="np-errors"></div>
-			</section>
 			<div class="np-columns">
 				<div class="np-column">
 					<section class="np-card" id="np-settings-card">
@@ -220,6 +216,13 @@
 					</section>
 				</div>
 			</div>
+		</section>
+		<section class="np-tab-panel" id="tab-logs" data-tab="logs" role="tabpanel" hidden>
+			<section class="np-card" id="np-errors-card">
+				<h3 class="np-card-title"><i class="bi bi-exclamation-octagon"></i> Errors &amp; warnings</h3>
+				<p class="np-card-intro">From the server log, grouped by the data pack or mod they come from.</p>
+				<div id="np-errors"></div>
+			</section>
 		</section>
 		<section class="np-tab-panel" id="tab-server" data-tab="server" role="tabpanel" hidden>
 			<div class="np-subtabs" id="np-server-sub" role="tablist" aria-label="Server sections">

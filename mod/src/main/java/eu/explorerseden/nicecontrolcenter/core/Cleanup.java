@@ -114,6 +114,77 @@ public final class Cleanup {
 		}
 	}
 
+	/** Things the per-kind clean-up may take: free mobs, dropped items, XP orbs and stuck arrows (never tridents, frames, stands, carts or boats). */
+	private static boolean removableAny(Entity e) {
+		if (e instanceof ItemEntity || e instanceof ExperienceOrb) return true;
+		if (e instanceof net.minecraft.world.entity.projectile.arrow.AbstractArrow && !(e instanceof net.minecraft.world.entity.projectile.arrow.ThrownTrident)) return true;
+		return removable(e);
+	}
+
+	/** Every kind of entity in loaded chunks: how many, how many may go, and the chunk with the most. */
+	public static Map<String, Object> census(MinecraftServer server) {
+		Map<String, int[]> counts = new HashMap<>();
+		Map<String, Map<String, Integer>> perChunk = new HashMap<>();
+		int total = 0;
+		for (ServerLevel level : server.getAllLevels()) {
+			String dim = level.dimension().identifier().toString();
+			for (Entity e : level.getAllEntities()) {
+				if (e instanceof net.minecraft.server.level.ServerPlayer) continue;
+				String id = BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString();
+				int[] c = counts.computeIfAbsent(id, k -> new int[2]);
+				c[0]++;
+				if (removableAny(e)) c[1]++;
+				perChunk.computeIfAbsent(id, k -> new HashMap<>()).merge(dim + "|" + e.chunkPosition().x() + "|" + e.chunkPosition().z(), 1, Integer::sum);
+				total++;
+			}
+		}
+		List<Map<String, Object>> rows = new ArrayList<>();
+		for (Map.Entry<String, int[]> c : counts.entrySet()) {
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("type", c.getKey());
+			row.put("count", c.getValue()[0]);
+			row.put("removable", c.getValue()[1]);
+			perChunk.get(c.getKey()).entrySet().stream().max(Map.Entry.comparingByValue()).ifPresent(top -> {
+				String[] k = top.getKey().split("\\|");
+				row.put("topDimension", k[0]);
+				row.put("topX", Integer.parseInt(k[1]));
+				row.put("topZ", Integer.parseInt(k[2]));
+				row.put("topCount", top.getValue());
+			});
+			rows.add(row);
+		}
+		rows.sort(Comparator.comparingInt((Map<String, Object> r) -> (Integer) r.get("count")).reversed());
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("total", total);
+		out.put("types", rows.size() > 80 ? rows.subList(0, 80) : rows);
+		return out;
+	}
+
+	/** All of one kind (that may go), optionally in one dimension. */
+	public static Map<String, Object> ofType(MinecraftServer server, String type, String dimension, boolean run) {
+		int found = 0;
+		int removed = 0;
+		for (ServerLevel level : server.getAllLevels()) {
+			String dim = level.dimension().identifier().toString();
+			if (dimension != null && !dimension.isBlank() && !dimension.equals(dim)) continue;
+			List<Entity> doomed = new ArrayList<>();
+			for (Entity e : level.getAllEntities()) {
+				if (!BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString().equals(type)) continue;
+				found++;
+				if (removableAny(e)) doomed.add(e);
+			}
+			removed += doomed.size();
+			if (run) doomed.forEach(Entity::discard);
+		}
+		if (run && removed > 0) NiceControlCenter.LOGGER.info("Cleanup: removed {} × {}", removed, type);
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("type", type);
+		out.put("found", found);
+		out.put("remove", removed);
+		out.put("kept", found - removed);
+		return out;
+	}
+
 	/** Old style: one limit for every kind (schedules saved before mob limits existed). */
 	public static Map<String, Object> excess(MinecraftServer server, int perChunk, boolean run) {
 		return excess(server, new Limits(List.of(new Performance.MobRule("*", perChunk))), run);

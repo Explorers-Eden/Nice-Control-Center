@@ -209,8 +209,9 @@ public final class MapRenderer {
 					long v = (surface[idx / perLong] >>> ((idx % perLong) * bits)) & ((1L << bits) - 1);
 					top = (int) v + minY - 1;
 				} else if (ceiling) {
-					// Below the roof: from y 120 go down to the first air, then to the first block below it.
-					int y = Math.min(maxY, 120);
+					// Below the roof: past the air above it (if any), through the roof, to the first block below the gap.
+					int y = maxY;
+					while (y > minY && air(block(sections, x, y, z))) y--;
 					while (y > minY && !air(block(sections, x, y, z))) y--;
 					while (y > minY && air(block(sections, x, y, z))) y--;
 					top = y;

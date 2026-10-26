@@ -27,13 +27,7 @@ public final class ErrorWatcher {
 	private static final Pattern PACK_PATH = Pattern.compile("datapacks[/\\\\]([^/\\\\]+)[/\\\\]");
 	private static final Pattern RESOURCE = Pattern.compile("\\b([a-z0-9_.-]+):[a-z0-9_/.-]+");
 	/** Known noise: worth seeing, but not a problem. */
-	private static final Pattern HARMLESS = Pattern.compile(
-			"Invalid path in pack: .*\\.DS_Store|Non-directory entry .*\\.DS_Store|SERVER IS RUNNING IN OFFLINE|The server will make no attempt to authenticate|resource-pack-id missing, using default"
-					+ "|While this makes the game possible to play without internet|To change this, set \"online-mode\""
-					+ "|Unable to parse version|TranslationConventionLogWarnings|No key layers in MapLike"
-					// A connection closed while still pinging/handshaking (server list, scanners): vanilla noise.
-					+ "|Error sending packet clientbound/minecraft:disconnect|handleDisconnection\\(\\) called twice",
-			Pattern.CASE_INSENSITIVE);
+	private static final Pattern HARMLESS = eu.explorerseden.nicecontrolcenter.LogNoise.HARMLESS;
 
 	/** One kind of message. */
 	public static final class Group {

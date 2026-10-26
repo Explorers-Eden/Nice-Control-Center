@@ -119,7 +119,20 @@ final class FileRoutes {
 		}));
 
 		routes.get("/api/files/download", action((ctx, me) -> {
-			Path p = path(ctx, me, ctx.queryParam("path"), false);
+			List<String> many = ctx.queryParams("paths");
+			if (many.size() > 1) {
+				// Several picked in one folder: one zip with each of them at its top.
+				List<Path> picked = new ArrayList<>();
+				for (String rel : many) picked.add(path(ctx, me, rel, false));
+				Path base = picked.getFirst().getParent() == null ? files.root() : picked.getFirst().getParent();
+				String name = (base.equals(files.root()) ? "server" : base.getFileName().toString()) + "-" + picked.size() + "-items.zip";
+				audit.log(me.name(), "files.download", picked.size() + " items in " + files.rel(base) + "/ (as zip)", clientIp(ctx));
+				ctx.header("Content-Disposition", "attachment; filename=\"" + name.replace("\"", "") + "\"");
+				ctx.contentType("application/zip");
+				ctx.result(zipStream(picked, base));
+				return;
+			}
+			Path p = path(ctx, me, many.size() == 1 ? many.getFirst() : ctx.queryParam("path"), false);
 			if (Files.isDirectory(p)) {
 				String name = (p.equals(files.root()) ? "server" : p.getFileName().toString()) + ".zip";
 				audit.log(me.name(), "files.download", files.rel(p) + "/ (as zip)", clientIp(ctx));

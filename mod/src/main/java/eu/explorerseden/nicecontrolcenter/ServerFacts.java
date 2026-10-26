@@ -173,6 +173,10 @@ public final class ServerFacts {
 		if (t.sleep.ignoreAfk) {
 			out.add(tweak("sleep", "AFK players don't block the night", "bi-moon-stars", "Players who have been AFK for " + t.afk.minutes + " minutes don't count when the server checks whether enough players sleep.", List.of()));
 		}
+		if (t.sleep.shared && t.sleep.worlds.size() > 1) {
+			out.add(tweak("sleep", "One night across worlds", "bi-moon", "Players in " + String.join(", ", t.sleep.worlds.stream().map(w -> w.replace("minecraft:", "")).toList())
+					+ " count together for sleeping, and a bed in any of them helps skip the night.", List.of()));
+		}
 		if (t.villagers.panicGolems) {
 			out.add(tweak("golems", "Iron golems when villagers panic", "bi-shield-shaded", "A frightened villager calls an iron golem if none is around; villagers no longer need to sleep or gossip for one.", List.of()));
 		}

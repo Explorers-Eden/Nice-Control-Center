@@ -93,6 +93,7 @@ public final class ControlCenterCommand {
 				.then(Commands.literal("heap")
 						.requires(Permissions.require(PERMISSION_MONITOR, DEFAULT_LEVEL))
 						.executes(ctx -> heap(ctx, null))
+						.then(Commands.literal("dump").executes(ControlCenterCommand::heapDump))
 						.then(Commands.argument("class", StringArgumentType.greedyString())
 								.executes(ctx -> heap(ctx, StringArgumentType.getString(ctx, "class")))))
 				.then(Commands.literal("bossbar")
@@ -243,6 +244,30 @@ public final class ControlCenterCommand {
 			NiceControlCenter.LOGGER.info(log.toString());
 			message.append("\n").append(muted("The top 30 are in the server log."));
 			source.sendSystemMessage(message);
+		}));
+		return 1;
+	}
+
+	/** A gzipped heap dump into nicecontrolcenter/heapdumps, for finding what keeps objects alive. */
+	private static int heapDump(CommandContext<CommandSourceStack> ctx) {
+		CommandSourceStack source = ctx.getSource();
+		source.sendSystemMessage(header("Heap dump").append("\n").append(muted("Writing every live object to a file… The server pauses for a few seconds, then it's packed.")));
+		java.nio.file.Path serverDir = source.getServer().getServerDirectory();
+		eu.explorerseden.nicecontrolcenter.diagnosis.HeapHistogram.dump(serverDir).whenComplete((file, error) -> source.getServer().execute(() -> {
+			if (error != null) {
+				source.sendFailure(Component.literal("Couldn't write the heap dump: " + (error.getCause() != null ? error.getCause().getMessage() : error.getMessage())));
+				return;
+			}
+			long size = 0;
+			try {
+				size = java.nio.file.Files.size(file);
+			} catch (java.io.IOException e) {
+				// Size unknown.
+			}
+			String rel = serverDir.relativize(file).toString().replace('\\', '/');
+			NiceControlCenter.LOGGER.info("Heap dump written: {} ({})", rel, Diagnoser.bytes(size));
+			source.sendSystemMessage(header("Heap dump").append("\n").append(Component.literal(rel + " (" + Diagnoser.bytes(size) + ")"))
+					.append("\n").append(muted("Download it from the panel's Files. Only the newest two are kept.")));
 		}));
 		return 1;
 	}

@@ -312,17 +312,34 @@ public final class Accounts {
 
 	/** Newest first; before = the oldest id already shown, or 0. */
 	public List<Map<String, Object>> auditLog(long before, int limit, String search) throws SQLException {
+		return auditLog(before, limit, search, null, null);
+	}
+
+	/** user: exactly that account; areas: action prefixes ("backup", "files"…), any of them. */
+	public List<Map<String, Object>> auditLog(long before, int limit, String search, String user, List<String> areas) throws SQLException {
 		List<Map<String, Object>> out = new ArrayList<>();
 		String filter = search == null || search.isBlank() ? null : "%" + search.strip().toLowerCase() + "%";
+		String who = user == null || user.isBlank() ? null : user.strip();
+		String areaSql = areas == null || areas.isEmpty() ? "" : " AND (" + String.join(" OR ", areas.stream().map(a -> "action = ? OR action LIKE ?").toList()) + ")";
 		try (Connection c = db.connection(); PreparedStatement st = c.prepareStatement(
 				"SELECT id, time, user_name, action, detail, ip FROM audit_log WHERE (? = 0 OR id < ?)"
 						+ " AND (?::text IS NULL OR lower(coalesce(user_name, '') || ' ' || action || ' ' || coalesce(detail, '')) LIKE ?)"
+						+ " AND (?::text IS NULL OR user_name = ?)" + areaSql
 						+ " ORDER BY id DESC LIMIT ?")) {
-			st.setLong(1, before);
-			st.setLong(2, before);
-			st.setString(3, filter);
-			st.setString(4, filter);
-			st.setInt(5, limit);
+			int i = 1;
+			st.setLong(i++, before);
+			st.setLong(i++, before);
+			st.setString(i++, filter);
+			st.setString(i++, filter);
+			st.setString(i++, who);
+			st.setString(i++, who);
+			if (areas != null) {
+				for (String a : areas) {
+					st.setString(i++, a);
+					st.setString(i++, a + ".%");
+				}
+			}
+			st.setInt(i, limit);
 			try (ResultSet rs = st.executeQuery()) {
 				while (rs.next()) {
 					Map<String, Object> row = new LinkedHashMap<>();
@@ -335,6 +352,17 @@ public final class Accounts {
 					out.add(row);
 				}
 			}
+		}
+		return out;
+	}
+
+	/** Everyone who appears in the audit log, for the filter. */
+	public List<String> auditUsers() throws SQLException {
+		List<String> out = new ArrayList<>();
+		try (Connection c = db.connection(); PreparedStatement st = c.prepareStatement(
+				"SELECT DISTINCT user_name FROM audit_log WHERE user_name IS NOT NULL ORDER BY user_name LIMIT 200");
+				ResultSet rs = st.executeQuery()) {
+			while (rs.next()) out.add(rs.getString(1));
 		}
 		return out;
 	}

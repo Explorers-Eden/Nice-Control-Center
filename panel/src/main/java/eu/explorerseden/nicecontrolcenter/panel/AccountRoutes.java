@@ -171,7 +171,13 @@ final class AccountRoutes {
 		routes.get("/api/audit", guard(Permissions.AUDIT_VIEW, (ctx, me) -> {
 			if (!dbReady(ctx)) return;
 			long before = parseLong(ctx.queryParam("before"));
-			json(ctx, Map.of("entries", accounts.auditLog(before, 100, ctx.queryParam("q"))));
+			String area = ctx.queryParam("area");
+			List<String> areas = area == null || area.isBlank() ? null
+					: java.util.Arrays.stream(area.split(",")).map(String::strip).filter(a -> a.matches("[a-z]{2,20}")).limit(10).toList();
+			Map<String, Object> out = new java.util.LinkedHashMap<>();
+			out.put("entries", accounts.auditLog(before, 100, ctx.queryParam("q"), ctx.queryParam("user"), areas));
+			if (before == 0) out.put("users", accounts.auditUsers());
+			json(ctx, out);
 		}));
 
 		routes.get("/api/me/keys", guard(null, (ctx, me) -> {

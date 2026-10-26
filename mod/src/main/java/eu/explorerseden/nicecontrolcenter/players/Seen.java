@@ -50,18 +50,22 @@ public final class Seen {
 		}
 	}
 
-	public static void joined(MinecraftServer server, UUID id) {
+	/** Records the join; true for a player's very first time on the server (no record and no older save files). */
+	public static boolean joined(MinecraftServer server, UUID id) {
 		long now = System.currentTimeMillis();
+		boolean[] first = { false };
 		Entry e = entries.computeIfAbsent(id.toString(), k -> {
 			Entry fresh = new Entry();
 			long guess = earliestFile(server, id);
 			// A save file older than a minute means they played before this record started.
 			fresh.first = guess > 0 && guess < now - 60_000 ? guess : now;
 			fresh.firstEstimated = fresh.first != now;
+			first[0] = !fresh.firstEstimated;
 			return fresh;
 		});
 		e.lastJoin = now;
 		save();
+		return first[0];
 	}
 
 	public static void left(UUID id) {

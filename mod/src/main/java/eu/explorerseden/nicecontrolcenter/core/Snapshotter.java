@@ -401,6 +401,8 @@ public final class Snapshotter {
 			}
 		}
 		for (TickingBlockEntity ticker : ((LevelAccessor) candidate.level).nicecontrolcenter$blockEntityTickers()) {
+			// A ticker whose block entity is gone is called "<null>"; it isn't a block in the chunk.
+			if (ticker.isRemoved() || "<null>".equals(ticker.getType())) continue;
 			BlockPos pos = ticker.getPos();
 			if (pos != null && pos.getX() >> 4 == hotspot.x && pos.getZ() >> 4 == hotspot.z) {
 				types.merge(ticker.getType(), 1, Integer::sum);

@@ -103,6 +103,13 @@ public final class Supervisor {
 		beforeStart.add(hook);
 	}
 
+	/** Asked once on the next start: true means it takes the start over (a scheduled update) and start() does nothing. */
+	private volatile java.util.function.BooleanSupplier takeover;
+
+	public void takeOverNextStart(java.util.function.BooleanSupplier t) {
+		takeover = t;
+	}
+
 	// ── Control ────────────────────────────────────────────────────────────
 
 	/** Returns an error message, or null when the server is starting. */
@@ -110,6 +117,14 @@ public final class Supervisor {
 		if (state == State.STARTING || state == State.RUNNING || state == State.STOPPING) return "The server is already " + state.name().toLowerCase() + ".";
 		cancelPending();
 		if (lock != null) return lock;
+		java.util.function.BooleanSupplier t = takeover;
+		if (t != null) {
+			takeover = null;
+			if (t.getAsBoolean()) {
+				panelLine("Applying the scheduled update before starting");
+				return null;
+			}
+		}
 		PanelSettings s = settings.get();
 		String problem = checkReady(s);
 		if (problem != null) {

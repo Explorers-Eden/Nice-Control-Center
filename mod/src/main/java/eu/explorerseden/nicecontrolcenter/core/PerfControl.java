@@ -215,27 +215,15 @@ public final class PerfControl {
 
 
 
+	/** "12 of 17 on, 2 frozen chunks": short, the list is in the panel's Tuning page. */
 	private static String summary(Performance.Settings s) {
-		StringBuilder b = new StringBuilder();
-		if (s.dynamic.enabled) b.append("dynamic distances, ");
-		if (s.activation.enabled) b.append("activation range, ");
-		if (s.merge.enabled) b.append("merge radius, ");
-		if (s.breeding.enabled) b.append("breeding caps, ");
-		if (s.villagers.lobotomize) b.append("villager brains, ");
-		if (s.autoCaps.enabled) b.append("auto caps, ");
-		if (s.collisions.enabled) b.append("collision cap, ");
-		if (s.despawn.enabled) b.append("junk despawn, ");
-		if (s.saveLimits.enabled) b.append("save limits, ");
-		if (s.ai.enabled) b.append("lighter mob AI, ");
-		if (s.hoppers.enabled) b.append("hopper cooldown, ");
-		if (s.decor.armorStands) b.append("armor stands still, ");
-		if (s.spawning.enabled) b.append("less frequent spawning, ");
-		if (s.smooth.saving) b.append("smooth saving, ");
-		if (s.smooth.teleports) b.append("warm teleport targets, ");
-		if (s.smooth.locatorBar) b.append("lighter locator bar, ");
-		if (s.selectors.byType) b.append("selectors by type, ");
-		if (!s.frozen.isEmpty()) b.append(s.frozen.size()).append(" frozen chunks, ");
-		return b.isEmpty() ? "all off" : b.substring(0, b.length() - 2);
+		boolean[] on = { s.dynamic.enabled, s.activation.enabled, s.merge.enabled, s.breeding.enabled, s.villagers.lobotomize, s.autoCaps.enabled,
+				s.collisions.enabled, s.despawn.enabled, s.saveLimits.enabled, s.ai.enabled, s.hoppers.enabled, s.decor.armorStands, s.spawning.enabled,
+				s.smooth.saving, s.smooth.teleports, s.smooth.locatorBar, s.selectors.byType };
+		int n = 0;
+		for (boolean b : on) if (b) n++;
+		String frozen = s.frozen.isEmpty() ? "" : ", " + s.frozen.size() + " frozen chunk" + (s.frozen.size() == 1 ? "" : "s");
+		return (n == 0 ? "all off" : n + " of " + on.length + " on") + frozen;
 	}
 
 	// ── Dynamic distances ──────────────────────────────────────────────

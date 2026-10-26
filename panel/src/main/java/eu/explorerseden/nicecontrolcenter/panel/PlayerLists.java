@@ -37,7 +37,19 @@ import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
  */
 final class PlayerLists {
 	private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
-	private static final Pattern IP = Pattern.compile("[0-9a-fA-F:.]{2,45}");
+	private static final Pattern IPV4 = Pattern.compile("((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)");
+
+	/** A real IPv4 (four numbers 0–255) or IPv6 address, nothing else. */
+	static boolean validIp(String s) {
+		if (s == null || s.isEmpty() || s.length() > 45) return false;
+		if (IPV4.matcher(s).matches()) return true;
+		if (!s.contains(":") || !s.matches("[0-9a-fA-F:.]+")) return false;
+		try {
+			return java.net.InetAddress.getByName(s) instanceof java.net.Inet6Address;
+		} catch (java.net.UnknownHostException e) {
+			return false;
+		}
+	}
 	private static final DateTimeFormatter CREATED = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z");
 
 	private final Path dir;
@@ -123,7 +135,7 @@ final class PlayerLists {
 		boolean ip = action.endsWith("-ip");
 		String target = action.startsWith("whitelist-o") ? "" : rawTarget;
 		if (!target.isEmpty() || !action.startsWith("whitelist-o")) {
-			if (ip ? !IP.matcher(target).matches() : !NAME.matcher(target).matches()) return ip ? "That isn't an IP address." : "Minecraft names are 1–16 letters, digits or _.";
+			if (ip ? !validIp(target) : !NAME.matcher(target).matches()) return ip ? "That isn't an IP address." : "Minecraft names are 1–16 letters, digits or _.";
 		}
 		reason = reason == null ? "" : reason.replaceAll("[\\r\\n]", " ").strip();
 		if (reason.length() > 200) reason = reason.substring(0, 200);

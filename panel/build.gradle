@@ -23,6 +23,8 @@ sourceSets {
 			srcDir(modJava)
 			include "eu/explorerseden/nicecontrolcenter/panel/**"
 			include "eu/explorerseden/nicecontrolcenter/Json.java"
+			include "eu/explorerseden/nicecontrolcenter/LogNoise.java"
+			include "eu/explorerseden/nicecontrolcenter/Rewards.java"
 			include "eu/explorerseden/nicecontrolcenter/Borders.java"
 			include "eu/explorerseden/nicecontrolcenter/Performance.java"
 			include "eu/explorerseden/nicecontrolcenter/Maintenance.java"

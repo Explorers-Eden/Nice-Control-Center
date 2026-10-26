@@ -48,6 +48,8 @@ public final class MapService {
 		public boolean showPlayers = true;
 		public boolean showClaims = true;
 		public List<String> hidden = new ArrayList<>();
+		/** Dimensions with a roof the game doesn't know about (custom ones like a cave world): drawn below it, like the Nether. */
+		public List<String> roofs = new ArrayList<>();
 		public String title = "Server map";
 		/** The status card on the map: online, players, uptime, next restart and reset. */
 		public boolean showStatus = true;
@@ -117,6 +119,8 @@ public final class MapService {
 
 	public void save(Settings next) throws IOException {
 		if (next.hidden == null) next.hidden = new ArrayList<>();
+		if (next.roofs == null) next.roofs = new ArrayList<>();
+		if (settings != null && !new java.util.HashSet<>(next.roofs).equals(new java.util.HashSet<>(settings.roofs == null ? List.of() : settings.roofs))) rerender();
 		if (!List.of("public", "all", "none").contains(next.hubs)) next.hubs = "public";
 		if (next.title == null || next.title.isBlank()) next.title = "Server map";
 		next.title = next.title.strip();
@@ -218,6 +222,11 @@ public final class MapService {
 
 	/** From the mod's last report, or found on disk when the server never ran with the mod. */
 	public List<Dim> dimensions() {
+		List<String> roofs = settings.roofs == null ? List.of() : settings.roofs;
+		return found().stream().map(d -> d.ceiling() || !roofs.contains(d.id()) ? d : new Dim(d.key(), d.id(), d.name(), d.regions(), true, d.info())).toList();
+	}
+
+	private List<Dim> found() {
 		List<Dim> out = new ArrayList<>();
 		JsonObject o = overlays;
 		if (o != null && o.has("dimensions")) {

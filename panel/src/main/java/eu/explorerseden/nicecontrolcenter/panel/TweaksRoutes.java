@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Settings → Tweaks: gameplay tweaks in config/nicecontrolcenter-tweaks.json, applied by the mod within seconds. */
+/** Gameplay: gameplay tweaks in config/nicecontrolcenter-tweaks.json, applied by the mod within seconds. */
 final class TweaksRoutes {
 	private final Path serverDir;
 	private final Supervisor server;

@@ -259,6 +259,9 @@ public final class Tweaks {
 	public static final class Sleep {
 		/** AFK players (see Afk.minutes) don't count when working out how many need to sleep to skip the night. */
 		public boolean ignoreAfk = false;
+		/** The worlds in the list share one night: their players count together, and sleeping in any of them helps skip it. */
+		public boolean shared = false;
+		public List<String> worlds = new ArrayList<>(List.of("minecraft:overworld"));
 	}
 
 	/**
@@ -315,6 +318,7 @@ public final class Tweaks {
 			if (mending == null) mending = new Mending();
 			if (crafting == null) crafting = new Crafting();
 			if (sleep == null) sleep = new Sleep();
+			sleep.worlds = ids(sleep.worlds);
 			if (antiXray == null) antiXray = new AntiXray();
 			antiXray.blocks = ids(antiXray.blocks);
 			if (chat.highlightColor == null || !chat.highlightColor.matches("#[0-9a-fA-F]{6}")) chat.highlightColor = "#FFD166";

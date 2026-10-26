@@ -232,54 +232,54 @@ public final class Pets {
 	 * admins can change). Warnings also tell the owner on their screen.
 	 */
 	public enum Reaction {
-		TOOL("Tool about to break", true, 60, "It's breaking!", "Careful with that!"),
-		HEALTH("Low health", true, 60, "Careful…", "Ouch…", "Heal up!"),
-		HUNGER("Hungry", true, 120, "Food?", "Snack time?", "*rumble*"),
-		DANGER("Danger", true, 30, "Behind you!", "Look out!", "!!"),
-		AIR("Low air", true, 20, "Air!", "Up, up!"),
-		INVENTORY("Inventory full", true, 120, "Full!", "No room!"),
-		FIRE("Fire or lava", true, 30, "Hot hot!", "Fire!"),
-		HURT("Owner hurt", false, 10, "!", "Hey!"),
-		NIGHTFALL("Nightfall", false, 600, "☾", "Night's coming…"),
-		UNDERWATER("Under water", false, 120, "blub", "o o o"),
-		NETHER("Into the Nether", false, 60, "Hot!", "So warm…"),
-		END("Into the End", false, 60, "…?", "Whoa…"),
-		FISH("Fish caught", false, 10, "!", "Fish!", "Yum!"),
-		HARVEST("Harvest", false, 60, "Nice!", "Crops!"),
-		DEEP("Deep down", false, 600, "Dig dig", "So deep…"),
-		SNOW("Snow", false, 600, "Brr", "Cold!"),
-		HELLO("Taken out", false, 0, "Hi!", "Hello!", "Let's go!"),
-		BYE("Put away", false, 0, "Bye!", "See you!"),
-		JOIN("Owner joins", false, 0, "Missed you!", "You're back!"),
-		EAT("Eating", false, 30, "Yum!", "Share?"),
-		SLEEP("Sleeping", false, 60, "zZz"),
-		MORNING("Morning", false, 600, "☀", "Morning!"),
-		RESPAWN("Owner died", false, 0, "…", "Don't do that again…"),
-		ADVANCEMENT("Advancement", false, 5, "★", "Well done!", "Woo!"),
-		LEVEL30("Level 30", false, 60, "Whoa!", "So much XP!"),
-		SHINY("Rare find", false, 10, "Shiny!", "Ooh!"),
-		RAIN("Rain", false, 600, "☂", "Rain…"),
-		THUNDER("Thunder", false, 120, "!!", "Eek!"),
-		FLYING("Flying or falling", false, 30, "Wheee!", "Whoosh!"),
-		RIDING("Riding", false, 60, "Giddy up!", "♪"),
-		TRADE("Trading", false, 60, "$", "Good deal!"),
-		BREED("Breeding", false, 60, "♥", "Babies!"),
-		MEET("Meeting another pet", false, 600, "♥", "Hi friend!"),
-		IDLE("Owner idle", false, 300, "…", "Bored…"),
-		AFK("Owner AFK", false, 60, "zZz"),
-		PAT("Pat", false, 3, "♥", "Hehe"),
-		LEVEL_UP("Bond level up", false, 0, "Level {level}!", "Yay!"),
-		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦"),
-		TOTEM("Totem used", false, 0, "That was close!", "Phew…"),
-		KILL("Monster beaten", false, 120, "Got it!", "Take that!"),
-		BOSS("Boss beaten", false, 0, "WE DID IT!", "Champion!"),
-		ENCHANT("Enchanting", false, 60, "Sparkly!", "Magic!"),
-		MUSIC("Music playing", false, 120, "♪", "♫ ♪"),
-		BELL("Bell rung", false, 60, "Ding!", "Dong!"),
-		DARK("Pitch dark", false, 300, "It's dark…", "Light?"),
-		HIGH("Way up high", false, 600, "So high!", "Don't fall!"),
-		SUNNY("Rain stops", false, 600, "☀", "Sun's back!"),
-		RAID("Raid", false, 300, "Raid!", "Here they come!");
+		TOOL("Tool about to break", true, 60, "It's breaking!", "Careful with that!", "That tool looks tired…", "Repair it soon!", "One more swing…?"),
+		HEALTH("Low health", true, 60, "Careful…", "Ouch…", "Heal up!", "Eat something!", "You okay?", "Let's rest a bit…"),
+		HUNGER("Hungry", true, 120, "Food?", "Snack time?", "*rumble*", "I hear your tummy!", "Bread? Steak? Anything?"),
+		DANGER("Danger", true, 30, "Behind you!", "Look out!", "!!", "Something's coming!", "Watch out!", "Eek, monsters!"),
+		AIR("Low air", true, 20, "Air!", "Up, up!", "Breathe!", "Swim up!"),
+		INVENTORY("Inventory full", true, 120, "Full!", "No room!", "Pockets are full!", "Drop some junk?", "Too much stuff!"),
+		FIRE("Fire or lava", true, 30, "Hot hot!", "Fire!", "Get out of there!", "Water! Water!", "You're smoking!"),
+		HURT("Owner hurt", false, 10, "!", "Hey!", "Ow!", "Leave them alone!", "Are you hurt?"),
+		NIGHTFALL("Nightfall", false, 600, "☾", "Night's coming…", "Torches ready?", "Monsters soon…", "Time for bed?"),
+		UNDERWATER("Under water", false, 120, "blub", "o o o", "Bubbles!", "Fishy friends!", "Glub glub"),
+		NETHER("Into the Nether", false, 60, "Hot!", "So warm…", "Mind the lava!", "Smells like fire…", "Hold my paw…"),
+		END("Into the End", false, 60, "…?", "Whoa…", "So many eyes…", "Where are we?", "Don't look at them!"),
+		FISH("Fish caught", false, 10, "!", "Fish!", "Yum!", "A big one!", "Dinner!", "Nice catch!"),
+		HARVEST("Harvest", false, 60, "Nice!", "Crops!", "Farmer life!", "Fresh food!", "Good harvest!"),
+		DEEP("Deep down", false, 600, "Dig dig", "So deep…", "Diamonds here?", "It's quiet down here", "Mind the drops…"),
+		SNOW("Snow", false, 600, "Brr", "Cold!", "Snowball fight?", "My paws are cold!", "So pretty…"),
+		HELLO("Taken out", false, 0, "Hi!", "Hello!", "Let's go!", "Adventure time!", "I'm here!", "Where to?"),
+		BYE("Put away", false, 0, "Bye!", "See you!", "Nap time!", "Call me soon!", "Take care!"),
+		JOIN("Owner joins", false, 0, "Missed you!", "You're back!", "Hello again!", "Yay, you're here!", "Where were you?"),
+		EAT("Eating", false, 30, "Yum!", "Share?", "Smells good!", "Can I have some?", "Nom nom"),
+		SLEEP("Sleeping", false, 60, "zZz", "Sweet dreams…", "Night night", "*snore*"),
+		MORNING("Morning", false, 600, "☀", "Morning!", "Rise and shine!", "New day!", "Good morning!"),
+		RESPAWN("Owner died", false, 0, "…", "Don't do that again…", "You scared me!", "Let's get your stuff", "Back in one piece?"),
+		ADVANCEMENT("Advancement", false, 5, "★", "Well done!", "Woo!", "Amazing!", "So proud!", "Look at you go!"),
+		LEVEL30("Level 30", false, 60, "Whoa!", "So much XP!", "Enchant time!", "Glowing!", "Spend it wisely!"),
+		SHINY("Rare find", false, 10, "Shiny!", "Ooh!", "Treasure!", "Lucky!", "Keep it safe!"),
+		RAIN("Rain", false, 600, "☂", "Rain…", "Wet fur…", "Pitter patter", "Puddles!"),
+		THUNDER("Thunder", false, 120, "!!", "Eek!", "So loud!", "Hide me!", "Boom!"),
+		FLYING("Flying or falling", false, 30, "Wheee!", "Whoosh!", "Look, no hands!", "Wings!", "Weee!"),
+		RIDING("Riding", false, 60, "Giddy up!", "♪", "Faster!", "What a ride!", "Hold on!"),
+		TRADE("Trading", false, 60, "$", "Good deal!", "Bargain!", "Shopping!", "Hmm, fair?"),
+		BREED("Breeding", false, 60, "♥", "Babies!", "So cute!", "Aww!", "Family!"),
+		MEET("Meeting another pet", false, 600, "♥", "Hi friend!", "A new friend!", "Play with me!", "Nice to meet you!"),
+		IDLE("Owner idle", false, 300, "…", "Bored…", "What now?", "Let's go somewhere!", "*yawn*"),
+		AFK("Owner AFK", false, 60, "zZz", "I'll wait here…", "Still there?", "…hello?"),
+		PAT("Pat", false, 3, "♥", "Hehe", "More!", "That tickles!", "Purr…"),
+		LEVEL_UP("Bond level up", false, 0, "Level {level}!", "Yay!", "We're closer now!", "Best friends!", "Level up!"),
+		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦", "Cake?", "Another year!", "Hooray!"),
+		TOTEM("Totem used", false, 0, "That was close!", "Phew…", "Lucky totem!", "Don't scare me!", "Saved!"),
+		KILL("Monster beaten", false, 120, "Got it!", "Take that!", "Bye bye!", "Nice hit!", "We win!"),
+		BOSS("Boss beaten", false, 0, "WE DID IT!", "Champion!", "Legendary!", "Unstoppable!", "Hero!"),
+		ENCHANT("Enchanting", false, 60, "Sparkly!", "Magic!", "Ooh, glowing!", "Abracadabra!", "Lucky roll?"),
+		MUSIC("Music playing", false, 120, "♪", "♫ ♪", "Dance!", "Catchy!", "I love this one!"),
+		BELL("Bell rung", false, 60, "Ding!", "Dong!", "Who's there?", "Ring ring!"),
+		DARK("Pitch dark", false, 300, "It's dark…", "Light?", "I can't see!", "Torch, please?", "Spooky…"),
+		HIGH("Way up high", false, 600, "So high!", "Don't fall!", "Great view!", "Clouds!", "Hold on tight!"),
+		SUNNY("Rain stops", false, 600, "☀", "Sun's back!", "Dry at last!", "Rainbow?", "Warm again!"),
+		RAID("Raid", false, 300, "Raid!", "Here they come!", "Ring the bell!", "Protect the village!", "To arms!");
 
 		public final String label;
 		/** Also tells the owner on their screen (and doesn't wait for the gap between reactions). */
@@ -307,26 +307,36 @@ public final class Pets {
 		public List<String> lines = new ArrayList<>();
 	}
 
+	/** Bump when Reaction's default lines grow, so saved settings get the new ones once. */
+	static final int LINES_VERSION = 2;
+
 	public static final class ReactionSettings {
 		public boolean enabled = true;
 		/** The least time between two reactions of one pet (warnings don't wait). */
 		public int gapSeconds = 20;
 		public Map<String, ReactionEntry> list = new LinkedHashMap<>();
+		/** Which set of default lines was merged in; new ones are added once, lines the admin changed or removed stay as they are. */
+		public int linesVersion;
 
 		public ReactionSettings fill() {
 			if (list == null) list = new LinkedHashMap<>();
 			list.keySet().removeIf(k -> Reaction.of(k) == null);
+			boolean merge = linesVersion < LINES_VERSION;
 			for (Reaction r : Reaction.values()) {
 				ReactionEntry e = list.get(r.name());
 				if (e == null) {
 					e = new ReactionEntry();
 					e.lines = new ArrayList<>(r.lines);
 					list.put(r.name(), e);
+				} else if (merge && e.lines != null) {
+					// More lines came with an update: add the ones that aren't there yet.
+					for (String l : r.lines) if (!e.lines.contains(l)) e.lines.add(l);
 				}
 				if (e.lines == null) e.lines = new ArrayList<>();
 				e.lines.replaceAll(l -> l == null ? "" : l.replaceAll("\\s+", " ").strip());
 				e.lines.removeIf(String::isEmpty);
 			}
+			linesVersion = LINES_VERSION;
 			return this;
 		}
 
