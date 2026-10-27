@@ -883,7 +883,8 @@ public final class DashboardServer {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		minecraft.execute(() -> {
 			try {
-				future.complete(task.get());
+				// Logged with the panel's mark: it's something the panel asked for.
+				future.complete(eu.explorerseden.nicecontrolcenter.core.PanelMark.during(task));
 			} catch (RuntimeException e) {
 				future.completeExceptionally(e);
 			}

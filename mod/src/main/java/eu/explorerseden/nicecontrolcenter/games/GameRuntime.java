@@ -612,7 +612,7 @@ public final class GameRuntime {
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {
 		for (String line : lines) {
 			String cmd = fill(line.strip().replaceFirst("^/", ""), a, p, score);
-			if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd);
+			if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
 		}
 	}
 

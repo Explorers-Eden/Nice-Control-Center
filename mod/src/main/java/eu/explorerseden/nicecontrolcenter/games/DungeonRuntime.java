@@ -868,7 +868,7 @@ public final class DungeonRuntime {
 	private static void commands(MinecraftServer server, List<String> lines, Run r, ServerPlayer p) {
 		for (String line : lines) {
 			String cmd = fill(line.strip().replaceFirst("^/", ""), r, p);
-			if (!cmd.isEmpty()) ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd);
+			if (!cmd.isEmpty()) ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Dungeon");
 		}
 	}
 

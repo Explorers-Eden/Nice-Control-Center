@@ -36,7 +36,7 @@ import eu.explorerseden.nicecontrolcenter.worldgen.WorldgenTracker;
  */
 public class NiceControlCenter implements ModInitializer {
 	public static final String MOD_ID = "nicecontrolcenter";
-	public static final Logger LOGGER = LoggerFactory.getLogger("Nice Control Center");
+	public static final Logger LOGGER = eu.explorerseden.nicecontrolcenter.core.PanelMark.wrap(LoggerFactory.getLogger("Nice Control Center"));
 
 	private static ControlCenterConfig config;
 	private static volatile MinecraftServer server;

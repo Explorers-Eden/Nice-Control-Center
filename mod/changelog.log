@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.48.5
+- Log: everything the mod logs while doing something the panel or dashboard asked for (deleting a report, running a command, player actions…) starts with [panel], so the panel shows it as a Panel entry; commands run by games and dungeons are logged as Game or Dungeon, not Dashboard
+
 ## 1.48.4
 - Rewards: the default "You got: …" line, /reward and /perks lines and the flight messages are gold, not blue (blue stays for messages from the panel and console)
 

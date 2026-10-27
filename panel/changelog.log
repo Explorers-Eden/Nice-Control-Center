@@ -1,3 +1,6 @@
+## 1.39.4
+- Console: the mod's lines for panel requests get the same Panel mark as the panel's own notes (warnings and errors keep their colour and filter) (mod 1.48.5)
+
 ## 1.39.3
 - Top tiles: the mob cap is its own tile (Distances keeps view and simulation); every tile has a fixed width share, so the row no longer shifts when values change
 

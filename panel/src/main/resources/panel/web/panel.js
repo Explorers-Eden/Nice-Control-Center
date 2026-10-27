@@ -1143,9 +1143,13 @@
   /** Panel notes and command echoes start with their time like the server's lines: "[14:03:22] [panel] …". */
   const STAMP = /^\[\d\d:\d\d:\d\d\] /;
   const unstamped = (line) => line.replace(STAMP, '');
+  /** What the mod logged while doing something the panel asked for: "[Server thread/INFO]: [panel] …". */
+  const MOD_PANEL = /^\[[^\]]+\/(FATAL|ERROR|WARN|INFO|DEBUG|TRACE)\]: \[panel\] /;
 
   function lineClass(line) {
     if (unstamped(line).startsWith('[panel] ')) return 'panel';
+    const mod = unstamped(line).match(MOD_PANEL);
+    if (mod) return mod[1] === 'ERROR' || mod[1] === 'FATAL' ? 'poor' : mod[1] === 'WARN' ? 'warn' : 'panel';
     if (unstamped(line).startsWith('> ')) return 'panel cmd';
     if (/\b(ERROR|FATAL)\b|Exception|^\s+at /.test(line)) return 'poor';
     if (/\bWARN\b/.test(line)) return 'warn';
@@ -1159,6 +1163,9 @@
   /** The line's level; stack trace lines ("at …", "Caused by") belong to the line above them. */
   function lineLevel(line) {
     if (unstamped(line).startsWith('[panel] ') || unstamped(line).startsWith('> ')) return 'PANEL';
+    // The mod's lines for panel requests: a Panel entry, unless they're warnings or errors (those keep their level).
+    const mod = unstamped(line).match(MOD_PANEL);
+    if (mod) return (lastLevel = ['INFO', 'DEBUG', 'TRACE'].includes(mod[1]) ? 'PANEL' : mod[1]);
     const m = line.match(/\/(ERROR|FATAL|WARN|INFO|DEBUG|TRACE)\]/);
     if (m) return (lastLevel = m[1]);
     if (/^\s+at |^\s*Caused by:|^\s*\.\.\. \d+ more/.test(line)) return lastLevel;
@@ -1205,9 +1212,10 @@
       div.dataset.level = lineLevel(line);
       // Everything the panel itself writes (its notes and the commands sent from here) gets one "Panel" mark.
       const rest = unstamped(line);
-      if (div.dataset.level === 'PANEL') {
+      const mod = rest.match(MOD_PANEL);
+      if (div.dataset.level === 'PANEL' || mod) {
         const stamp = line.slice(0, line.length - rest.length);
-        const text = rest.startsWith('[panel] ') ? rest.slice(8) : '/' + rest.slice(2).replace(/^\//, '');
+        const text = mod ? rest.slice(mod[0].length) : rest.startsWith('[panel] ') ? rest.slice(8) : '/' + rest.slice(2).replace(/^\//, '');
         div.append(stamp, Object.assign(document.createElement('span'), { className: 'pn-log-tag', textContent: 'Panel' }), ' ' + text);
       } else {
         div.textContent = line;
