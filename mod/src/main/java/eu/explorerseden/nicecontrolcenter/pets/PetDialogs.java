@@ -250,11 +250,11 @@ public final class PetDialogs {
 		Pets.Owned shown = shown(player, owner);
 		for (Pets.Owned o : owner.pets) {
 			boolean out = shown != null && o.pet.equals(shown.pet);
-			// Each line its own colour: what it is (grey), its bond (aqua), its perks (purple).
+			// Each line its own colour: what it is (grey), its bond (gold), its perks (purple).
 			MutableComponent extra = Component.empty();
 			String about = PetStore.description(o), level = levelLine(o), perks = perkLine(PetStore.settings().pet(o.pet), o);
 			if (!about.isEmpty()) extra.append(Component.literal("\n" + about).withStyle(ChatFormatting.GRAY));
-			if (!level.isEmpty()) extra.append(Component.literal("\n" + level).withStyle(ChatFormatting.AQUA));
+			if (!level.isEmpty()) extra.append(Component.literal("\n" + level).withStyle(ChatFormatting.GOLD));
 			if (!perks.isEmpty()) extra.append(Component.literal("\n" + perks).withStyle(ChatFormatting.LIGHT_PURPLE));
 			MutableComponent title = petTitle(o);
 			MutableComponent desc = Component.empty()
@@ -288,7 +288,7 @@ public final class PetDialogs {
 		int level = Pets.level(out.bond, k);
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
-		body.add(text(levelLine(out) + ".", ChatFormatting.AQUA));
+		body.add(text(levelLine(out) + ".", ChatFormatting.GOLD));
 		body.add(text("Perks only help while you're not AFK.", ChatFormatting.GRAY));
 		List<Pets.Perk> perks = PetStore.perks(out);
 		for (int i = 0; i < perks.size(); i++) {
@@ -431,7 +431,7 @@ public final class PetDialogs {
 		body.add(new PlainMessage(facts, TEXT_WIDTH));
 		if (!perkLine(pet).isEmpty()) {
 			body.add(text(perkLine(pet) + ".", ChatFormatting.LIGHT_PURPLE));
-			body.add(text("Bond levels grow while it's out with you.", ChatFormatting.AQUA));
+			body.add(text("Bond levels grow while it's out with you.", ChatFormatting.GOLD));
 			for (String n : pet.perks) {
 				Pets.Perk perk = Pets.Perk.of(n);
 				if (perk != null) body.add(text("· " + perk.label + ": " + perk.describe(PetStore.settings().perks), ChatFormatting.GRAY));

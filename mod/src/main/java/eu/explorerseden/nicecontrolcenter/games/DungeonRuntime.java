@@ -381,7 +381,7 @@ public final class DungeonRuntime {
 			for (BlockPos c : r.checkpoints) {
 				if (!c.equals(r.checkpoint) && p.distanceToSqr(c.getX() + 0.5, c.getY() + 0.5, c.getZ() + 0.5) < 4) {
 					r.checkpoint = c;
-					tellRun(server, r, Component.literal("✦ Checkpoint reached by " + p.getGameProfile().name()).withStyle(ChatFormatting.AQUA));
+					tellRun(server, r, Component.literal("✦ Checkpoint reached by " + p.getGameProfile().name()).withStyle(ChatFormatting.GOLD));
 					level.playSound(null, c, SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.7f, 1.4f);
 				}
 			}
