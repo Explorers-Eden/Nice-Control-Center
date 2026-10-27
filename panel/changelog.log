@@ -1,3 +1,6 @@
+## 1.38.0
+- Commands page: /game and /dungeon are listed and reserved (mod 1.47.0)
+
 ## 1.37.1
 - Home: the greeting card is smaller; the Playing tile and the running/paused pill are gone (both are in the navbar and tiles)
 - Chat, console and the player list end on one line with the sidebar (the embedded page's bottom padding is gone)

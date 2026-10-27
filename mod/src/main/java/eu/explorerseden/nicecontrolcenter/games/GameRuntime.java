@@ -685,6 +685,10 @@ public final class GameRuntime {
 		return a.start == null ? "" : a.start.dim;
 	}
 
+	static ServerLevel levelOf(MinecraftServer server, String dim) {
+		return level(server, dim);
+	}
+
 	private static ServerLevel level(MinecraftServer server, String dim) {
 		Identifier id = Identifier.tryParse(dim);
 		return id == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, id));

@@ -147,7 +147,7 @@ public final class GameClaims {
 
 	/** In any game area: the market, the inbox and pets don't work there (they'd carry things in or out). */
 	public static boolean inGame(ServerPlayer p) {
-		return gameClaimAt(p.level(), p.blockPosition()) != null;
+		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || gameClaimAt(p.level(), p.blockPosition()) != null;
 	}
 
 	/** True (with a message) when the player is in a game area, so {@code what} is refused. */

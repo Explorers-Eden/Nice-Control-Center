@@ -132,6 +132,8 @@ final class Commands {
 			Map.entry("perks", "See your rewards: flight time, perks and how long they last, coupons, extra slots."),
 			Map.entry("joinmessage", "Set your own join line (a reward), or off for the normal one."),
 			Map.entry("inbox", "Open your inbox: items from the market, from game areas and other things waiting for you."),
+			Map.entry("game", "Mini-games: join, leave, see the best players; admins create and edit arenas and set the hub spawn."),
+			Map.entry("dungeon", "Dungeons: leave a run, list the pools; admins mark, save and remove dungeons, put them in pools and place pads."),
 			Map.entry("merl", "Ask Merl anything about the server or vanilla Minecraft: she finds the right wiki page, guides you to places, quizzes you and chats."),
 			Map.entry("nicemerl", "Merl's settings for yourself (her comments and celebrations on or off), guide trails and quiz answers; admins also rebuild her wiki index and place her mannequin."),
 			Map.entry("discord", "Discord JustSync: see which Discord account you're linked to or unlink it; admins look up other players, send a message to Discord and reload the bridge."),

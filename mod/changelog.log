@@ -1,4 +1,12 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.47.0
+- Instanced dungeons, first part: a void dimension nicecontrolcenter:dungeons comes with the mod (appears after a restart); admins mark a box with /dungeon create <name> + /dungeon corner2 (particle outline) or give corners to /dungeon save <name> <from> <to>, and /dungeon save keeps it as 16 × 16 pieces in the world folder (saving again after changes reuses the box)
+- Markers are data structure blocks: start and exit work now (checkpoint, mob and boss come next); chests with a loot table roll fresh in every copy
+- Pools: /dungeon pool <name> <pool>; pads with /dungeon pad add <pool> (standing on one for two seconds starts a run with a random dungeon of that pool, never the one played last when there's another) and /dungeon pad remove
+- Every run gets its own copy in a free slot, pasted a few pieces per tick behind a boss bar; files are read and written off the main thread; reaching an exit clears it, dying, leaving the box, logging out or the time limit ends it; then the copy is wiped and the slot freed (also on start-up, so no copy outlives a restart)
+- Players in a run count as in a game area (no market, inbox or pets; the hub spawn takes over); /dungeon leave, /dungeon list; admins /dungeon try <name> (from the console: a copy that stands for a minute), /dungeon runs, /dungeon delete
+- Per dungeon (config for now, the panel next): pool, party size, time limit, enter/prepare/cleared/failed messages and commands run on enter and exit
+
 ## 1.46.1
 - Dashboard: the top tiles keep their widths when values change
 

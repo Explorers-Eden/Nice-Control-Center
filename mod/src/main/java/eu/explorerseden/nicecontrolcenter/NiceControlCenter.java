@@ -71,6 +71,7 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.players.Perks.register();
 		eu.explorerseden.nicecontrolcenter.claims.GameClaims.register();
 		eu.explorerseden.nicecontrolcenter.games.GameRuntime.register();
+		eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.register();
 		eu.explorerseden.nicecontrolcenter.rewards.RewardActions.register();
 		eu.explorerseden.nicecontrolcenter.market.MarketStore.register();
 		eu.explorerseden.nicecontrolcenter.pets.PetStore.register();
