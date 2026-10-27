@@ -15,14 +15,14 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Mini-game arenas (templates: infinite parkour, race course, dropper, maze), kept in
+ * Mini-game arenas (templates: infinite parkour, race course, dropper, maze, wave fight), kept in
  * config/nicecontrolcenter-games.json: made with /game in game, changed in the panel's Games page. Scores are kept
  * by the mod in the world folder (nicecontrolcenter-games-scores.json). Minecraft-free so both compile it.
  */
 public final class Games {
 	public static final String FILE = "nicecontrolcenter-games.json";
 	public static final String SCORES = "nicecontrolcenter-games-scores.json";
-	public static final List<String> TYPES = List.of("parkour", "race", "dropper", "maze");
+	public static final List<String> TYPES = List.of("parkour", "race", "dropper", "maze", "waves");
 
 	/** A spot in a dimension. */
 	public static final class Pos {
@@ -106,6 +106,51 @@ public final class Games {
 		/** Run as the server for the player (without /) on start and when a run counts. */
 		public List<String> startCommands = new ArrayList<>();
 		public List<String> finishCommands = new ArrayList<>();
+
+		// Waves: a party fights waves of mobs in a box built in the world.
+		/** Where players appear (and come back after dying); the fight box (two corners, its height included). */
+		public Pos spawn;
+		public Pos areaMin;
+		public Pos areaMax;
+		/** Where mobs come from (picked at random). */
+		public List<Pos> mobSpawns = new ArrayList<>();
+		/** Optional: where dead party members wait for the next wave and other parties queue up; its radius. */
+		public Pos spectate;
+		public int spectateRadius = 8;
+		/** Standing on one for 2 seconds leaves the game early. */
+		public List<Pos> exitPads = new ArrayList<>();
+		public int minParty = 1;
+		public int maxParty = 4;
+		/** Waves to clear (0 = endless: the score is how many were cleared). */
+		public int rounds = 10;
+		/** Deaths the whole party may have (0 = no limit: only everyone down at once loses). */
+		public int teamLives = 0;
+		/** Seconds between waves. */
+		public int breakSeconds = 10;
+		/** Generated waves: mob lines ("zombie", "skeleton x2 {…}") picked at random, how many in wave 1, more per wave. */
+		public List<String> pool = new ArrayList<>(List.of("zombie", "skeleton", "spider"));
+		public int firstWave = 4;
+		public int perWave = 2;
+		/** % more mobs per player beyond the first. */
+		public int perPlayer = 50;
+		/** A boss every this many waves (0 = never), and which. */
+		public int bossEvery = 5;
+		public String boss = "ravager";
+		/** % more health and damage per wave after the first. */
+		public int toughness = 10;
+		/** Mobs alive at once (the rest come as these fall). */
+		public int maxAlive = 20;
+		/** Hand-written waves replacing the generated ones: "5" → "husk x6, skeleton x2". */
+		public Map<String, String> waveLines = new LinkedHashMap<>();
+		/** "kit": their own things are put aside and the kit handed out; "own": they fight with what they carry. */
+		public String gear = "kit";
+		public List<String> kit = new ArrayList<>();
+		/** Kit gear: items found inside vanish afterwards (else they go to the inbox). */
+		public boolean removePickups = true;
+		/** Run as the server for each living player after a wave is cleared ({wave}, {player}, {game}). */
+		public List<String> waveCommands = new ArrayList<>();
+		/** Shown when the party loses ({wave}: waves cleared). Empty = the default line. */
+		public String loseMessage = "";
 	}
 
 	public static final class Settings {
@@ -152,6 +197,29 @@ public final class Games {
 				if (a.finishMessage == null) a.finishMessage = "";
 				if (a.startCommands == null) a.startCommands = new ArrayList<>();
 				if (a.finishCommands == null) a.finishCommands = new ArrayList<>();
+				if (a.mobSpawns == null) a.mobSpawns = new ArrayList<>();
+				if (a.exitPads == null) a.exitPads = new ArrayList<>();
+				a.spectateRadius = Math.max(2, Math.min(64, a.spectateRadius));
+				a.minParty = Math.max(1, Math.min(4, a.minParty));
+				a.maxParty = Math.max(a.minParty, Math.min(4, a.maxParty));
+				a.rounds = Math.max(0, Math.min(1000, a.rounds));
+				a.teamLives = Math.max(0, Math.min(1000, a.teamLives));
+				a.breakSeconds = Math.max(3, Math.min(300, a.breakSeconds));
+				if (a.pool == null) a.pool = new ArrayList<>();
+				a.pool.removeIf(x -> x == null || x.isBlank());
+				a.firstWave = Math.max(1, Math.min(200, a.firstWave));
+				a.perWave = Math.max(0, Math.min(100, a.perWave));
+				a.perPlayer = Math.max(0, Math.min(500, a.perPlayer));
+				a.bossEvery = Math.max(0, Math.min(1000, a.bossEvery));
+				if (a.boss == null) a.boss = "";
+				a.toughness = Math.max(0, Math.min(500, a.toughness));
+				a.maxAlive = Math.max(1, Math.min(200, a.maxAlive));
+				if (a.waveLines == null) a.waveLines = new LinkedHashMap<>();
+				a.waveLines.entrySet().removeIf(e -> e.getValue() == null || e.getValue().isBlank() || !e.getKey().matches("\\d{1,4}"));
+				if (!"own".equals(a.gear)) a.gear = "kit";
+				if (a.kit == null) a.kit = new ArrayList<>();
+				if (a.waveCommands == null) a.waveCommands = new ArrayList<>();
+				if (a.loseMessage == null) a.loseMessage = "";
 			}
 			return this;
 		}
@@ -165,9 +233,18 @@ public final class Games {
 		public int runs;
 	}
 
-	/** Higher scores are better (parkour), else lower times. */
+	/** Higher scores are better (parkour jumps, waves cleared), else lower times. */
 	public static boolean higherIsBetter(String type) {
-		return type.equals("parkour");
+		return type.equals("parkour") || type.equals("waves");
+	}
+
+	/** A score as words: "12 jumps", "5 waves", or a time. */
+	public static String scoreText(String type, long score, java.util.function.LongFunction<String> clock) {
+		return switch (type) {
+			case "parkour" -> score + (score == 1 ? " jump" : " jumps");
+			case "waves" -> score + (score == 1 ? " wave" : " waves");
+			default -> clock.apply(score);
+		};
 	}
 
 	public static String validate(Settings s) {

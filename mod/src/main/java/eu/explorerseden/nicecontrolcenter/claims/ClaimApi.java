@@ -52,12 +52,102 @@ public final class ClaimApi {
 			out.put("kit", n);
 			return out;
 		}
+		String action = body.has("action") ? body.get("action").getAsString() : "?";
+		Claim before = ClaimStore.data().claims.get(body.has("claim") ? body.get("claim").getAsString() : "");
+		// What the claim was, so the log can say what changed (and name it even after a delete).
+		String label = before == null ? null : "\"" + before.displayName() + "\" (" + (before.owner == null ? "server" : before.ownerName) + ")";
+		Snapshot old = before == null ? null : new Snapshot(before);
 		Map<String, Object> result = Claims.apply(ClaimStore.data(), ClaimStore.settings(), body, System.currentTimeMillis());
 		if (result.containsKey("ok")) {
 			ClaimStore.changed();
-			NiceControlCenter.LOGGER.info("Claims: {} by {} in the panel", body.has("action") ? body.get("action").getAsString() : "?", by == null ? "an admin" : by);
+			String what = describe(action, body, old, before);
+			NiceControlCenter.LOGGER.info("Claims: {}{}{} by {} in the panel", label == null ? "" : label + ": ", what, what.isEmpty() ? action : "",
+					by == null ? "an admin" : by);
 		}
 		return result;
+	}
+
+	/** A claim's settings before a change, to log only what changed. */
+	private record Snapshot(String name, int color, Map<String, Boolean> flags, Map<String, String> members, String owner, String admin) {
+		Snapshot(Claim c) {
+			this(c.name, c.color, flagMap(c), memberMap(c), c.owner == null ? "server" : c.ownerName, adminText(c.admin));
+		}
+	}
+
+	private static Map<String, Boolean> flagMap(Claim c) {
+		Map<String, Boolean> m = new LinkedHashMap<>();
+		if (c.flags != null) for (String[] f : Claims.Flags.LABELS) m.put(f[0], c.flags.get(f[0]));
+		return m;
+	}
+
+	private static Map<String, String> memberMap(Claim c) {
+		Map<String, String> m = new LinkedHashMap<>();
+		if (c.members != null) c.members.forEach((uuid, mem) -> m.put(uuid, mem.name == null ? uuid : mem.name));
+		return m;
+	}
+
+	/** The game-area options as words, e.g. "inventory aside, sent out after 3 deaths". */
+	private static String adminText(Claims.AdminOptions a) {
+		if (a == null) return "";
+		List<String> on = new ArrayList<>();
+		if (a.inventory) on.add("inventory aside");
+		if (a.removePickups) on.add("pickups vanish on leaving");
+		if (a.dropPickupsOnDeath) on.add("pickups drop on death");
+		if (a.keepKitOnDeath) on.add("kit kept on death");
+		if (a.noHomes) on.add("no homes");
+		if (a.deaths > 0) on.add("sent out after " + a.deaths + " deaths");
+		if (a.kit != null && !a.kit.isEmpty()) on.add("kit of " + a.kit.size() + " stacks");
+		if (a.respawn != null && a.respawn.length >= 3) on.add("respawn point " + (int) Math.floor(a.respawn[0]) + " " + (int) Math.floor(a.respawn[1]) + " " + (int) Math.floor(a.respawn[2]));
+		return String.join(", ", on);
+	}
+
+	/** What an action changed, in words; empty when there's nothing to tell beyond the action's name. */
+	private static String describe(String action, JsonObject body, Snapshot old, Claim c) {
+		List<String> out = new ArrayList<>();
+		switch (action) {
+			case "update", "admin" -> {
+				if (old == null) break;
+				if (!java.util.Objects.equals(old.name(), c.name)) out.add("renamed from \"" + (old.name() == null ? "" : old.name()) + "\" to \"" + c.displayName() + "\"");
+				if (old.color() != c.color) out.add(String.format("colour #%06X → #%06X", old.color(), c.color));
+				flagMap(c).forEach((k, v) -> {
+					if (!v.equals(old.flags().get(k))) out.add(k + (v ? " on" : " off"));
+				});
+				String now = adminText(c.admin);
+				if (!now.equals(old.admin())) {
+					List<String> was = List.of(old.admin().isEmpty() ? new String[0] : old.admin().split(", "));
+					List<String> is = List.of(now.isEmpty() ? new String[0] : now.split(", "));
+					for (String x : is) if (!was.contains(x)) out.add("game area: " + x);
+					for (String x : was) if (!is.contains(x)) out.add("game area: no longer " + x);
+				}
+				if (out.isEmpty()) out.add(action.equals("admin") ? "game area unchanged" : "nothing changed");
+			}
+			case "resize" -> out.add("resized to " + num(body, "minX") + " " + num(body, "minZ") + " … " + num(body, "maxX") + " " + num(body, "maxZ"));
+			case "delete" -> out.add("deleted");
+			case "member_set" -> out.add("member " + text(body, "name") + " set to " + text(body, "role"));
+			case "member_remove" -> out.add("member " + (old == null ? text(body, "uuid") : old.members().getOrDefault(text(body, "uuid"), text(body, "uuid"))) + " removed");
+			case "keep" -> {
+				long until = body.has("until") ? body.get("until").getAsLong() : 0;
+				out.add(until <= 0 ? "keep extension removed" : "kept until " + java.time.Instant.ofEpochMilli(until).toString().substring(0, 10));
+			}
+			case "transfer" -> out.add("given to " + (text(body, "ownerName").isEmpty() ? "the server" : text(body, "ownerName")) + (old == null ? "" : " (was " + old.owner() + ")"));
+			case "create" -> out.add("created \"" + text(body, "name") + "\" in " + text(body, "dim") + " at " + num(body, "minX") + " " + num(body, "minZ") + " … " + num(body, "maxX") + " " + num(body, "maxZ")
+					+ (text(body, "ownerName").isEmpty() ? " (server)" : " for " + text(body, "ownerName")));
+			case "blocks" -> out.add("claim blocks of " + (text(body, "name").isEmpty() ? text(body, "uuid") : text(body, "name")) + " set to " + num(body, "bought") + " bought");
+			default -> {
+				return "";
+			}
+		}
+		return String.join(", ", out);
+	}
+
+	private static String text(JsonObject o, String k) {
+		var v = o.get(k);
+		return v == null || v.isJsonNull() || !v.isJsonPrimitive() ? "" : v.getAsString().strip();
+	}
+
+	private static String num(JsonObject o, String k) {
+		String t = text(o, k);
+		return t.isEmpty() ? "?" : t;
 	}
 
 	/** Claims for the panel's map: rectangles with colour, name and owner. */

@@ -115,7 +115,7 @@ public final class GameClaims {
 		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
 			if (entity instanceof ServerPlayer p) {
 				// (Not while a dungeon brings them back to its checkpoint.)
-				if (GameRuntime.hubCovers(p) && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p)) toHubOnRespawn.add(p.getUUID());
+				if (GameRuntime.hubCovers(p) && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p) && !eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p)) toHubOnRespawn.add(p.getUUID());
 				died(p);
 			}
 			return true;
@@ -172,7 +172,7 @@ public final class GameClaims {
 
 	/** Inside a game claim that puts inventories aside (for blocking graves). */
 	public static boolean inInventoryClaim(ServerPlayer p) {
-		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.noGrave(p)) return true;
+		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.noGrave(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.noGrave(p)) return true;
 		Claim c = gameClaimAt(p.level(), p.blockPosition());
 		return c != null && c.admin.inventory;
 	}
@@ -195,7 +195,7 @@ public final class GameClaims {
 
 	/** In any game area: the market, the inbox and pets don't work there (they'd carry things in or out). */
 	public static boolean inGame(ServerPlayer p) {
-		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || gameClaimAt(p.level(), p.blockPosition()) != null;
+		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || gameClaimAt(p.level(), p.blockPosition()) != null;
 	}
 
 	/** True (with a message) when the player is in a game area, so {@code what} is refused. */
@@ -219,8 +219,8 @@ public final class GameClaims {
 			if (p.isAlive()) gameMode(p, sweep);
 		}
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			// Dungeon runs put things aside and give them back themselves.
-			if (!p.isAlive() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p)) continue;
+			// Dungeon runs and wave games put things aside and give them back themselves.
+			if (!p.isAlive() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p)) continue;
 			Claim now = gameClaimAt(p.level(), p.blockPosition());
 			String nowId = now == null ? null : now.id;
 			String was = inside.get(p.getUUID());
@@ -420,6 +420,8 @@ public final class GameClaims {
 	 */
 	private static void loggedOut(MinecraftServer server, ServerPlayer p) {
 		toHubOnRespawn.remove(p.getUUID());
+		// A wave game gives things back and moves them out itself (its own disconnect handler).
+		if (eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p)) return;
 		// Logged out while dead: out of the game, so what was held is gone.
 		forgetKept(p);
 		respawnIn.remove(p.getUUID());
@@ -458,6 +460,7 @@ public final class GameClaims {
 	/** In a game claim, or in a dungeon run inside the dungeon (not while waiting on the pad). */
 	private static boolean playing(ServerPlayer p) {
 		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) && eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inDungeonDimension(p)) return true;
+		if (eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p)) return true;
 		return gameClaimAt(p.level(), p.blockPosition()) != null;
 	}
 

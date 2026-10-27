@@ -138,7 +138,7 @@
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
-        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes): settings and the best players.' },
+        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights): settings and the best players.' },
         { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
@@ -1851,7 +1851,9 @@
   // ── Games ──────────────────────────────────────────────────────────────
 
   const gm = { settings: null, live: null, scores: null, dirty: false };
-  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3' };
+  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded' };
+  const gmHigher = (type) => type === 'parkour' || type === 'waves';
+  const gmScore = (type, v) => type === 'parkour' ? `${v} jump${v === 1 ? '' : 's'}` : type === 'waves' ? `${v} wave${v === 1 ? '' : 's'}` : gmClock(v);
   const gmClock = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${Math.floor((ms % 1000) / 100)}`; };
 
   async function loadGames() {
@@ -1881,15 +1883,18 @@
       + `<br><small>Players who log out or die in a game area or anywhere in its dimension come back here. Set it in game with <code>/game spawn set</code>.</small>`;
     $('pn-gm-list').innerHTML = s.arenas.map((a, i) => {
       const live = gm.live ? gm.live.find((x) => x.id === a.id) : null;
-      const top = live ? live.top : Object.values((gm.scores || {})[a.id] || {}).sort((x, y) => a.type === 'parkour' ? y.best - x.best : x.best - y.best).slice(0, 10);
+      const top = live ? live.top : Object.values((gm.scores || {})[a.id] || {}).sort((x, y) => gmHigher(a.type) ? y.best - x.best : x.best - y.best).slice(0, 10);
       const where = a.start ? `${dimShort(a.start.dim)} · ${Math.round(a.start.x)}, ${Math.round(a.start.y)}, ${Math.round(a.start.z)}` : 'no start yet';
       const field = (k, label, html) => `<label class="pn-field"><span>${label}</span>${html}</label>`;
       const num = (k, min, max) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}">`;
       const text = (k, label, hint) => field(k, label, `<input type="text" data-g="${k}" value="${esc(a[k] || '')}" placeholder="${esc(hint)}">`);
       const lines = (k, label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="${k}" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a[k] || []).join('\n'))}</textarea></label>`;
-      const own = field('cooldown', 'Wait between runs (seconds)', num('cooldown', 0, 3600))
-        + text('startMessage', 'Start message', 'default line') + text('finishMessage', 'Finish message ({score})', 'default line')
-        + lines('startCommands', 'Commands on start ({player}, {game})') + lines('finishCommands', 'Commands when a run counts ({score})');
+      const waves = a.type === 'waves';
+      const own = (waves ? '' : field('cooldown', 'Wait between runs (seconds)', num('cooldown', 0, 3600)))
+        + text('startMessage', 'Start message', 'default line')
+        + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : 'Finish message ({score})', 'default line')
+        + lines('startCommands', 'Commands on start ({player}, {game})')
+        + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards' : 'Commands when a run counts ({score})');
       const fields = {
         parkour: field('palette', 'Blocks (ids, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
           + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes', num('laneSpacing', 16, 256))
@@ -1903,25 +1908,61 @@
           + field('wallHeight', 'Wall height', num('wallHeight', 1, 8))
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
           + `<p class="pn-hint">After changing the size or blocks: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
+        waves: gmWaveFields(a, field, num, text, lines),
       }[a.type] || '';
       const allFields = fields + own;
-      const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${a.type === 'parkour' ? `${t.best} jumps` : gmClock(t.best)}</span><small>${t.runs} run${t.runs === 1 ? '' : 's'}</small></li>`).join('')}</ol>` : '<p class="pn-hint">No runs yet.</p>';
+      const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${gmScore(a.type, t.best)}</span><small>${t.runs} run${t.runs === 1 ? '' : 's'}</small></li>`).join('')}</ol>` : '<p class="pn-hint">No runs yet.</p>';
       return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
         <div class="pn-rw-head">
           <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
-          <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} playing</span>` : ''}
+          <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(a.type === 'waves' ? 'wave fight' : a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} playing${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
           <span class="pn-rw-actions">
             <button type="button" class="np-btn small" data-gact="reset" title="Clear the best scores"><i class="bi bi-trophy"></i> Reset scores</button>
             <button type="button" class="np-btn small danger" data-gact="delete" title="Remove the arena (what it built stays)"><i class="bi bi-trash"></i></button>
           </span>
         </div>
-        <p class="pn-hint"><i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · players join with <code>/game join ${esc(a.name)}</code> or by stepping on it.</p>
+        <p class="pn-hint"><i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · ${a.type === 'waves' ? 'a party leader stands on it to start (or queue up while a game runs)' : `players join with <code>/game join ${esc(a.name)}</code> or by stepping on it`}.</p>
         <div class="pn-gm-body"><div class="pn-rw-grid">${allFields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
       </section>`;
-    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze).</p>';
+    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze, waves).</p>';
     $('pn-gm-list').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; });
     $('pn-gm-save').disabled = !edit;
+  }
+
+  /** The wave arena's own fields, and what's still to be set up in game. */
+  function gmWaveFields(a, field, num, text, lines) {
+    const p = (pos) => pos ? `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}` : '';
+    const box = a.areaMin && a.areaMax
+      ? `${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}` : '';
+    const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
+    const n = esc(a.name);
+    const setup = `<ul class="pn-gm-setup">${[
+      ok(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
+      ok(!!box, box ? `Fight box ${box} (${p(a.areaMin)} → ${p(a.areaMax)})` : 'Fight box (two corners, height included):', box ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
+      ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Mob spawns:', `/game edit ${n} mobspawn add`),
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, radius ${a.spectateRadius}` : 'Spectator area (optional; without it the dead watch a teammate):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
+      ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
+      ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit`),
+    ].join('')}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (wave 1 with nobody in it).</p>`;
+    const sel = (k, opts) => `<select data-g="${k}"${typeof a[k] === 'boolean' ? ' data-bool="1"' : ''}>${opts.map(([v, l]) => `<option value="${v}" ${String(a[k]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    const overrides = Object.entries(a.waveLines || {}).sort((x, y) => x[0] - y[0]).map(([w, l]) => `${w}: ${l}`).join('\n');
+    return `<div class="pn-field pn-field-wide"><span>Setup in game</span>${setup}</div>`
+      + field('rounds', 'Waves to clear (0 = endless)', num('rounds', 0, 1000))
+      + field('minParty', 'Players, at least', num('minParty', 1, 4)) + field('maxParty', 'Players, at most', num('maxParty', 1, 4))
+      + field('teamLives', 'Team lives (0 = only all down loses)', num('teamLives', 0, 1000))
+      + field('breakSeconds', 'Break between waves (s)', num('breakSeconds', 3, 300))
+      + `<label class="pn-field pn-field-wide"><span>Mob pool (one per line, e.g. <code>skeleton x2 {…}</code>)</span><textarea data-g="pool" data-lines="1" rows="3" spellcheck="false" placeholder="zombie">${esc((a.pool || []).join('\n'))}</textarea></label>`
+      + field('firstWave', 'Mobs in wave 1', num('firstWave', 1, 200)) + field('perWave', 'More each wave', num('perWave', 0, 100))
+      + field('perPlayer', '% more per extra player', num('perPlayer', 0, 500)) + field('maxAlive', 'Mobs alive at once', num('maxAlive', 1, 200))
+      + field('toughness', '% more health and damage per wave', num('toughness', 0, 500))
+      + field('bossEvery', 'A boss every … waves (0 = never)', num('bossEvery', 0, 1000)) + text('boss', 'Boss', 'ravager {CustomName:…}')
+      + `<label class="pn-field pn-field-wide"><span>Hand-written waves (replace the generated ones), one per line: <code>5: husk x6, skeleton x2</code></span><textarea data-g="waveLines" rows="3" spellcheck="false" placeholder="10: wither_skeleton x4, blaze x2">${esc(overrides)}</textarea></label>`
+      + field('gear', 'Gear', sel('gear', [['kit', 'kit (their things are kept safe)'], ['own', 'their own']]))
+      + (a.gear === 'kit' ? field('removePickups', 'Items found inside', sel('removePickups', [[true, 'vanish afterwards'], [false, 'go to their inbox']])) : '')
+      + `<label class="pn-field pn-field-wide"><span>Commands after each cleared wave ({wave}, {player}, {game}): wave rewards</span><textarea data-g="waveCommands" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a.waveCommands || []).join('\n'))}</textarea></label>`
+      + text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line')
+      + '<p class="pn-hint pn-field-wide">Clearing the game runs the finish message and commands below (and the Rewards triggers "Finishes a game" / "Clears a wave in a wave arena").</p>';
   }
 
   function gmChanged(rerender) {
@@ -1938,11 +1979,20 @@
     const a = gm.settings.arenas[+card.dataset.arena];
     if (e.target.type === 'checkbox') a[k] = e.target.checked;
     else if (e.target.type === 'number') a[k] = Number(e.target.value) || 0;
+    else if (e.target.dataset.bool) a[k] = e.target.value === 'true';
+    else if (k === 'waveLines') {
+      // "5: husk x6, skeleton x2" per line → { "5": "husk x6, skeleton x2" }
+      a[k] = {};
+      e.target.value.split('\n').forEach((line) => {
+        const m = line.match(/^\s*(\d{1,4})\s*[:=]\s*(.+?)\s*$/);
+        if (m) a[k][String(Number(m[1]))] = m[2];
+      });
+    }
     else if (k === 'palette') a[k] = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
     else if (e.target.dataset.lines) a[k] = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
     else a[k] = e.target.value;
     if (k === 'enabled') card.classList.toggle('off', !a.enabled);
-    gmChanged(false);
+    gmChanged(k === 'gear');
   });
   $('pn-gm-list').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-gact]');

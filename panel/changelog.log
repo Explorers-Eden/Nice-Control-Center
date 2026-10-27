@@ -1,3 +1,7 @@
+## 1.40.0
+- Games: wave fight arenas: setup checklist (spawn, fight box, mob spawns, spectator area, exit pads, kit), waves to clear, party size 1–4, team lives, break, mob pool, growth, toughness, boss, hand-written waves, gear, wave reward commands, lose message; the card shows the wave being fought and parties queued; best = waves (mod 1.50.0)
+- Games: saving no longer undoes what was set in game meanwhile (pads, corners, mob spawns, exit pads, kits)
+
 ## 1.39.6
 - Claims, game area: "Keep the kit on death", "Sent out after N deaths" and the respawn point (shown, with Clear; set in game with /claim admin respawn set); the death switch says what happens without it: kept only when they respawn inside (mod 1.49.2)
 

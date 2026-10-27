@@ -34,7 +34,7 @@ import eu.explorerseden.nicecontrolcenter.Dungeons;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 
 /**
- * A dungeon's blocks: saved as pieces of 16 × 16 columns (the box's full height), each a structure file with its
+ * A dungeon's blocks: saved as pieces of 16 × 16 columns (as high as the box between its corners), each a structure file with its
  * blocks, block entities (chests keep a loot table that isn't rolled yet) and entities, in
  * world/nicecontrolcenter/dungeons/<name>/. Reading the world and placing blocks happen on the server thread
  * (Minecraft needs that); writing, reading and parsing the files on a worker of their own.

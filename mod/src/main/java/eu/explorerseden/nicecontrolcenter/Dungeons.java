@@ -23,7 +23,7 @@ public final class Dungeons {
 	public static final String FILE = "nicecontrolcenter-dungeons.json";
 	/** The void dimension the copies are made in (shipped with the mod). */
 	public static final String DIMENSION = "nicecontrolcenter:dungeons";
-	/** Pieces are 16 × 16 columns (one chunk wide), the box's full height. */
+	/** Pieces are 16 × 16 columns (one chunk wide), as high as the box (its two corners). */
 	public static final int PIECE = 16;
 	/** Markers: data-mode structure blocks in the build, with one of these as their text. */
 	public static final List<String> MARKERS = List.of("start", "exit", "checkpoint", "mob", "boss");

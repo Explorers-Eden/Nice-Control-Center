@@ -98,6 +98,7 @@ public final class ClaimCommand {
 									if (c.admin == null) c.admin = new Claims.AdminOptions();
 									c.admin.respawn = new double[] { p.getX(), p.getY(), p.getZ(), p.getYRot() };
 									ClaimStore.changed();
+									eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("Claims: \"{}\": game area respawn point set to {} by {}", c.displayName(), p.blockPosition().toShortString(), p.getGameProfile().name());
 									ClaimTool.tell(p, "Players who die in " + c.displayName() + " with deaths left respawn here.", ChatFormatting.GOLD);
 									return 1;
 								}))
@@ -111,6 +112,7 @@ public final class ClaimCommand {
 									c.admin.respawn = null;
 									if (!c.admin.anySet()) c.admin = null;
 									ClaimStore.changed();
+									eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("Claims: \"{}\": game area respawn point cleared by {}", c.displayName(), p.getGameProfile().name());
 									ClaimTool.tell(p, "Players respawn where they entered " + c.displayName() + " again.", ChatFormatting.GOLD);
 									return 1;
 								})))

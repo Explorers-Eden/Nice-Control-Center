@@ -64,7 +64,7 @@ import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
  * action-bar line shows how it goes, and the end keeps a personal best and fires the Rewards triggers
  * "Game finished" and "New personal best". Templates: infinite parkour (jumps made ahead of you, each player in their
  * own lane), race course (checkpoints in order; running, boat or elytra), dropper (fall into the water at the bottom)
- * and maze (generated; made new daily or after each run).
+ * and maze (generated; made new daily or after each run). Wave arenas (parties, mobs) run in {@link WaveRuntime}.
  */
 public final class GameRuntime {
 	public static final String PERMISSION = "nicecontrolcenter.games.admin";
@@ -215,7 +215,7 @@ public final class GameRuntime {
 	private static Arena onStartPad(ServerPlayer p) {
 		String dim = dim(p);
 		for (Arena a : settings.arenas) {
-			if (!a.enabled || a.start == null || !a.start.dim.equals(dim)) continue;
+			if (!a.enabled || a.start == null || !a.start.dim.equals(dim) || a.type.equals("waves")) continue;
 			double dx = p.getX() - a.start.x, dz = p.getZ() - a.start.z, dy = p.getY() - a.start.y;
 			if (dx * dx + dz * dz <= 1.0 && dy > -0.6 && dy < 1.5) return a;
 		}
@@ -270,6 +270,9 @@ public final class GameRuntime {
 				sessions.put(p.getUUID(), s);
 				p.teleportTo(level, a.corner.x + 1.5, a.corner.y + 1, a.corner.z + 1.5, Set.of(), 0, 0, true);
 			}
+			case "waves" -> {
+				return "Wave arenas start from their pad (with your party).";
+			}
 			default -> {
 				return "Unknown game.";
 			}
@@ -297,19 +300,7 @@ public final class GameRuntime {
 		if (s.arena.type.equals("parkour") && s.progress > 0) finished = true;
 		long score = Games.higherIsBetter(s.arena.type) ? s.progress : s.millis();
 		boolean record = false;
-		if (finished && p != null) {
-			Map<String, Games.Score> board = scores.computeIfAbsent(s.arena.id, k -> new LinkedHashMap<>());
-			Games.Score sc = board.computeIfAbsent(s.player.toString(), k -> new Games.Score());
-			sc.name = p.getGameProfile().name();
-			sc.runs++;
-			boolean better = sc.at == 0 || (Games.higherIsBetter(s.arena.type) ? score > sc.best : score < sc.best);
-			if (better) {
-				sc.best = score;
-				sc.at = System.currentTimeMillis();
-				record = true;
-			}
-			saveScores();
-		}
+		if (finished && p != null) record = recordScore(s.arena, p, score);
 		if (p != null) {
 			String result = Games.higherIsBetter(s.arena.type) ? s.progress + " jump" + (s.progress == 1 ? "" : "s") : clock(score);
 			if (finished) {
@@ -520,11 +511,18 @@ public final class GameRuntime {
 					if (a == null || !a.enabled) return fail(ctx, "There's no such game.");
 					ServerLevel level = level(ctx.getSource().getServer(), a.start.dim);
 					if (level == null) return fail(ctx, "That arena's dimension isn't there.");
+					if (a.type.equals("waves")) {
+						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
+						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": the party leader stands on the pad to start (or queue up)."), false);
+						return 1;
+					}
 					String err = start(ctx.getSource().getServer(), p, a);
 					return err == null ? 1 : fail(ctx, err);
 				})))
 				.then(Commands.literal("leave").executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
+					if (WaveRuntime.leave(ctx.getSource().getServer(), p)) return 1;
 					Session s = sessions.get(p.getUUID());
 					if (s == null) return fail(ctx, "You're not in a game.");
 					end(ctx.getSource().getServer(), s, "You left the game.", false);
@@ -536,7 +534,7 @@ public final class GameRuntime {
 					List<Games.Score> list = top(a, 10);
 					StringBuilder b = new StringBuilder(a.name + (list.isEmpty() ? ": no runs yet." : ":"));
 					int i = 1;
-					for (Games.Score sc : list) b.append("\n").append(i++).append(". ").append(sc.name).append(" · ").append(Games.higherIsBetter(a.type) ? sc.best + " jumps" : clock(sc.best));
+					for (Games.Score sc : list) b.append("\n").append(i++).append(". ").append(sc.name).append(" · ").append(Games.scoreText(a.type, sc.best, GameRuntime::clock));
 					ctx.getSource().sendSuccess(() -> Component.literal(b.toString()).withStyle(ChatFormatting.GOLD), false);
 					return 1;
 				})))
@@ -566,12 +564,65 @@ public final class GameRuntime {
 					Arena a = arena(ctx);
 					if (a == null) return fail(ctx, "There's no such game.");
 					for (Session s : List.copyOf(sessions.values())) if (s.arena == a) end(ctx.getSource().getServer(), s, "This game was removed.", false);
+					WaveRuntime.stop(ctx.getSource().getServer(), a);
 					settings.arenas.remove(a);
 					saveSettings();
 					ctx.getSource().sendSuccess(() -> Component.literal("Removed " + a.name + " (the blocks it built stay)."), true);
 					return 1;
 				})))
+				.then(Commands.literal("try").requires(admin).then(arenaArg.get().executes(ctx -> {
+					Arena a = arena(ctx);
+					if (a == null || !a.type.equals("waves")) return fail(ctx, "Only wave arenas can be tried.");
+					String err = WaveRuntime.trial(ctx.getSource().getServer(), a);
+					if (err != null) return fail(ctx, err);
+					ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
+					return 1;
+				})))
 				.then(Commands.literal("edit").requires(admin).then(arenaArg.get()
+						// Wave arenas: where players appear, the fight box, mob spawns, spectator area, exit pads, kit.
+						.then(Commands.literal("spawn").executes(ctx -> edit(ctx, (a, p) -> {
+							a.spawn = pos(p);
+							return "Players appear here (and come back here after dying).";
+						})))
+						.then(Commands.literal("corner1").executes(ctx -> corner(ctx, true))
+								.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(ctx -> corner(ctx, true))))
+						.then(Commands.literal("corner2").executes(ctx -> corner(ctx, false))
+								.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(ctx -> corner(ctx, false))))
+						.then(Commands.literal("mobspawn")
+								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+									a.mobSpawns.add(pos(p));
+									return "Mob spawn " + a.mobSpawns.size() + " added here.";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									a.mobSpawns.clear();
+									return "Mob spawns cleared.";
+								}))))
+						.then(Commands.literal("spectate").executes(ctx -> edit(ctx, (a, p) -> {
+									a.spectate = pos(p);
+									return "Spectator area here (radius " + a.spectateRadius + "): the dead wait here, other parties queue here.";
+								}))
+								.then(Commands.argument("radius", IntegerArgumentType.integer(2, 64)).executes(ctx -> edit(ctx, (a, p) -> {
+									a.spectate = pos(p);
+									a.spectateRadius = IntegerArgumentType.getInteger(ctx, "radius");
+									return "Spectator area here (radius " + a.spectateRadius + "): the dead wait here, other parties queue here.";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									a.spectate = null;
+									return "No spectator area: the dead watch a teammate, queued parties wait at the pad.";
+								}))))
+						.then(Commands.literal("exitpad")
+								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+									a.exitPads.add(pos(p));
+									return "Exit pad " + a.exitPads.size() + " here: two seconds on it leaves the game.";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									a.exitPads.clear();
+									return "Exit pads cleared.";
+								}))))
+						.then(Commands.literal("kit").executes(ctx -> edit(ctx, (a, p) -> {
+							a.kit = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p);
+							return "The kit is what you carry now (" + a.kit.size() + " stacks)" + ("own".equals(a.gear) ? "; it's handed out only with gear: kit (panel)." : ".");
+						})))
 						.then(Commands.literal("start").executes(ctx -> edit(ctx, (a, p) -> {
 							a.start = pos(p);
 							return "Start pad moved here.";
@@ -630,6 +681,25 @@ public final class GameRuntime {
 		return 1;
 	}
 
+	/** A wave arena's fight box corner: given, looked at, or at their feet; the box is as high as its corners. */
+	private static int corner(CommandContext<CommandSourceStack> ctx, boolean first) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		Arena a = arena(ctx);
+		if (a == null) return fail(ctx, "There's no such game.");
+		BlockPos at = Corners.pick(ctx, p);
+		Games.Pos pos = new Games.Pos(dim(p), at.getX(), at.getY(), at.getZ(), 0);
+		if (first) a.areaMin = pos;
+		else a.areaMax = pos;
+		saveSettings();
+		Games.Pos other = first ? a.areaMax : a.areaMin;
+		BlockPos o = other == null || !other.dim.equals(pos.dim) ? null : BlockPos.containing(other.x, other.y, other.z);
+		Corners.show(p, at, o);
+		String msg = "Corner " + (first ? 1 : 2) + " at " + at.toShortString() + (o == null ? ". Now the opposite corner (height included): /game edit " + a.name + (first ? " corner2" : " corner1") + " [x y z] or look at it."
+				: ". Fight box " + Corners.size(at, o) + ".");
+		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": " + msg), true);
+		return 1;
+	}
+
 	private static int create(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
 		String type = StringArgumentType.getString(ctx, "type").toLowerCase(Locale.ROOT);
@@ -643,6 +713,8 @@ public final class GameRuntime {
 		String next = switch (type) {
 			case "parkour" -> "Stepping on this spot starts a run; lanes go off along +X every " + a.laneSpacing + " blocks, so keep that space free.";
 			case "race" -> "This spot is the start. Add checkpoints in order with /game edit " + name + " checkpoint add <radius>, then /game edit " + name + " finish <radius>.";
+			case "waves" -> "This spot is the start pad (a party leader stands on it). Then: /game edit " + name + " spawn (where players appear), corner1 / corner2 [x y z] (the fight box, height included),"
+					+ " mobspawn add (where mobs come from; several), optionally spectate [radius] and exitpad add, and kit. Waves and rewards are set in the panel (Games).";
 			case "dropper" -> "This spot is the start pad. Stand where players drop from: /game edit " + name + " top; then in the water at the bottom: /game edit " + name + " finish <radius>.";
 			default -> "The maze is built from this corner (" + (a.size * 2 + 1) + " blocks each way, +X and +Z). The start pad is here too; move it with /game edit " + name + " start.";
 		};
@@ -669,6 +741,21 @@ public final class GameRuntime {
 
 	// ---------------------------------------------------------------- scores and helpers
 
+	/** A run that counts: one more run, and the score kept if it's their best; true for a new personal best. */
+	static boolean recordScore(Arena a, ServerPlayer p, long score) {
+		Map<String, Games.Score> board = scores.computeIfAbsent(a.id, k -> new LinkedHashMap<>());
+		Games.Score sc = board.computeIfAbsent(p.getStringUUID(), k -> new Games.Score());
+		sc.name = p.getGameProfile().name();
+		sc.runs++;
+		boolean better = sc.at == 0 || (Games.higherIsBetter(a.type) ? score > sc.best : score < sc.best);
+		if (better) {
+			sc.best = score;
+			sc.at = System.currentTimeMillis();
+		}
+		saveScores();
+		return better;
+	}
+
 	/** The best players of an arena. */
 	public static List<Games.Score> top(Arena a, int n) {
 		List<Games.Score> list = new ArrayList<>(scores.getOrDefault(a.id, Map.of()).values());
@@ -682,7 +769,8 @@ public final class GameRuntime {
 		for (Arena a : settings.arenas) {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("id", a.id);
-			m.put("playing", sessions.values().stream().filter(s -> s.arena == a).count());
+			if (a.type.equals("waves")) m.putAll(WaveRuntime.live(a.id));
+			else m.put("playing", sessions.values().stream().filter(s -> s.arena == a).count());
 			m.put("top", top(a, 10));
 			out.add(m);
 		}

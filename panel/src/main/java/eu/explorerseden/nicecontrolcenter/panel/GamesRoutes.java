@@ -68,6 +68,26 @@ final class GamesRoutes {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);
 				return;
 			}
+			// What's only set in game (/game edit: positions, mob spawns, exit pads, kit) stays as the mod wrote it,
+			// so a page opened before such an edit doesn't undo it.
+			Games.Settings now = Games.read(file());
+			for (Games.Arena a : next.arenas) {
+				Games.Arena was = now.arenas.stream().filter(x -> x.id.equals(a.id)).findFirst().orElse(null);
+				if (was == null) continue;
+				a.start = was.start;
+				a.top = was.top;
+				a.finish = was.finish;
+				a.checkpoints = was.checkpoints;
+				a.corner = was.corner;
+				a.spawn = was.spawn;
+				a.areaMin = was.areaMin;
+				a.areaMax = was.areaMax;
+				a.mobSpawns = was.mobSpawns;
+				a.spectate = was.spectate;
+				a.spectateRadius = was.spectateRadius;
+				a.exitPads = was.exitPads;
+				a.kit = was.kit;
+			}
 			Games.write(file(), next);
 			audit.log(me.name(), "games.settings", next.arenas.size() + " arenas", clientIp(ctx));
 			json(ctx, Map.of("ok", true));

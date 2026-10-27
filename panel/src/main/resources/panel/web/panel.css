@@ -1056,6 +1056,11 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-gm-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
 .pn-gm-board { padding: 10px 12px; border-radius: 10px; background: rgba(var(--ink),.04); border: 1px solid rgba(var(--ink),.08); }
 .pn-gm-board > b .bi { color: #ffd166; margin-right: 4px; }
+.pn-gm-setup { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
+.pn-gm-setup li i { color: var(--muted); }
+.pn-gm-setup li.done { color: var(--text); }
+.pn-gm-setup li.done i { color: var(--ok, #4be07a); }
+.pn-gm-setup code { font-size: .92em; }
 .pn-gm-top { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: var(--fs-sm); }
 .pn-gm-top li span { margin-left: 8px; font-variant-numeric: tabular-nums; }
 .pn-gm-top li small { margin-left: 6px; color: var(--muted); }

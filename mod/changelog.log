@@ -1,4 +1,12 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.50.0
+- Games: new template "waves": a party of 1–4 starts it from the arena's pad and fights waves of mobs in a box built in the world (/game create waves <name>, then /game edit <name> spawn, corner1 / corner2 [x y z], mobspawn add, kit). Waves are generated from a mob pool (more mobs per wave and per player, tougher each wave, a boss every N waves) or written by hand per wave ("5: husk x6, skeleton x2"); a set number of waves to clear, or endless
+- Games, waves: dead players wait in the spectator area (/game edit <name> spectate [radius]) or watch a teammate, and come back at the next wave; the party loses when everyone is down at once or its team lives run out; their things are held, nothing drops
+- Games, waves: one game per arena; other parties stepping on the pad queue up (in the spectator area) and start when it's free. Exit pads (/game edit <name> exitpad add) leave early
+- Games, waves: rewards after every cleared wave (wave commands with {wave}; Rewards trigger "Clears a wave in a wave arena") and for clearing the game (finish commands, "Finishes a game", "Sets a personal best"); best = most waves cleared. /game try <name> runs wave 1 with nobody in it
+- Games and dungeons: box corners can be given as coordinates (/game edit <name> corner2 ~ ~12 ~, /dungeon create <name> [x y z], /dungeon corner2 [x y z]) or are the block you look at, so the upper corner needs no flying; the box shows as particles while it's being set. The box is only as high as its corners
+- Claims: the log says which claim and what changed ("Claims: \"Arena\" (server): game area: sent out after 3 deaths, by NiceRon in the panel"); /claim admin respawn set|clear is logged too
+
 ## 1.49.2
 - Game claims: a death limit per visit ("Sent out after N deaths", 0 = no limit; the count starts over each visit). With deaths left (or a respawn point set) players respawn inside: at the point set with /claim admin respawn set, else where they entered; the last death sends them out
 - Game claims: "Keep the kit on death": kit items stay with a player who respawns inside (otherwise they vanish on death)

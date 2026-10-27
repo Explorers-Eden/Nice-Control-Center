@@ -161,6 +161,32 @@ public final class DungeonRuntime {
 	private record Selection(String name, String dim, BlockPos a, BlockPos b, long until) {
 	}
 
+	/** /dungeon create <name> [pos]: the first corner (given, looked at, or at their feet); the box is as high as its corners. */
+	private static int corner1(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		String name = StringArgumentType.getString(ctx, "name");
+		if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
+		BlockPos a = Corners.pick(ctx, p);
+		selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), a, null, System.currentTimeMillis() + 30 * 60_000L));
+		Corners.show(p, a, null);
+		ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of " + name + " is at " + a.toShortString() + ". Set the opposite corner (height included) with /dungeon corner2 [x y z]"
+				+ " (or look at it), then /dungeon save " + name
+				+ ". Inside, place data structure blocks as markers: start (required), exit, checkpoint, mob:<id> [xN] [{data}], boss:<id> [{data}].").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		return 1;
+	}
+
+	private static int corner2(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		Selection s = selections.get(p.getUUID());
+		if (s == null) return fail(ctx, "Start with /dungeon create <name> at the first corner.");
+		if (!s.dim.equals(p.level().dimension().identifier().toString())) return fail(ctx, "Both corners have to be in the same dimension.");
+		BlockPos b = Corners.pick(ctx, p);
+		selections.put(p.getUUID(), new Selection(s.name, s.dim, s.a, b, System.currentTimeMillis() + 30 * 60_000L));
+		Corners.show(p, s.a, b);
+		ctx.getSource().sendSuccess(() -> Component.literal("Box: " + Corners.size(s.a, b) + " (corner 2 at " + b.toShortString() + "). /dungeon save " + s.name + " keeps it.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		return 1;
+	}
+
 	private DungeonRuntime() {
 	}
 
@@ -412,19 +438,7 @@ public final class DungeonRuntime {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p != null && !r.out.contains(id) && p.isAlive()) in.add(p);
 		}
-		for (UUID id : r.watching.keySet()) {
-			ServerPlayer w = server.getPlayerList().getPlayer(id);
-			if (w == null || !w.isSpectator()) continue;
-			if (in.isEmpty()) {
-				if (w.getCamera() != w) w.setCamera(w);
-				continue;
-			}
-			if (w.getCamera() instanceof ServerPlayer seen && in.contains(seen)) continue;
-			ServerPlayer target = in.get(Math.floorMod(id.hashCode(), in.size()));
-			w.teleportTo((ServerLevel) target.level(), target.getX(), target.getY(), target.getZ(), Set.of(), target.getYRot(), target.getXRot(), true);
-			w.setCamera(target);
-			w.sendOverlayMessage(Component.literal("Watching " + target.getGameProfile().name()).withStyle(ChatFormatting.GRAY));
-		}
+		Spectating.follow(server, r.watching.keySet(), in);
 	}
 
 	/** The boss bar follows the bosses' health; every boss dead clears a "boss" dungeon. */
@@ -657,20 +671,12 @@ public final class DungeonRuntime {
 	 * /summon command (so its data works the same everywhere), kept from despawning; bosses get the run's tag.
 	 */
 	private static void spawn(MinecraftServer server, Run r, BlockPos at, String arg, boolean boss) {
-		String text = arg == null ? "" : arg.strip();
-		int brace = text.indexOf('{');
-		String nbt = brace >= 0 ? text.substring(brace).strip() : "";
-		String[] words = (brace >= 0 ? text.substring(0, brace) : text).strip().split("\\s+");
-		if (words.length == 0 || words[0].isEmpty()) return;
-		String id = words[0].contains(":") ? words[0] : "minecraft:" + words[0];
-		int count = 1;
-		for (String w : words) if (w.matches("[xX]\\d{1,2}")) count = Math.max(1, Math.min(32, Integer.parseInt(w.substring(1))));
-		if (boss) count = 1;
-		String extra = "PersistenceRequired:1b" + (boss ? ",Tags:[\"" + r.bossTag() + "\"]" : "");
-		String data = nbt.isEmpty() ? "{" + extra + "}" : "{" + extra + "," + nbt.substring(1);
+		MobLines.Entry e = MobLines.parse(arg);
+		if (e == null) return;
+		int count = boss ? 1 : e.count();
 		for (int i = 0; i < count; i++) {
 			double ox = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0, oz = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0;
-			ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon %s %.2f %d %.2f %s", Dungeons.DIMENSION, id, at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, data));
+			MobLines.summon(server, Dungeons.DIMENSION, at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, e, boss ? "Tags:[\"" + r.bossTag() + "\"]" : "");
 		}
 	}
 
@@ -709,11 +715,12 @@ public final class DungeonRuntime {
 	}
 
 	private static void respawned(MinecraftServer server, ServerPlayer p) {
+		boolean ours = afterRespawn.contains(p.getUUID()) || playing.containsKey(p.getUUID());
 		try {
 			respawnedInside(server, p);
 		} finally {
-			// Unless they went back in (given back there), what they found is gone.
-			GameClaims.forgetKept(p);
+			// Unless they went back in (given back there), what they found is gone (only for dungeon players).
+			if (ours) GameClaims.forgetKept(p);
 		}
 	}
 
@@ -981,26 +988,10 @@ public final class DungeonRuntime {
 					ctx.getSource().sendSuccess(() -> Component.literal(b.toString()).withStyle(ChatFormatting.GOLD), false);
 					return 1;
 				})))
-				.then(Commands.literal("create").requires(admin).then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> {
-					ServerPlayer p = ctx.getSource().getPlayerOrException();
-					String name = StringArgumentType.getString(ctx, "name");
-					if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
-					selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), p.blockPosition(), null, System.currentTimeMillis() + 30 * 60_000L));
-					ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of " + name + " is here. Go to the opposite corner and use /dungeon corner2, then /dungeon save " + name
-							+ ". Inside, place data structure blocks as markers: start (required), exit, checkpoint, mob:<id> [xN] [{data}], boss:<id> [{data}].").withStyle(ChatFormatting.LIGHT_PURPLE), false);
-					return 1;
-				})))
-				.then(Commands.literal("corner2").requires(admin).executes(ctx -> {
-					ServerPlayer p = ctx.getSource().getPlayerOrException();
-					Selection s = selections.get(p.getUUID());
-					if (s == null) return fail(ctx, "Start with /dungeon create <name> at the first corner.");
-					if (!s.dim.equals(p.level().dimension().identifier().toString())) return fail(ctx, "Both corners have to be in the same dimension.");
-					BlockPos b = p.blockPosition();
-					selections.put(p.getUUID(), new Selection(s.name, s.dim, s.a, b, System.currentTimeMillis() + 30 * 60_000L));
-					int sx = Math.abs(s.a.getX() - b.getX()) + 1, sy = Math.abs(s.a.getY() - b.getY()) + 1, sz = Math.abs(s.a.getZ() - b.getZ()) + 1;
-					ctx.getSource().sendSuccess(() -> Component.literal("Box: " + sx + " × " + sy + " × " + sz + ". /dungeon save " + s.name + " keeps it.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
-					return 1;
-				}))
+				.then(Commands.literal("create").requires(admin).then(Commands.argument("name", StringArgumentType.word()).executes(DungeonRuntime::corner1)
+						.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(DungeonRuntime::corner1))))
+				.then(Commands.literal("corner2").requires(admin).executes(DungeonRuntime::corner2)
+						.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(DungeonRuntime::corner2)))
 				.then(Commands.literal("save").requires(admin).then(dungeonArg.get().executes(DungeonRuntime::save)
 						.then(Commands.argument("from", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
 								.then(Commands.argument("to", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(DungeonRuntime::save)))))
