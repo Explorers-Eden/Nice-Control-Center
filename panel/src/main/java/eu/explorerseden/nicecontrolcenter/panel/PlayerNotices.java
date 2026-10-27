@@ -163,8 +163,8 @@ final class PlayerNotices {
 				int before = state.parcels.getOrDefault(uuid, 0);
 				if (n > before && t - state.lastMail.getOrDefault(uuid, 0L) > MAIL_EVERY) {
 					state.lastMail.put(uuid, t);
-					tell(uuid, "mail", n == 1 ? "Something waits for you in your market mailbox. Collect it in game with `/market` → Mailbox."
-							: n + " things wait for you in your market mailbox. Collect them in game with `/market` → Mailbox.");
+					tell(uuid, "mail", n == 1 ? "Something waits for you in your inbox. Collect it in game with `/inbox`."
+							: n + " things wait for you in your inbox. Collect them in game with `/inbox`.");
 				}
 			});
 		}

@@ -318,6 +318,8 @@
   const EMBED_CSS = `
     html, body { min-height: 0 !important; height: auto !important; }
     body.embedded { min-height: 0 !important; }
+    /* The last card ends where the frame ends, on one line with the sidebar. */
+    body.embedded .np-shell { padding-bottom: 0 !important; }
     body.embedded > .navbar, body.embedded .np-tabs, body.embedded .np-toasts { display: none !important; }
     /* Busiest chunks and redstone are on the panel's Chunks page. */
     body.embedded .np-chunk-cards { display: none !important; }
@@ -392,6 +394,13 @@
   }
 
   /** One pass; extra: pixels taken off the line. Returns whether a box that fills the window is shown. */
+  /** The sidebar fades out at the bottom while there's more to scroll to. */
+  function sideFade() {
+    const side = document.querySelector('.pn-side');
+    side.classList.toggle('more', side.scrollHeight - side.scrollTop - side.clientHeight > 4);
+  }
+  document.querySelector('.pn-side').addEventListener('scroll', sideFade, { passive: true });
+
   function sizeToBottom(extra) {
     const target = window.innerHeight - footHeight() - 12 - extra;
     const side = document.querySelector('.pn-side');
@@ -401,6 +410,7 @@
     } else if (side) {
       side.style.height = side.style.maxHeight = '';
     }
+    if (side) sideFade();
     let filling = false;
     // below: space under the card that belongs to the box's page (the embedded page's own bottom spacing).
     const fit = (el, offset, min, below = 0) => {
@@ -4264,8 +4274,8 @@
     $('pn-hero-count').textContent = d.players != null ? `${d.players}/${d.maxPlayers}` : `–/${d.maxPlayers}`;
     // Server state and the game clock are always in the navbar, so they aren't repeated here.
     const tile = (icon, label, value) => `<span class="pn-hero-fact"><i class="bi ${icon}"></i><span><small>${label}</small><b>${value}</b></span></span>`;
+    // Who's playing is in the tiles below (and the server list count), so it isn't a fact here.
     heroFacts = [];
-    if (d.players != null) heroFacts.push(tile('bi-people-fill', 'Playing', `${d.players} <em>/ ${esc(d.maxPlayers)}</em>`));
     if (d.uptime7d != null) heroFacts.push(tile('bi-activity', 'Up this week', `${d.uptime7d.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`));
     syncHeroHealth();
   }
@@ -6233,7 +6243,7 @@
     const rows = mkData.listings.filter((l) => !q || [l.name, l.seller, l.item].some((t) => String(t).toLowerCase().includes(q)));
     const remove = can('players.manage');
     $('pn-mk-table').innerHTML = rows.length ? `<thead><tr><th>Item</th><th>Seller</th><th>Left</th><th>Price</th><th>Ends</th><th></th></tr></thead><tbody>${rows.map((l) => `
-      <tr><td class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${mcHtml(l.name)}<small class="pn-hint">${[...(l.enchantments || []), ...(l.lore || [])].map(mcHtml).join(' · ')}</small></span></td>
+      <tr><td><div class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${mcHtml(l.name)}<small class="pn-hint">${[...(l.enchantments || []), ...(l.lore || [])].map(mcHtml).join(' · ')}</small></span></div></td>
       <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}${l.per > 1 ? ` per ${Number(l.per).toLocaleString()}` : ' each'}</td><td>${esc(dateTime(l.expires))}</td>
       <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's mailbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
       : `<tbody><tr><td class="pn-hint">${mkData.listings.length ? 'Nothing matches.' : 'Nothing for sale.'}</td></tr></tbody>`;
@@ -6262,12 +6272,12 @@
   function renderServerShop() {
     const s = mkSettings.settings;
     $('pn-ss-claims').innerHTML = s.claimBlocks.length ? `<thead><tr><th>Listing</th><th>Price</th><th>On sale</th><th>For sale</th><th></th></tr></thead><tbody>${s.claimBlocks.map((o, i) => `
-      <tr><td class="pn-mk-item">${ssIcon((mkSettings.claimIcons || [])[i], (mkSettings.claimHeads || [])[i])}<span>${Number(o.blocks).toLocaleString()} claim blocks</span></td>
+      <tr><td><div class="pn-mk-item">${ssIcon((mkSettings.claimIcons || [])[i], (mkSettings.claimHeads || [])[i])}<span>${Number(o.blocks).toLocaleString()} claim blocks</span></div></td>
       <td>${Number(o.price).toLocaleString()}</td><td>${ptSale(o)}</td><td>${o.forSale === false ? 'no' : 'yes'}</td><td>${ssActions(i)}</td></tr>`).join('')}</tbody>`
       : '<tbody><tr><td class="pn-hint">No claim blocks for sale. Add a listing below.</td></tr></tbody>';
     const cmdEdit = mkSettings.canCommands;
     $('pn-ss-cmds').innerHTML = s.commandOffers.length ? `<thead><tr><th>Listing</th><th>Price</th><th>On sale</th><th>Per player</th><th>For sale</th><th></th></tr></thead><tbody>${s.commandOffers.map((o, i) => `
-      <tr><td class="pn-mk-item">${ssIcon((mkSettings.commandIcons || [])[i], (mkSettings.commandHeads || [])[i])}<span>${esc(o.name)}<small class="pn-hint">${esc(o.description || '')}</small></span></td>
+      <tr><td><div class="pn-mk-item">${ssIcon((mkSettings.commandIcons || [])[i], (mkSettings.commandHeads || [])[i])}<span>${esc(o.name)}<small class="pn-hint">${esc(o.description || '')}</small></span></div></td>
       <td>${Number(o.price).toLocaleString()}</td><td>${ptSale(o)}</td><td>${o.perPlayer ? Number(o.perPlayer).toLocaleString() : 'no limit'}</td><td>${o.forSale === false ? 'no' : 'yes'}</td>
       <td>${cmdEdit ? ssActions(i) : ''}</td></tr>`).join('')}</tbody>`
       : '<tbody><tr><td class="pn-hint">No command listings. Add one below.</td></tr></tbody>';
@@ -6538,7 +6548,7 @@
     $('pn-pt-intro').textContent = (s.enabled ? '' : 'Pets are off: switch them on above. ') + (ptData.running ? '' : 'The server is off: counts are from the last save. ')
       + `${pets.length} pet${pets.length === 1 ? '' : 's'}, ${listed.length} listed in the Server shop${retired.length ? `, ${retired.length} removed but still owned` : ''}.`;
     $('pn-pt-table').innerHTML = pets.length ? `<thead><tr><th>Pet</th><th>Description</th><th>Size</th><th>Perks</th><th>Players with it</th><th>Server shop</th><th></th></tr></thead><tbody>${pets.map((p) => `
-      <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
+      <tr><td><div class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></div></td>
       <td>${esc(p.description || '')}</td><td>${Number(p.size || 0.8)}</td><td>${ptPerkNames(p)}</td>
       <td>${Number(owners[p.id] || 0).toLocaleString()}</td><td>${ptInShop(p, sold)}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Edit</button>
@@ -6546,14 +6556,14 @@
       : '<tbody><tr><td class="pn-hint">No pets yet. Add one below.</td></tr></tbody>';
     $('pn-pt-retired-box').hidden = !retired.length;
     $('pn-pt-retired').innerHTML = retired.length ? `<thead><tr><th>Pet</th><th>Players with it</th><th></th></tr></thead><tbody>${retired.map((p) => `
-      <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td><td>${Number(owners[p.id] || 0).toLocaleString()}</td>
+      <tr><td><div class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></div></td><td>${Number(owners[p.id] || 0).toLocaleString()}</td>
       <td>${edit ? `<button type="button" class="np-btn small" data-edit="${esc(p.id)}"><i class="bi bi-pencil"></i> Name &amp; head</button>
         <button type="button" class="np-btn small" data-revive="${esc(p.id)}"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>` : ''}</td></tr>`).join('')}</tbody>` : '';
     // The Server shop: only the listings.
     $('pn-ptl-intro').textContent = (s.enabled ? '' : 'Pets are off (Community → Pets), so none are sold right now. ')
       + (pets.length ? `${listed.length} of ${pets.length} pet${pets.length === 1 ? '' : 's'} listed.` : 'Add pets under Community → Pets first.');
     $('pn-ptl-table').innerHTML = listed.length ? `<thead><tr><th>Pet</th><th>Price</th><th>On sale</th><th>Sold</th><th>Players with it</th><th></th></tr></thead><tbody>${listed.map((p) => `
-      <tr><td class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></td>
+      <tr><td><div class="pn-mk-item">${ptFace(ptData.heads[p.id])}<span>${esc(p.name)}</span></div></td>
       <td>${p.price ? Number(p.price).toLocaleString() : 'free'}</td><td>${ptSale(p)}</td>
       <td>${Number(sold[p.id] || 0).toLocaleString()}${p.stock > 0 ? ' of ' + Number(p.stock).toLocaleString() : ''}${p.stock > 0 && (sold[p.id] || 0) >= p.stock ? ' <span class="pn-warn">sold out</span>' : ''}</td>
       <td>${Number(owners[p.id] || 0).toLocaleString()}</td>

@@ -415,7 +415,8 @@ body.report .np-clock { display: none; }
 .np-stats-row > .np-stat-card.wide { grid-column: span 14; }
 .np-stats-row > .np-stat-card:nth-child(1), .np-stats-row > .np-stat-card:nth-child(3) { grid-column: span 9; }
 @media (min-width: 1400px) {
-  .np-stats-row { grid-template-columns: 1fr 1.8fr 1fr 1.8fr 1.8fr 1.15fr 1fr 1fr 1fr 1fr; }
+  /* minmax(0, …): fixed widths, so a longer value never pushes the other tiles around. */
+  .np-stats-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1.8fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
   .np-stats-row > .np-stat-card, .np-stats-row > .np-stat-card.wide, .np-stats-row > .np-stat-card:nth-child(n) { grid-column: auto; }
 }
 /* Narrow screens: one row that scrolls sideways, so the pinned header stays short. */

@@ -1,3 +1,10 @@
+## 1.37.1
+- Home: the greeting card is smaller; the Playing tile and the running/paused pill are gone (both are in the navbar and tiles)
+- Chat, console and the player list end on one line with the sidebar (the embedded page's bottom padding is gone)
+- The top tiles keep their widths when values change; the sidebar fades at the bottom while there's more to scroll
+- Market, server shop, pets and players tables: the item/name column lines up with its row again
+- Discord: the inbox DM points to /inbox
+
 ## 1.37.0
 - Games: the hub spawn (set in game with /game spawn set) is shown and can be cleared; the intro notes that the market, inbox and pets don't work in game areas (mod 1.46.0)
 
