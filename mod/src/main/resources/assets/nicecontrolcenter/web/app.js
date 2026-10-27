@@ -1661,11 +1661,13 @@
     template.innerHTML = html;
     const old = new Map();
     container.querySelectorAll('img[src]').forEach((img) => {
-      if (!old.has(img.src)) old.set(img.src, []);
-      old.get(img.src).push(img);
+      // By the written src: in a template, relative ones aren't resolved, so img.src would never match.
+      const src = img.getAttribute('src');
+      if (!old.has(src)) old.set(src, []);
+      old.get(src).push(img);
     });
     template.content.querySelectorAll('img[src]').forEach((img) => {
-      const reuse = old.get(img.src);
+      const reuse = old.get(img.getAttribute('src'));
       if (reuse && reuse.length) {
         const keep = reuse.shift();
         keep.className = img.className;
