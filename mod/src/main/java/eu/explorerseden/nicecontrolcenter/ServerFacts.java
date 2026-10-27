@@ -55,8 +55,8 @@ public final class ServerFacts {
 		String currency = humanize(m.currency.replaceFirst("^minecraft:", ""));
 		out.add(tweak("market", "Market", "bi-shop",
 				"Type /market to sell items for " + currency.toLowerCase(Locale.ROOT) + "s (any amount, more than a stack is fine) or buy what others sell. "
-						+ "Market → Bank keeps your " + currency.toLowerCase(Locale.ROOT) + "s: purchases take from it first, sales are paid into it, and you can see it and buy on the website. Unsold items wait in your market mailbox.",
-				List.of(line("Paid with", currency, ""), line("Listings last", m.listingDays + " days", "Then unsold items come back to your mailbox."),
+						+ "Market → Bank keeps your " + currency.toLowerCase(Locale.ROOT) + "s: purchases take from it first, sales are paid into it, and you can see it and buy on the website. Unsold items wait in your inbox (/inbox).",
+				List.of(line("Paid with", currency, ""), line("Listings last", m.listingDays + " days", "Then unsold items come back to your inbox (/inbox)."),
 						line("Listings per player", String.valueOf(m.maxListings), ""))));
 		// What the server itself sells (Server shop in /market); claim blocks are listed with the claims.
 		List<Map<String, String>> rows = new ArrayList<>();

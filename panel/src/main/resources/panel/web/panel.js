@@ -6419,7 +6419,7 @@
     $('pn-mk-table').innerHTML = rows.length ? `<thead><tr><th>Item</th><th>Seller</th><th>Left</th><th>Price</th><th>Ends</th><th></th></tr></thead><tbody>${rows.map((l) => `
       <tr><td><div class="pn-mk-item">${l.icon ? `<img src="info/items/${esc(l.icon)}" alt="" width="24" height="24">` : ''}<span>${mcHtml(l.name)}<small class="pn-hint">${[...(l.enchantments || []), ...(l.lore || [])].map(mcHtml).join(' · ')}</small></span></div></td>
       <td>${esc(l.seller)}</td><td>${Number(l.amount).toLocaleString()}</td><td>${Number(l.price).toLocaleString()}${l.per > 1 ? ` per ${Number(l.per).toLocaleString()}` : ' each'}</td><td>${esc(dateTime(l.expires))}</td>
-      <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's mailbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
+      <td>${remove ? `<button type="button" class="np-btn small" data-remove="${esc(l.id)}" title="Back to the seller's inbox"><i class="bi bi-x-lg"></i> Take off</button>` : ''}</td></tr>`).join('')}</tbody>`
       : `<tbody><tr><td class="pn-hint">${mkData.listings.length ? 'Nothing matches.' : 'Nothing for sale.'}</td></tr></tbody>`;
     const sales = mkData.sales.filter((s) => s.seller);
     $('pn-mk-sales').innerHTML = sales.length ? `<thead><tr><th>When</th><th>Item</th><th>Amount</th><th>Total</th><th>Seller</th><th>Buyer</th></tr></thead><tbody>${sales.map((s) => `
@@ -6649,7 +6649,7 @@
   $('pn-mk-search').addEventListener('input', renderMarket);
   $('pn-mk-table').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-remove]');
-    if (!b || !confirm('Take this listing off the market? The items go back to the seller\'s mailbox.')) return;
+    if (!b || !confirm('Take this listing off the market? The items go back to the seller\'s inbox.')) return;
     try {
       await api('api/market/remove', { id: b.dataset.remove });
       loadMarket();

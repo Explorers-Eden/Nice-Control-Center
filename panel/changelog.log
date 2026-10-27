@@ -1,3 +1,6 @@
+## 1.39.1
+- Market, Discord and listing texts say inbox instead of mailbox (mod 1.48.2)
+
 ## 1.39.0
 - Games → Dungeons: global settings, runs going on (with Close), every dungeon's pool, party size, lives, spectating, time limit, how it's cleared, gear and kit, messages and enter/exit commands, best clears, and the pads (mod 1.48.0)
 - Games: cooldown, start and finish messages and commands, and the new per-type options for every arena

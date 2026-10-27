@@ -152,7 +152,7 @@ public final class MarketWeb {
 		if (add > 0) {
 			int[] have = spare(server, l);
 			if (add > have[0] + have[1]) {
-				return Map.of("error", String.format(Locale.ROOT, "You have %,d more %s (%,d in your mailbox%s). Bring more in game with /market.",
+				return Map.of("error", String.format(Locale.ROOT, "You have %,d more %s (%,d in your inbox%s). Bring more in game with /market.",
 						have[0] + have[1], l.item.name, have[0], server.getPlayerList().getPlayer(UUID.fromString(uuid)) == null ? "; your inventory counts while you're online" : ", " + have[1] + " in your inventory"));
 			}
 			fromMail = data.takeFromMailbox(uuid, sameAs(server, l.item), add);
@@ -180,9 +180,9 @@ public final class MarketWeb {
 		if (online != null && fromInventory > 0) {
 			online.sendSystemMessage(Component.literal(String.format(Locale.ROOT, "%,d × %s from your inventory went onto your market listing (changed on the website).", fromInventory, l.item.name)).withStyle(ChatFormatting.GRAY));
 		}
-		String message = spare > 0 ? String.format(Locale.ROOT, "Saved. %,d × %s went to your mailbox.", spare, l.item.name)
+		String message = spare > 0 ? String.format(Locale.ROOT, "Saved. %,d × %s went to your inbox (/inbox in game).", spare, l.item.name)
 				: add > 0 ? String.format(Locale.ROOT, "Saved. %,d more on the market (%s); it runs %d days again.", add,
-						fromInventory == 0 ? "from your mailbox" : fromMail == 0 ? "from your inventory" : fromMail + " from your mailbox, " + fromInventory + " from your inventory", s.listingDays)
+						fromInventory == 0 ? "from your inbox" : fromMail == 0 ? "from your inventory" : fromMail + " from your inbox, " + fromInventory + " from your inventory", s.listingDays)
 				: "Saved.";
 		return Map.of("ok", true, "message", message);
 	}
@@ -203,9 +203,9 @@ public final class MarketWeb {
 		MarketStore.saveNow();
 		ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(uuid));
 		if (online != null) {
-			online.sendSystemMessage(Component.literal("Your " + name + " listing was taken off the market on the website; the items wait in /market → Mailbox.").withStyle(ChatFormatting.GRAY));
+			online.sendSystemMessage(Component.literal("Your " + name + " listing was taken off the market on the website; the items wait in your inbox: /inbox.").withStyle(ChatFormatting.GRAY));
 		}
-		return Map.of("ok", true, "message", String.format(Locale.ROOT, "%,d × %s went to your mailbox. Collect them with /market → Mailbox in game.", amount, name));
+		return Map.of("ok", true, "message", String.format(Locale.ROOT, "%,d × %s went to your inbox. Collect them with /inbox in game.", amount, name));
 	}
 
 	/**
@@ -270,7 +270,7 @@ public final class MarketWeb {
 		m.parcels.add(p);
 		data.mailChanged(m);
 		MarketDialogs.tellSeller(server, sellerId, name + " bought " + items + " × " + item.name + " for " + money(cost) + " on the website.");
-		return "Bought " + items + " × " + item.name + " for " + money(cost) + ". Collect it from your mailbox in /market.";
+		return "Bought " + items + " × " + item.name + " for " + money(cost) + ". Collect it with /inbox in game.";
 	}
 
 	private static String claims(String uuid, String name, String id, int packs, int price, int coupon) {
@@ -302,7 +302,7 @@ public final class MarketWeb {
 		long now = System.currentTimeMillis();
 		data.serverSale(o.id, true, o.name, o.icon, MarketStore.settings().serverName, uuid, name, n, (int) cost, now);
 		data.order(uuid, name, o, n, now);
-		return "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + ". Claim it from your mailbox in /market.";
+		return "Bought " + (n == 1 ? "" : n + " × ") + o.name + " for " + money(cost) + (coupon > 0 ? " with a " + eu.explorerseden.nicecontrolcenter.players.Perks.couponName(coupon) : "") + ". Claim it with /inbox in game.";
 	}
 
 	private static String pet(String uuid, String name, String id, int price, int coupon) {

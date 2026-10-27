@@ -1056,7 +1056,7 @@
 				<div class="pn-stack">
 				<form id="pn-mk-form" autocomplete="off" class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-shop"></i> Player market</h3>
-					<p class="np-card-intro">Players sell and buy items in <code>/market</code> for the server's currency. Sales go into the seller's bank, and purchases are paid from it first; unsold items return to the mailbox. What the server sells is under <a href="#market/server-shop">Server shop</a>.</p>
+					<p class="np-card-intro">Players sell and buy items in <code>/market</code> for the server's currency. Sales go into the seller's bank, and purchases are paid from it first; unsold items return to the seller's inbox (/inbox). What the server sells is under <a href="#market/server-shop">Server shop</a>.</p>
 					<div class="np-form-grid">
 						<label class="np-form-row"><b>Market open</b><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 						<label class="np-form-row"><span>Currency (item id)<small class="pn-comment">Also pays for everything in the Server shop</small></span><input type="text" name="currency" placeholder="minecraft:diamond"></label>
@@ -1662,7 +1662,7 @@
 						<label class="np-form-row">Game chat → Discord<span class="np-switch"><input type="checkbox" name="chatToDiscord"><span></span></span></label>
 						<label class="np-form-row">Discord → game chat<span class="np-switch"><input type="checkbox" name="chatToGame"><span></span></span></label>
 						<label class="np-form-row">Bot status shows the server<span class="np-switch"><input type="checkbox" name="presence"><span></span></span></label>
-							<label class="np-form-row"><span>DMs to players<span class="pn-comment">Linked players get a Discord message when they sold something, when items wait in their market mailbox, a week before a claim expires, and when an admin writes to them. Each player switches the kinds on My SMP Profile.</span></span><span class="np-switch"><input type="checkbox" name="playerDms"><span></span></span></label>
+							<label class="np-form-row"><span>DMs to players<span class="pn-comment">Linked players get a Discord message when they sold something, when items wait in their inbox, a week before a claim expires, and when an admin writes to them. Each player switches the kinds on My SMP Profile.</span></span><span class="np-switch"><input type="checkbox" name="playerDms"><span></span></span></label>
 							<div class="np-form-row pn-dm-test"><span>Test a DM<span class="pn-comment">Sends a test message to a linked player and shows Discord's answer, e.g. when they block DMs from server members.</span></span><span class="pn-dm-test-row"><input type="text" id="pn-dm-test-name" placeholder="Player name" maxlength="16"><button type="button" class="np-btn small" id="pn-dm-test">Send</button></span></div>
 					</div>
 					<label class="pn-field"><span>How Discord messages look in game <small class="pn-hint">tags like <code>&lt;aqua&gt;…&lt;/aqua&gt;</code>, <code>&lt;#ff8800&gt;</code>, <code>&lt;bold&gt;</code>; <code>%user%</code> and <code>%msg%</code></small></span>

@@ -104,7 +104,7 @@ final class DiscordRoutes {
 				return;
 			}
 			String problem = discord.dmNow(link.discordId(), "👋 This is a test message from the server panel (sent by " + me.name()
-					+ "). Messages like this tell you about your market sales, mailbox, expiring claims and admin messages; switch them on My SMP Profile.");
+					+ "). Messages like this tell you about your market sales, your inbox, expiring claims and admin messages; switch them on My SMP Profile.");
 			if (problem != null) {
 				error(ctx, io.javalin.http.HttpStatus.BAD_GATEWAY, problem);
 				return;

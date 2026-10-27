@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.48.2
+- Inbox: collecting or claiming in an inbox opened with /inbox stays in the inbox (with a line saying what came) instead of jumping to the market
+- Website answers (buying, editing and taking back listings) and the server facts point to /inbox instead of the market's mailbox
+
 ## 1.48.1
 - Claims: interaction entities (graves, hubs, the spawn's buttons) can be clicked either way by anyone again; only cushions need the build role to break
 

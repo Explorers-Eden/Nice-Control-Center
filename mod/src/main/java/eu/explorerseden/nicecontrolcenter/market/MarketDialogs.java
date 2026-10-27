@@ -796,8 +796,22 @@ public final class MarketDialogs {
 	private static final java.util.Set<java.util.UUID> inboxOnly = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	private static void mail(ServerPlayer player) {
+		mail(player, null);
+	}
+
+	/** After collecting or claiming: back to the inbox when it was opened with /inbox, else to the market. */
+	private static void afterInbox(ServerPlayer player, String notice) {
+		if (inboxOnly.contains(player.getUUID())) mail(player, notice);
+		else home(player, notice);
+	}
+
+	private static void mail(ServerPlayer player, String notice) {
 		Market.Mailbox m = MarketStore.data().mail.get(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();
+		if (notice != null) {
+			body.add(text(notice, notice.startsWith("Collected") ? ChatFormatting.GREEN : ChatFormatting.GOLD));
+			Plop.play(player);
+		}
 		if (m == null || m.isEmpty()) {
 			body.add(text("Your inbox is empty.", ChatFormatting.GRAY));
 		} else {
@@ -1149,7 +1163,7 @@ public final class MarketDialogs {
 		}
 		data.mailChanged(m);
 		MarketStore.saveNow();
-		home(player, full ? "Your inventory is full: the rest waits in your inbox." : "Collected everything.");
+		afterInbox(player, full ? "Your inventory is full: the rest waits in your inbox." : "Collected everything.");
 	}
 
 	/** Runs a command listing bought on the website, for the player where they stand. */
@@ -1168,6 +1182,6 @@ public final class MarketDialogs {
 		MarketStore.saveNow();
 		runCommands(player, o.name, o.commands, o.times);
 		if (player.isRemoved()) return;
-		home(player, "Collected " + (o.times == 1 ? "" : o.times + " × ") + o.name + ".");
+		afterInbox(player, "Collected " + (o.times == 1 ? "" : o.times + " × ") + o.name + ".");
 	}
 }
