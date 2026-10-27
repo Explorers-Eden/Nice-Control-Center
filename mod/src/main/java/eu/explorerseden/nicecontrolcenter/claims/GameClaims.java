@@ -85,6 +85,18 @@ public final class GameClaims {
 	private static final Map<UUID, String> inside = new HashMap<>();
 	/** Died where the hub spawn takes over: moved there once they respawn. */
 	private static final Set<UUID> toHubOnRespawn = new java.util.HashSet<>();
+	/**
+	 * Items picked up inside, held through a death (the claim doesn't drop them): back if they respawn inside, gone
+	 * if the death sends them out. Claim id, or null for a dungeon run (DungeonRuntime gives them back).
+	 */
+	private record Kept(String claim, List<ItemStack> items) { }
+	private static final Map<UUID, Kept> keptOnDeath = new HashMap<>();
+	/** Deaths in the game claim they're in, this visit. */
+	private static final Map<UUID, Integer> deathCount = new HashMap<>();
+	/** Where they walked in this visit (x, y, z, yaw): the respawn point when the claim has none set. */
+	private static final Map<UUID, double[]> entryPoint = new HashMap<>();
+	/** Died with deaths left: respawn inside this claim. */
+	private static final Map<UUID, String> respawnIn = new HashMap<>();
 	private static Path file;
 	/** Players put into adventure mode for a game (survival again once they're out); kept across restarts. */
 	private static final Set<String> adventure = new java.util.HashSet<>();
@@ -110,6 +122,13 @@ public final class GameClaims {
 		});
 		// Died in a game area or the hub's dimension: they respawn at the hub spawn instead of their bed or home.
 		ServerPlayerEvents.AFTER_RESPAWN.register((old, now, alive) -> {
+			respawnInside(now);
+			Kept kept = keptOnDeath.get(now.getUUID());
+			if (kept != null && kept.claim() != null) {
+				Claim at = gameClaimAt(now.level(), now.blockPosition());
+				if (!toHubOnRespawn.contains(now.getUUID()) && at != null && at.id.equals(kept.claim())) giveBackKept(now);
+				else forgetKept(now);
+			}
 			if (toHubOnRespawn.remove(now.getUUID()) && !alive) GameRuntime.toHub(now.level().getServer(), now);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> loggedOut(server, handler.player));
@@ -225,6 +244,8 @@ public final class GameClaims {
 
 	private static void enter(ServerPlayer p, Claim c) {
 		Claims.AdminOptions o = c.admin;
+		deathCount.remove(p.getUUID());
+		entryPoint.put(p.getUUID(), new double[] { p.getX(), p.getY(), p.getZ(), p.getYRot() });
 		if (o.inventory) {
 			Stash s = new Stash();
 			s.claim = c.id;
@@ -261,6 +282,9 @@ public final class GameClaims {
 	/** Leaving (c may be gone): game items are handled, then their own things come back. */
 	private static void leave(ServerPlayer p, Claim c) {
 		Claims.AdminOptions o = c == null ? null : c.admin;
+		// A visit ends: deaths start over next time.
+		deathCount.remove(p.getUUID());
+		entryPoint.remove(p.getUUID());
 		Stash s = stashes.get(p.getStringUUID());
 		boolean swap = s != null;
 		boolean remove = o != null && o.removePickups;
@@ -301,36 +325,93 @@ public final class GameClaims {
 		if (swap) p.sendOverlayMessage(Component.literal("Your things are back").withStyle(ChatFormatting.GREEN));
 	}
 
-	/** Dying inside: kit items vanish, picked-up ones drop (option) or go to the inbox; never a grave. */
+	/**
+	 * Dying inside: kit items vanish, picked-up ones drop where they died (option) or are held: given back if they
+	 * respawn inside the claim, gone if they're sent out. Never a grave.
+	 */
 	private static void died(ServerPlayer p) {
 		String id = inside.get(p.getUUID());
 		Claim c = id == null ? null : ClaimStore.data().claims.get(id);
 		if (c == null || c.admin == null) return;
+		// Deaths left: they respawn inside (at the claim's point); the last one sends them out and starts over.
+		boolean back = true;
+		if (c.admin.respawnsInside()) {
+			int n = deathCount.merge(p.getUUID(), 1, Integer::sum);
+			back = c.admin.deaths == 0 || n < c.admin.deaths;
+			if (back) {
+				respawnIn.put(p.getUUID(), c.id);
+				toHubOnRespawn.remove(p.getUUID());
+				if (c.admin.deaths > 0) {
+					int left = c.admin.deaths - n;
+					p.sendSystemMessage(Component.literal("You died (" + n + " of " + c.admin.deaths + "): " + left + (left == 1 ? " more death sends" : " more deaths send") + " you out.").withStyle(ChatFormatting.GOLD));
+				}
+			} else {
+				deathCount.remove(p.getUUID());
+				p.sendSystemMessage(Component.literal("That was your last death in " + c.displayName() + ": you're out.").withStyle(ChatFormatting.RED));
+			}
+		}
 		boolean swap = stashes.containsKey(p.getStringUUID());
 		var inv = p.getInventory();
-		List<ItemStack> toInbox = new ArrayList<>();
+		List<ItemStack> keep = new ArrayList<>();
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack st = inv.getItem(i);
 			if (st.isEmpty()) continue;
 			String kind = kind(st);
 			if (kind == null && !swap) continue;
 			inv.setItem(i, ItemStack.EMPTY);
-			if ("kit".equals(kind) || c.admin.removePickups && !c.admin.dropPickupsOnDeath) continue;
-			ItemStack plain = unmark(st);
+			if ("kit".equals(kind)) {
+				if (c.admin.keepKitOnDeath && back) keep.add(st);
+				continue;
+			}
+			if (!back) continue;
 			if (c.admin.dropPickupsOnDeath) {
-				ItemEntity drop = new ItemEntity(p.level(), p.getX(), p.getY() + 0.5, p.getZ(), plain);
+				ItemEntity drop = new ItemEntity(p.level(), p.getX(), p.getY() + 0.5, p.getZ(), unmark(st));
 				drop.setDefaultPickUpDelay();
 				p.level().addFreshEntity(drop);
 			} else {
-				toInbox.add(plain);
+				keep.add(st);
 			}
 		}
+		if (!keep.isEmpty()) keptOnDeath.put(p.getUUID(), new Kept(c.id, keep));
 		if (swap) {
 			// No XP drops from the game either: their own XP comes back with the stash.
 			p.setExperienceLevels(0);
 			p.setExperiencePoints(0);
 		}
-		inbox(p, toInbox);
+	}
+
+	/**
+	 * After respawning: with deaths left, to the claim's respawn point (or where they entered); after the last one,
+	 * out of the claim if the game's respawn put them inside.
+	 */
+	private static void respawnInside(ServerPlayer p) {
+		String id = respawnIn.remove(p.getUUID());
+		Claim c = id == null ? null : ClaimStore.data().claims.get(id);
+		if (c == null || c.admin == null) {
+			Claim here = gameClaimAt(p.level(), p.blockPosition());
+			if (here != null && here.admin.respawnsInside() && !deathCount.containsKey(p.getUUID())) sendHome(p.level().getServer(), p);
+			return;
+		}
+		double[] at = c.admin.respawn != null && c.admin.respawn.length >= 4 ? c.admin.respawn : entryPoint.get(p.getUUID());
+		ServerLevel level = p.level().getServer().getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(c.dim)));
+		if (at == null || level == null) return;
+		p.teleportTo(level, at[0], at[1], at[2], Set.of(), (float) at[3], 0, true);
+		p.resetFallDistance();
+	}
+
+	/** What was held through a death goes back into their inventory (or at their feet). */
+	public static void giveBackKept(ServerPlayer p) {
+		Kept back = keptOnDeath.remove(p.getUUID());
+		if (back == null) return;
+		for (ItemStack st : back.items()) {
+			if (!p.getInventory().add(st)) p.level().addFreshEntity(new ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
+		}
+		p.inventoryMenu.broadcastChanges();
+	}
+
+	/** Sent out by the death: what was held is gone. */
+	public static void forgetKept(ServerPlayer p) {
+		keptOnDeath.remove(p.getUUID());
 	}
 
 	/**
@@ -339,6 +420,9 @@ public final class GameClaims {
 	 */
 	private static void loggedOut(MinecraftServer server, ServerPlayer p) {
 		toHubOnRespawn.remove(p.getUUID());
+		// Logged out while dead: out of the game, so what was held is gone.
+		forgetKept(p);
+		respawnIn.remove(p.getUUID());
 		boolean hub = GameRuntime.hubCovers(p);
 		String id = inside.remove(p.getUUID());
 		Claim c = id == null ? null : ClaimStore.data().claims.get(id);
@@ -482,20 +566,22 @@ public final class GameClaims {
 		return stashes.containsKey(p.getStringUUID());
 	}
 
-	/** Dying with things put aside: what they carry vanishes (kit, removePickups) or goes to the inbox; no XP drops. */
-	public static void clearCarried(ServerPlayer p, boolean removePickups) {
+	/**
+	 * Dying in a dungeon run with things put aside: kit items vanish; what they found is held when they'll respawn
+	 * inside ({@code keep}, given back with {@link #giveBackKept}), else it's gone. No XP drops.
+	 */
+	public static void clearCarried(ServerPlayer p, boolean keep) {
 		var inv = p.getInventory();
-		List<ItemStack> toInbox = new ArrayList<>();
+		List<ItemStack> held = new ArrayList<>();
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack st = inv.getItem(i);
 			if (st.isEmpty()) continue;
 			inv.setItem(i, ItemStack.EMPTY);
-			if ("kit".equals(kind(st)) || removePickups) continue;
-			toInbox.add(unmark(st));
+			if (keep && !"kit".equals(kind(st))) held.add(st);
 		}
+		if (!held.isEmpty()) keptOnDeath.put(p.getUUID(), new Kept(null, held));
 		p.setExperienceLevels(0);
 		p.setExperiencePoints(0);
-		inbox(p, toInbox);
 	}
 
 	/** The admin's current inventory as kit JSON (for a dungeon's kit). */
@@ -643,6 +729,10 @@ public final class GameClaims {
 		adventureFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-game-adventure.json");
 		stashes.clear();
 		inside.clear();
+		keptOnDeath.clear();
+		deathCount.clear();
+		entryPoint.clear();
+		respawnIn.clear();
 		adventure.clear();
 		try {
 			if (Files.exists(adventureFile)) {

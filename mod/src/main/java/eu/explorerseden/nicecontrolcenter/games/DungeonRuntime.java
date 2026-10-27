@@ -679,7 +679,9 @@ public final class DungeonRuntime {
 	/** Before the death: what they carry is put aside (own gear) or dealt with (kit); lives and watching decided. */
 	private static void died(MinecraftServer server, Run r, ServerPlayer p) {
 		noGraveUntil.put(p.getUUID(), System.currentTimeMillis() + 60_000);
-		if (r.kit()) GameClaims.clearCarried(p, r.dungeon.removePickups);
+		// Found items are kept only when a life brings them back in (not when they watch or are out).
+		boolean keep = r.state == State.RUNNING && !r.out.contains(p.getUUID()) && r.lives.getOrDefault(p.getUUID(), 0) > 0;
+		if (r.kit()) GameClaims.clearCarried(p, keep);
 		else GameClaims.stashFor(p, "dungeon-death");
 		if (r.state != State.RUNNING || r.out.contains(p.getUUID())) return;
 		r.deaths++;
@@ -707,6 +709,15 @@ public final class DungeonRuntime {
 	}
 
 	private static void respawned(MinecraftServer server, ServerPlayer p) {
+		try {
+			respawnedInside(server, p);
+		} finally {
+			// Unless they went back in (given back there), what they found is gone.
+			GameClaims.forgetKept(p);
+		}
+	}
+
+	private static void respawnedInside(MinecraftServer server, ServerPlayer p) {
 		if (afterRespawn.remove(p.getUUID())) {
 			// Out of the run: things back, and out of the dungeon dimension (the hub spawn may have done that already).
 			GameClaims.restoreFor(p, Boolean.TRUE.equals(afterRespawnRemove.remove(p.getUUID())));
@@ -731,8 +742,12 @@ public final class DungeonRuntime {
 			return;
 		}
 		// Back in: their own gear (own) or the kit again.
-		if (r.kit()) GameClaims.giveKit(p, r.dungeon.kit, "dungeon");
-		else GameClaims.restoreFor(p, false);
+		if (r.kit()) {
+			GameClaims.giveKit(p, r.dungeon.kit, "dungeon");
+			GameClaims.giveBackKept(p);
+		} else {
+			GameClaims.restoreFor(p, false);
+		}
 	}
 
 	// ---------------------------------------------------------------- ending

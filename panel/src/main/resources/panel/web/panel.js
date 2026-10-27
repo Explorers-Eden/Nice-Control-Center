@@ -5990,6 +5990,12 @@
     $('pn-cl-admin').querySelectorAll('[data-admin]').forEach((el) => { el.checked = !!a[el.dataset.admin]; el.disabled = !can('claims.manage'); });
     $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering.` : 'No kit: be in game with the items in your inventory, then:';
     $('pn-cl-kit-clear').hidden = !a.kit;
+    $('pn-cl-deaths').value = a.deaths || 0;
+    $('pn-cl-deaths').disabled = !can('claims.manage');
+    $('pn-cl-respawn-text').textContent = a.respawn
+      ? `Respawn point: ${a.respawn} (set in game with /claim admin respawn set while standing there).`
+      : 'Respawn point: where they entered. Set one in game with /claim admin respawn set while standing there.';
+    $('pn-cl-respawn-clear').hidden = !a.respawn;
     if (!$('pn-cl-kit-from').value && me) $('pn-cl-kit-from').value = me.user;
   }
 
@@ -6006,11 +6012,18 @@
     }
   }
   $('pn-cl-admin').addEventListener('change', (e) => {
+    if (e.target.id === 'pn-cl-deaths') {
+      if (clOpen && clOpen.id) clAdminSend({ action: 'admin', deaths: Math.max(0, parseInt(e.target.value, 10) || 0) }, 'Saved.');
+      return;
+    }
     const k = e.target.dataset.admin;
     if (k && clOpen && clOpen.id) clAdminSend({ action: 'admin', [k]: e.target.checked }, 'Saved.');
   });
   $('pn-cl-kit-set').addEventListener('click', () => {
     if (clOpen && clOpen.id) clAdminSend({ action: 'kit', from: $('pn-cl-kit-from').value.trim() }, 'Kit saved from your inventory.');
+  });
+  $('pn-cl-respawn-clear').addEventListener('click', () => {
+    if (clOpen && clOpen.id) clAdminSend({ action: 'admin', clearRespawn: true }, 'Respawn point cleared.');
   });
   $('pn-cl-kit-clear').addEventListener('click', () => {
     if (clOpen && clOpen.id && confirm('Clear the kit?')) clAdminSend({ action: 'admin', clearKit: true }, 'Kit cleared.');

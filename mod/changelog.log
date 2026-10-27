@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.49.2
+- Game claims: a death limit per visit ("Sent out after N deaths", 0 = no limit; the count starts over each visit). With deaths left (or a respawn point set) players respawn inside: at the point set with /claim admin respawn set, else where they entered; the last death sends them out
+- Game claims: "Keep the kit on death": kit items stay with a player who respawns inside (otherwise they vanish on death)
+- Game claims and dungeons: dying no longer sends picked-up items to the inbox. Without "drop where they die" (game claims) they're kept when the player respawns inside (same game claim, or a dungeon life brings them back in) and gone when the death sends them out (hub, home, out of the run, watching, logging out while dead)
+
 ## 1.49.1
 - Dashboard: pictures with a relative address (pet heads on the player card) are kept across the 2-second refresh instead of loaded again, so they no longer flicker
 

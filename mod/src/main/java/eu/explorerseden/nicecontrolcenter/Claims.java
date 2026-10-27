@@ -353,14 +353,30 @@ public final class Claims {
 		public List<String> kit = new ArrayList<>();
 		/** Items picked up inside vanish on leaving (otherwise they go to the market inbox). */
 		public boolean removePickups = false;
-		/** Items picked up inside drop where the player dies (otherwise they go to the inbox). */
+		/** Items picked up inside drop where the player dies (otherwise kept if they respawn inside, gone if sent out). */
 		public boolean dropPickupsOnDeath = false;
+		/** Kit items stay with a player who dies and respawns inside (otherwise they vanish on death). */
+		public boolean keepKitOnDeath = false;
+		/** Deaths per visit: the one with this number sends them out (and starts over); 0 = no limit. */
+		public int deaths = 0;
+		/** Where players respawn while they have deaths left (x, y, z, yaw in the claim's dimension); null = where they entered. */
+		public double[] respawn;
 		/** No homes (Nice Actions), beds or anchors set a spawn inside, and the Nice Actions back teleport can't lead here. */
 		public boolean noHomes = false;
 
 		/** Does anything at all. */
 		public boolean active() {
-			return inventory || removePickups || noHomes || (kit != null && !kit.isEmpty());
+			return inventory || removePickups || noHomes || deaths > 0 || (kit != null && !kit.isEmpty());
+		}
+
+		/** Players respawn inside after dying here (a death limit or a respawn point is set). */
+		public boolean respawnsInside() {
+			return deaths > 0 || respawn != null;
+		}
+
+		/** Worth keeping (else the options are dropped). */
+		public boolean anySet() {
+			return active() || dropPickupsOnDeath || keepKitOnDeath || respawn != null;
 		}
 
 		public boolean blocksHomes() {
@@ -863,7 +879,7 @@ public final class Claims {
 			case "admin" -> {
 				// Game-claim options (admins only; the panel and /claim admin).
 				if (c.admin == null) c.admin = new AdminOptions();
-				for (String k : List.of("inventory", "removePickups", "dropPickupsOnDeath", "noHomes")) {
+				for (String k : List.of("inventory", "removePickups", "dropPickupsOnDeath", "keepKitOnDeath", "noHomes")) {
 					var v = a.get(k);
 					if (v == null || !v.isJsonPrimitive()) continue;
 					boolean on = v.getAsBoolean();
@@ -871,11 +887,14 @@ public final class Claims {
 						case "inventory" -> c.admin.inventory = on;
 						case "removePickups" -> c.admin.removePickups = on;
 						case "dropPickupsOnDeath" -> c.admin.dropPickupsOnDeath = on;
+						case "keepKitOnDeath" -> c.admin.keepKitOnDeath = on;
 						default -> c.admin.noHomes = on;
 					}
 				}
+				if (a.has("deaths") && a.get("deaths").isJsonPrimitive()) c.admin.deaths = Math.max(0, Math.min(1000, a.get("deaths").getAsInt()));
 				if (a.has("clearKit") && a.get("clearKit").getAsBoolean()) c.admin.kit = new ArrayList<>();
-				if (!c.admin.active() && !c.admin.dropPickupsOnDeath) c.admin = null;
+				if (a.has("clearRespawn") && a.get("clearRespawn").getAsBoolean()) c.admin.respawn = null;
+				if (!c.admin.anySet()) c.admin = null;
 				data.touch(c, now);
 			}
 			case "member_set" -> {

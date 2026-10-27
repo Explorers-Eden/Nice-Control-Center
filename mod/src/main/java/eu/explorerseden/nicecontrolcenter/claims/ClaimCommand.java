@@ -86,6 +86,34 @@ public final class ClaimCommand {
 									ClaimTool.tell(p, "The kit of " + c.displayName() + " is gone.", ChatFormatting.GOLD);
 									return 1;
 								})))
+						// Game claims: where players respawn while they have deaths left (where you stand, facing your way).
+						.then(Commands.literal("respawn")
+								.then(Commands.literal("set").executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
+									if (c == null) {
+										ClaimTool.tell(p, "Stand in the claim (or subclaim) first.", ChatFormatting.RED);
+										return 0;
+									}
+									if (c.admin == null) c.admin = new Claims.AdminOptions();
+									c.admin.respawn = new double[] { p.getX(), p.getY(), p.getZ(), p.getYRot() };
+									ClaimStore.changed();
+									ClaimTool.tell(p, "Players who die in " + c.displayName() + " with deaths left respawn here.", ChatFormatting.GOLD);
+									return 1;
+								}))
+								.then(Commands.literal("clear").executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
+									if (c == null || c.admin == null || c.admin.respawn == null) {
+										ClaimTool.tell(p, "No respawn point here.", ChatFormatting.RED);
+										return 0;
+									}
+									c.admin.respawn = null;
+									if (!c.admin.anySet()) c.admin = null;
+									ClaimStore.changed();
+									ClaimTool.tell(p, "Players respawn where they entered " + c.displayName() + " again.", ChatFormatting.GOLD);
+									return 1;
+								})))
 						.then(Commands.literal("bypass").executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							boolean on = ClaimTool.toggleBypass(p);

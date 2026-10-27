@@ -1040,6 +1040,7 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 
 .pn-cl-admin .pn-cl-flags { display: grid; gap: 4px; }
 .pn-cl-kit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: var(--fs-sm); color: var(--muted); }
+.pn-cl-kit input.pn-cl-deaths { width: 80px; }
 .pn-cl-kit input { width: 150px; height: 32px; box-sizing: border-box; padding: 0 10px; font: inherit; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; }
 
 .pn-home-dims { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; }

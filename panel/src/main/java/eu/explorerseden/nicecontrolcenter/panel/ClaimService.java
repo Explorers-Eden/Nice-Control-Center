@@ -395,7 +395,10 @@ final class ClaimService {
 				m.put("keepUntil", c.keepUntil);
 				// Game-claim options (server claims and their subclaims); the kit as a count only.
 				if (c.admin != null) m.put("admin", Map.of("inventory", c.admin.inventory, "removePickups", c.admin.removePickups,
-						"dropPickupsOnDeath", c.admin.dropPickupsOnDeath, "noHomes", c.admin.noHomes, "kit", c.admin.kit == null ? 0 : c.admin.kit.size()));
+						"dropPickupsOnDeath", c.admin.dropPickupsOnDeath, "keepKitOnDeath", c.admin.keepKitOnDeath, "noHomes", c.admin.noHomes,
+						"kit", c.admin.kit == null ? 0 : c.admin.kit.size(), "deaths", c.admin.deaths,
+						"respawn", c.admin.respawn == null || c.admin.respawn.length < 3 ? ""
+								: Math.round(Math.floor(c.admin.respawn[0])) + " " + Math.round(Math.floor(c.admin.respawn[1])) + " " + Math.round(Math.floor(c.admin.respawn[2]))));
 				Claims.PlayerBlocks owner = c.owner == null ? null : data.players.get(c.owner);
 				m.put("ownerLastSeen", owner == null ? 0 : owner.lastSeen);
 				claims.add(m);

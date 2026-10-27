@@ -712,8 +712,16 @@
 							<div class="pn-cl-flags">
 								<label class="np-check"><input type="checkbox" data-admin="inventory"> Put inventory, armour, XP and effects aside on entering; give them back on leaving</label>
 								<label class="np-check"><input type="checkbox" data-admin="removePickups"> Items picked up inside vanish on leaving (otherwise: to their /inbox)</label>
-								<label class="np-check"><input type="checkbox" data-admin="dropPickupsOnDeath"> Items picked up inside drop where they die (otherwise: to their /inbox)</label>
+								<label class="np-check"><input type="checkbox" data-admin="dropPickupsOnDeath"> Items picked up inside drop on death (otherwise: kept only when they respawn inside the game)</label>
+								<label class="np-check"><input type="checkbox" data-admin="keepKitOnDeath"> Keep the kit on death (when they respawn inside the game; otherwise it vanishes)</label>
 								<label class="np-check"><input type="checkbox" data-admin="noHomes"> No homes, beds or anchors, and the back teleport can't lead into it (always on with the first switch)</label>
+							</div>
+							<div class="pn-cl-kit"><span>Sent out after</span>
+								<input type="number" id="pn-cl-deaths" min="0" max="1000" step="1" class="pn-cl-deaths">
+								<span>deaths (0 = no limit; counted per visit). Until then they respawn inside.</span>
+							</div>
+							<div class="pn-cl-kit"><span id="pn-cl-respawn-text"></span>
+								<button type="button" class="np-btn small danger" id="pn-cl-respawn-clear"><i class="bi bi-x-lg"></i> Clear respawn point</button>
 							</div>
 							<div class="pn-cl-kit"><span id="pn-cl-kit-text"></span>
 								<input type="text" id="pn-cl-kit-from" maxlength="16" placeholder="Your player name">
