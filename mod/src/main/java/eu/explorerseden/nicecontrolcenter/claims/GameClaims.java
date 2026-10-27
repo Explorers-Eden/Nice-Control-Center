@@ -90,6 +90,29 @@ public final class GameClaims {
 			return true;
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> loggedOut(server, handler.player));
+		// No ender chests where things are put aside: they'd carry game items out (or own things in).
+		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
+			if (!(player instanceof ServerPlayer p) || !(world.getBlockState(hit.getBlockPos()).getBlock() instanceof net.minecraft.world.level.block.EnderChestBlock)) {
+				return net.minecraft.world.InteractionResult.PASS;
+			}
+			if (!inInventoryClaim(p)) return net.minecraft.world.InteractionResult.PASS;
+			p.sendOverlayMessage(Component.literal("Ender chests don't open in this game area").withStyle(ChatFormatting.RED));
+			return net.minecraft.world.InteractionResult.FAIL;
+		});
+	}
+
+	/** A game item (kit or picked up in a game area) lying outside its area: it vanishes (no smuggling over the edge). */
+	public static boolean strayGameItem(ItemEntity item) {
+		CustomData d = item.getItem().get(DataComponents.CUSTOM_DATA);
+		if (d == null) return false;
+		CompoundTag t = d.copyTag();
+		if (!t.contains(MARK)) return false;
+		String claim = t.getStringOr(MARK, "");
+		Claim here = ClaimStore.claimAt(item.level(), item.blockPosition());
+		// Inside its claim, or a subclaim of it, or the claim around its subclaim: still in the game.
+		if (here != null && (here.id.equals(claim) || claim.equals(here.parent))) return false;
+		Claim own = ClaimStore.data().claims.get(claim);
+		return own == null || here == null || own.parent == null || !own.parent.equals(here.id);
 	}
 
 	// ---------------------------------------------------------------- which claim

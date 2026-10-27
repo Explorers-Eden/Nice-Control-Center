@@ -19,8 +19,23 @@ public abstract class GameClaimPickupMixin {
 	@Shadow
 	public abstract ItemStack getItem();
 
-	@Inject(method = "playerTouch", at = @At("HEAD"))
+	@Inject(method = "playerTouch", at = @At("HEAD"), cancellable = true)
 	private void nicecontrolcenter$markPickup(Player player, CallbackInfo ci) {
-		if (player instanceof ServerPlayer p) GameClaims.pickedUp(p, getItem());
+		if (!(player instanceof ServerPlayer p)) return;
+		ItemEntity self = (ItemEntity) (Object) this;
+		// Game items outside their area can't be picked up: they vanish.
+		if (GameClaims.strayGameItem(self)) {
+			self.discard();
+			ci.cancel();
+			return;
+		}
+		GameClaims.pickedUp(p, getItem());
+	}
+
+	/** Game items thrown or carried (hoppers, water) out of their area vanish within a second. */
+	@Inject(method = "tick", at = @At("TAIL"))
+	private void nicecontrolcenter$strayCheck(CallbackInfo ci) {
+		ItemEntity self = (ItemEntity) (Object) this;
+		if (!self.isRemoved() && self.getAge() % 20 == 10 && self.level() instanceof net.minecraft.server.level.ServerLevel && GameClaims.strayGameItem(self)) self.discard();
 	}
 }

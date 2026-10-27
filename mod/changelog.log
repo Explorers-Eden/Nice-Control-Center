@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.45.1
+- Game areas: ender chests don't open where things are put aside (no smuggling items in or out); game items (kit or picked up inside) that end up outside their area vanish within a second and can't be picked up there
+
 ## 1.45.0
 - Mini-game templates (/game): infinite parkour (jumps made ahead of you, harder as you go, each player in their own lane, blocks cleaned up), race course (checkpoints in order; running, boat or elytra), dropper (land in the water at the bottom, back to the top otherwise) and maze (generated, made new daily or after each run); start pads or /game join, /game leave, /game top, /game list; admins: /game create <type> <name>, /game edit … (start, top, finish, checkpoint add|clear, size, build), /game delete
 - Personal bests per arena; Rewards triggers "Finishes a game" (at least … jumps / within … seconds) and "Sets a personal best" with {score} and {game}
