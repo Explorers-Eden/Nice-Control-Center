@@ -378,9 +378,10 @@
    */
   function fitHeights() {
     const pageTop = (el) => el.getBoundingClientRect().top + window.scrollY;
+    const foot = footHeight();
     const set = (el, top, below, min) => {
       if (!el || !el.offsetParent) return;
-      el.style.setProperty('height', Math.max(min, Math.floor(window.innerHeight - top - below)) + 'px', 'important');
+      el.style.setProperty('height', Math.max(min, Math.floor(window.innerHeight - top - below - foot)) + 'px', 'important');
     };
     set($('pn-log'), pageTop($('pn-log')), 92, 260);
     const logf = document.querySelector('.pn-logf-lines');
@@ -599,6 +600,14 @@
   // The sidebar sticks below the navbar, whose height changes with the tiles.
   new ResizeObserver(() => document.documentElement.style.setProperty('--pn-nav-h', document.querySelector('.navbar').offsetHeight + 'px'))
     .observe(document.querySelector('.navbar'));
+  // The footer's height (with its spacing), so the sidebar and the boxes that fill the window end just above it.
+  function footHeight() {
+    const f = document.querySelector('.np-footer');
+    if (!f || !f.offsetParent) return 0;
+    const cs = getComputedStyle(f);
+    return f.offsetHeight + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);
+  }
+  new ResizeObserver(() => document.documentElement.style.setProperty('--pn-foot-h', footHeight() + 'px')).observe(document.querySelector('.np-footer'));
 
   // ── Logos (Appearance) ──
 
@@ -1817,7 +1826,7 @@
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${a.type === 'parkour' ? `${t.best} jumps` : gmClock(t.best)}</span><small>${t.runs} run${t.runs === 1 ? '' : 's'}</small></li>`).join('')}</ol>` : '<p class="pn-hint">No runs yet.</p>';
       return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
         <div class="pn-rw-head">
-          <span class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></span>
+          <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
           <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} playing</span>` : ''}
           <span class="pn-rw-actions">
@@ -1959,7 +1968,7 @@
       const opts = rw.triggers.map((x) => `<option value="${x.id}" ${x.id === r.trigger ? 'selected' : ''}>${esc(x.label)}</option>`).join('');
       return `<section class="pn-rw-rule ${r.enabled ? '' : 'off'}" data-rule="${i}">
         <div class="pn-rw-head">
-          <span class="np-switch" title="On or off"><input type="checkbox" data-k="enabled" ${r.enabled ? 'checked' : ''}><span></span></span>
+          <label class="np-switch" title="On or off"><input type="checkbox" data-k="enabled" ${r.enabled ? 'checked' : ''}><span></span></label>
           <input type="text" class="pn-rw-name" data-k="name" value="${esc(r.name)}" placeholder="Name this rule" maxlength="60">
           <span class="pn-rw-actions">
             <button type="button" class="np-btn small" data-act="again" title="Forget who it already ran for, so &quot;once&quot; rules run again"><i class="bi bi-arrow-repeat"></i></button>
@@ -4419,7 +4428,7 @@
     $('pn-dimtune').innerHTML = ids.map((id) => {
       const d = set[id] || {};
       const on = (k, def) => (d[k] === undefined ? def : d[k]);
-      const sw = (k, def) => `<td><span class="np-switch"><input type="checkbox" data-dt="${k}" ${on(k, def) ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></span></td>`;
+      const sw = (k, def) => `<td><label class="np-switch"><input type="checkbox" data-dt="${k}" ${on(k, def) ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label></td>`;
       return `<tr data-dim="${esc(id)}"><td class="name">${esc(name(id))}<small>${esc(id)}</small></td>${sw('naturalSpawns', true)}${sw('randomTicks', true)}${sw('freezeWhenEmpty', false)}
         <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td></tr>`;
     }).join('') || '<tr><td colspan="5">No dimensions found yet: start the server once.</td></tr>';
@@ -6740,7 +6749,7 @@
     $('pn-pk-reactions').innerHTML = `<thead><tr><th>Reaction</th><th>On</th><th>Bubble lines (separated by |)</th></tr></thead><tbody>${(ptData.reactions || []).map((r) => {
       const e = s.reactions.list[r.id] || { on: true, lines: r.lines };
       return `<tr data-reaction="${esc(r.id)}"><td>${esc(r.label)}${r.warning ? ' <span class="np-tag">warning</span>' : ''}</td>
-        <td><span class="np-switch"><input type="checkbox" data-r="on" ${e.on ? 'checked' : ''}><span></span></span></td>
+        <td><label class="np-switch"><input type="checkbox" data-r="on" ${e.on ? 'checked' : ''}><span></span></label></td>
         <td><input type="text" data-r="lines" value="${esc(e.lines.join(' | '))}" placeholder="${esc(r.lines.join(' | '))}"></td></tr>`;
     }).join('')}</tbody>`;
   }

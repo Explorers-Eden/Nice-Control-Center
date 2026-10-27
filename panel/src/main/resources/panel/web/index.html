@@ -115,7 +115,6 @@
 								<div class="pn-hero-motd" id="pn-hero-motd"></div>
 							</div>
 						</div>
-						<small class="pn-hero-server-note">in the multiplayer list</small>
 					</div>
 				</div>
 				<div class="np-card pn-attention" id="pn-attention" hidden>
@@ -1186,7 +1185,19 @@
 			<div class="np-tab-panel" data-tab="games" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-controller"></i> Games</h3>
-					<p class="np-card-intro">Mini-game arenas made from templates: <b>infinite parkour</b> (jumps made ahead of you, harder as you go, each player in their own lane), <b>race course</b> (checkpoints in order, running, by boat or elytra), <b>dropper</b> (land in the water at the bottom) and <b>maze</b> (generated, made new daily or after each run). Make one in game where it should be: <code>/game create &lt;parkour|race|dropper|maze&gt; &lt;name&gt;</code>; it tells you the next steps. Players start by stepping on the start pad or with <code>/game join &lt;name&gt;</code>, and <code>/game top &lt;name&gt;</code> shows the best. Rewards can react with "Finishes a game" and "Sets a personal best" (<code>{score}</code>, <code>{game}</code>). Put arenas in a server claim with game-area options for kits and safe inventories.</p>
+					<p class="np-card-intro">Mini-games made from ready templates. Build one where you stand in game; players start it by stepping on its start pad.</p>
+					<div class="pn-gm-templates">
+						<div><i class="bi bi-bricks"></i><b>Infinite parkour</b><span>Jumps appear ahead, harder as you go; every player gets their own lane.</span></div>
+						<div><i class="bi bi-flag"></i><b>Race course</b><span>Checkpoints in order, then the finish: running, by boat or elytra.</span></div>
+						<div><i class="bi bi-arrow-down-circle"></i><b>Dropper</b><span>Fall from the top and land in the water at the bottom.</span></div>
+						<div><i class="bi bi-grid-3x3"></i><b>Maze</b><span>Generated; made new every day or after each finished run.</span></div>
+					</div>
+					<dl class="pn-gm-howto">
+						<dt>Set up</dt><dd><code>/game create &lt;type&gt; &lt;name&gt;</code> where it should be, then follow the hints it gives</dd>
+						<dt>Play</dt><dd><code>/game join &lt;name&gt;</code> or step on the start pad; <code>/game top &lt;name&gt;</code> shows the best</dd>
+						<dt>Rewards</dt><dd>"Finishes a game" and "Sets a personal best", with <code>{score}</code> and <code>{game}</code></dd>
+						<dt>Safe inventories</dt><dd>Put the arena in a server claim with game-area options (Claims page)</dd>
+					</dl>
 					<div class="np-filters">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-gm-enabled"><span></span></span> Games on</label>
 						<button type="button" class="np-btn primary" id="pn-gm-save" disabled><i class="bi bi-check2"></i> Save</button>

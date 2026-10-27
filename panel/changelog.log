@@ -1,3 +1,8 @@
+## 1.36.1
+- The sidebar and everything that fills the window (console, chat, log files, player list) end just above the footer
+- Per-dimension tuning, game and rule on/off switches can be clicked again (they weren't labels)
+- Games page intro tidied (templates as tiles, how-to as a list); the greeting card drops the "in the multiplayer list" note
+
 ## 1.36.0
 - Games page (Community): arenas with their settings (parkour blocks and lanes, race mode, maze size/blocks/regeneration), on/off, the best players, reset scores, remove (mod 1.45.0)
 - Rewards: triggers for finished games and personal bests
