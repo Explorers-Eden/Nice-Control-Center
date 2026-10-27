@@ -112,7 +112,7 @@
       { id: 'logs', hue: '#ff8a80', label: 'Logs & reports', icon: 'bi-journal-medical', subs: [
         { tab: 'mod:logs', label: 'Errors & warnings', perm: 'dashboard.view', desc: 'Problems logged since the server started, grouped by the mod or data pack they come from.' },
         { tab: 'logfiles', label: 'Log files', perm: 'console.read', desc: 'The log of today and earlier days: read, filter and search them.' },
-        { tab: 'mod:reports', label: 'Lag reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' }] },
+        { tab: 'mod:reports', label: 'Reports', perm: 'dashboard.view', desc: 'Recordings of lag episodes, to find what caused them.' }] },
       { id: 'players', hue: '#5fd68a', label: 'Players', icon: 'bi-people', subs: [
         { tab: 'mod:players', label: 'Players', perm: 'dashboard.view', desc: 'Everyone who has played: where they are, what they carry, private messages.' },
         { tab: 'players', label: 'Whitelist & bans', perm: 'players.manage', desc: 'Who may join and who may use commands; kick or ban players who are online.' }] },

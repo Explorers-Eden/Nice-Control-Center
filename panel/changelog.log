@@ -1,3 +1,6 @@
+## 1.41.1
+- Logs & reports: the "Lag reports" page is called "Reports" now
+
 ## 1.41.0
 - Dungeons: room groups (fill chance, from which level) and rooms (groups, weight, chance, at most per copy, on/off, doors and spots found, Save again from the build, remove); each dungeon lists its room spots with a chance per spot, rooms-inside-rooms levels and rooms per copy, and can be saved again from its build (mod 1.51.0)
 
