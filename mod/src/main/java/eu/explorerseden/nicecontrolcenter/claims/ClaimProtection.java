@@ -52,7 +52,8 @@ public final class ClaimProtection {
 	public static void register() {
 		UseBlockCallback.EVENT.register(ClaimTool::useBlock);
 		UseItemCallback.EVENT.register(ClaimTool::useItem);
-		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, be) -> !(player instanceof ServerPlayer sp) || allowed(sp, level, pos, Role.BUILD));
+		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, be) -> !(player instanceof ServerPlayer sp)
+				|| GameClaims.itemAllows(sp, level, pos, pos, sp.getMainHandItem(), true) || allowed(sp, level, pos, Role.BUILD));
 		UseBlockCallback.EVENT.register(ClaimProtection::useBlock);
 		UseItemCallback.EVENT.register(ClaimProtection::useItem);
 		// The claim tool never goes into item frames, armor stands or to animals.
@@ -119,6 +120,8 @@ public final class ClaimProtection {
 				if (there != null && there != ClaimStore.claimAt(level, pos)) front = beside;
 			}
 		}
+		// Game claims in adventure mode: can_place_on on the item lets it be placed or used there.
+		if (blockRole == null && GameClaims.itemAllows(player, level, pos, front == null ? target : front, held, false)) return InteractionResult.PASS;
 		if (allowed(player, level, target, needed) && (target == pos || allowed(player, level, pos, needed == Role.BUILD ? Role.ACCESS : needed))
 				&& (front == null || allowed(player, level, front, Role.BUILD))) {
 			return InteractionResult.PASS;

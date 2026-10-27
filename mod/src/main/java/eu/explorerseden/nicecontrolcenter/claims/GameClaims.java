@@ -23,6 +23,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.NonNullList;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -33,10 +34,15 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.scores.Objective;
@@ -53,7 +59,9 @@ import eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl;
  * Game claims (Claims.AdminOptions, set by admins on server or admin claims): on entering, what the player carries
  * (inventory, armour, off hand, XP, effects) is put aside and a kit handed out; on leaving, kit items vanish, items
  * picked up inside vanish or go to the market inbox, and their own things come back exactly. Dying inside makes no
- * grave; logging out inside sends them home. Also: no homes or spawn points inside, the Nice Actions back teleport (dialog) can't lead
+ * grave; logging out inside sends them home. Players in survival play game claims and dungeon runs in adventure mode
+ * (kit items with can_break / can_place_on still mine and build), and kit items left anywhere they carry (ender chest,
+ * shulker boxes, bundles) vanish once they're out of the game. Also: no homes or spawn points inside, the Nice Actions back teleport (dialog) can't lead
  * back in, and the Nice Actions home whitelist (Tweaks.homes).
  */
 public final class GameClaims {
@@ -78,6 +86,9 @@ public final class GameClaims {
 	/** Died where the hub spawn takes over: moved there once they respawn. */
 	private static final Set<UUID> toHubOnRespawn = new java.util.HashSet<>();
 	private static Path file;
+	/** Players put into adventure mode for a game (survival again once they're out); kept across restarts. */
+	private static final Set<String> adventure = new java.util.HashSet<>();
+	private static Path adventureFile;
 
 	private GameClaims() {
 	}
@@ -107,7 +118,7 @@ public final class GameClaims {
 			if (!(player instanceof ServerPlayer p) || !(world.getBlockState(hit.getBlockPos()).getBlock() instanceof net.minecraft.world.level.block.EnderChestBlock)) {
 				return net.minecraft.world.InteractionResult.PASS;
 			}
-			if (!inInventoryClaim(p)) return net.minecraft.world.InteractionResult.PASS;
+			if (!inInventoryClaim(p) && !inKitClaim(p)) return net.minecraft.world.InteractionResult.PASS;
 			p.sendOverlayMessage(Component.literal("Ender chests don't open in this game area").withStyle(ChatFormatting.RED));
 			return net.minecraft.world.InteractionResult.FAIL;
 		});
@@ -147,6 +158,22 @@ public final class GameClaims {
 		return c != null && c.admin.inventory;
 	}
 
+	private static boolean inKitClaim(ServerPlayer p) {
+		Claim c = gameClaimAt(p.level(), p.blockPosition());
+		return c != null && c.admin.kit != null && !c.admin.kit.isEmpty();
+	}
+
+	/**
+	 * Adventure mode in a game claim: the item's can_break (breaking {@code at}) or can_place_on (using it on
+	 * {@code at}, landing at {@code lands}) decides instead of the claim's roles; the game checks the rest.
+	 */
+	public static boolean itemAllows(ServerPlayer p, Level level, BlockPos at, BlockPos lands, ItemStack held, boolean breaking) {
+		if (p.gameMode.getGameModeForPlayer() != GameType.ADVENTURE || held.isEmpty()) return false;
+		if (gameClaimAt(level, at) == null || gameClaimAt(level, lands) == null) return false;
+		var block = new net.minecraft.world.level.block.state.pattern.BlockInWorld(level, at, false);
+		return breaking ? held.canBreakBlockInAdventureMode(block) : held.canPlaceOnBlockInAdventureMode(block);
+	}
+
 	/** In any game area: the market, the inbox and pets don't work there (they'd carry things in or out). */
 	public static boolean inGame(ServerPlayer p) {
 		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || gameClaimAt(p.level(), p.blockPosition()) != null;
@@ -168,6 +195,10 @@ public final class GameClaims {
 	// ---------------------------------------------------------------- entering and leaving
 
 	private static void tick(MinecraftServer server) {
+		boolean sweep = server.getTickCount() % 20 == 0;
+		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+			if (p.isAlive()) gameMode(p, sweep);
+		}
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			// Dungeon runs put things aside and give them back themselves.
 			if (!p.isAlive() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p)) continue;
@@ -240,7 +271,10 @@ public final class GameClaims {
 			if (st.isEmpty()) continue;
 			String kind = kind(st);
 			// With the swap, everything carried now is from the game; without it only what's marked.
-			if (kind == null && !swap) continue;
+			if (kind == null && !swap) {
+				removeKitInside(st);
+				continue;
+			}
 			inv.setItem(i, ItemStack.EMPTY);
 			if ("kit".equals(kind) || remove) continue;
 			toInbox.add(unmark(st));
@@ -310,10 +344,12 @@ public final class GameClaims {
 		Claim c = id == null ? null : ClaimStore.data().claims.get(id);
 		if (c == null && !stashes.containsKey(p.getStringUUID())) {
 			if (hub && p.isAlive()) GameRuntime.toHub(server, p);
-			return;
+		} else {
+			leave(p, c);
+			sendHome(server, p);
 		}
-		leave(p, c);
-		sendHome(server, p);
+		// Saved in survival once they're out (dungeon runs end after this and are caught on the next login).
+		if (p.isAlive()) gameMode(p, false);
 	}
 
 	private static void sendHome(MinecraftServer server, ServerPlayer p) {
@@ -331,6 +367,81 @@ public final class GameClaims {
 		// Else where they'd respawn (bed, anchor or world spawn).
 		var to = p.findRespawnPositionAndUseSpawnBlock(false, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);
 		p.teleportTo(to.newLevel(), to.position().x, to.position().y, to.position().z, Set.of(), to.yRot(), to.xRot(), true);
+	}
+
+	// ---------------------------------------------------------------- adventure mode, kit leftovers
+
+	/** In a game claim, or in a dungeon run inside the dungeon (not while waiting on the pad). */
+	private static boolean playing(ServerPlayer p) {
+		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) && eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inDungeonDimension(p)) return true;
+		return gameClaimAt(p.level(), p.blockPosition()) != null;
+	}
+
+	/**
+	 * Survival players in a game play in adventure mode; out of it they're in survival again (only if still in
+	 * adventure: creative or a dungeon's spectating is left alone). With {@code sweep}, kit items they still have
+	 * outside a game vanish.
+	 */
+	public static void gameMode(ServerPlayer p, boolean sweep) {
+		String id = p.getStringUUID();
+		if (playing(p)) {
+			if (p.gameMode.getGameModeForPlayer() == GameType.SURVIVAL) {
+				p.setGameMode(GameType.ADVENTURE);
+				if (adventure.add(id)) saveAdventure();
+			}
+			return;
+		}
+		if (adventure.remove(id)) {
+			if (p.gameMode.getGameModeForPlayer() == GameType.ADVENTURE) p.setGameMode(GameType.SURVIVAL);
+			saveAdventure();
+		}
+		if (sweep && (removeKits(p.getInventory()) | removeKits(p.getEnderChestInventory()))) {
+			p.inventoryMenu.broadcastChanges();
+			p.sendOverlayMessage(Component.literal("Kit items from a game are gone").withStyle(ChatFormatting.GRAY));
+		}
+	}
+
+	/** Kit items in the container (also inside shulker boxes and bundles) vanish; true if any did. */
+	private static boolean removeKits(Container c) {
+		boolean any = false;
+		for (int i = 0; i < c.getContainerSize(); i++) {
+			ItemStack st = c.getItem(i);
+			if (st.isEmpty()) continue;
+			if ("kit".equals(kind(st))) {
+				c.setItem(i, ItemStack.EMPTY);
+				any = true;
+			} else {
+				any |= removeKitInside(st);
+			}
+		}
+		return any;
+	}
+
+	private static boolean removeKitInside(ItemStack st) {
+		boolean any = false;
+		ItemContainerContents box = st.get(DataComponents.CONTAINER);
+		if (box != null && !box.equals(ItemContainerContents.EMPTY)) {
+			NonNullList<ItemStack> items = NonNullList.withSize(256, ItemStack.EMPTY);
+			box.copyInto(items);
+			boolean kit = false;
+			for (int i = 0; i < items.size(); i++) {
+				if (!items.get(i).isEmpty() && "kit".equals(kind(items.get(i)))) {
+					items.set(i, ItemStack.EMPTY);
+					kit = true;
+				}
+			}
+			if (kit) st.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(items));
+			any = kit;
+		}
+		BundleContents bag = st.get(DataComponents.BUNDLE_CONTENTS);
+		if (bag != null && !bag.items().isEmpty()) {
+			List<ItemStackTemplate> keep = bag.items().stream().filter(t -> !"kit".equals(kind(t.create()))).toList();
+			if (keep.size() != bag.items().size()) {
+				st.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(keep));
+				any = true;
+			}
+		}
+		return any;
 	}
 
 	// ---------------------------------------------------------------- for dungeons
@@ -529,8 +640,18 @@ public final class GameClaims {
 
 	private static void load(MinecraftServer server) {
 		file = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-claim-stash.json");
+		adventureFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-game-adventure.json");
 		stashes.clear();
 		inside.clear();
+		adventure.clear();
+		try {
+			if (Files.exists(adventureFile)) {
+				List<String> saved = Json.GSON.fromJson(Files.readString(adventureFile), new com.google.gson.reflect.TypeToken<List<String>>() { }.getType());
+				if (saved != null) adventure.addAll(saved);
+			}
+		} catch (IOException | RuntimeException e) {
+			NiceControlCenter.LOGGER.error("Could not read who plays games in adventure mode ({})", adventureFile, e);
+		}
 		try {
 			if (Files.exists(file)) {
 				Map<String, Stash> saved = Json.GSON.fromJson(Files.readString(file), new com.google.gson.reflect.TypeToken<Map<String, Stash>>() { }.getType());
@@ -543,6 +664,17 @@ public final class GameClaims {
 			} catch (IOException ignored) {
 				// Nothing more to do.
 			}
+		}
+	}
+
+	private static void saveAdventure() {
+		if (adventureFile == null) return;
+		try {
+			Path tmp = adventureFile.resolveSibling(adventureFile.getFileName() + ".tmp");
+			Files.writeString(tmp, Json.GSON.toJson(List.copyOf(adventure)), StandardCharsets.UTF_8);
+			Files.move(tmp, adventureFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		} catch (IOException e) {
+			NiceControlCenter.LOGGER.error("Could not save who plays games in adventure mode", e);
 		}
 	}
 

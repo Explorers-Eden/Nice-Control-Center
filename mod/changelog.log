@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.49.0
+- Games: players in survival play game claims and dungeon runs in adventure mode and are back in survival once they're out (also after a logout or restart); creative and spectators are left alone. Kit items keep their can_break / can_place_on components, so kit tools with them can still mine and place. Inside game claims these components count instead of the claim's Build role (a player in adventure mode may break what the held item's can_break allows and place or use it where can_place_on allows)
+- Games: kit items vanish wherever a player keeps them once they're out of the game (inventory, ender chest, inside shulker boxes and bundles); ender chests don't open in game claims with a kit
+
 ## 1.48.5
 - Log: everything the mod logs while doing something the panel or dashboard asked for (deleting a report, running a command, player actions…) starts with [panel], so the panel shows it as a Panel entry; commands run by games and dungeons are logged as Game or Dungeon, not Dashboard
 

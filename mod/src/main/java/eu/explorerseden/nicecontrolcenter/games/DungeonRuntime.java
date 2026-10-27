@@ -256,7 +256,7 @@ public final class DungeonRuntime {
 		return r.lives.getOrDefault(p.getUUID(), 0) > 0 || r.dungeon.outSpectate && r.players.size() - r.out.size() > 1;
 	}
 
-	static boolean inDungeonDimension(ServerPlayer p) {
+	public static boolean inDungeonDimension(ServerPlayer p) {
 		return p.level().dimension().identifier().toString().equals(Dungeons.DIMENSION);
 	}
 
@@ -644,6 +644,7 @@ public final class DungeonRuntime {
 			}
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
+			GameClaims.gameMode(p, false);
 			p.sendSystemMessage(Component.literal(fill(r.dungeon.enterMessage.isEmpty() ? "▶ {dungeon}: find the way out!" : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
 			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Component.literal(r.dungeon.name).withStyle(ChatFormatting.LIGHT_PURPLE)));
 			commands(server, r.dungeon.enterCommands, r, p);
