@@ -1034,7 +1034,7 @@
         .map(([l, v]) => `<span class="${msptClass(v)}">${ms(v)}<small>${l}</small></span>`).join('')}</div>` : ''],
       // In cores too: docker stats counts 100 % per core, this tile a share of the whole machine.
       ['CPU', `<span class="${cpuClass}">${fixed(p.cpuProcess, 0)}%</span>`, d.server && d.server.cores
-        ? `≈ ${fixed(p.cpuProcess * d.server.cores / 100, 1)} of ${d.server.cores} cores` : `machine ${fixed(p.cpuSystem, 0)}%`],
+        ? `${fixed(p.cpuProcess * d.server.cores / 100, 1)} / ${d.server.cores} cores` : `machine ${fixed(p.cpuSystem, 0)}%`],
       ['Memory', null, null, sizes([[p.heapLive ? 'after GC' : 'in use', p.heapLive || p.heapUsed, heapClass], ['w/ garbage', p.heapUsed, usedClass], ['max', p.heapMax, '']])],
     ];
     if (d.disk) {
@@ -1046,11 +1046,17 @@
         showBusy ? `paused ${fixed(gcPct, 1)}%` : `${num(cur ? cur.gcCount : 0)} pauses`],
       ['Loaded', null, null, `<div class="np-mspt">${[['chunks', p.chunks], ['entities', p.entities], ['block ent.', p.blockEntities]]
         .map(([l, v]) => `<span>${num(v)}<small>${l}</small></span>`).join('')}</div>`],
-      ['Distances', null, null, `<div class="np-mspt">${[['view', p.view, ''], ['sim', p.sim, ''], ['mob cap', d.mobCap != null ? d.mobCap + '%' : '–', d.mobCap != null && d.mobCap < 100 ? 'warn' : '']]
-        .map(([l, v, cls]) => `<span class="${cls}" title="${l === 'mob cap' ? 'The mob cap right now (the lag ladder lowers it while the server lags)' : l === 'view' ? 'View distance (chunks)' : 'Simulation distance (chunks)'}">${v ?? '–'}<small>${l}</small></span>`).join('')}</div>`],
+      ['Distances', null, null, `<div class="np-mspt">${[['view', p.view], ['sim', p.sim]]
+        .map(([l, v]) => `<span title="${l === 'view' ? 'View distance (chunks)' : 'Simulation distance (chunks)'}">${v ?? '–'}<small>${l}</small></span>`).join('')}</div>`],
+      // The mob cap right now: the lag ladder lowers it while the server lags.
+      ['Mob cap', d.mobCap != null ? `<span class="${d.mobCap < 100 ? 'warn' : 'good'}">${d.mobCap}%</span>` : '–',
+        d.mobCap == null ? 'not known' : d.mobCap < 100 ? 'lowered while it lags' : 'normal'],
       ['Players', num(p.players), d.server && d.server.maxPlayers ? `online of ${num(d.server.maxPlayers)}` : 'online'],
     );
-    $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card${extra && extra.includes('np-mspt') ? ' wide' : ''}">
+    // Each tile a fixed base width that fits its usual content, growing in proportion on wider screens: the widths
+    // never follow the values shown, so nothing shifts when a number gets longer.
+    const BASIS = { TPS: 70, MSPT: 178, CPU: 98, Memory: 196, Disk: 188, GC: 114, Loaded: 174, Distances: 78, 'Mob cap': 70, Players: 86 };
+    $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card" style="flex: ${(BASIS[label] || 90) / 100} 0 ${BASIS[label] || 90}px">
       <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join('');
     $('pn-stats').hidden = false;
   }

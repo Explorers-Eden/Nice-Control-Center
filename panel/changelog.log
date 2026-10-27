@@ -1,3 +1,6 @@
+## 1.39.3
+- Top tiles: the mob cap is its own tile (Distances keeps view and simulation); every tile has a fixed width share, so the row no longer shifts when values change
+
 ## 1.39.2
 - Rewards: the ready-made rules' messages are gold (§6) instead of blue
 

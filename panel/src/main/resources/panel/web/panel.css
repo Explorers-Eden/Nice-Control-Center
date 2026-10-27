@@ -336,10 +336,10 @@
 
 /* Navbar tiles: the three-value tiles get about twice the room; when the window is too narrow the row
    scrolls sideways instead of cutting values off. */
-#pn-stats:not([hidden]) { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+#pn-stats:not([hidden]) { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 #pn-stats::-webkit-scrollbar { display: none; }
-#pn-stats > .np-stat-card { flex: 1 1 0; min-width: max-content; grid-column: auto; padding: 8px 10px; }
-#pn-stats > .np-stat-card.wide { flex: 2.1 1 0; min-width: max(196px, max-content); }
+/* Fixed shares and minimum widths (not the content's width), so a longer value never pushes the other tiles around. */
+#pn-stats > .np-stat-card { min-width: 0; grid-column: auto; padding: 8px 10px; }
 #pn-stats .np-stat-label { font-size: var(--fs-xs); white-space: nowrap; }
 #pn-stats .np-stat-value { font-size: var(--fs-lg); }
 #pn-stats .np-mspt { gap: 10px; font-size: var(--fs-lg); }
