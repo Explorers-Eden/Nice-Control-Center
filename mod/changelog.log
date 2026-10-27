@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.48.1
+- Claims: interaction entities (graves, hubs, the spawn's buttons) can be clicked either way by anyone again; only cushions need the build role to break
+
 ## 1.48.0
 - Dungeons: parties (/party invite, accept, leave, kick, list; up to 4): the leader starts from a pad and members within 16 blocks come along
 - Dungeons: lives per dungeon and checkpoint markers (a checkpoint anyone reaches is where everyone comes back); out players watch through a teammate who's still in (no flying around), or go back at once

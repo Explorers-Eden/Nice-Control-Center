@@ -182,11 +182,11 @@ public final class ClaimProtection {
 	private static Role entityRole(Entity e, boolean attack) {
 		if (e instanceof Player || e instanceof Enemy && !e.hasCustomName()) return null;
 		// Interaction entities only exist for data packs to notice clicks (graves, waypoint hubs, the spawn's
-		// buttons and signs), and cushions are seats: anyone may use them, only builders may hit (break) them.
-		// (Cushions by id: older Minecraft versions this mod is built for don't have them.)
-		if (e instanceof net.minecraft.world.entity.Interaction || net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString().equals("minecraft:cushion")) {
-			return attack ? Role.BUILD : null;
-		}
+		// buttons and signs): anyone may click them either way, the pack decides what's allowed.
+		if (e instanceof net.minecraft.world.entity.Interaction) return null;
+		// Cushions are seats: anyone may sit, only builders may hit (break) them.
+		// (By id: older Minecraft versions this mod is built for don't have them.)
+		if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString().equals("minecraft:cushion")) return attack ? Role.BUILD : null;
 		if (e instanceof LivingEntity && attack && !(e instanceof ArmorStand)) return null; // Damage is checked in allowDamage.
 		if (e instanceof AbstractVillager) return attack ? Role.CONTAINERS : Role.ACCESS;
 		if (e instanceof ArmorStand || e instanceof HangingEntity || e instanceof net.minecraft.world.entity.vehicle.VehicleEntity
