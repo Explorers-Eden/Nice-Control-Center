@@ -101,7 +101,7 @@ public final class TempFly {
 			}
 			online.sendSystemMessage(Component.literal("You got " + human(ms) + " of flight (" + human(g.left) + " in all) for your claims and the ones you're a Builder (or more) in. "
 					+ (inside ? "It's on: double-tap jump to take off. " : "Type /fly inside one of them. ") + "/fly switches it on and off; the time only runs while it's on.")
-					.withStyle(ChatFormatting.AQUA));
+					.withStyle(ChatFormatting.GOLD));
 		}
 		save();
 		return g.left;
@@ -140,7 +140,7 @@ public final class TempFly {
 		if (g.on) {
 			allow(p);
 			source.sendSuccess(() -> Component.literal("Flight on: " + human(g.left) + " left. Double-tap jump to take off; leaving the claim switches it off.")
-					.withStyle(ChatFormatting.AQUA), false);
+					.withStyle(ChatFormatting.GOLD), false);
 		} else {
 			land(p, null);
 			source.sendSuccess(() -> Component.literal("Flight off. " + human(g.left) + " saved for later.").withStyle(ChatFormatting.YELLOW), false);

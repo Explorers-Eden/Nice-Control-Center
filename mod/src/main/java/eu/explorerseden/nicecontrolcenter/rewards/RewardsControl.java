@@ -329,7 +329,7 @@ public final class RewardsControl {
 		}
 		String rewards = String.join(", ", got);
 		run(server, p, r.commands, value, "Reward \"" + r.name + "\"");
-		String message = r.message.isBlank() && !got.isEmpty() ? "§bYou got: {rewards}" : r.message;
+		String message = r.message.isBlank() && !got.isEmpty() ? "§6You got: {rewards}" : r.message;
 		if (message.isBlank()) return;
 		Component msg = Component.literal(fill(server, message.replace("{rewards}", rewards), p, value));
 		if (r.messageEveryone || p == null) server.getPlayerList().broadcastSystemMessage(msg, false);

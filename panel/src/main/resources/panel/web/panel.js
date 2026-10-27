@@ -2159,15 +2159,15 @@
   const REWARD_TEMPLATES = {
     welcome: { name: 'Welcome kit', trigger: 'firstJoin', repeat: 'oncePerPlayer', commands: ['give {player} minecraft:bread 16', 'give {player} minecraft:stone_sword'], message: '§aWelcome to the server, {player}! Here is a little something to get you started.' },
     dailyfly: { name: 'Daily flight', trigger: 'join', repeat: 'always', cooldownMinutes: 1200, commands: [], message: '', actions: [{ type: 'fly', amount: 0, level: 0, seconds: 600, target: '' }] },
-    xp30: { name: 'Level 30 boost', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§b{player} reached level 30!', messageEveryone: true, actions: [{ type: 'xp', amount: 0, level: 2, seconds: 3600, target: '' }] },
+    xp30: { name: 'Level 30 boost', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§6{player} reached level 30!', messageEveryone: true, actions: [{ type: 'xp', amount: 0, level: 2, seconds: 3600, target: '' }] },
     veteran: { name: 'Veteran: a second pet', trigger: 'playtime', number: 100, repeat: 'oncePerPlayer', commands: [], message: '', actions: [{ type: 'petslots', amount: 1, level: 0, seconds: 0, target: '' }] },
     homehaste: { name: 'Haste at home', trigger: 'enterClaim', repeat: 'always', cooldownMinutes: 30, commands: [], message: '', actions: [{ type: 'haste', amount: 0, level: 1, seconds: 600, target: '' }] },
     giftpack: { name: 'Starter pack', trigger: 'manual', repeat: 'oncePerPlayer', commands: [], message: '', actions: [{ type: 'claimblocks', amount: 500, level: 0, seconds: 0, target: '' }, { type: 'coupons', amount: 2, level: 3, seconds: 0, target: '' }] },
     daily: { name: 'Daily login reward', trigger: 'join', repeat: 'always', cooldownMinutes: 1200, commands: ['give {player} minecraft:emerald 1'], message: '§6Thanks for coming back! Here is your daily emerald.' },
     nether: { name: 'First trip to the Nether', trigger: 'dimension', value: 'minecraft:the_nether', repeat: 'oncePerPlayer', commands: ['effect give {player} minecraft:fire_resistance 120'], message: '§c{player} entered the Nether for the first time!', messageEveryone: true },
-    level30: { name: 'Level 30', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§b{player} reached level 30!', messageEveryone: true },
+    level30: { name: 'Level 30', trigger: 'level', number: 30, repeat: 'oncePerPlayer', commands: [], message: '§6{player} reached level 30!', messageEveryone: true },
     night: { name: 'Nightfall warning', trigger: 'dayTime', value: '18:30', repeat: 'always', commands: [], message: '§7The sun is setting. Mobs come out soon.', messageEveryone: true },
-    tip: { name: 'Hourly tip', trigger: 'interval', number: 60, repeat: 'always', commands: [], message: '§bTip: type /market to buy and sell with other players.', messageEveryone: true },
+    tip: { name: 'Hourly tip', trigger: 'interval', number: 60, repeat: 'always', commands: [], message: '§6Tip: type /market to buy and sell with other players.', messageEveryone: true },
     holiday: { name: 'Winter holiday', trigger: 'date', value: 'December 24', repeat: 'always', commands: ['give {player} minecraft:cake'], message: '§cHappy holidays, {player}!' },
     day100: { name: 'Day 100', trigger: 'gameDay', number: 100, repeat: 'once', commands: ['title @a title {"text":"Day 100!","color":"gold"}'], message: '' },
   };

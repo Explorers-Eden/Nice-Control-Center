@@ -244,7 +244,7 @@ public final class RewardActions {
 			ServerPlayer p = ctx.getSource().getPlayerOrException();
 			List<String> lines = summary(p.getUUID());
 			p.sendSystemMessage(Component.literal(lines.isEmpty() ? "You have no perks right now. They come as rewards." : "Your perks:\n• " + String.join("\n• ", lines))
-					.withStyle(lines.isEmpty() ? ChatFormatting.GRAY : ChatFormatting.AQUA));
+					.withStyle(lines.isEmpty() ? ChatFormatting.GRAY : ChatFormatting.GOLD));
 			return 1;
 		}));
 		d.register(Commands.literal("joinmessage").requires(Everyone.unless("nicecontrolcenter.joinmessage.use"))
@@ -289,7 +289,7 @@ public final class RewardActions {
 			try {
 				String line = give(server, w.id(), w.name(), online, a, ctx.getSource().getTextName());
 				done++;
-				if (online != null && !type.equals("fly") && !type.equals("pet")) online.sendSystemMessage(Component.literal("Reward: " + line).withStyle(ChatFormatting.AQUA));
+				if (online != null && !type.equals("fly") && !type.equals("pet")) online.sendSystemMessage(Component.literal("Reward: " + line).withStyle(ChatFormatting.GOLD));
 				ctx.getSource().sendSuccess(() -> Component.literal(w.name() + ": " + line), true);
 			} catch (Refused r) {
 				ctx.getSource().sendFailure(Component.literal(w.name() + ": " + r.getMessage()));

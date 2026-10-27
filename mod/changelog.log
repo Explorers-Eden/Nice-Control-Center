@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.48.4
+- Rewards: the default "You got: …" line, /reward and /perks lines and the flight messages are gold, not blue (blue stays for messages from the panel and console)
+
 ## 1.48.3
 - Pets menu: bond levels are gold (not blue); dungeon checkpoint messages are gold too
 
