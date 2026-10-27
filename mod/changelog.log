@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.50.1
+- Games, waves: exit pads take 5 seconds of standing on them (was 2), so nobody leaves by stepping over one
+
 ## 1.50.0
 - Games: new template "waves": a party of 1–4 starts it from the arena's pad and fights waves of mobs in a box built in the world (/game create waves <name>, then /game edit <name> spawn, corner1 / corner2 [x y z], mobspawn add, kit). Waves are generated from a mob pool (more mobs per wave and per player, tougher each wave, a boss every N waves) or written by hand per wave ("5: husk x6, skeleton x2"); a set number of waves to clear, or endless
 - Games, waves: dead players wait in the spectator area (/game edit <name> spectate [radius]) or watch a teammate, and come back at the next wave; the party loses when everyone is down at once or its team lives run out; their things are held, nothing drops

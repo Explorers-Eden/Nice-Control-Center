@@ -613,7 +613,7 @@ public final class GameRuntime {
 						.then(Commands.literal("exitpad")
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
 									a.exitPads.add(pos(p));
-									return "Exit pad " + a.exitPads.size() + " here: two seconds on it leaves the game.";
+									return "Exit pad " + a.exitPads.size() + " here: five seconds on it leaves the game.";
 								})))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
 									a.exitPads.clear();

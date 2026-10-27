@@ -102,6 +102,8 @@ public final class WaveRuntime {
 	private static final String BOSS = "ncc_wave_boss";
 	private static final Identifier TOUGHER = Identifier.fromNamespaceAndPath("nicecontrolcenter", "wave_toughness");
 	private static final int PAD_TICKS = 40;
+	/** Standing on an exit pad this long (ticks) leaves the game. */
+	private static final int EXIT_TICKS = 100;
 	private static final double PARTY_RANGE = 8;
 
 	/** arena id → its game. */
@@ -210,16 +212,16 @@ public final class WaveRuntime {
 	private static void pads(MinecraftServer server) {
 		long now = System.currentTimeMillis();
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			// Exit pads: two seconds on one and they're out.
+			// Exit pads: five seconds on one and they're out.
 			Game in = playing.get(p.getUUID());
 			if (in != null) {
 				if (onPad(p, in.arena.exitPads) != null) {
 					int ticks = onExit.merge(p.getUUID(), 2, Integer::sum);
-					if (ticks >= PAD_TICKS) {
+					if (ticks >= EXIT_TICKS) {
 						onExit.remove(p.getUUID());
 						out(server, in, p, "You left " + in.arena.name + " early.");
 					} else if (ticks % 20 == 2) {
-						p.sendOverlayMessage(Component.literal("Leaving " + in.arena.name + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
+						p.sendOverlayMessage(Component.literal("Leaving " + in.arena.name + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
 					}
 				} else {
 					onExit.remove(p.getUUID());

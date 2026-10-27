@@ -117,7 +117,7 @@ public final class Games {
 		/** Optional: where dead party members wait for the next wave and other parties queue up; its radius. */
 		public Pos spectate;
 		public int spectateRadius = 8;
-		/** Standing on one for 2 seconds leaves the game early. */
+		/** Standing on one for 5 seconds leaves the game early. */
 		public List<Pos> exitPads = new ArrayList<>();
 		public int minParty = 1;
 		public int maxParty = 4;
