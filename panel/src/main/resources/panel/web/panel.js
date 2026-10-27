@@ -349,7 +349,11 @@
           // with every resize, so heights are measured without that, and only real changes count.
           const fit = () => {
             const h = Math.max(160, Math.ceil(doc.body.scrollHeight));
-            if (Math.abs(h - frame.offsetHeight) > 2) frame.style.height = h + 'px';
+            if (Math.abs(h - frame.offsetHeight) > 2) {
+              frame.style.height = h + 'px';
+              // The page below moved: the sidebar and the boxes that fill the window follow.
+              requestAnimationFrame(fitHeights);
+            }
           };
           const vh = () => { doc.documentElement.style.setProperty('--pn-vh', window.innerHeight + 'px'); fitHeights(); };
           vh();
@@ -377,24 +381,52 @@
    * room from where it starts (on the page, or inside the frame) to the bottom, minus what sits below it.
    */
   function fitHeights() {
-    const pageTop = (el) => el.getBoundingClientRect().top + window.scrollY;
-    const foot = footHeight();
-    const set = (el, top, below, min) => {
+    // Sidebar and boxes end on one line just above the footer; on pages with a box that fills the window, the spacing
+    // below the content comes off too (a second pass), so the footer sits at the bottom without scrolling.
+    const filling = sizeToBottom(0);
+    const over = document.documentElement.scrollHeight - window.innerHeight;
+    if (over <= 0 || over >= 150) return;
+    sizeToBottom(over);
+    // A short page (nothing that fills the window): only worth it if the page really got shorter.
+    if (!filling && document.documentElement.scrollHeight - window.innerHeight >= over) sizeToBottom(0);
+  }
+
+  /** One pass; extra: pixels taken off the line. Returns whether a box that fills the window is shown. */
+  function sizeToBottom(extra) {
+    const target = window.innerHeight - footHeight() - 12 - extra;
+    const side = document.querySelector('.pn-side');
+    if (side && getComputedStyle(side).position === 'sticky') {
+      const top = side.parentElement.getBoundingClientRect().top + window.scrollY;
+      side.style.height = side.style.maxHeight = Math.max(300, Math.floor(target - top)) + 'px';
+    } else if (side) {
+      side.style.height = side.style.maxHeight = '';
+    }
+    let filling = false;
+    // below: space under the card that belongs to the box's page (the embedded page's own bottom spacing).
+    const fit = (el, offset, min, below = 0) => {
       if (!el || !el.offsetParent) return;
-      el.style.setProperty('height', Math.max(min, Math.floor(window.innerHeight - top - below - foot)) + 'px', 'important');
+      filling = true;
+      const card = el.closest('.np-card') || el;
+      const cardBottom = card.getBoundingClientRect().bottom + offset;
+      el.style.setProperty('height', Math.max(min, Math.floor(el.offsetHeight + target - below - cardBottom)) + 'px', 'important');
     };
-    set($('pn-log'), pageTop($('pn-log')), 92, 260);
-    const logf = document.querySelector('.pn-logf-lines');
-    if (logf) set(logf, pageTop(logf), 40, 260);
+    // Measured as if scrolled to the top (the page may be scrolled).
+    fit($('pn-log'), window.scrollY, 260);
+    fit(document.querySelector('.pn-logf-lines'), window.scrollY, 260);
     const frame = $('pn-dashboard-frame');
     try {
-      if (!frame.offsetParent) return;
-      const doc = frame.contentDocument;
-      const top = pageTop(frame);
-      const inner = (el) => el.getBoundingClientRect().top + doc.defaultView.scrollY;
-      doc.querySelectorAll('.np-console-log').forEach((el) => set(el, top + inner(el), el.id === 'np-chat-log' ? 96 : 92, 260));
-      doc.querySelectorAll('.np-inspector-list').forEach((el) => set(el, top + inner(el), 36, 360));
+      if (frame.offsetParent) {
+        const doc = frame.contentDocument;
+        const offset = frame.getBoundingClientRect().top + window.scrollY + doc.defaultView.scrollY;
+        const spacing = (el) => {
+          const card = el.closest('.np-card');
+          return card ? Math.max(0, doc.body.scrollHeight - (card.getBoundingClientRect().bottom + doc.defaultView.scrollY)) : 0;
+        };
+        doc.querySelectorAll('.np-console-log').forEach((el) => fit(el, offset, 260, el.offsetParent ? spacing(el) : 0));
+        doc.querySelectorAll('.np-inspector-list').forEach((el) => fit(el, offset, 360, el.offsetParent ? spacing(el) : 0));
+      }
     } catch (e) { /* frame not ready */ }
+    return filling;
   }
   window.addEventListener('resize', fitHeights);
 
@@ -598,8 +630,11 @@
   $('pn-menu-btn').addEventListener('click', () => document.body.classList.toggle('pn-nav-open'));
 
   // The sidebar sticks below the navbar, whose height changes with the tiles.
-  new ResizeObserver(() => document.documentElement.style.setProperty('--pn-nav-h', document.querySelector('.navbar').offsetHeight + 'px'))
-    .observe(document.querySelector('.navbar'));
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--pn-nav-h', document.querySelector('.navbar').offsetHeight + 'px');
+    // Everything below moved: the boxes that fill the window are measured again.
+    requestAnimationFrame(fitHeights);
+  }).observe(document.querySelector('.navbar'));
   // The footer's height (with its spacing), so the sidebar and the boxes that fill the window end just above it.
   function footHeight() {
     const f = document.querySelector('.np-footer');
@@ -607,7 +642,10 @@
     const cs = getComputedStyle(f);
     return f.offsetHeight + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);
   }
-  new ResizeObserver(() => document.documentElement.style.setProperty('--pn-foot-h', footHeight() + 'px')).observe(document.querySelector('.np-footer'));
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--pn-foot-h', footHeight() + 'px');
+    requestAnimationFrame(fitHeights);
+  }).observe(document.querySelector('.np-footer'));
 
   // ── Logos (Appearance) ──
 
@@ -4412,6 +4450,8 @@
       fillPerf(perfSettings);
       try { dimTuneDims = (await api('api/tweaks')).dimensions || []; } catch (e) { /* only the tuned ones */ }
       renderDimTune();
+      // The rows are drawn after the form was filled: that's the saved state too.
+      Dirty.reset('perf');
     } catch (e) {
       formMsg('pn-perf-msg', e.message, false);
     }
@@ -4446,13 +4486,13 @@
     return out;
   }
 
-  $('pn-dimtune').addEventListener('change', () => { formMsg('pn-perf-msg', 'Not saved yet.', true); });
   $('pn-dimtune-fair').addEventListener('click', () => {
     const id = 'eden:flying_fair';
     perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60 } };
     if (!dimTuneDims.some((d) => d.id === id)) dimTuneDims.push({ id, name: 'Flying Fair' });
     renderDimTune();
     formMsg('pn-perf-msg', 'Flying Fair set as a minigame world: save to use it.', true);
+    $('pn-perf-form').dispatchEvent(new Event('change'));
   });
 
   /** World → Chunks: the laggiest chunks (frozen ones from the Tuning settings), loaded without players, clean-ups. */

@@ -1,3 +1,7 @@
+## 1.36.2
+- Per-dimension tuning shows the save bar when something is changed
+- The sidebar and the window-filling boxes end on the same line above the footer on every page (also with the embedded console, chat and player list)
+
 ## 1.36.1
 - The sidebar and everything that fills the window (console, chat, log files, player list) end just above the footer
 - Per-dimension tuning, game and rule on/off switches can be clicked again (they weren't labels)
