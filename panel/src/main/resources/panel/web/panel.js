@@ -138,7 +138,8 @@
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
-        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes): settings and the best players.' }] },
+        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes): settings and the best players.' },
+        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
@@ -597,6 +598,7 @@
     if (tab === 'conduct') loadConduct();
     if (tab === 'rewards') loadRewards();
     if (tab === 'games') loadGames();
+    if (tab === 'dungeons') loadDungeons();
     if (tab === 'owncommands') loadOwnCommands();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
@@ -1785,6 +1787,7 @@
       conduct.lang = 'en_us';
       $('pn-coc-form').elements.enabled.checked = d.enabled;
       renderConduct();
+      Dirty.reset('conduct');
     } catch (err) {
       formMsg('pn-coc-msg', err.message, false);
     }
@@ -1844,8 +1847,9 @@
       gm.scores = d.scores || null;
       gm.dirty = false;
       renderArenas();
+      Dirty.reset('games');
     } catch (err) {
-      formMsg('pn-gm-msg', err.message, false);
+      formMsg('pn-gm-note', err.message, false);
     }
   }
 
@@ -1865,17 +1869,26 @@
       const where = a.start ? `${dimShort(a.start.dim)} · ${Math.round(a.start.x)}, ${Math.round(a.start.y)}, ${Math.round(a.start.z)}` : 'no start yet';
       const field = (k, label, html) => `<label class="pn-field"><span>${label}</span>${html}</label>`;
       const num = (k, min, max) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}">`;
+      const text = (k, label, hint) => field(k, label, `<input type="text" data-g="${k}" value="${esc(a[k] || '')}" placeholder="${esc(hint)}">`);
+      const lines = (k, label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="${k}" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a[k] || []).join('\n'))}</textarea></label>`;
+      const own = field('cooldown', 'Wait between runs (seconds)', num('cooldown', 0, 3600))
+        + text('startMessage', 'Start message', 'default line') + text('finishMessage', 'Finish message ({score})', 'default line')
+        + lines('startCommands', 'Commands on start ({player}, {game})') + lines('finishCommands', 'Commands when a run counts ({score})');
       const fields = {
         parkour: field('palette', 'Blocks (ids, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
-          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes', num('laneSpacing', 16, 256)),
+          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes', num('laneSpacing', 16, 256))
+          + field('ahead', 'Jumps shown ahead', num('ahead', 1, 8)) + field('maxGap', 'Longest gap (blocks)', num('maxGap', 2, 5)),
         race: field('mode', 'Race by', `<select data-g="mode">${[['run', 'running'], ['boat', 'boat'], ['elytra', 'elytra']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
+          + field('timeLimit', 'Time limit (seconds, 0 = none)', num('timeLimit', 0, 3600))
           + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
-        dropper: `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
+        dropper: field('maxTries', 'Tries (0 = as many as it takes)', num('maxTries', 0, 999)) + `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
         maze: field('size', 'Cells per side', num('size', 4, 40)) + field('wall', 'Wall block', `<input type="text" data-g="wall" value="${esc(a.wall)}">`)
           + field('floor', 'Floor block', `<input type="text" data-g="floor" value="${esc(a.floor)}">`)
+          + field('wallHeight', 'Wall height', num('wallHeight', 1, 8))
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
           + `<p class="pn-hint">After changing the size or blocks: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
       }[a.type] || '';
+      const allFields = fields + own;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${a.type === 'parkour' ? `${t.best} jumps` : gmClock(t.best)}</span><small>${t.runs} run${t.runs === 1 ? '' : 's'}</small></li>`).join('')}</ol>` : '<p class="pn-hint">No runs yet.</p>';
       return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
         <div class="pn-rw-head">
@@ -1888,11 +1901,11 @@
           </span>
         </div>
         <p class="pn-hint"><i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · players join with <code>/game join ${esc(a.name)}</code> or by stepping on it.</p>
-        <div class="pn-gm-body"><div class="pn-rw-grid">${fields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
+        <div class="pn-gm-body"><div class="pn-rw-grid">${allFields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
       </section>`;
     }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze).</p>';
     $('pn-gm-list').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; });
-    $('pn-gm-save').disabled = !edit || !gm.dirty;
+    $('pn-gm-save').disabled = !edit;
   }
 
   function gmChanged(rerender) {
@@ -1910,6 +1923,7 @@
     if (e.target.type === 'checkbox') a[k] = e.target.checked;
     else if (e.target.type === 'number') a[k] = Number(e.target.value) || 0;
     else if (k === 'palette') a[k] = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
+    else if (e.target.dataset.lines) a[k] = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
     else a[k] = e.target.value;
     if (k === 'enabled') card.classList.toggle('off', !a.enabled);
     gmChanged(false);
@@ -1926,7 +1940,7 @@
       if (!confirm(`Clear all best scores of ${a.name}?`)) return;
       try {
         await api('api/games/reset', { id: a.id });
-        formMsg('pn-gm-msg', 'Scores cleared.', true);
+        formMsg('pn-gm-note', 'Scores cleared.', true);
         gm.dirty = false;
         loadGames();
       } catch (err) {
@@ -1948,6 +1962,164 @@
       loadGames();
     } catch (err) {
       formMsg('pn-gm-msg', err.message, false);
+    }
+  });
+
+  // ── Dungeons ───────────────────────────────────────────────────────────
+
+  const dg = { settings: null, runs: [], scores: {}, dirty: false };
+
+  async function loadDungeons() {
+    try {
+      const d = await api('api/dungeons');
+      dg.runs = d.runs || [];
+      dg.scores = d.scores || {};
+      const fresh = !dg.dirty || !dg.settings;
+      if (fresh) {
+        dg.settings = d.settings;
+        dg.dirty = false;
+      }
+      renderDungeons();
+      if (fresh) Dirty.reset('dungeons');
+    } catch (err) {
+      formMsg('pn-dg-note', err.message, false);
+    }
+  }
+
+  function renderDungeons() {
+    const edit = can('settings.server');
+    const s = dg.settings;
+    $('pn-dg-enabled').checked = s.enabled;
+    $('pn-dg-slots').value = s.maxSlots;
+    $('pn-dg-party').value = s.maxParty;
+    $('pn-dg-pieces').value = s.piecesPerTick;
+    $('pn-dg-cooldown').value = s.cooldown;
+    ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces', 'pn-dg-cooldown'].forEach((id) => { $(id).disabled = !edit; });
+    $('pn-dg-save').disabled = !edit;
+
+    $('pn-dg-runs').innerHTML = dg.runs.length ? `<ul class="pn-dg-runs">${dg.runs.map((r) => `<li>
+        <b>${esc(r.dungeon)}</b><span class="np-chip">${esc(r.state)}</span><span class="np-chip">slot ${r.slot}</span>
+        <span class="pn-dg-who">${r.players.map((p) => `<span class="${p.out ? 'out' : ''}">${esc(p.name)}${p.out ? ' (out)' : p.lives ? ` ❤${p.lives}` : ''}</span>`).join('') || '<em>nobody (tried from the console)</em>'}</span>
+        <span class="pn-dg-time">${gmClock(r.millis)}</span>
+        <button type="button" class="np-btn small danger" data-dgclose="${r.slot}" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i> Close</button></li>`).join('')}</ul>`
+      : '<p class="pn-hint">No dungeon runs right now.</p>';
+
+    const opt = (v, cur, label) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${label}</option>`;
+    $('pn-dg-list').innerHTML = s.dungeons.map((d, i) => {
+      const field = (label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
+      const num = (k, min, max) => `<input type="number" data-d="${k}" value="${d[k]}" min="${min}" max="${max}">`;
+      const text = (k, hint) => `<input type="text" data-d="${k}" value="${esc(d[k] || '')}" placeholder="${esc(hint)}">`;
+      const lines = (k) => `<textarea data-d="${k}" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((d[k] || []).join('\n'))}</textarea>`;
+      const counts = {};
+      (d.markers || []).forEach((m) => { counts[m.type] = (counts[m.type] || 0) + 1; });
+      const markers = Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ') || 'no markers';
+      const warn = !d.pieces ? 'Not saved yet: <code>/dungeon save ' + esc(d.name) + '</code>'
+        : !counts.start ? 'Needs a <code>start</code> marker before players can get it.'
+        : d.clearOn === 'exit' && !counts.exit ? 'No <code>exit</code> marker: it can\'t be cleared.'
+        : d.clearOn === 'boss' && !counts.boss ? 'No <code>boss</code> marker: it can\'t be cleared.' : '';
+      const best = dg.scores[d.id] || {};
+      const board = [1, 2, 3, 4].filter((n) => best[n]).map((n) => `<li><b>${n === 1 ? 'Solo' : n + ' players'}</b><span>${gmClock(best[n].millis)}</span><small>${esc((best[n].names || []).join(', '))} · ${best[n].clears} clear${best[n].clears === 1 ? '' : 's'}</small></li>`).join('');
+      return `<section class="pn-gm-card ${d.enabled ? '' : 'off'}" data-dungeon="${i}">
+        <div class="pn-rw-head">
+          <label class="np-switch" title="In its pool or not"><input type="checkbox" data-d="enabled" ${d.enabled ? 'checked' : ''}><span></span></label>
+          <span class="pn-rw-give-icon"><i class="bi bi-door-closed"></i></span>
+          <b class="pn-gm-name">${esc(d.name)}</b><span class="np-chip">${esc(d.pool)}</span>
+          ${d.pieces ? `<span class="np-chip">${d.sizeX} × ${d.sizeY} × ${d.sizeZ}</span>` : ''}
+          <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-dgdel="${i}" title="Remove the dungeon and its saved blocks"><i class="bi bi-trash"></i></button></span>
+        </div>
+        <p class="pn-hint"><i class="bi bi-pin-map"></i> ${esc(markers)}${d.savedAt ? ` · saved ${esc(new Date(d.savedAt).toLocaleString())}${d.savedBy ? ' by ' + esc(d.savedBy) : ''}` : ''}${warn ? ` · <span class="pn-dg-warn">${warn}</span>` : ''}</p>
+        <div class="pn-gm-body"><div class="pn-rw-grid">
+          ${field('Pool', text('pool', 'default'))}
+          ${field('Players, at least', num('minParty', 1, 4))}
+          ${field('Players, at most', num('maxParty', 1, 4))}
+          ${field('Lives (deaths before out)', num('lives', 0, 99))}
+          ${field('Out players', `<select data-d="outSpectate">${opt(true, d.outSpectate, 'watch their party')}${opt(false, d.outSpectate, 'go back at once')}</select>`)}
+          ${field('Time limit (minutes, 0 = none)', num('timeLimit', 0, 600))}
+          ${field('Cleared by', `<select data-d="clearOn">${opt('exit', d.clearOn, 'reaching an exit')}${opt('boss', d.clearOn, 'beating every boss')}</select>`)}
+          ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
+          ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}
+          ${d.gear === 'kit' ? field('Kit', `<span class="pn-dg-kit">${(d.kit || []).length ? `${d.kit.length} stack${d.kit.length === 1 ? '' : 's'} <button type="button" class="np-btn small" data-dgkit="${i}">Clear</button>` : 'none'} <small>set in game: <code>/dungeon kit ${esc(d.name)}</code></small></span>`) : ''}
+          ${field('Message on entering', text('enterMessage', '▶ {dungeon}: find the way out!'), true)}
+          ${field('Boss bar while it\'s prepared', text('prepareMessage', 'Preparing your dungeon…'), true)}
+          ${field('Message when cleared', text('clearedMessage', '■ {dungeon} cleared in {time}!'), true)}
+          ${field('Message when failed', text('failedMessage', '■ {dungeon}: the run is over.'), true)}
+          ${field('Commands on entering ({player}, {party}, {dungeon})', lines('enterCommands'), true)}
+          ${field('Commands on leaving or the end ({time}, {deaths})', lines('exitCommands'), true)}
+        </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best clears</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}</div></div>
+      </section>`;
+    }).join('') || '<section class="np-card"><p class="np-empty">No dungeons yet. Build one, then <code>/dungeon create MyDungeon</code> at a corner in game.</p></section>';
+
+    $('pn-dg-pads').innerHTML = s.pads.length ? `<ul class="pn-dg-runs">${s.pads.map((p, i) => `<li><span class="np-chip">${esc(p.pool)}</span>
+        <span>${esc(dimShort(p.pos.dim))} · ${Math.round(p.pos.x)}, ${Math.round(p.pos.y)}, ${Math.round(p.pos.z)}</span>
+        ${s.dungeons.some((d) => d.pool === p.pool && d.enabled) ? '' : '<span class="pn-dg-warn">no dungeon in this pool</span>'}
+        <button type="button" class="np-btn small danger" data-dgpad="${i}" ${edit ? '' : 'disabled'}><i class="bi bi-trash"></i></button></li>`).join('')}</ul>`
+      : '<p class="pn-hint">No pads yet: stand where players should start and type <code>/dungeon pad add &lt;pool&gt;</code>.</p>';
+    $('pn-dg-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+  }
+
+  function dgChanged(rerender) {
+    dg.dirty = true;
+    $('pn-dg-save').disabled = false;
+    formMsg('pn-dg-msg', 'Not saved yet.', true);
+    if (rerender) renderDungeons();
+  }
+
+  const DG_GLOBAL = { 'pn-dg-slots': 'maxSlots', 'pn-dg-party': 'maxParty', 'pn-dg-pieces': 'piecesPerTick', 'pn-dg-cooldown': 'cooldown' };
+  Object.entries(DG_GLOBAL).forEach(([id, k]) => $(id).addEventListener('input', (e) => { dg.settings[k] = Number(e.target.value) || 0; dgChanged(false); }));
+  $('pn-dg-enabled').addEventListener('change', (e) => { dg.settings.enabled = e.target.checked; dgChanged(false); });
+  $('pn-dg-list').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-dungeon]');
+    const k = e.target.dataset.d;
+    if (!card || !k) return;
+    const d = dg.settings.dungeons[+card.dataset.dungeon];
+    const v = e.target.value;
+    if (e.target.type === 'checkbox') d[k] = e.target.checked;
+    else if (e.target.type === 'number') d[k] = Number(v) || 0;
+    else if (e.target.dataset.lines) d[k] = v.split('\n').map((x) => x.trim()).filter(Boolean);
+    else if (v === 'true' || v === 'false') d[k] = v === 'true';
+    else d[k] = v;
+    if (k === 'enabled') card.classList.toggle('off', !d.enabled);
+    dgChanged(k === 'gear');
+  });
+  $('pn-dg-list').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-dgdel]');
+    const kit = e.target.closest('[data-dgkit]');
+    if (del) {
+      const d = dg.settings.dungeons[+del.dataset.dgdel];
+      if (!confirm(`Remove ${d.name}? Its saved blocks go too once you save; what you built stays in the world.`)) return;
+      dg.settings.dungeons = dg.settings.dungeons.filter((x) => x !== d);
+      dgChanged(true);
+    } else if (kit) {
+      dg.settings.dungeons[+kit.dataset.dgkit].kit = [];
+      dgChanged(true);
+    }
+  });
+  $('pn-dg-pads').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dgpad]');
+    if (!b) return;
+    dg.settings.pads.splice(+b.dataset.dgpad, 1);
+    dgChanged(true);
+  });
+  $('pn-dg-runs').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-dgclose]');
+    if (!b || !confirm('Close this run? Everyone in it is sent back.')) return;
+    try {
+      await api('api/dungeons/close', { slot: +b.dataset.dgclose });
+      formMsg('pn-dg-note', 'Run closed.', true);
+      setTimeout(loadDungeons, 1500);
+    } catch (err) {
+      formMsg('pn-dg-note', err.message, false);
+    }
+  });
+  $('pn-dg-refresh').addEventListener('click', loadDungeons);
+  $('pn-dg-save').addEventListener('click', async () => {
+    try {
+      await api('api/dungeons', dg.settings);
+      dg.dirty = false;
+      formMsg('pn-dg-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+      loadDungeons();
+    } catch (err) {
+      formMsg('pn-dg-msg', err.message, false);
     }
   });
 
@@ -2010,6 +2182,7 @@
       rw.pets = d.pets || [];
       rw.dirty = false;
       renderRewards();
+      Dirty.reset('rewards');
     } catch (err) {
       formMsg('pn-rw-msg', err.message, false);
     }
@@ -5207,6 +5380,7 @@
     try {
       own.list = (await api('api/links')).links;
       renderOwn();
+      Dirty.reset('owncommands');
     } catch (err) {
       formMsg('pn-own-msg', err.message, false);
     }
@@ -5241,7 +5415,7 @@
       </section>`;
     }).join('') || '<p class="np-empty">No own commands yet. Add a link (like /discord), a text (like /rules) or an alias (like /spawn).</p>';
     $('pn-own').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
-    $('pn-own-save').disabled = !edit || !own.dirty;
+    $('pn-own-save').disabled = !edit;
   }
 
   function ownChanged(rerender) {
@@ -6927,6 +7101,13 @@
   // ── Start ──────────────────────────────────────────────────────────────
 
   Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
+  // Pages that keep their state in script: the same floating Save/Cancel bar, their state compared as a whole.
+  const tabPanel = (t) => document.querySelector(`.np-tab-panel[data-tab="${t}"]`);
+  Dirty.track('games', tabPanel('games'), { saveButtons: [$('pn-gm-save')], reload: () => { gm.dirty = false; loadGames(); }, extra: () => gm.settings });
+  Dirty.track('dungeons', tabPanel('dungeons'), { saveButtons: [$('pn-dg-save')], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings });
+  Dirty.track('rewards', tabPanel('rewards'), { saveButtons: [$('pn-rw-save')], reload: () => { rw.dirty = false; loadRewards(); }, extra: () => rw.settings });
+  Dirty.track('owncommands', tabPanel('owncommands'), { saveButtons: [$('pn-own-save')], reload: () => { own.dirty = false; loadOwnCommands(); }, extra: () => own.list });
+  Dirty.track('conduct', $('pn-coc-form'), { reload: loadConduct, extra: () => conduct.texts });
   Dirty.track('backups', $('pn-backup-settings'), { reload: () => { delete $('pn-backup-settings').dataset.filled; loadBackups(); },
     extra: () => [...exSet].sort() });
   Dirty.track('logs', $('pn-cleanup-save').closest('section'), { saveButtons: [$('pn-cleanup-save')], reload: loadCleanup });

@@ -91,7 +91,8 @@ public final class GameClaims {
 		// Before death drops: game items are dealt with here, so no grave and nothing of theirs is lost.
 		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
 			if (entity instanceof ServerPlayer p) {
-				if (GameRuntime.hubCovers(p)) toHubOnRespawn.add(p.getUUID());
+				// (Not while a dungeon brings them back to its checkpoint.)
+				if (GameRuntime.hubCovers(p) && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p)) toHubOnRespawn.add(p.getUUID());
 				died(p);
 			}
 			return true;
@@ -141,6 +142,7 @@ public final class GameClaims {
 
 	/** Inside a game claim that puts inventories aside (for blocking graves). */
 	public static boolean inInventoryClaim(ServerPlayer p) {
+		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.noGrave(p)) return true;
 		Claim c = gameClaimAt(p.level(), p.blockPosition());
 		return c != null && c.admin.inventory;
 	}
@@ -167,7 +169,8 @@ public final class GameClaims {
 
 	private static void tick(MinecraftServer server) {
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			if (!p.isAlive()) continue;
+			// Dungeon runs put things aside and give them back themselves.
+			if (!p.isAlive() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p)) continue;
 			Claim now = gameClaimAt(p.level(), p.blockPosition());
 			String nowId = now == null ? null : now.id;
 			String was = inside.get(p.getUUID());
@@ -328,6 +331,71 @@ public final class GameClaims {
 		// Else where they'd respawn (bed, anchor or world spawn).
 		var to = p.findRespawnPositionAndUseSpawnBlock(false, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);
 		p.teleportTo(to.newLevel(), to.position().x, to.position().y, to.position().z, Set.of(), to.yRot(), to.xRot(), true);
+	}
+
+	// ---------------------------------------------------------------- for dungeons
+
+	/** Puts what the player carries aside (saved at once) and clears it; nothing if something's put aside already. */
+	public static void stashFor(ServerPlayer p, String key) {
+		if (stashes.containsKey(p.getStringUUID())) return;
+		Claim pseudo = new Claim();
+		pseudo.id = key;
+		pseudo.name = "Dungeon";
+		pseudo.admin = new Claims.AdminOptions();
+		pseudo.admin.inventory = true;
+		enter(p, pseudo);
+	}
+
+	/** Hands out kit items (they vanish when the player leaves or dies). */
+	public static void giveKit(ServerPlayer p, List<String> kit, String key) {
+		if (kit == null) return;
+		for (String json : kit) {
+			ItemStack st = decode(p, json);
+			if (st.isEmpty()) continue;
+			mark(st, key, "kit");
+			if (!p.getInventory().add(st)) p.level().addFreshEntity(new ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
+		}
+		p.inventoryMenu.broadcastChanges();
+	}
+
+	/** Gives back what was put aside; what they carry now vanishes (kit, removePickups) or goes to the inbox. */
+	public static void restoreFor(ServerPlayer p, boolean removePickups) {
+		if (!stashes.containsKey(p.getStringUUID())) return;
+		Claim pseudo = new Claim();
+		pseudo.admin = new Claims.AdminOptions();
+		pseudo.admin.removePickups = removePickups;
+		leave(p, pseudo);
+	}
+
+	public static boolean hasStash(ServerPlayer p) {
+		return stashes.containsKey(p.getStringUUID());
+	}
+
+	/** Dying with things put aside: what they carry vanishes (kit, removePickups) or goes to the inbox; no XP drops. */
+	public static void clearCarried(ServerPlayer p, boolean removePickups) {
+		var inv = p.getInventory();
+		List<ItemStack> toInbox = new ArrayList<>();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack st = inv.getItem(i);
+			if (st.isEmpty()) continue;
+			inv.setItem(i, ItemStack.EMPTY);
+			if ("kit".equals(kind(st)) || removePickups) continue;
+			toInbox.add(unmark(st));
+		}
+		p.setExperienceLevels(0);
+		p.setExperiencePoints(0);
+		inbox(p, toInbox);
+	}
+
+	/** The admin's current inventory as kit JSON (for a dungeon's kit). */
+	public static List<String> kitFrom(ServerPlayer admin) {
+		List<String> kit = new ArrayList<>();
+		var inv = admin.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack st = inv.getItem(i);
+			if (!st.isEmpty()) kit.add(encode(admin, unmark(st.copy())));
+		}
+		return kit;
 	}
 
 	// ---------------------------------------------------------------- pickups

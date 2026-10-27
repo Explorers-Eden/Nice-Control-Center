@@ -615,6 +615,18 @@ public final class DashboardServer {
 				String id = body.has("id") ? body.get("id").getAsString() : "";
 				sendJson(exchange, onServerThread(() -> Map.of("ok", eu.explorerseden.nicecontrolcenter.games.GameRuntime.resetScores(id))));
 			}
+			case "/api/dungeons" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.games.DungeonRuntime::view));
+			case "/api/dungeons/close" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				int slot = body.has("slot") ? body.get("slot").getAsInt() : -1;
+				sendJson(exchange, onServerThread(() -> {
+					String err = eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.close(minecraft, slot);
+					return err == null ? Map.of("ok", true) : Map.of("error", err);
+				}));
+			}
 			case "/api/cleanup/census" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.core.Cleanup.census(minecraft)));
 			case "/api/entitytypes" -> sendJson(exchange, onServerThread(() -> {
 				List<Map<String, Object>> types = new ArrayList<>();

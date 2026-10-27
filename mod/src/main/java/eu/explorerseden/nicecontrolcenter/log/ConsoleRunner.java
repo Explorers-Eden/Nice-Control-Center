@@ -19,6 +19,11 @@ public final class ConsoleRunner {
 		return run(server, command, "Dashboard");
 	}
 
+	/** Runs a command of the mod's own (dungeon spawns) with full rights and no output: nothing in chat or the log. */
+	public static void quiet(MinecraftServer server, String command) {
+		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command.strip().replaceFirst("^/", ""));
+	}
+
 	/** Output lines and whether the command succeeded. */
 	public record Result(List<String> lines, boolean ok) {
 	}

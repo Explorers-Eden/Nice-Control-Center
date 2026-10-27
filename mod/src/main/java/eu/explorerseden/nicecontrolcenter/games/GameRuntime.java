@@ -253,7 +253,7 @@ public final class GameRuntime {
 				sessions.put(p.getUUID(), s);
 				BlockPos first = laneStart(a, lane);
 				place(level, s, first, a);
-				for (int i = 0; i < 3; i++) nextJump(level, s, a);
+				for (int i = 0; i < a.ahead; i++) nextJump(level, s, a);
 				p.teleportTo(level, first.getX() + 0.5, first.getY() + 1, first.getZ() + 0.5, Set.of(), 0, 0, true);
 			}
 			case "race" -> {
@@ -275,19 +275,21 @@ public final class GameRuntime {
 			}
 		}
 		level.playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 0.8f, 1.6f);
-		p.sendSystemMessage(Component.literal("▶ " + a.name + " started. " + switch (a.type) {
+		String hint = switch (a.type) {
 			case "parkour" -> "Jump as far as you can!";
-			case "race" -> "Pass the " + a.checkpoints.size() + " checkpoints in order, then the finish.";
-			case "dropper" -> "Land in the water at the bottom.";
+			case "race" -> "Pass the " + a.checkpoints.size() + " checkpoints in order, then the finish." + (a.timeLimit > 0 ? " You have " + clock(a.timeLimit * 1000L) + "." : "");
+			case "dropper" -> "Land in the water at the bottom." + (a.maxTries > 0 ? " " + a.maxTries + " tries." : "");
 			default -> "Find the way to the glowing corner.";
-		} + " /game leave stops.").withStyle(ChatFormatting.GREEN));
+		};
+		p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.name + " started. " + hint + " /game leave stops." : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
+		commands(server, a.startCommands, a, p, "");
 		return null;
 	}
 
 	/** Ends a run: finished = it counts (score kept, rewards). */
 	static void end(MinecraftServer server, Session s, String why, boolean finished) {
 		sessions.remove(s.player);
-		cooldown.put(s.player, System.currentTimeMillis() + 3000);
+		cooldown.put(s.player, System.currentTimeMillis() + s.arena.cooldown * 1000L);
 		ServerPlayer p = server.getPlayerList().getPlayer(s.player);
 		ServerLevel level = level(server, s.arena.start.dim);
 		if (level != null) for (BlockPos b : s.blocks) unplace(level, b);
@@ -310,12 +312,16 @@ public final class GameRuntime {
 		}
 		if (p != null) {
 			String result = Games.higherIsBetter(s.arena.type) ? s.progress + " jump" + (s.progress == 1 ? "" : "s") : clock(score);
-			if (finished) p.sendSystemMessage(Component.literal("■ " + s.arena.name + ": " + result + (record ? " · new personal best!" : "")).withStyle(record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
+			if (finished) {
+				String line = s.arena.finishMessage.isBlank() ? "■ " + s.arena.name + ": " + result : fill(s.arena.finishMessage, s.arena, p, result);
+				p.sendSystemMessage(Component.literal(line + (record ? " · new personal best!" : "")).withStyle(record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
+				commands(server, s.arena.finishCommands, s.arena, p, result);
+			}
 			else if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
 			// Back to the start pad (not after dying: the respawn takes care of that).
 			if (level != null && p.isAlive() && why != null && !why.startsWith("You left")) {
 				p.teleportTo(level, s.arena.start.x, s.arena.start.y, s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
-				cooldown.put(s.player, System.currentTimeMillis() + 3000);
+				cooldown.put(s.player, System.currentTimeMillis() + Math.max(3, s.arena.cooldown) * 1000L);
 			}
 			if (finished) {
 				RewardsControl.fireGame(server, "gameFinished", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));
@@ -346,7 +352,7 @@ public final class GameRuntime {
 		int dy = random.nextInt(3) - 1;
 		int forward = 2 + random.nextInt(2) + (hard > 0 ? random.nextInt(hard + 1) / 2 : 0);
 		if (dy > 0) forward = Math.min(forward, 3);
-		forward = Math.min(forward, 4);
+		forward = Math.min(forward, s.arena.maxGap);
 		int side = random.nextInt(3) - 1;
 		BlockPos lane = laneStart(a, s.lane);
 		// Keep within the lane (laneSpacing wide) and within the world's height.
@@ -405,6 +411,10 @@ public final class GameRuntime {
 	}
 
 	private static void race(MinecraftServer server, ServerPlayer p, Session s) {
+		if (s.arena.timeLimit > 0 && s.millis() > s.arena.timeLimit * 1000L) {
+			end(server, s, "Time's up: run over.", false);
+			return;
+		}
 		List<Games.Point> cps = s.arena.checkpoints;
 		if (s.progress < cps.size()) {
 			if (inside(p, cps.get(s.progress))) {
@@ -426,6 +436,10 @@ public final class GameRuntime {
 		boolean landed = p.onGround() && p.getY() < a.top.y - 2;
 		if (landed || p.getY() < a.finish.y - a.finish.radius - 20) {
 			s.progress++;
+			if (a.maxTries > 0 && s.progress >= a.maxTries) {
+				end(server, s, "Out of tries: run over.", false);
+				return;
+			}
 			p.teleportTo((ServerLevel) p.level(), a.top.x, a.top.y, a.top.z, Set.of(), a.top.yaw, 0, true);
 			p.resetFallDistance();
 			p.level().playSound(null, p.blockPosition(), SoundEvents.CHICKEN_EGG, SoundSource.PLAYERS, 0.6f, 1.6f);
@@ -474,7 +488,8 @@ public final class GameRuntime {
 		for (int x = 0; x < w; x++) {
 			for (int z = 0; z < w; z++) {
 				level.setBlock(o.offset(x, 0, z), floor, 2);
-				for (int y = 1; y <= 3; y++) level.setBlock(o.offset(x, y, z), open[x][z] ? Blocks.AIR.defaultBlockState() : wall, 2);
+				// Up to 8 high: a lower wall height clears what a taller one left.
+				for (int y = 1; y <= 8; y++) level.setBlock(o.offset(x, y, z), open[x][z] || y > a.wallHeight ? Blocks.AIR.defaultBlockState() : wall, 2);
 			}
 		}
 		// The goal glows.
@@ -587,6 +602,18 @@ public final class GameRuntime {
 							buildMaze((ServerLevel) p.level(), a);
 							return "Maze built.";
 						}))))));
+	}
+
+	/** {player}, {game}, {score} in an arena's own lines and commands. */
+	private static String fill(String text, Arena a, ServerPlayer p, String score) {
+		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.name).replace("{score}", score);
+	}
+
+	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {
+		for (String line : lines) {
+			String cmd = fill(line.strip().replaceFirst("^/", ""), a, p, score);
+			if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd);
+		}
 	}
 
 	private interface Edit {

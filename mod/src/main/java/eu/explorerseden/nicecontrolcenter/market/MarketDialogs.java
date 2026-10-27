@@ -169,6 +169,7 @@ public final class MarketDialogs {
 
 	public static void home(ServerPlayer player, String notice) {
 		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The market")) return;
+		inboxOnly.remove(player.getUUID());
 		Market.Data data = MarketStore.data();
 		String me = player.getStringUUID();
 		Market.Mailbox mail = data.mail.get(me);
@@ -180,13 +181,13 @@ public final class MarketDialogs {
 		body.add(text(data.listings.size() + (data.listings.size() == 1 ? " player listing" : " player listings") + " for sale · paid in " + MarketStore.currencyName(), ChatFormatting.GRAY));
 		long balance = data.balance(me);
 		body.add(text("Your bank: " + money(balance) + (balance > 0 ? " · spent first when you buy" : ""), ChatFormatting.GOLD));
-		if (mail != null && !mail.isEmpty()) body.add(text("Your mailbox: " + mailSummary(mail), ChatFormatting.GOLD));
+		if (mail != null && !mail.isEmpty()) body.add(text("Your inbox: " + mailSummary(mail), ChatFormatting.GOLD));
 		List<ActionButton> buttons = new ArrayList<>();
 		if (serverShopOpen()) buttons.add(button("Server shop", "What the server sells", "server", args()));
 		buttons.add(button(serverShopOpen() ? "Player listings" : "Browse", "Everything players sell", "browse", args("page", "0")));
 		buttons.add(button("Sell", "List items from your inventory", "sell", args()));
 		buttons.add(button("My listings (" + data.of(me).size() + ")", "Change the price of what you sell, or take it back", "mine", args()));
-		buttons.add(button("Mailbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Items that came back or didn't fit, and what you bought on the website", "mail", args()));
+		buttons.add(button("Inbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Items that came back or didn't fit, what you bought on the website, and things from game areas (also /inbox)", "mail", args()));
 		buttons.add(button("Bank", "Deposit and withdraw " + MarketStore.currencyName() + "; sales are paid in here", "bank", args()));
 		menu(player, "Market", body, List.of(), buttons);
 	}
@@ -428,7 +429,7 @@ public final class MarketDialogs {
 			long days = Math.max(0, (l.expires - System.currentTimeMillis()) / 86_400_000L);
 			int carried = stack.isEmpty() ? 0 : MarketStore.count(player, stack);
 			body.add(text("Your listing · " + days + (days == 1 ? " day" : " days") + " left. Change the price below, add more of the item"
-					+ (carried > 0 ? " (you carry " + String.format(Locale.ROOT, "%,d", carried) + ")" : "") + ", or take it back into your mailbox.", ChatFormatting.GRAY));
+					+ (carried > 0 ? " (you carry " + String.format(Locale.ROOT, "%,d", carried) + ")" : "") + ", or take it back into your inbox.", ChatFormatting.GRAY));
 			List<Input> inputs = List.of(
 					new Input("price", new TextInput(120, Component.literal("Price"), true, typed == null ? String.valueOf(l.price) : str(typed, "price"), 9, Optional.empty())),
 					new Input("per", new TextInput(120, Component.literal("For how many"), true, typed == null ? String.valueOf(l.lot()) : str(typed, "per"), 9, Optional.empty())),
@@ -436,7 +437,7 @@ public final class MarketDialogs {
 			buttons.addAll(ways);
 			buttons.add(button("Save price", "Price and how many at a time", "edit", args("id", l.id)));
 			buttons.add(button("Add more", "From your inventory; runs " + MarketStore.settings().listingDays + " days again", "restock", args("id", l.id)));
-			buttons.add(button("Take it back", "Into your mailbox", "cancel", args("id", l.id)));
+			buttons.add(button("Take it back", "Into your inbox", "cancel", args("id", l.id)));
 			menu(player, l.item.name, body, inputs, buttons, back("mine", args()));
 			return;
 		}
@@ -701,7 +702,7 @@ public final class MarketDialogs {
 			menu(player, "Market · Sell", body, List.of(), List.of(), back("home", args()));
 			return;
 		}
-		body.add(text("Pick what to sell. Unsold items come back to your mailbox after " + MarketStore.settings().listingDays + " days.", ChatFormatting.GRAY));
+		body.add(text("Pick what to sell. Unsold items come back to your inbox after " + MarketStore.settings().listingDays + " days.", ChatFormatting.GRAY));
 		String sig = signature(kinds);
 		List<Market.Listing> mine = MarketStore.data().of(player.getStringUUID());
 		for (int i = 0; i < kinds.size() && i < 36; i++) {
@@ -787,14 +788,18 @@ public final class MarketDialogs {
 	/** /inbox: the mailbox straight away. */
 	public static void openInbox(ServerPlayer player) {
 		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The inbox")) return;
+		inboxOnly.add(player.getUUID());
 		mail(player);
 	}
+
+	/** Opened with /inbox (not from the market): its bottom button closes it instead of going back to the market. */
+	private static final java.util.Set<java.util.UUID> inboxOnly = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	private static void mail(ServerPlayer player) {
 		Market.Mailbox m = MarketStore.data().mail.get(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();
 		if (m == null || m.isEmpty()) {
-			body.add(text("Your mailbox is empty.", ChatFormatting.GRAY));
+			body.add(text("Your inbox is empty.", ChatFormatting.GRAY));
 		} else {
 			if (m.currency > 0) body.add(text("Earnings: " + money(m.currency), ChatFormatting.GOLD));
 			for (int i = 0; i < m.orders.size(); i++) {
@@ -813,7 +818,8 @@ public final class MarketDialogs {
 		}
 		List<ActionButton> buttons = new ArrayList<>();
 		if (m != null && (m.currency > 0 || !m.parcels.isEmpty())) buttons.add(button("Collect", "The items that fit in your inventory", "collect", args()));
-		menu(player, "Market · Mailbox", body, List.of(), buttons, back("home", args()));
+		if (inboxOnly.contains(player.getUUID())) menu(player, "Inbox", body, List.of(), buttons);
+		else menu(player, "Inbox", body, List.of(), buttons, back("home", args()));
 	}
 
 	// ---------------------------------------------------------------- answers
@@ -941,7 +947,7 @@ public final class MarketDialogs {
 		}
 		MarketStore.saveNow();
 		tellSeller(player.level().getServer(), sellerId, player.getPlainTextName() + " bought " + amount + " × " + item.name + " for " + money(cost) + ".");
-		home(player, "Bought " + amount + " × " + item.name + " for " + money(cost) + (left > 0 ? "; " + left + " didn't fit and wait in your mailbox." : "."));
+		home(player, "Bought " + amount + " × " + item.name + " for " + money(cost) + (left > 0 ? "; " + left + " didn't fit and wait in your inbox." : "."));
 	}
 
 	private static void list(ServerPlayer player, CompoundTag in) {
@@ -1065,7 +1071,7 @@ public final class MarketDialogs {
 			while (higher <= l.amount && l.amount % higher != 0) higher++;
 			List<ActionButton> ways = new ArrayList<>();
 			String money = money(price);
-			ways.add(button("Per " + per + ", " + spare + " back", money + " per " + per + "; the " + spare + " left over go to your mailbox", "editfix",
+			ways.add(button("Per " + per + ", " + spare + " back", money + " per " + per + "; the " + spare + " left over go to your inbox", "editfix",
 					args("id", l.id, "setprice", String.valueOf(price), "setper", String.valueOf(per), "spare", String.valueOf(spare))));
 			if (lower > 1 || per <= 2) ways.add(button("Per " + lower + " instead", money + (lower == 1 ? " each" : " per " + lower) + ", all " + l.amount + " stay listed", "editfix",
 					args("id", l.id, "setprice", String.valueOf(price), "setper", String.valueOf(lower), "spare", "0")));
@@ -1112,7 +1118,7 @@ public final class MarketDialogs {
 			return;
 		}
 		MarketStore.saveNow();
-		view(player, l, null, "Now " + price(l) + "." + (spare > 0 ? " " + spare + " went to your mailbox." : ""));
+		view(player, l, null, "Now " + price(l) + "." + (spare > 0 ? " " + spare + " went to your inbox." : ""));
 	}
 
 	private static void collect(ServerPlayer player) {
@@ -1143,7 +1149,7 @@ public final class MarketDialogs {
 		}
 		data.mailChanged(m);
 		MarketStore.saveNow();
-		home(player, full ? "Your inventory is full: the rest waits in your mailbox." : "Collected everything.");
+		home(player, full ? "Your inventory is full: the rest waits in your inbox." : "Collected everything.");
 	}
 
 	/** Runs a command listing bought on the website, for the player where they stand. */

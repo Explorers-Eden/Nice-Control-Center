@@ -1201,11 +1201,47 @@
 					</dl>
 					<div class="np-filters">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-gm-enabled"><span></span></span> Games on</label>
-						<button type="button" class="np-btn primary" id="pn-gm-save" disabled><i class="bi bi-check2"></i> Save</button>
-						<span class="np-form-msg" id="pn-gm-msg"></span>
+						<span class="np-form-msg" id="pn-gm-note"></span>
 					</div>
 				</section>
 				<div id="pn-gm-list" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-gm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-gm-msg"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="dungeons" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-door-closed"></i> Dungeons</h3>
+					<p class="np-card-intro">Dungeons you build yourself. Every player or party gets a fresh copy in the dungeon dimension when they step on a pad; it's wiped again when they're done.</p>
+					<dl class="pn-gm-howto">
+						<dt>Build</dt><dd>Anywhere; then <code>/dungeon create &lt;name&gt;</code> at one corner, <code>/dungeon corner2</code> at the other, <code>/dungeon save &lt;name&gt;</code> (again after changes)</dd>
+						<dt>Markers</dt><dd>Data structure blocks with the text <code>start</code> (required), <code>exit</code>, <code>checkpoint</code>, <code>mob:zombie x3</code>, <code>boss:wither_skeleton {CustomName:'"Warden of Bones"'}</code>; chests with a loot table roll fresh every run</dd>
+						<dt>Pools and pads</dt><dd><code>/dungeon pad add &lt;pool&gt;</code> where players should stand; a run picks a random dungeon of that pool</dd>
+						<dt>Parties</dt><dd><code>/party invite &lt;player&gt;</code>; the leader stands on the pad and members within 16 blocks come along</dd>
+						<dt>Kit</dt><dd><code>/dungeon kit &lt;name&gt;</code> makes what you carry the dungeon's kit</dd>
+						<dt>Rewards</dt><dd>"Clears a dungeon" and "Fails a dungeon", with <code>{score}</code> (the time) and <code>{game}</code></dd>
+					</dl>
+					<div class="pn-rw-grid pn-dg-global">
+						<label class="pn-field"><span>Copies at once</span><input type="number" id="pn-dg-slots" min="1" max="64"></label>
+						<label class="pn-field"><span>Players per party</span><input type="number" id="pn-dg-party" min="1" max="4"></label>
+						<label class="pn-field"><span>Pieces copied per tick</span><input type="number" id="pn-dg-pieces" min="1" max="16"></label>
+						<label class="pn-field"><span>Wait after a run (seconds)</span><input type="number" id="pn-dg-cooldown" min="0" max="3600"></label>
+					</div>
+					<div class="np-filters">
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-dg-enabled"><span></span></span> Dungeons on</label>
+						<button type="button" class="np-btn" id="pn-dg-refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+						<span class="np-form-msg" id="pn-dg-note"></span>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-activity"></i> Running now</h3>
+					<div id="pn-dg-runs"></div>
+				</section>
+				<div id="pn-dg-list" class="pn-rw-list"></div>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Pads</h3>
+					<div id="pn-dg-pads"></div>
+				</section>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-dg-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-dg-msg"></span></div>
 			</div>
 
 			<div class="np-tab-panel" data-tab="owncommands" hidden>
@@ -1214,11 +1250,10 @@
 					<p class="np-card-intro">Commands of your own: a <b>link</b> answers with a clickable address (<code>/discord</code>), a <b>text</b> with a few lines (<code>/rules</code>), an <b>alias</b> runs other commands (<code>/spawn</code>). Each can have more names and be limited to operators or a permission node. A name another command already uses is skipped. They change in game within a few seconds of saving.</p>
 					<div class="np-filters">
 						<select id="pn-own-add" aria-label="Add a command"><option value="">+ Add a command…</option><option value="link">Link</option><option value="text">Text</option><option value="alias">Alias</option></select>
-						<button type="button" class="np-btn primary" id="pn-own-save" disabled><i class="bi bi-check2"></i> Save</button>
-						<span class="np-form-msg" id="pn-own-msg"></span>
 					</div>
 				</section>
 				<div id="pn-own" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-own-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-own-msg"></span></div>
 			</div>
 
 			<div class="np-tab-panel" data-tab="rewards" hidden>
@@ -1247,11 +1282,10 @@
 								<option value="holiday">Gift on December 24</option>
 							</optgroup>
 						</select>
-						<button type="button" class="np-btn primary" id="pn-rw-save" disabled><i class="bi bi-check2"></i> Save</button>
-						<span class="np-form-msg" id="pn-rw-msg"></span>
 					</div>
 				</section>
 				<div id="pn-rw-rules" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-rw-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-rw-msg"></span></div>
 			</div>
 
 			<section class="np-card np-tab-panel" data-tab="conduct" hidden>
@@ -1261,7 +1295,7 @@
 					<label class="np-form-row"><span><b>Ask players to accept it</b><span class="pn-comment">Sets <code>enable-code-of-conduct</code> in server.properties.</span></span><span class="np-switch"><input type="checkbox" name="enabled"><span></span></span></label>
 					<div class="np-filters"><span id="pn-coc-langs"></span><button type="button" class="np-btn small" id="pn-coc-add"><i class="bi bi-plus-lg"></i> Language</button><button type="button" class="np-btn small danger" id="pn-coc-remove" hidden><i class="bi bi-trash"></i> Remove this language</button></div>
 					<label class="pn-field"><span>Text (plain text; empty lines make paragraphs)</span><textarea id="pn-coc-text" rows="14" maxlength="20000" placeholder="Be kind to each other.&#10;No griefing, no stealing.&#10;Ask before building next to someone."></textarea></label>
-					<div class="np-form-actions">
+					<div class="pn-sticky-save">
 						<button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button>
 						<span class="np-form-msg" id="pn-coc-msg"></span>
 					</div>

@@ -24,6 +24,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -48,32 +49,39 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.BossEvent;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.world.phys.AABB;
 
 import eu.explorerseden.nicecontrolcenter.Dungeons;
 import eu.explorerseden.nicecontrolcenter.Dungeons.Dungeon;
 import eu.explorerseden.nicecontrolcenter.Games;
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
+import eu.explorerseden.nicecontrolcenter.claims.GameClaims;
 import eu.explorerseden.nicecontrolcenter.command.Everyone;
 import eu.explorerseden.nicecontrolcenter.core.AsyncFiles;
 import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
+import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
 
 /**
- * Runs the dungeons: a player standing on a pad gets a random dungeon from the pad's pool, copied into a free slot
- * of the dungeon dimension (slots sit slotSpacing blocks apart along +X). The copy is pasted a few pieces per tick
- * while a boss bar shows how far it is, then the player is brought to its start marker. Reaching an exit marker
- * clears it; dying, leaving the box or the time running out ends it. Afterwards the slot is wiped (also on start-up,
- * so no copy outlives a restart) and freed.
+ * Runs the dungeons: the leader of a party (or a player on their own) standing on a pad gets a random dungeon from
+ * the pad's pool, copied into a free slot of the dungeon dimension (slots sit slotSpacing blocks apart along +X).
+ * The copy is pasted a few pieces per tick behind a boss bar, its markers spawn mobs and bosses, and the party is
+ * brought to its start. Checkpoints set where they come back after a death (while lives last); out players watch
+ * as spectators or go back. Reaching an exit (or every boss dead) clears it; afterwards the slot is wiped (also on
+ * start-up, so no copy outlives a restart) and freed.
  */
 public final class DungeonRuntime {
 	public static final String PERMISSION = GameRuntime.PERMISSION;
 	/** Where copies stand (their lowest corner's Y). */
 	private static final int BASE_Y = 64;
-	/** Ticks a player stands on a pad before the run starts. */
+	/** Ticks the leader stands on a pad before the run starts. */
 	private static final int PAD_TICKS = 40;
+	/** Party members this close to the pad come along. */
+	private static final double PARTY_RANGE = 16;
 
 	enum State { LOADING, PASTING, RUNNING, ENDING, WIPING }
 
@@ -84,6 +92,12 @@ public final class DungeonRuntime {
 		final Set<UUID> players = new LinkedHashSet<>();
 		final Set<UUID> out = new LinkedHashSet<>();
 		final Map<UUID, String> names = new HashMap<>();
+		/** Deaths left before a player is out. */
+		final Map<UUID, Integer> lives = new HashMap<>();
+		/** Game modes of players who watch as spectators (given back afterwards). */
+		final Map<UUID, GameType> watching = new HashMap<>();
+		/** Players who died and come back inside (checkpoint) or watch: handled when they respawn. */
+		final Set<UUID> respawnInside = new LinkedHashSet<>();
 		State state = State.LOADING;
 		CompletableFuture<List<DungeonTemplates.Piece>> loading;
 		ArrayDeque<DungeonTemplates.Piece> toPaste;
@@ -93,7 +107,12 @@ public final class DungeonRuntime {
 		BlockPos min;
 		BlockPos max;
 		BlockPos start;
+		BlockPos checkpoint;
 		final List<BlockPos> exits = new ArrayList<>();
+		final List<BlockPos> checkpoints = new ArrayList<>();
+		int bosses;
+		float bossHealth;
+		int deaths;
 		long startedAt;
 		long endAt;
 		boolean cleared;
@@ -105,22 +124,37 @@ public final class DungeonRuntime {
 		}
 
 		long millis() {
-			return startedAt == 0 ? 0 : System.currentTimeMillis() - startedAt;
+			return startedAt == 0 ? 0 : (endAt > 0 && state != State.RUNNING ? endAt - (cleared ? 8000 : 3000) : System.currentTimeMillis()) - startedAt;
+		}
+
+		String bossTag() {
+			return "ncc_dungeon_boss_" + slot;
+		}
+
+		boolean kit() {
+			return "kit".equals(dungeon.gear);
 		}
 	}
 
 	private static Dungeons.Settings settings = new Dungeons.Settings().fill();
 	private static long modified = -1;
 	private static final Map<Integer, Run> slots = new LinkedHashMap<>();
-	/** player → the run they're in. */
+	/** player → the run they're in (also while they watch as spectators). */
 	private static final Map<UUID, Run> playing = new HashMap<>();
-	/** player → ticks stood on a pad. */
+	/** player → ticks the leader stood on a pad. */
 	private static final Map<UUID, Integer> onPad = new HashMap<>();
 	private static final Map<UUID, Long> cooldown = new HashMap<>();
 	/** player → the dungeon they played last (so the next pick is another when the pool has more). */
 	private static final Map<UUID, String> lastPlayed = new HashMap<>();
+	/** player → until when no grave is made (they died in a run). */
+	private static final Map<UUID, Long> noGraveUntil = new HashMap<>();
+	/** player → what to do once they've respawned after a run ended for them (give things back, send back). */
+	private static final Set<UUID> afterRespawn = new LinkedHashSet<>();
+	private static final Map<UUID, Boolean> afterRespawnRemove = new HashMap<>();
 	/** Admins making a dungeon: name and the two corners. */
 	private static final Map<UUID, Selection> selections = new HashMap<>();
+	private static Map<String, Map<String, Dungeons.Best>> scores = new LinkedHashMap<>();
+	private static Path scoresFile;
 	private static Path slotsFile;
 	private static final Random random = new Random();
 
@@ -139,29 +173,34 @@ public final class DungeonRuntime {
 	}
 
 	public static void register() {
+		Parties.register();
 		CommandRegistrationCallback.EVENT.register((d, access, env) -> commands(d));
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			modified = -1;
 			reload();
 			slotsFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-dungeon-slots.json");
+			scoresFile = server.getWorldPath(LevelResource.ROOT).resolve(Dungeons.SCORES);
+			scores = Dungeons.readScores(scoresFile);
 			wipeLeftovers(server);
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			for (Run r : List.copyOf(slots.values())) {
 				for (UUID id : List.copyOf(r.players)) {
 					ServerPlayer p = server.getPlayerList().getPlayer(id);
-					if (p != null) sendBack(server, p);
+					if (p != null && playing.get(id) == r) leaveRun(server, r, p);
 				}
 				if (r.bar != null) r.bar.removeAllPlayers();
 			}
 			// What's in use stays in the slots file and is wiped on the next start.
 		});
 		ServerTickEvents.END_SERVER_TICK.register(DungeonRuntime::tick);
-		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
-			if (entity instanceof ServerPlayer p && playing.containsKey(p.getUUID())) {
-				Run r = playing.get(p.getUUID());
-				out(p.level().getServer(), r, p, "You died: you're out of this run.", false);
-			}
+		// Before death drops: what they carry is put aside (own gear) or dealt with (kit), so nothing lies in the copy.
+		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
+			if (entity instanceof ServerPlayer p && playing.containsKey(p.getUUID())) died(p.level().getServer(), playing.get(p.getUUID()), p);
+			return true;
+		});
+		ServerPlayerEvents.AFTER_RESPAWN.register((old, now, alive) -> {
+			if (!alive) respawned(now.level().getServer(), now);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			ServerPlayer p = handler.player;
@@ -205,6 +244,18 @@ public final class DungeonRuntime {
 		return playing.containsKey(p.getUUID());
 	}
 
+	/** Died in a run a moment ago or still in one: no grave. */
+	public static boolean noGrave(ServerPlayer p) {
+		return inRun(p) || noGraveUntil.getOrDefault(p.getUUID(), 0L) > System.currentTimeMillis();
+	}
+
+	/** Dying now brings them back inside (lives left, or they'll watch): the hub spawn stays out of it. */
+	public static boolean respawnsInside(ServerPlayer p) {
+		Run r = playing.get(p.getUUID());
+		if (r == null || r.state != State.RUNNING || r.out.contains(p.getUUID())) return false;
+		return r.lives.getOrDefault(p.getUUID(), 0) > 0 || r.dungeon.outSpectate && r.players.size() - r.out.size() > 1;
+	}
+
 	static boolean inDungeonDimension(ServerPlayer p) {
 		return p.level().dimension().identifier().toString().equals(Dungeons.DIMENSION);
 	}
@@ -213,19 +264,39 @@ public final class DungeonRuntime {
 		return server.getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(Dungeons.DIMENSION)));
 	}
 
-	/** For the panel: the runs going on. */
-	public static List<Map<String, Object>> view() {
-		List<Map<String, Object>> out = new ArrayList<>();
+	/** For the panel: the runs going on and the best clears. */
+	public static Map<String, Object> view() {
+		List<Map<String, Object>> runs = new ArrayList<>();
 		for (Run r : slots.values()) {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("slot", r.slot);
 			m.put("dungeon", r.dungeon.name);
 			m.put("state", r.state.name().toLowerCase(Locale.ROOT));
-			m.put("players", r.players.stream().map(id -> r.names.getOrDefault(id, "?")).toList());
+			List<Map<String, Object>> who = new ArrayList<>();
+			for (UUID id : r.players) {
+				Map<String, Object> p = new LinkedHashMap<>();
+				p.put("name", r.names.getOrDefault(id, "?"));
+				p.put("lives", r.lives.getOrDefault(id, 0));
+				p.put("out", r.out.contains(id));
+				who.add(p);
+			}
+			m.put("players", who);
 			m.put("millis", r.millis());
-			out.add(m);
+			runs.add(m);
 		}
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("runs", runs);
+		out.put("scores", scores);
 		return out;
+	}
+
+	/** From the panel: ends a run (everyone goes back). Returns an error or null. Server thread. */
+	public static String close(MinecraftServer server, int slot) {
+		Run r = slots.get(slot);
+		if (r == null) return "That run is over already.";
+		if (r.state == State.RUNNING) fail(server, r, "An admin closed this dungeon.");
+		else if (r.state == State.LOADING || r.state == State.PASTING) fail(server, r, "An admin closed this dungeon.");
+		return null;
 	}
 
 	// ---------------------------------------------------------------- the loop
@@ -244,6 +315,7 @@ public final class DungeonRuntime {
 		if (t % 2 == 0 && settings.enabled) pads(server);
 		if (t % 20 == 0) padParticles(server);
 		if (t % 10 == 0) outlines(server);
+		if (t % 1200 == 0) noGraveUntil.values().removeIf(until -> until < System.currentTimeMillis());
 	}
 
 	private static void step(MinecraftServer server, Run r) {
@@ -270,36 +342,12 @@ public final class DungeonRuntime {
 				if (r.bar != null) r.bar.setProgress(r.total == 0 ? 1f : 1f - r.toPaste.size() / (float) r.total);
 				if (r.toPaste.isEmpty()) begin(server, level, r);
 			}
-			case RUNNING -> {
-				if (server.getTickCount() % 5 != 0) return;
-				for (UUID id : List.copyOf(r.players)) {
-					ServerPlayer p = server.getPlayerList().getPlayer(id);
-					if (p == null || r.out.contains(id)) continue;
-					if (p.level() != level || !inBox(r, p)) {
-						out(server, r, p, "You left the dungeon: you're out of this run.", false);
-						continue;
-					}
-					if ("exit".equals(r.dungeon.clearOn)) {
-						for (BlockPos e : r.exits) {
-							if (p.distanceToSqr(e.getX() + 0.5, e.getY() + 0.5, e.getZ() + 0.5) < 2.25) {
-								clear(server, r);
-								return;
-							}
-						}
-					}
-					if (server.getTickCount() % 10 == 0) hud(p, r);
-				}
-				if (r.dungeon.timeLimit > 0 && r.millis() > r.dungeon.timeLimit * 60_000L) {
-					fail(server, r, "Time's up.");
-					return;
-				}
-				if (r.players.stream().allMatch(r.out::contains)) fail(server, r, null);
-			}
+			case RUNNING -> running(server, level, r);
 			case ENDING -> {
 				if (System.currentTimeMillis() < r.endAt) return;
 				for (UUID id : List.copyOf(r.players)) {
 					ServerPlayer p = server.getPlayerList().getPlayer(id);
-					if (p != null && (p.level() == level || inDungeonDimension(p))) sendBack(server, p);
+					if (p != null && playing.get(id) == r) leaveRun(server, r, p);
 					playing.remove(id);
 				}
 				r.players.clear();
@@ -319,6 +367,94 @@ public final class DungeonRuntime {
 		}
 	}
 
+	private static void running(MinecraftServer server, ServerLevel level, Run r) {
+		int t = server.getTickCount();
+		if (t % 5 != 0) return;
+		for (UUID id : List.copyOf(r.players)) {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p == null || r.out.contains(id) || !p.isAlive()) continue;
+			if (p.level() != level || !inBox(r, p)) {
+				out(server, r, p, "You left the dungeon: you're out of this run.", false);
+				continue;
+			}
+			// A checkpoint someone reaches is where everyone comes back.
+			for (BlockPos c : r.checkpoints) {
+				if (!c.equals(r.checkpoint) && p.distanceToSqr(c.getX() + 0.5, c.getY() + 0.5, c.getZ() + 0.5) < 4) {
+					r.checkpoint = c;
+					tellRun(server, r, Component.literal("✦ Checkpoint reached by " + p.getGameProfile().name()).withStyle(ChatFormatting.AQUA));
+					level.playSound(null, c, SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.7f, 1.4f);
+				}
+			}
+			if ("exit".equals(r.dungeon.clearOn)) {
+				for (BlockPos e : r.exits) {
+					if (p.distanceToSqr(e.getX() + 0.5, e.getY() + 0.5, e.getZ() + 0.5) < 2.25) {
+						clear(server, r);
+						return;
+					}
+				}
+			}
+			if (t % 10 == 0) hud(p, r);
+		}
+		watchers(server, r);
+		if (r.bosses > 0 && t % 10 == 0) bosses(server, level, r);
+		if (r.state != State.RUNNING) return;
+		if (r.dungeon.timeLimit > 0 && r.millis() > r.dungeon.timeLimit * 60_000L) {
+			fail(server, r, "Time's up.");
+			return;
+		}
+		if (r.players.stream().allMatch(r.out::contains)) fail(server, r, null);
+	}
+
+	/** Out players watch through a teammate who's still in (no flying around): kept on one, the next when they're out. */
+	private static void watchers(MinecraftServer server, Run r) {
+		List<ServerPlayer> in = new ArrayList<>();
+		for (UUID id : r.players) {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p != null && !r.out.contains(id) && p.isAlive()) in.add(p);
+		}
+		for (UUID id : r.watching.keySet()) {
+			ServerPlayer w = server.getPlayerList().getPlayer(id);
+			if (w == null || !w.isSpectator()) continue;
+			if (in.isEmpty()) {
+				if (w.getCamera() != w) w.setCamera(w);
+				continue;
+			}
+			if (w.getCamera() instanceof ServerPlayer seen && in.contains(seen)) continue;
+			ServerPlayer target = in.get(Math.floorMod(id.hashCode(), in.size()));
+			w.teleportTo((ServerLevel) target.level(), target.getX(), target.getY(), target.getZ(), Set.of(), target.getYRot(), target.getXRot(), true);
+			w.setCamera(target);
+			w.sendOverlayMessage(Component.literal("Watching " + target.getGameProfile().name()).withStyle(ChatFormatting.GRAY));
+		}
+	}
+
+	/** The boss bar follows the bosses' health; every boss dead clears a "boss" dungeon. */
+	private static void bosses(MinecraftServer server, ServerLevel level, Run r) {
+		AABB box = new AABB(r.min.getX() - 8, r.min.getY() - 32, r.min.getZ() - 8, r.max.getX() + 9, r.max.getY() + 33, r.max.getZ() + 9);
+		List<LivingEntity> alive = level.getEntitiesOfClass(LivingEntity.class, box, e -> e.isAlive() && e.entityTags().contains(r.bossTag()));
+		if (r.bossHealth <= 0) {
+			for (LivingEntity e : alive) r.bossHealth += e.getMaxHealth();
+		}
+		float now = 0;
+		for (LivingEntity e : alive) now += e.getHealth();
+		if (r.bar == null && !alive.isEmpty()) {
+			r.bar = new ServerBossEvent(UUID.randomUUID(), alive.get(0).getDisplayName(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.NOTCHED_10);
+		}
+		if (r.bar != null) {
+			r.bar.setProgress(r.bossHealth <= 0 ? 0 : Math.max(0, Math.min(1, now / r.bossHealth)));
+			for (UUID id : r.players) {
+				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				if (p != null && p.level() == level) r.bar.addPlayer(p);
+			}
+		}
+		if (alive.isEmpty() && r.bossHealth > 0) {
+			r.bosses = 0;
+			if (r.bar != null) r.bar.removeAllPlayers();
+			r.bar = null;
+			if ("boss".equals(r.dungeon.clearOn)) clear(server, r);
+			else tellRun(server, r, Component.literal("The boss is down!").withStyle(ChatFormatting.GOLD));
+		}
+	}
+
 	private static boolean inBox(Run r, ServerPlayer p) {
 		return p.getX() >= r.min.getX() - 3 && p.getX() <= r.max.getX() + 4 && p.getZ() >= r.min.getZ() - 3 && p.getZ() <= r.max.getZ() + 4
 				&& p.getY() >= r.min.getY() - 24 && p.getY() <= r.max.getY() + 24;
@@ -327,8 +463,17 @@ public final class DungeonRuntime {
 	private static void hud(ServerPlayer p, Run r) {
 		long left = r.players.size() - r.out.size();
 		String limit = r.dungeon.timeLimit > 0 ? " / " + GameRuntime.clock(r.dungeon.timeLimit * 60_000L) : "";
-		p.sendOverlayMessage(Component.literal(r.dungeon.name + " · " + GameRuntime.clock(r.millis()) + limit + (r.players.size() > 1 ? " · " + left + " in" : ""))
-				.withStyle(ChatFormatting.LIGHT_PURPLE));
+		int lives = r.lives.getOrDefault(p.getUUID(), 0);
+		p.sendOverlayMessage(Component.literal(r.dungeon.name + " · " + GameRuntime.clock(r.millis()) + limit
+				+ (r.dungeon.lives > 0 ? " · " + "❤".repeat(Math.min(lives, 10)) + (lives == 0 ? "last life" : "") : "")
+				+ (r.players.size() > 1 ? " · " + left + " in" : "")).withStyle(ChatFormatting.LIGHT_PURPLE));
+	}
+
+	private static void tellRun(MinecraftServer server, Run r, Component text) {
+		for (UUID id : r.players) {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p != null) p.sendSystemMessage(text);
+		}
 	}
 
 	// ---------------------------------------------------------------- pads and starting
@@ -341,19 +486,48 @@ public final class DungeonRuntime {
 				onPad.remove(p.getUUID());
 				continue;
 			}
+			if (!Parties.isLeader(p.getUUID())) {
+				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Component.literal("Your party leader starts the dungeon from the pad").withStyle(ChatFormatting.GRAY));
+				continue;
+			}
+			List<ServerPlayer> party = partyNear(server, p, pad);
 			int ticks = onPad.merge(p.getUUID(), 2, Integer::sum);
 			if (ticks < PAD_TICKS) {
 				if (ticks % 20 == 2) {
-					p.sendOverlayMessage(Component.literal("Dungeon (" + pad.pool + ") in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.LIGHT_PURPLE));
+					String who = party.size() == 1 ? "" : " with " + String.join(", ", party.subList(1, party.size()).stream().map(x -> x.getGameProfile().name()).toList());
+					p.sendOverlayMessage(Component.literal("Dungeon (" + pad.pool + ")" + who + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.LIGHT_PURPLE));
 					p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.6f, 0.8f);
 				}
 				continue;
 			}
 			onPad.remove(p.getUUID());
 			cooldown.put(p.getUUID(), now + 5000);
-			String err = start(server, List.of(p), pad.pool);
-			if (err != null) p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+			List<UUID> missing = new ArrayList<>(Parties.members(p.getUUID()));
+			party.forEach(x -> missing.remove(x.getUUID()));
+			String err = start(server, party, pad.pool);
+			if (err != null) {
+				p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+			} else if (!missing.isEmpty()) {
+				for (UUID id : missing) {
+					ServerPlayer m = server.getPlayerList().getPlayer(id);
+					if (m != null) m.sendSystemMessage(Component.literal("Your party went into a dungeon without you (be within " + (int) PARTY_RANGE + " blocks of the pad).").withStyle(ChatFormatting.GRAY));
+				}
+			}
 		}
+	}
+
+	/** The leader and the party members close to the pad who can come along. */
+	private static List<ServerPlayer> partyNear(MinecraftServer server, ServerPlayer leader, Dungeons.Pad pad) {
+		List<ServerPlayer> out = new ArrayList<>();
+		out.add(leader);
+		long now = System.currentTimeMillis();
+		for (UUID id : Parties.members(leader.getUUID())) {
+			if (id.equals(leader.getUUID())) continue;
+			ServerPlayer m = server.getPlayerList().getPlayer(id);
+			if (m == null || m.level() != leader.level() || playing.containsKey(id) || m.isSpectator() || cooldown.getOrDefault(id, 0L) > now) continue;
+			if (m.distanceToSqr(pad.pos.x, pad.pos.y, pad.pos.z) <= PARTY_RANGE * PARTY_RANGE) out.add(m);
+		}
+		return out;
 	}
 
 	private static Dungeons.Pad padUnder(ServerPlayer p) {
@@ -416,6 +590,7 @@ public final class DungeonRuntime {
 		for (ServerPlayer p : party) {
 			r.players.add(p.getUUID());
 			r.names.put(p.getUUID(), p.getGameProfile().name());
+			r.lives.put(p.getUUID(), d.lives);
 			playing.put(p.getUUID(), r);
 			lastPlayed.put(p.getUUID(), d.id);
 			r.bar.addPlayer(p);
@@ -425,7 +600,7 @@ public final class DungeonRuntime {
 		return null;
 	}
 
-	/** The copy is ready: markers become air, everyone goes to the start. */
+	/** The copy is ready: markers become air (spawning what they say), everyone goes to the start. */
 	private static void begin(MinecraftServer server, ServerLevel level, Run r) {
 		for (Dungeons.Marker m : r.dungeon.markers) {
 			BlockPos at = r.min.offset(m.x, m.y, m.z);
@@ -435,8 +610,13 @@ public final class DungeonRuntime {
 					if (r.start == null) r.start = at;
 				}
 				case "exit" -> r.exits.add(at);
+				case "checkpoint" -> r.checkpoints.add(at);
+				case "mob" -> spawn(server, r, at, m.arg, false);
+				case "boss" -> {
+					spawn(server, r, at, m.arg, true);
+					r.bosses++;
+				}
 				default -> {
-					// Checkpoints, mobs and bosses come with the next release.
 				}
 			}
 		}
@@ -458,6 +638,10 @@ public final class DungeonRuntime {
 				playing.remove(id);
 				continue;
 			}
+			if (r.kit()) {
+				GameClaims.stashFor(p, "dungeon");
+				GameClaims.giveKit(p, r.dungeon.kit, "dungeon");
+			}
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
 			p.sendSystemMessage(Component.literal(fill(r.dungeon.enterMessage.isEmpty() ? "▶ {dungeon}: find the way out!" : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
@@ -467,9 +651,92 @@ public final class DungeonRuntime {
 		level.playSound(null, r.start, SoundEvents.ENDER_EYE_DEATH, SoundSource.PLAYERS, 1f, 0.8f);
 	}
 
+	/**
+	 * A mob or boss marker: "zombie", "minecraft:skeleton x3", "husk x2 {CustomName:'Guard'}". Summoned like the
+	 * /summon command (so its data works the same everywhere), kept from despawning; bosses get the run's tag.
+	 */
+	private static void spawn(MinecraftServer server, Run r, BlockPos at, String arg, boolean boss) {
+		String text = arg == null ? "" : arg.strip();
+		int brace = text.indexOf('{');
+		String nbt = brace >= 0 ? text.substring(brace).strip() : "";
+		String[] words = (brace >= 0 ? text.substring(0, brace) : text).strip().split("\\s+");
+		if (words.length == 0 || words[0].isEmpty()) return;
+		String id = words[0].contains(":") ? words[0] : "minecraft:" + words[0];
+		int count = 1;
+		for (String w : words) if (w.matches("[xX]\\d{1,2}")) count = Math.max(1, Math.min(32, Integer.parseInt(w.substring(1))));
+		if (boss) count = 1;
+		String extra = "PersistenceRequired:1b" + (boss ? ",Tags:[\"" + r.bossTag() + "\"]" : "");
+		String data = nbt.isEmpty() ? "{" + extra + "}" : "{" + extra + "," + nbt.substring(1);
+		for (int i = 0; i < count; i++) {
+			double ox = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0, oz = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0;
+			ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon %s %.2f %d %.2f %s", Dungeons.DIMENSION, id, at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, data));
+		}
+	}
+
+	// ---------------------------------------------------------------- deaths
+
+	/** Before the death: what they carry is put aside (own gear) or dealt with (kit); lives and watching decided. */
+	private static void died(MinecraftServer server, Run r, ServerPlayer p) {
+		noGraveUntil.put(p.getUUID(), System.currentTimeMillis() + 60_000);
+		if (r.kit()) GameClaims.clearCarried(p, r.dungeon.removePickups);
+		else GameClaims.stashFor(p, "dungeon-death");
+		if (r.state != State.RUNNING || r.out.contains(p.getUUID())) return;
+		r.deaths++;
+		boolean inside = respawnsInside(p);
+		int lives = r.lives.getOrDefault(p.getUUID(), 0);
+		if (lives > 0) {
+			r.lives.put(p.getUUID(), lives - 1);
+			r.respawnInside.add(p.getUUID());
+			tellRun(server, r, Component.literal(p.getGameProfile().name() + " died" + (lives - 1 == 0 ? " (last life left)" : " (" + (lives - 1) + " lives left)")).withStyle(ChatFormatting.RED));
+			return;
+		}
+		// Out: they watch (when others are still in) or go back once they've respawned.
+		r.out.add(p.getUUID());
+		cooldown.put(p.getUUID(), System.currentTimeMillis() + settings.cooldown * 1000L);
+		commands(server, r.dungeon.exitCommands, r, p);
+		if (inside) {
+			r.respawnInside.add(p.getUUID());
+			tellRun(server, r, Component.literal(p.getGameProfile().name() + " is out and watches.").withStyle(ChatFormatting.GRAY));
+		} else {
+			playing.remove(p.getUUID());
+			afterRespawn.add(p.getUUID());
+			afterRespawnRemove.put(p.getUUID(), r.dungeon.removePickups);
+			p.sendSystemMessage(Component.literal("You're out of this run.").withStyle(ChatFormatting.GRAY));
+		}
+	}
+
+	private static void respawned(MinecraftServer server, ServerPlayer p) {
+		if (afterRespawn.remove(p.getUUID())) {
+			// Out of the run: things back, and out of the dungeon dimension (the hub spawn may have done that already).
+			GameClaims.restoreFor(p, Boolean.TRUE.equals(afterRespawnRemove.remove(p.getUUID())));
+			if (inDungeonDimension(p)) sendBack(server, p);
+			return;
+		}
+		Run r = playing.get(p.getUUID());
+		if (r == null || !r.respawnInside.remove(p.getUUID())) return;
+		ServerLevel level = level(server);
+		if (level == null || r.state != State.RUNNING) {
+			leaveRun(server, r, p);
+			playing.remove(p.getUUID());
+			return;
+		}
+		BlockPos to = r.checkpoint != null ? r.checkpoint : r.start;
+		p.teleportTo(level, to.getX() + 0.5, to.getY(), to.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
+		if (r.out.contains(p.getUUID())) {
+			r.watching.put(p.getUUID(), p.gameMode.getGameModeForPlayer());
+			p.setGameMode(GameType.SPECTATOR);
+			p.sendSystemMessage(Component.literal("You're out: you watch your party until the run ends.").withStyle(ChatFormatting.GRAY));
+			watchers(server, r);
+			return;
+		}
+		// Back in: their own gear (own) or the kit again.
+		if (r.kit()) GameClaims.giveKit(p, r.dungeon.kit, "dungeon");
+		else GameClaims.restoreFor(p, false);
+	}
+
 	// ---------------------------------------------------------------- ending
 
-	/** A player is out (died, left, logged out); the run carries on for the others. */
+	/** A player is out (left, logged out, /dungeon leave); the run carries on for the others. */
 	private static void out(MinecraftServer server, Run r, ServerPlayer p, String why, boolean loggedOut) {
 		if (r.state == State.LOADING || r.state == State.PASTING) {
 			// Not in yet: they simply don't come along.
@@ -479,19 +746,55 @@ public final class DungeonRuntime {
 			if (r.players.isEmpty()) startWipe(r);
 			return;
 		}
-		if (r.out.contains(p.getUUID())) return;
+		boolean wasOut = r.out.contains(p.getUUID());
 		r.out.add(p.getUUID());
-		playing.remove(p.getUUID());
-		cooldown.put(p.getUUID(), System.currentTimeMillis() + settings.cooldown * 1000L);
+		r.respawnInside.remove(p.getUUID());
+		if (!wasOut) {
+			cooldown.put(p.getUUID(), System.currentTimeMillis() + settings.cooldown * 1000L);
+			commands(server, r.dungeon.exitCommands, r, p);
+		}
 		if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
-		commands(server, r.dungeon.exitCommands, r, p);
-		// After dying the respawn brings them out (to the hub spawn when there is one); else now.
-		if (p.isAlive() && (loggedOut || inDungeonDimension(p))) sendBack(server, p);
+		if (p.isAlive()) {
+			leaveRun(server, r, p);
+		} else {
+			// Dead: done once they respawn.
+			afterRespawn.add(p.getUUID());
+			afterRespawnRemove.put(p.getUUID(), r.dungeon.removePickups);
+		}
+		playing.remove(p.getUUID());
+	}
+
+	/** Out of the run for good: their game mode and things back, and out of the dungeon dimension. */
+	private static void leaveRun(MinecraftServer server, Run r, ServerPlayer p) {
+		GameType mode = r.watching.remove(p.getUUID());
+		if (mode != null) {
+			p.setCamera(p);
+			p.setGameMode(mode);
+		}
+		GameClaims.restoreFor(p, r.dungeon.removePickups);
+		if (r.bar != null) r.bar.removePlayer(p);
+		if (inDungeonDimension(p)) sendBack(server, p);
 	}
 
 	private static void clear(MinecraftServer server, Run r) {
 		r.cleared = true;
-		end(server, r, r.dungeon.clearedMessage.isEmpty() ? "■ {dungeon} cleared in {time}!" : r.dungeon.clearedMessage, ChatFormatting.GOLD);
+		long time = System.currentTimeMillis() - r.startedAt;
+		int size = r.players.size();
+		Map<String, Dungeons.Best> board = scores.computeIfAbsent(r.dungeon.id, k -> new LinkedHashMap<>());
+		Dungeons.Best best = board.computeIfAbsent(String.valueOf(size), k -> new Dungeons.Best());
+		best.clears++;
+		boolean record = best.millis == 0 || time < best.millis;
+		if (record) {
+			best.millis = time;
+			best.names = new ArrayList<>(r.names.values());
+			best.at = System.currentTimeMillis();
+		}
+		if (scoresFile != null) AsyncFiles.write(scoresFile, Json.GSON.toJson(scores));
+		end(server, r, (r.dungeon.clearedMessage.isEmpty() ? "■ {dungeon} cleared in {time}!" : r.dungeon.clearedMessage) + (record ? " A new best for " + (size == 1 ? "one player" : size + " players") + "!" : ""), ChatFormatting.GOLD);
+		for (UUID id : r.players) {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p != null) RewardsControl.fireGame(server, "dungeonCleared", p, r.dungeon.name, time, true);
+		}
 	}
 
 	private static void fail(MinecraftServer server, Run r, String why) {
@@ -508,11 +811,15 @@ public final class DungeonRuntime {
 		if (r.state != State.RUNNING) return;
 		String line = r.dungeon.failedMessage.isEmpty() ? "■ {dungeon}: the run is over." : r.dungeon.failedMessage;
 		end(server, r, why == null ? line : why + " " + line, ChatFormatting.RED);
+		long time = System.currentTimeMillis() - r.startedAt;
+		for (UUID id : r.players) {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p != null) RewardsControl.fireGame(server, "dungeonFailed", p, r.dungeon.name, time, true);
+		}
 	}
 
-	/** Tells everyone still in, runs the exit commands, and sends them back after a few seconds. */
+	/** Tells everyone, runs the exit commands for those still in, and sends them back after a few seconds. */
 	private static void end(MinecraftServer server, Run r, String message, ChatFormatting color) {
-		r.state = State.ENDING;
 		r.endAt = System.currentTimeMillis() + (r.cleared ? 8000 : 3000);
 		for (UUID id : r.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
@@ -524,7 +831,9 @@ public final class DungeonRuntime {
 			}
 			if (r.cleared) p.level().playSound(null, p.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 0.8f, 1f);
 		}
+		r.state = State.ENDING;
 		if (r.bar != null) r.bar.removeAllPlayers();
+		r.bar = null;
 	}
 
 	private static void startWipe(Run r) {
@@ -553,7 +862,7 @@ public final class DungeonRuntime {
 	private static String fill(String text, Run r, ServerPlayer p) {
 		String party = String.join(", ", r.names.values());
 		return text.replace("{dungeon}", r.dungeon.name).replace("{party}", party).replace("{time}", GameRuntime.clock(r.millis()))
-				.replace("{player}", p == null ? party : p.getGameProfile().name());
+				.replace("{deaths}", String.valueOf(r.deaths)).replace("{player}", p == null ? party : p.getGameProfile().name());
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Run r, ServerPlayer p) {
@@ -631,7 +940,7 @@ public final class DungeonRuntime {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					Run r = playing.get(p.getUUID());
 					if (r == null) return fail(ctx, "You're not in a dungeon.");
-					out(ctx.getSource().getServer(), r, p, "You left the dungeon.", true);
+					out(ctx.getSource().getServer(), r, p, "You left the dungeon.", false);
 					return 1;
 				}))
 				.then(Commands.literal("list").executes(ctx -> {
@@ -644,13 +953,25 @@ public final class DungeonRuntime {
 					ctx.getSource().sendSuccess(() -> Component.literal("Dungeon pools:" + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
 					return 1;
 				}))
+				.then(Commands.literal("top").then(dungeonArg.get().executes(ctx -> {
+					Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
+					if (x == null) return fail(ctx, "There's no such dungeon.");
+					Map<String, Dungeons.Best> board = scores.getOrDefault(x.id, Map.of());
+					StringBuilder b = new StringBuilder(x.name + (board.isEmpty() ? ": not cleared yet." : ":"));
+					for (int n = 1; n <= 4; n++) {
+						Dungeons.Best best = board.get(String.valueOf(n));
+						if (best != null) b.append("\n").append(n == 1 ? "Solo" : n + " players").append(": ").append(GameRuntime.clock(best.millis)).append(" · ").append(String.join(", ", best.names));
+					}
+					ctx.getSource().sendSuccess(() -> Component.literal(b.toString()).withStyle(ChatFormatting.GOLD), false);
+					return 1;
+				})))
 				.then(Commands.literal("create").requires(admin).then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					String name = StringArgumentType.getString(ctx, "name");
 					if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
 					selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), p.blockPosition(), null, System.currentTimeMillis() + 30 * 60_000L));
 					ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of " + name + " is here. Go to the opposite corner and use /dungeon corner2, then /dungeon save " + name
-							+ ". Inside, place data structure blocks as markers: start (required), exit, checkpoint, mob:<id> [xN], boss:<id>.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+							+ ". Inside, place data structure blocks as markers: start (required), exit, checkpoint, mob:<id> [xN] [{data}], boss:<id> [{data}].").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 					return 1;
 				})))
 				.then(Commands.literal("corner2").requires(admin).executes(ctx -> {
@@ -667,6 +988,16 @@ public final class DungeonRuntime {
 				.then(Commands.literal("save").requires(admin).then(dungeonArg.get().executes(DungeonRuntime::save)
 						.then(Commands.argument("from", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
 								.then(Commands.argument("to", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(DungeonRuntime::save)))))
+				.then(Commands.literal("kit").requires(admin).then(dungeonArg.get().executes(ctx -> {
+					ServerPlayer p = ctx.getSource().getPlayerOrException();
+					Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
+					if (x == null) return fail(ctx, "There's no such dungeon.");
+					x.kit = GameClaims.kitFrom(p);
+					saveSettings();
+					ctx.getSource().sendSuccess(() -> Component.literal(x.name + "'s kit is what you carry now (" + x.kit.size() + " stacks)."
+							+ ("own".equals(x.gear) ? " It's handed out only when the dungeon puts things aside (gear: kit, in the panel)." : "")), true);
+					return 1;
+				})))
 				.then(Commands.literal("try").requires(admin).then(dungeonArg.get().executes(ctx -> {
 					Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
 					if (x == null) return fail(ctx, "There's no such dungeon.");
@@ -703,7 +1034,7 @@ public final class DungeonRuntime {
 							settings.pads.add(pad);
 							settings.fill();
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal("Pad for the " + pad.pool + " pool here: standing on it for two seconds starts a run."), true);
+							ctx.getSource().sendSuccess(() -> Component.literal("Pad for the " + pad.pool + " pool here: the party leader standing on it for two seconds starts a run."), true);
 							return 1;
 						})))
 						.then(Commands.literal("remove").executes(ctx -> {
@@ -726,10 +1057,9 @@ public final class DungeonRuntime {
 							return 1;
 						})))
 				.then(Commands.literal("runs").requires(admin).executes(ctx -> {
-					List<Map<String, Object>> runs = view();
-					String text = runs.isEmpty() ? "No dungeon runs right now." : runs.stream().map(m -> "slot " + m.get("slot") + ": " + m.get("dungeon") + " · " + m.get("state") + " · " + m.get("players"))
-							.reduce((a, b) -> a + "\n" + b).orElse("");
-					ctx.getSource().sendSuccess(() -> Component.literal(text), false);
+					StringBuilder b = new StringBuilder();
+					for (Run r : slots.values()) b.append("\nslot ").append(r.slot).append(": ").append(r.dungeon.name).append(" · ").append(r.state.name().toLowerCase(Locale.ROOT)).append(" · ").append(String.join(", ", r.names.values()));
+					ctx.getSource().sendSuccess(() -> Component.literal(b.isEmpty() ? "No dungeon runs right now." : "Dungeon runs:" + b), false);
 					return 1;
 				})));
 	}

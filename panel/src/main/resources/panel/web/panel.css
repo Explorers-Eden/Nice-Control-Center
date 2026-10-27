@@ -1071,3 +1071,17 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-gm-howto dd { margin: 0; color: var(--muted); }
 .pn-gm-howto code { white-space: nowrap; }
 @media (max-width: 600px) { .pn-gm-howto { grid-template-columns: 1fr; gap: 2px; } .pn-gm-howto dd { margin-bottom: 6px; } }
+/* Lines, messages and commands take a whole row of the field grid. */
+.pn-rw-grid > .pn-field-wide { grid-column: 1 / -1; margin: 4px 0; }
+.pn-field-wide textarea { min-height: 52px; resize: vertical; }
+.pn-field .pn-dg-kit { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 38px; font-weight: 500; color: var(--text); }
+.pn-field .pn-dg-kit small { color: var(--muted); }
+/* Dungeons: runs going on and the pads, one line each. */
+.pn-dg-global { margin-bottom: 4px; }
+.pn-dg-runs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pn-dg-runs li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: rgba(var(--ink),.04); border: 1px solid rgba(var(--ink),.08); font-size: var(--fs-sm); }
+.pn-dg-runs li > button { margin-left: auto; }
+.pn-dg-who { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text); }
+.pn-dg-who .out { color: var(--faint); text-decoration: line-through; }
+.pn-dg-time { font-variant-numeric: tabular-nums; color: var(--muted); }
+.pn-dg-warn { color: #ffb86b; }

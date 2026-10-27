@@ -53,6 +53,15 @@ public final class Dungeons {
 		public boolean outSpectate = true;
 		/** Minutes; 0 = no limit. */
 		public int timeLimit;
+		/**
+		 * "kit": their own things are put aside on entering and come back after (the kit is handed out instead);
+		 * "own": they bring their own gear, and what they carry comes back after a death inside.
+		 */
+		public String gear = "kit";
+		/** Kit items as the game writes them (taken from an admin's inventory with /dungeon kit). */
+		public List<String> kit = new ArrayList<>();
+		/** Kit mode: items found inside vanish afterwards (else they go to the player's inbox). */
+		public boolean removePickups = true;
 		/** "exit" (reaching an exit marker) or "boss" (every boss dead). */
 		public String clearOn = "exit";
 		/** Shown to the party; {player}, {party}, {dungeon}, {time}. Empty = the default line. */
@@ -143,6 +152,8 @@ public final class Dungeons {
 				d.lives = Math.max(0, Math.min(99, d.lives));
 				d.timeLimit = Math.max(0, Math.min(600, d.timeLimit));
 				if (!"boss".equals(d.clearOn)) d.clearOn = "exit";
+				if (!"own".equals(d.gear)) d.gear = "kit";
+				if (d.kit == null) d.kit = new ArrayList<>();
 				// (Null strings from older files become empty.)
 				if (d.enterMessage == null) d.enterMessage = "";
 				if (d.prepareMessage == null) d.prepareMessage = "";
@@ -162,6 +173,30 @@ public final class Dungeons {
 			}
 			return this;
 		}
+	}
+
+	/** A best clear: the time and who was in the party. */
+	public static final class Best {
+		public long millis;
+		public List<String> names = new ArrayList<>();
+		public long at;
+		public int clears;
+	}
+
+	/** Best clears in the world folder: dungeon id → party size ("1".."4") → best. */
+	public static final String SCORES = "nicecontrolcenter-dungeons-scores.json";
+
+	public static java.util.Map<String, java.util.Map<String, Best>> readScores(Path file) {
+		try {
+			if (Files.exists(file)) {
+				java.util.Map<String, java.util.Map<String, Best>> m = Json.GSON.fromJson(Files.readString(file),
+						new com.google.gson.reflect.TypeToken<java.util.Map<String, java.util.Map<String, Best>>>() { }.getType());
+				if (m != null) return m;
+			}
+		} catch (IOException | RuntimeException e) {
+			// Empty.
+		}
+		return new java.util.LinkedHashMap<>();
 	}
 
 	/** Pool names are one lower-case word. */

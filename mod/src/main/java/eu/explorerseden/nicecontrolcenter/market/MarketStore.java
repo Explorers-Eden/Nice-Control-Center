@@ -74,7 +74,7 @@ public final class MarketStore {
 			if (m != null && !m.isEmpty()) {
 				String what = !m.parcels.isEmpty() && !m.orders.isEmpty() ? "Items and purchases from the website are"
 						: !m.orders.isEmpty() ? (m.orders.size() == 1 ? "A purchase from the website is" : "Purchases from the website are") : "Items are";
-				h.player.sendSystemMessage(Component.literal(what + " waiting in your market mailbox: /market").withStyle(ChatFormatting.GOLD));
+				h.player.sendSystemMessage(Component.literal(what + " waiting in your inbox: /inbox").withStyle(ChatFormatting.GOLD));
 				Plop.play(h.player);
 			}
 		});

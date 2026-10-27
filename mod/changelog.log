@@ -1,4 +1,14 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.48.0
+- Dungeons: parties (/party invite, accept, leave, kick, list; up to 4): the leader starts from a pad and members within 16 blocks come along
+- Dungeons: lives per dungeon and checkpoint markers (a checkpoint anyone reaches is where everyone comes back); out players watch through a teammate who's still in (no flying around), or go back at once
+- Dungeons: mob markers (mob:zombie x3 {data}) and boss markers (boss:<id> {data}) spawn when the copy opens; a boss bar follows the bosses' health and every boss dead can clear the dungeon
+- Dungeons: gear per dungeon: their things put aside and a kit given (/dungeon kit <name>; items found inside vanish or go to the inbox), or their own gear, which comes back after a death; never a grave in a dungeon
+- Dungeons: best clear times per party size (/dungeon top <name>); Rewards triggers "Clears a dungeon" and "Fails a dungeon"; panel endpoints for runs and closing a run
+- Games: per arena a cooldown, start and finish messages, commands on start and finish, parkour jumps ahead and longest gap, race time limit, dropper tries and maze wall height
+- The inbox is called Inbox everywhere; opened with /inbox it closes instead of going back to the market
+- Pets menu: description, bond level and perks each have their own colour
+
 ## 1.47.0
 - Instanced dungeons, first part: a void dimension nicecontrolcenter:dungeons comes with the mod (appears after a restart); admins mark a box with /dungeon create <name> + /dungeon corner2 (particle outline) or give corners to /dungeon save <name> <from> <to>, and /dungeon save keeps it as 16 × 16 pieces in the world folder (saving again after changes reuses the box)
 - Markers are data structure blocks: start and exit work now (checkpoint, mob and boss come next); chests with a loot table roll fresh in every copy

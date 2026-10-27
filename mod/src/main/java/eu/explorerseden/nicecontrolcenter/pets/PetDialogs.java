@@ -250,13 +250,18 @@ public final class PetDialogs {
 		Pets.Owned shown = shown(player, owner);
 		for (Pets.Owned o : owner.pets) {
 			boolean out = shown != null && o.pet.equals(shown.pet);
-			String extra = String.join("\n", java.util.stream.Stream.of(PetStore.description(o), levelLine(o), perkLine(PetStore.settings().pet(o.pet), o))
-					.filter(x -> !x.isEmpty()).toList());
+			// Each line its own colour: what it is (grey), its bond (aqua), its perks (purple).
+			MutableComponent extra = Component.empty();
+			String about = PetStore.description(o), level = levelLine(o), perks = perkLine(PetStore.settings().pet(o.pet), o);
+			if (!about.isEmpty()) extra.append(Component.literal("\n" + about).withStyle(ChatFormatting.GRAY));
+			if (!level.isEmpty()) extra.append(Component.literal("\n" + level).withStyle(ChatFormatting.AQUA));
+			if (!perks.isEmpty()) extra.append(Component.literal("\n" + perks).withStyle(ChatFormatting.LIGHT_PURPLE));
 			MutableComponent title = petTitle(o);
 			MutableComponent desc = Component.empty()
 					.append(title)
 					.append(out ? Component.literal("  out now").withStyle(ChatFormatting.GREEN) : Component.empty())
-					.append(Component.literal("\n" + (extra.isEmpty() ? "" : extra + "\n")).withStyle(ChatFormatting.GRAY))
+					.append(extra)
+					.append(Component.literal("\n"))
 					.append(out ? link("Put away", "It stops following you", "away", args("id", o.pet), ChatFormatting.YELLOW)
 							: link("Take out", "It follows you around; everyone near you sees it", "out", args("id", o.pet), ChatFormatting.GREEN));
 			// Extra pets out at once (a reward): along with the main one.
@@ -283,7 +288,8 @@ public final class PetDialogs {
 		int level = Pets.level(out.bond, k);
 		List<DialogBody> body = new ArrayList<>();
 		notice(player, body, notice);
-		body.add(text(levelLine(out) + ". Perks only help while you're not AFK.", ChatFormatting.GRAY));
+		body.add(text(levelLine(out) + ".", ChatFormatting.AQUA));
+		body.add(text("Perks only help while you're not AFK.", ChatFormatting.GRAY));
 		List<Pets.Perk> perks = PetStore.perks(out);
 		for (int i = 0; i < perks.size(); i++) {
 			Pets.Perk perk = perks.get(i);
@@ -367,7 +373,7 @@ public final class PetDialogs {
 						: link("Buy", "See it and buy", "item", market ? args("id", pet.id, "from", "market") : args("id", pet.id), ChatFormatting.GREEN))
 				.append(Component.literal("  " + (pet.price == 0 ? "Free" : amount(pet.price))).withStyle(ChatFormatting.GOLD))
 				.append(Component.literal((saleLine(pet) != null ? " · until " + Pets.date(pet.saleEnds) : "") + (left > 0 ? " · " + left + " left" : "")).withStyle(ChatFormatting.GRAY))
-				.append(shortPerkLine(pet).isEmpty() ? Component.empty() : Component.literal("\n" + shortPerkLine(pet)).withStyle(ChatFormatting.GRAY));
+				.append(shortPerkLine(pet).isEmpty() ? Component.empty() : Component.literal("\n" + shortPerkLine(pet)).withStyle(ChatFormatting.LIGHT_PURPLE));
 		return headRow(player, pet.texture, desc);
 	}
 
@@ -424,7 +430,8 @@ public final class PetDialogs {
 		if (left > 0) facts.append(Component.literal("   Left ").withStyle(ChatFormatting.GRAY)).append(Component.literal(String.valueOf(left)).withStyle(ChatFormatting.WHITE));
 		body.add(new PlainMessage(facts, TEXT_WIDTH));
 		if (!perkLine(pet).isEmpty()) {
-			body.add(text(perkLine(pet) + ". Bond levels grow while it's out with you.", ChatFormatting.GRAY));
+			body.add(text(perkLine(pet) + ".", ChatFormatting.LIGHT_PURPLE));
+			body.add(text("Bond levels grow while it's out with you.", ChatFormatting.AQUA));
 			for (String n : pet.perks) {
 				Pets.Perk perk = Pets.Perk.of(n);
 				if (perk != null) body.add(text("· " + perk.label + ": " + perk.describe(PetStore.settings().perks), ChatFormatting.GRAY));

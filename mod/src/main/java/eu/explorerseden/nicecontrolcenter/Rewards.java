@@ -34,6 +34,8 @@ public final class Rewards {
 			new Trigger("enterClaim", "Enters one of their claims", "", "", false),
 			new Trigger("gameFinished", "Finishes a game", "Arena (empty: any)", "At least … jumps / within … seconds (0: any)", false),
 			new Trigger("gameRecord", "Sets a personal best in a game", "Arena (empty: any)", "", false),
+			new Trigger("dungeonCleared", "Clears a dungeon", "Dungeon (empty: any)", "Within … seconds (0: any)", false),
+			new Trigger("dungeonFailed", "Fails a dungeon", "Dungeon (empty: any)", "", false),
 			new Trigger("leaveClaim", "Leaves their claims", "", "", false),
 			new Trigger("advancement", "Earns an advancement", "Advancement (empty: any)", "", false),
 			new Trigger("death", "Dies", "", "", false),

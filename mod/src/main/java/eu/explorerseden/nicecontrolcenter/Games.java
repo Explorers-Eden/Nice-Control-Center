@@ -89,6 +89,23 @@ public final class Games {
 		public String wall = "minecraft:stone_bricks";
 		public String floor = "minecraft:smooth_stone";
 		public String regenerate = "daily";
+		/** Maze: wall height in blocks. */
+		public int wallHeight = 3;
+		/** Parkour: jumps shown ahead, and the longest gap (blocks) it gets to. */
+		public int ahead = 3;
+		public int maxGap = 4;
+		/** Race: seconds before a run is over (0 = no limit). */
+		public int timeLimit;
+		/** Dropper: tries before a run is over (0 = as many as it takes). */
+		public int maxTries;
+		/** Seconds before a player can start this arena again. */
+		public int cooldown = 3;
+		/** Shown on start and when a run counts; {player}, {game}, {score}. Empty = the default line. */
+		public String startMessage = "";
+		public String finishMessage = "";
+		/** Run as the server for the player (without /) on start and when a run counts. */
+		public List<String> startCommands = new ArrayList<>();
+		public List<String> finishCommands = new ArrayList<>();
 	}
 
 	public static final class Settings {
@@ -125,6 +142,16 @@ public final class Games {
 				a.lanes = Math.max(1, Math.min(32, a.lanes));
 				a.laneSpacing = Math.max(16, Math.min(256, a.laneSpacing));
 				a.size = Math.max(4, Math.min(40, a.size));
+				a.wallHeight = Math.max(1, Math.min(8, a.wallHeight));
+				a.ahead = Math.max(1, Math.min(8, a.ahead));
+				a.maxGap = Math.max(2, Math.min(5, a.maxGap));
+				a.timeLimit = Math.max(0, Math.min(3600, a.timeLimit));
+				a.maxTries = Math.max(0, Math.min(999, a.maxTries));
+				a.cooldown = Math.max(0, Math.min(3600, a.cooldown));
+				if (a.startMessage == null) a.startMessage = "";
+				if (a.finishMessage == null) a.finishMessage = "";
+				if (a.startCommands == null) a.startCommands = new ArrayList<>();
+				if (a.finishCommands == null) a.finishCommands = new ArrayList<>();
 			}
 			return this;
 		}
