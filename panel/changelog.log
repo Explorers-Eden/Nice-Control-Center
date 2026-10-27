@@ -1,3 +1,6 @@
+## 1.37.0
+- Games: the hub spawn (set in game with /game spawn set) is shown and can be cleared; the intro notes that the market, inbox and pets don't work in game areas (mod 1.46.0)
+
 ## 1.36.2
 - Per-dimension tuning shows the save bar when something is changed
 - The sidebar and the window-filling boxes end on the same line above the footer on every page (also with the embedded console, chat and player list)

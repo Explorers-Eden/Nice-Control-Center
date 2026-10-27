@@ -83,6 +83,7 @@ public final class PetStore {
 				.executes(ctx -> {
 					ServerPlayer player = ctx.getSource().getPlayerOrException();
 					if (!enabled()) return off(player);
+					if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "Pets")) return 0;
 					PetDialogs.home(player, null);
 					return 1;
 				})
@@ -91,6 +92,7 @@ public final class PetStore {
 				.then(Commands.literal("bag").executes(ctx -> {
 					ServerPlayer player = ctx.getSource().getPlayerOrException();
 					if (!enabled()) return off(player);
+					if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The pet bag")) return 0;
 					String why = PetBag.open(player);
 					if (why == null) return 1;
 					player.sendSystemMessage(net.minecraft.network.chat.Component.literal(why).withStyle(net.minecraft.ChatFormatting.RED));
@@ -113,6 +115,7 @@ public final class PetStore {
 	/** /pets on and /pets off: the quick way, with a line above the hotbar. */
 	private static int toggle(ServerPlayer player, boolean on) {
 		if (!enabled()) return off(player);
+		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "Pets")) return 0;
 		Pets.Owner o = data.owners.get(player.getStringUUID());
 		Component msg;
 		if (o == null || o.pets.isEmpty()) {

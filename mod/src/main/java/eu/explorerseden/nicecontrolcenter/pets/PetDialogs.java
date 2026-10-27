@@ -479,6 +479,7 @@ public final class PetDialogs {
 			Plop.play(player);
 			return;
 		}
+		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "Pets")) return;
 		CompoundTag in = payload.orElse(null) instanceof CompoundTag t ? t : new CompoundTag();
 		Pets.Data data = PetStore.data();
 		Pets.Owner owner = data.owners.get(player.getStringUUID());

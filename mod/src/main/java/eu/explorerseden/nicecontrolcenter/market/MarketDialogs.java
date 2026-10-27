@@ -168,6 +168,7 @@ public final class MarketDialogs {
 	// ---------------------------------------------------------------- menus
 
 	public static void home(ServerPlayer player, String notice) {
+		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The market")) return;
 		Market.Data data = MarketStore.data();
 		String me = player.getStringUUID();
 		Market.Mailbox mail = data.mail.get(me);
@@ -490,6 +491,7 @@ public final class MarketDialogs {
 
 	/** Opens the server shop, where the claim block listings are. */
 	public static void claimBlocks(ServerPlayer player) {
+		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The market")) return;
 		server(player, null);
 	}
 
@@ -784,6 +786,7 @@ public final class MarketDialogs {
 
 	/** /inbox: the mailbox straight away. */
 	public static void openInbox(ServerPlayer player) {
+		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The inbox")) return;
 		mail(player);
 	}
 
@@ -822,6 +825,8 @@ public final class MarketDialogs {
 			Plop.play(player);
 			return;
 		}
+		// A menu opened before walking into a game area stays shut there.
+		if (eu.explorerseden.nicecontrolcenter.claims.GameClaims.refuse(player, "The market")) return;
 		CompoundTag in = payload.orElse(null) instanceof CompoundTag t ? t : new CompoundTag();
 		Market.Data data = MarketStore.data();
 		switch (what) {

@@ -17,6 +17,7 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -44,6 +45,7 @@ import eu.explorerseden.nicecontrolcenter.Claims;
 import eu.explorerseden.nicecontrolcenter.Claims.Claim;
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
+import eu.explorerseden.nicecontrolcenter.games.GameRuntime;
 import eu.explorerseden.nicecontrolcenter.market.MarketStore;
 import eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl;
 
@@ -73,6 +75,8 @@ public final class GameClaims {
 	private static final Map<String, Stash> stashes = new HashMap<>();
 	/** The game claim each online player is in right now (null outside). */
 	private static final Map<UUID, String> inside = new HashMap<>();
+	/** Died where the hub spawn takes over: moved there once they respawn. */
+	private static final Set<UUID> toHubOnRespawn = new java.util.HashSet<>();
 	private static Path file;
 
 	private GameClaims() {
@@ -86,8 +90,15 @@ public final class GameClaims {
 		});
 		// Before death drops: game items are dealt with here, so no grave and nothing of theirs is lost.
 		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
-			if (entity instanceof ServerPlayer p) died(p);
+			if (entity instanceof ServerPlayer p) {
+				if (GameRuntime.hubCovers(p)) toHubOnRespawn.add(p.getUUID());
+				died(p);
+			}
 			return true;
+		});
+		// Died in a game area or the hub's dimension: they respawn at the hub spawn instead of their bed or home.
+		ServerPlayerEvents.AFTER_RESPAWN.register((old, now, alive) -> {
+			if (toHubOnRespawn.remove(now.getUUID()) && !alive) GameRuntime.toHub(now.level().getServer(), now);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> loggedOut(server, handler.player));
 		// No ender chests where things are put aside: they'd carry game items out (or own things in).
@@ -132,6 +143,18 @@ public final class GameClaims {
 	public static boolean inInventoryClaim(ServerPlayer p) {
 		Claim c = gameClaimAt(p.level(), p.blockPosition());
 		return c != null && c.admin.inventory;
+	}
+
+	/** In any game area: the market, the inbox and pets don't work there (they'd carry things in or out). */
+	public static boolean inGame(ServerPlayer p) {
+		return gameClaimAt(p.level(), p.blockPosition()) != null;
+	}
+
+	/** True (with a message) when the player is in a game area, so {@code what} is refused. */
+	public static boolean refuse(ServerPlayer p, String what) {
+		if (!inGame(p)) return false;
+		p.sendOverlayMessage(Component.literal(what + " can't be used in this game area").withStyle(ChatFormatting.RED));
+		return true;
 	}
 
 	/** No homes or spawn points here (a game claim that says so). */
@@ -273,16 +296,25 @@ public final class GameClaims {
 		inbox(p, toInbox);
 	}
 
-	/** Logging out inside: things back, and out to their home (or respawn point) before the player is saved. */
+	/**
+	 * Logging out inside: things back, and out to the hub spawn (or their home, or respawn point) before the player
+	 * is saved. Logging out anywhere in the hub's dimension also lands them at the hub spawn.
+	 */
 	private static void loggedOut(MinecraftServer server, ServerPlayer p) {
+		toHubOnRespawn.remove(p.getUUID());
+		boolean hub = GameRuntime.hubCovers(p);
 		String id = inside.remove(p.getUUID());
 		Claim c = id == null ? null : ClaimStore.data().claims.get(id);
-		if (c == null && !stashes.containsKey(p.getStringUUID())) return;
+		if (c == null && !stashes.containsKey(p.getStringUUID())) {
+			if (hub && p.isAlive()) GameRuntime.toHub(server, p);
+			return;
+		}
 		leave(p, c);
 		sendHome(server, p);
 	}
 
 	private static void sendHome(MinecraftServer server, ServerPlayer p) {
+		if (GameRuntime.toHub(server, p)) return;
 		// The Nice Actions home, if it's allowed and not in a game claim.
 		CompoundTag home = playerData(server, p.getUUID()).getCompoundOrEmpty("home");
 		String dim = home.getStringOr("dimension", "");

@@ -1844,6 +1844,11 @@
     const s = gm.settings;
     $('pn-gm-enabled').checked = s.enabled;
     $('pn-gm-enabled').disabled = !edit;
+    const hub = s.hub;
+    $('pn-gm-hub').innerHTML = (hub
+      ? `<i class="bi bi-geo-alt"></i> ${esc(dimShort(hub.dim))} · ${Math.round(hub.x)}, ${Math.round(hub.y)}, ${Math.round(hub.z)} <button type="button" class="np-btn small" id="pn-gm-hub-clear" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i> Clear</button>`
+      : 'Not set: players go to their home or respawn point.')
+      + `<br><small>Players who log out or die in a game area or anywhere in its dimension come back here. Set it in game with <code>/game spawn set</code>.</small>`;
     $('pn-gm-list').innerHTML = s.arenas.map((a, i) => {
       const live = gm.live ? gm.live.find((x) => x.id === a.id) : null;
       const top = live ? live.top : Object.values((gm.scores || {})[a.id] || {}).sort((x, y) => a.type === 'parkour' ? y.best - x.best : x.best - y.best).slice(0, 10);
@@ -1920,6 +1925,11 @@
     }
   });
   $('pn-gm-enabled').addEventListener('change', (e) => { gm.settings.enabled = e.target.checked; gmChanged(false); });
+  $('pn-gm-hub').addEventListener('click', (e) => {
+    if (!e.target.closest('#pn-gm-hub-clear')) return;
+    gm.settings.hub = null;
+    gmChanged(true);
+  });
   $('pn-gm-save').addEventListener('click', async () => {
     try {
       await api('api/games', gm.settings);

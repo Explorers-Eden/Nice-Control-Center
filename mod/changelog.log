@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.46.0
+- Game areas: the market, the inbox and pets don't work inside (menus, /market, /inbox, /pets, the pet bag); pets that are out stay hidden there and come back on leaving
+- Hub spawn (/game spawn set|clear): players who log out or die in a game area, or anywhere in the hub's dimension, come back there instead of their home or bed
+- Claims: anyone may use (sit on) cushions and click interaction entities; hitting or breaking them needs the build role
+- Nice Actions menu: NCC's buttons have item icons, and there's an Inbox button
+
 ## 1.45.1
 - Game areas: ender chests don't open where things are put aside (no smuggling items in or out); game items (kit or picked up inside) that end up outside their area vanish within a second and can't be picked up there
 

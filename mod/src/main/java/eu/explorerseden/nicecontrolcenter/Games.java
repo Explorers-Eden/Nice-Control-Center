@@ -93,6 +93,11 @@ public final class Games {
 
 	public static final class Settings {
 		public boolean enabled = true;
+		/**
+		 * The hub spawn (e.g. in Flying Fair): players who log out or die in a game area, or anywhere in the hub's
+		 * dimension, come back here. Null = their home or vanilla respawn.
+		 */
+		public Pos hub;
 		public List<Arena> arenas = new ArrayList<>();
 
 		public Arena arena(String idOrName) {

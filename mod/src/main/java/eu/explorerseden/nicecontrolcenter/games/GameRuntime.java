@@ -117,6 +117,22 @@ public final class GameRuntime {
 		return settings;
 	}
 
+	/** Whether the hub spawn takes this player back (set, and they're in a game area or the hub's dimension). */
+	public static boolean hubCovers(ServerPlayer p) {
+		Games.Pos hub = settings.hub;
+		return hub != null && (dim(p).equals(hub.dim) || eu.explorerseden.nicecontrolcenter.claims.GameClaims.inGame(p));
+	}
+
+	/** To the hub spawn; false when there's none (or its dimension is gone). */
+	public static boolean toHub(MinecraftServer server, ServerPlayer p) {
+		Games.Pos hub = settings.hub;
+		ServerLevel level = hub == null ? null : level(server, hub.dim);
+		if (level == null) return false;
+		p.teleportTo(level, hub.x, hub.y, hub.z, Set.of(), hub.yaw, 0, true);
+		p.resetFallDistance();
+		return true;
+	}
+
 	public static void register() {
 		CommandRegistrationCallback.EVENT.register((d, access, env) -> commands(d));
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
@@ -514,6 +530,20 @@ public final class GameRuntime {
 					ctx.getSource().sendSuccess(() -> Component.literal("Games: " + names), false);
 					return 1;
 				}))
+				.then(Commands.literal("spawn").requires(admin)
+						.then(Commands.literal("set").executes(ctx -> {
+							ServerPlayer p = ctx.getSource().getPlayerOrException();
+							settings.hub = pos(p);
+							saveSettings();
+							ctx.getSource().sendSuccess(() -> Component.literal("Hub spawn set here: players who log out or die in game areas or in this dimension come back here."), true);
+							return 1;
+						}))
+						.then(Commands.literal("clear").executes(ctx -> {
+							settings.hub = null;
+							saveSettings();
+							ctx.getSource().sendSuccess(() -> Component.literal("Hub spawn cleared: players go to their home or respawn point again."), true);
+							return 1;
+						})))
 				.then(Commands.literal("create").requires(admin)
 						.then(Commands.argument("type", StringArgumentType.word()).suggests((ctx, b) -> SharedSuggestionProvider.suggest(Games.TYPES, b))
 								.then(Commands.argument("name", StringArgumentType.word()).executes(GameRuntime::create))))

@@ -777,7 +777,8 @@ final class PetFollowers {
 
 	/** Pets hide while their owner can't be seen. */
 	private static boolean shown(ServerPlayer player) {
-		return player.isAlive() && !player.isSpectator() && !player.isInvisible();
+		// Not in game areas: pets stay hidden there and come back on leaving.
+		return player.isAlive() && !player.isSpectator() && !player.isInvisible() && !eu.explorerseden.nicecontrolcenter.claims.GameClaims.inGame(player);
 	}
 
 	/**
