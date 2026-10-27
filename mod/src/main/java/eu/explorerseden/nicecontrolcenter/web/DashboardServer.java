@@ -616,6 +616,19 @@ public final class DashboardServer {
 				sendJson(exchange, onServerThread(() -> Map.of("ok", eu.explorerseden.nicecontrolcenter.games.GameRuntime.resetScores(id))));
 			}
 			case "/api/dungeons" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.games.DungeonRuntime::view));
+			case "/api/dungeons/resave" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String kind = body.has("kind") ? body.get("kind").getAsString() : "";
+				String name = body.has("name") ? body.get("name").getAsString() : "";
+				String by = body.has("by") ? body.get("by").getAsString() : "the panel";
+				sendJson(exchange, onServerThread(() -> {
+					String err = eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.resave(minecraft, kind, name, by);
+					return err == null ? Map.of("ok", true) : Map.of("error", err);
+				}));
+			}
 			case "/api/dungeons/close" -> {
 				if (!requirePost(exchange)) {
 					return;

@@ -38,6 +38,70 @@ public final class Dungeons {
 		public int z;
 	}
 
+	/**
+	 * A jigsaw block in a dungeon or room, relative to the box's lowest corner. One with a pool is a spot that gets a
+	 * room of that group; a room's connector whose name a spot targets is where the room joins it.
+	 */
+	public static final class Connector {
+		public int x;
+		public int y;
+		public int z;
+		/** Where it faces (north, east, south, west, up, down) and its top (up for sideways ones). */
+		public String facing = "north";
+		public String top = "up";
+		/** Up and down connectors: "rollable" (any turn) or "aligned" (tops match). */
+		public String joint = "rollable";
+		public String name = "";
+		public String target = "";
+		/** The room group (the jigsaw's target pool without "minecraft:"); empty = not a spot. */
+		public String pool = "";
+		/** The block it turns into once the copy is made. */
+		public String finalState = "minecraft:air";
+
+		public boolean spot() {
+			return pool != null && !pool.isEmpty() && !"empty".equals(pool);
+		}
+	}
+
+	/** A prebuilt room: copied into spots of its groups (the tunables are set in the panel). */
+	public static final class Room {
+		public String id = "";
+		public String name = "";
+		public List<String> groups = new ArrayList<>();
+		public boolean enabled = true;
+		/** How often it's picked in its group, against the others (1–100). */
+		public int weight = 10;
+		/** %: the chance it's considered at all for a spot (else the next room is tried). */
+		public int chance = 100;
+		/** At most this many in one copy; 0 = no limit. */
+		public int maxPerCopy;
+		/** Where it was built (so it can be saved again from the panel). */
+		public String sourceDim;
+		public int[] from;
+		public int[] to;
+		/** What the last save found (filled by the mod). */
+		public int sizeX;
+		public int sizeY;
+		public int sizeZ;
+		public List<Marker> markers = new ArrayList<>();
+		public List<Connector> connectors = new ArrayList<>();
+		public long savedAt;
+		public String savedBy;
+
+		public boolean saved() {
+			return sizeX > 0 && savedAt > 0;
+		}
+	}
+
+	/** A room group's tunables (made when a block or room names one). */
+	public static final class Group {
+		public String name = "";
+		/** %: the chance a spot of this group gets a room at all (else it stays closed). */
+		public int fillChance = 100;
+		/** Rooms of this group come only this many levels in (0 = right away; 1 = only inside another room…). */
+		public int minDepth;
+	}
+
 	public static final class Dungeon {
 		public String id = "";
 		public String name = "";
@@ -82,6 +146,14 @@ public final class Dungeons {
 		public int sizeZ;
 		public int pieces;
 		public List<Marker> markers = new ArrayList<>();
+		/** Its jigsaw blocks (the spots rooms go into); filled by the mod. */
+		public List<Connector> connectors = new ArrayList<>();
+		/** Levels of rooms inside rooms (1 = only the dungeon's own spots). */
+		public int roomDepth = 4;
+		/** Rooms in one copy at most. */
+		public int maxRooms = 40;
+		/** "x,y,z" of a spot → % chance it gets a room (overrides its group's chance). */
+		public java.util.Map<String, Integer> spotChances = new java.util.LinkedHashMap<>();
 		public long savedAt;
 		public String savedBy;
 
@@ -115,6 +187,25 @@ public final class Dungeons {
 		public int cooldown = 10;
 		public List<Dungeon> dungeons = new ArrayList<>();
 		public List<Pad> pads = new ArrayList<>();
+		public List<Room> rooms = new ArrayList<>();
+		public List<Group> groups = new ArrayList<>();
+
+		public Room room(String idOrName) {
+			for (Room r : rooms) if (r.id.equals(idOrName) || r.name.equalsIgnoreCase(idOrName)) return r;
+			return null;
+		}
+
+		public List<Room> roomsIn(String group) {
+			return rooms.stream().filter(r -> r.groups.contains(group)).toList();
+		}
+
+		/** The group's tunables (defaults when it has none yet). */
+		public Group group(String name) {
+			for (Group g : groups) if (g.name.equals(name)) return g;
+			Group g = new Group();
+			g.name = name;
+			return g;
+		}
 
 		public Dungeon dungeon(String idOrName) {
 			for (Dungeon d : dungeons) if (d.id.equals(idOrName) || d.name.equalsIgnoreCase(idOrName)) return d;
@@ -162,7 +253,50 @@ public final class Dungeons {
 				if (d.enterCommands == null) d.enterCommands = new ArrayList<>();
 				if (d.exitCommands == null) d.exitCommands = new ArrayList<>();
 				if (d.markers == null) d.markers = new ArrayList<>();
+				if (d.connectors == null) d.connectors = new ArrayList<>();
+				if (d.spotChances == null) d.spotChances = new java.util.LinkedHashMap<>();
+				d.spotChances.replaceAll((k, v) -> v == null ? 100 : Math.max(0, Math.min(100, v)));
+				d.roomDepth = Math.max(1, Math.min(8, d.roomDepth));
+				d.maxRooms = Math.max(1, Math.min(200, d.maxRooms));
 			}
+			if (rooms == null) rooms = new ArrayList<>();
+			if (groups == null) groups = new ArrayList<>();
+			rooms.removeIf(r -> r == null);
+			ids.clear();
+			for (Room r : rooms) {
+				if (r.id == null || r.id.isBlank() || !ids.add(r.id)) {
+					r.id = UUID.randomUUID().toString().substring(0, 8);
+					ids.add(r.id);
+				}
+				if (r.name == null) r.name = "";
+				List<String> gs = new ArrayList<>();
+				if (r.groups != null) for (String g : r.groups) if (g != null && !g.isBlank() && !gs.contains(pool(g))) gs.add(pool(g));
+				r.groups = gs;
+				r.weight = Math.max(1, Math.min(100, r.weight));
+				r.chance = Math.max(0, Math.min(100, r.chance));
+				r.maxPerCopy = Math.max(0, Math.min(99, r.maxPerCopy));
+				if (r.markers == null) r.markers = new ArrayList<>();
+				if (r.connectors == null) r.connectors = new ArrayList<>();
+			}
+			// Every group a room or a spot names gets an entry; ones nothing names any more go.
+			Set<String> named = new TreeSet<>();
+			for (Room r : rooms) {
+				named.addAll(r.groups);
+				for (Connector c : r.connectors) if (c.spot()) named.add(c.pool);
+			}
+			for (Dungeon d : dungeons) for (Connector c : d.connectors) if (c.spot()) named.add(c.pool);
+			List<Group> kept = new ArrayList<>();
+			for (String n : named) {
+				Group g = groups.stream().filter(x -> x != null && n.equals(x.name)).findFirst().orElse(null);
+				if (g == null) {
+					g = new Group();
+					g.name = n;
+				}
+				g.fillChance = Math.max(0, Math.min(100, g.fillChance));
+				g.minDepth = Math.max(0, Math.min(8, g.minDepth));
+				kept.add(g);
+			}
+			groups = kept;
 			ids.clear();
 			for (Pad p : pads) {
 				if (p.id == null || p.id.isBlank() || !ids.add(p.id)) {
@@ -212,6 +346,11 @@ public final class Dungeons {
 		for (Dungeon d : s.dungeons) {
 			if (!d.name.matches("[A-Za-z0-9_-]{1,32}")) return "A dungeon needs a one-word name (letters, digits, - and _).";
 			if (!names.add(d.name.toLowerCase(Locale.ROOT))) return "Two dungeons are called \"" + d.name + "\".";
+		}
+		names.clear();
+		for (Room r : s.rooms) {
+			if (!r.name.matches("[A-Za-z0-9_-]{1,32}")) return "A room needs a one-word name (letters, digits, - and _).";
+			if (!names.add(r.name.toLowerCase(Locale.ROOT))) return "Two rooms are called \"" + r.name + "\".";
 		}
 		return null;
 	}

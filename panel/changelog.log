@@ -1,3 +1,6 @@
+## 1.41.0
+- Dungeons: room groups (fill chance, from which level) and rooms (groups, weight, chance, at most per copy, on/off, doors and spots found, Save again from the build, remove); each dungeon lists its room spots with a chance per spot, rooms-inside-rooms levels and rooms per copy, and can be saved again from its build (mod 1.51.0)
+
 ## 1.40.0
 - Games: wave fight arenas: setup checklist (spawn, fight box, mob spawns, spectator area, exit pads, kit), waves to clear, party size 1–4, team lives, break, mob pool, growth, toughness, boss, hand-written waves, gear, wave reward commands, lose message; the card shows the wave being fought and parties queued; best = waves (mod 1.50.0)
 - Games: saving no longer undoes what was set in game meanwhile (pads, corners, mob spawns, exit pads, kits)

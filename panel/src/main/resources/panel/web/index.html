@@ -1224,6 +1224,8 @@
 					<dl class="pn-gm-howto">
 						<dt>Build</dt><dd>Anywhere; then <code>/dungeon create &lt;name&gt;</code> at one corner, <code>/dungeon corner2</code> at the other, <code>/dungeon save &lt;name&gt;</code> (again after changes)</dd>
 						<dt>Markers</dt><dd>Data structure blocks with the text <code>start</code> (required), <code>exit</code>, <code>checkpoint</code>, <code>mob:zombie x3</code>, <code>boss:wither_skeleton {CustomName:'"Warden of Bones"'}</code>; chests with a loot table roll fresh every run</dd>
+						<dt>Getting the blocks</dt><dd><code>/dungeon tool marker start</code> (any marker text), <code>/dungeon tool door &lt;name&gt;</code>, <code>/dungeon tool spot &lt;group&gt; &lt;door&gt; [turns into]</code>: ready-made blocks, placed in creative</dd>
+						<dt>Random rooms</dt><dd>Build a room, <code>/dungeon room create &lt;name&gt;</code> + <code>/dungeon corner2</code>, <code>/dungeon room save &lt;name&gt; [group]</code>. Its doors are jigsaw blocks facing out. A spot (a jigsaw whose target pool is a group) gets a random room of that group, turned so a door with the spot's target name faces it. A filled spot becomes what the door turns into (the doorway), an empty one its own "turns into" block (a wall). Rooms can have spots of their own; they always stay inside the dungeon's box. Weights and chances are set below.</dd>
 						<dt>Pools and pads</dt><dd><code>/dungeon pad add &lt;pool&gt;</code> where players should stand; a run picks a random dungeon of that pool</dd>
 						<dt>Parties</dt><dd><code>/party invite &lt;player&gt;</code>; the leader stands on the pad and members within 16 blocks come along</dd>
 						<dt>Kit</dt><dd><code>/dungeon kit &lt;name&gt;</code> makes what you carry the dungeon's kit</dd>
@@ -1246,6 +1248,14 @@
 					<div id="pn-dg-runs"></div>
 				</section>
 				<div id="pn-dg-list" class="pn-rw-list"></div>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-diagram-3"></i> Room groups</h3>
+					<div id="pn-dg-groups"></div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Rooms</h3>
+					<div id="pn-dg-rooms" class="pn-rw-list"></div>
+				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Pads</h3>
 					<div id="pn-dg-pads"></div>

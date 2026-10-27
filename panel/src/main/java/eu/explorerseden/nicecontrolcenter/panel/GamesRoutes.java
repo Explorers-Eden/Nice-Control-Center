@@ -136,11 +136,38 @@ final class GamesRoutes {
 				d.sizeZ = was.sizeZ;
 				d.pieces = was.pieces;
 				d.markers = was.markers;
+				d.connectors = was.connectors;
 				d.savedAt = was.savedAt;
 				d.savedBy = was.savedBy;
 				if (d.kit != null && !d.kit.isEmpty()) d.kit = was.kit;
 			}
 			next.dungeons.removeIf(d -> now.dungeon(d.id) == null);
+			for (Dungeons.Room r : next.rooms) {
+				Dungeons.Room was = now.room(r.id);
+				if (was == null) continue;
+				// Renaming would lose the room's file (named after it): the name stays.
+				r.name = was.name;
+				r.sourceDim = was.sourceDim;
+				r.from = was.from;
+				r.to = was.to;
+				r.sizeX = was.sizeX;
+				r.sizeY = was.sizeY;
+				r.sizeZ = was.sizeZ;
+				r.markers = was.markers;
+				r.connectors = was.connectors;
+				r.savedAt = was.savedAt;
+				r.savedBy = was.savedBy;
+			}
+			next.rooms.removeIf(r -> now.room(r.id) == null);
+			for (Dungeons.Room was : now.rooms) {
+				if (next.room(was.id) != null || !was.name.matches("[A-Za-z0-9_-]{1,32}")) continue;
+				try {
+					java.nio.file.Files.deleteIfExists(serverDir.resolve(files.worldFolder()).resolve("nicecontrolcenter").resolve("dungeon-rooms").resolve(was.name.toLowerCase(java.util.Locale.ROOT) + ".nbt"));
+				} catch (java.io.IOException e) {
+					// The file stays; nothing names it any more.
+				}
+			}
+			next.fill();
 			// Removed on the page: their saved blocks go too.
 			Dungeons.Settings kept = next;
 			for (Dungeons.Dungeon was : now.dungeons) {
@@ -153,7 +180,23 @@ final class GamesRoutes {
 				}
 			}
 			Dungeons.write(dungeonsFile(), next);
-			audit.log(me.name(), "dungeons.settings", next.dungeons.size() + " dungeons, " + next.pads.size() + " pads", clientIp(ctx));
+			audit.log(me.name(), "dungeons.settings", next.dungeons.size() + " dungeons, " + next.rooms.size() + " rooms, " + next.pads.size() + " pads", clientIp(ctx));
+			json(ctx, Map.of("ok", true));
+		}));
+		// Saves a dungeon or a room again from the build it was made from (the mod reads the world).
+		routes.post("/api/dungeons/resave", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
+			JsonObject body = body(ctx);
+			body.addProperty("by", me.name());
+			JsonObject answer = dashboard.postForJson("/api/dungeons/resave", body, me.name());
+			if (answer == null) {
+				error(ctx, HttpStatus.CONFLICT, "Builds can be saved again while the server runs.");
+				return;
+			}
+			if (answer.has("error")) {
+				error(ctx, HttpStatus.BAD_REQUEST, str(answer, "error"));
+				return;
+			}
+			audit.log(me.name(), "dungeons.resave", str(body, "kind") + " " + str(body, "name"), clientIp(ctx));
 			json(ctx, Map.of("ok", true));
 		}));
 		routes.post("/api/dungeons/close", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {

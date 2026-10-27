@@ -101,6 +101,11 @@ public final class DungeonRuntime {
 		State state = State.LOADING;
 		CompletableFuture<List<DungeonTemplates.Piece>> loading;
 		ArrayDeque<DungeonTemplates.Piece> toPaste;
+		/** The rooms picked for this copy, their parsed blocks (read on the worker) and the ones still to paste. */
+		DungeonRooms.Layout layout;
+		CompletableFuture<Map<String, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate>> roomLoading;
+		Map<String, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> roomBlocks;
+		ArrayDeque<DungeonRooms.Placed> roomsToPaste;
 		int total;
 		/** Wiping: the pieces still to clear (dx, dz). */
 		ArrayDeque<int[]> toWipe;
@@ -158,7 +163,7 @@ public final class DungeonRuntime {
 	private static Path slotsFile;
 	private static final Random random = new Random();
 
-	private record Selection(String name, String dim, BlockPos a, BlockPos b, long until) {
+	private record Selection(String name, String dim, BlockPos a, BlockPos b, long until, boolean room) {
 	}
 
 	/** /dungeon create <name> [pos]: the first corner (given, looked at, or at their feet); the box is as high as its corners. */
@@ -167,7 +172,7 @@ public final class DungeonRuntime {
 		String name = StringArgumentType.getString(ctx, "name");
 		if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
 		BlockPos a = Corners.pick(ctx, p);
-		selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), a, null, System.currentTimeMillis() + 30 * 60_000L));
+		selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), a, null, System.currentTimeMillis() + 30 * 60_000L, false));
 		Corners.show(p, a, null);
 		ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of " + name + " is at " + a.toShortString() + ". Set the opposite corner (height included) with /dungeon corner2 [x y z]"
 				+ " (or look at it), then /dungeon save " + name
@@ -181,10 +186,161 @@ public final class DungeonRuntime {
 		if (s == null) return fail(ctx, "Start with /dungeon create <name> at the first corner.");
 		if (!s.dim.equals(p.level().dimension().identifier().toString())) return fail(ctx, "Both corners have to be in the same dimension.");
 		BlockPos b = Corners.pick(ctx, p);
-		selections.put(p.getUUID(), new Selection(s.name, s.dim, s.a, b, System.currentTimeMillis() + 30 * 60_000L));
+		selections.put(p.getUUID(), new Selection(s.name, s.dim, s.a, b, System.currentTimeMillis() + 30 * 60_000L, s.room));
 		Corners.show(p, s.a, b);
-		ctx.getSource().sendSuccess(() -> Component.literal("Box: " + Corners.size(s.a, b) + " (corner 2 at " + b.toShortString() + "). /dungeon save " + s.name + " keeps it.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		ctx.getSource().sendSuccess(() -> Component.literal("Box: " + Corners.size(s.a, b) + " (corner 2 at " + b.toShortString() + "). " + (s.room ? "/dungeon room save " : "/dungeon save ") + s.name + " keeps it.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 		return 1;
+	}
+
+	/** /dungeon room create <name> [pos]: like a dungeon's first corner, for a room. */
+	private static int roomCorner1(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		String name = StringArgumentType.getString(ctx, "name");
+		if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
+		BlockPos a = Corners.pick(ctx, p);
+		selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), a, null, System.currentTimeMillis() + 30 * 60_000L, true));
+		Corners.show(p, a, null);
+		ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of the room " + name + " is at " + a.toShortString() + ". Set the opposite corner with /dungeon corner2 [x y z] (or look at it), then /dungeon room save " + name + " [group]"
+				+ ". Its doors are jigsaw blocks (/dungeon tool door <name>); spots for rooms inside it too (/dungeon tool spot <group> <door>).").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		return 1;
+	}
+
+	/** /dungeon room save <name> [group] (or with from/to corners). */
+	private static int saveRoom(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayer();
+		MinecraftServer server = ctx.getSource().getServer();
+		String name = StringArgumentType.getString(ctx, "name");
+		if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
+		String group = ctx.getNodes().stream().anyMatch(n -> n.getNode().getName().equals("group")) ? Dungeons.pool(StringArgumentType.getString(ctx, "group")) : null;
+		Selection s = p == null ? null : selections.get(p.getUUID());
+		Dungeons.Room room = settings.room(name);
+		ServerLevel level;
+		BlockPos a, b;
+		if (ctx.getNodes().stream().anyMatch(n -> n.getNode().getName().equals("to"))) {
+			level = ctx.getSource().getLevel();
+			a = net.minecraft.commands.arguments.coordinates.BlockPosArgument.getBlockPos(ctx, "from");
+			b = net.minecraft.commands.arguments.coordinates.BlockPosArgument.getBlockPos(ctx, "to");
+		} else if (s != null && s.room && s.name.equalsIgnoreCase(name) && s.b != null) {
+			level = GameRuntime.levelOf(server, s.dim);
+			a = s.a;
+			b = s.b;
+		} else if (room != null && room.from != null && room.to != null && room.sourceDim != null) {
+			level = GameRuntime.levelOf(server, room.sourceDim);
+			a = new BlockPos(room.from[0], room.from[1], room.from[2]);
+			b = new BlockPos(room.to[0], room.to[1], room.to[2]);
+		} else {
+			return fail(ctx, "Mark the room first: /dungeon room create " + name + " at one corner, /dungeon corner2 at the other.");
+		}
+		String err = saveRoom(server, level, a, b, name, group, p == null ? "console" : p.getGameProfile().name(), msg -> ctx.getSource().sendSuccess(() -> msg, true),
+				msg -> ctx.getSource().sendFailure(msg));
+		if (err != null) return fail(ctx, err);
+		if (p != null) selections.remove(p.getUUID());
+		return 1;
+	}
+
+	/** Saves a room from its box (commands and the panel); returns why not, or null. Server thread. */
+	private static String saveRoom(MinecraftServer server, ServerLevel level, BlockPos a, BlockPos b, String name, String group, String by,
+			java.util.function.Consumer<Component> done, java.util.function.Consumer<Component> failed) {
+		if (level == null) return "That dimension isn't loaded.";
+		int max = DungeonTemplates.ROOM_MAX;
+		if (Math.abs(a.getX() - b.getX()) >= max || Math.abs(a.getY() - b.getY()) >= max || Math.abs(a.getZ() - b.getZ()) >= max) {
+			return "A room is at most " + max + " × " + max + " × " + max + " blocks (" + Corners.size(a, b) + " here).";
+		}
+		Dungeons.Room existing = settings.room(name);
+		boolean fresh = existing == null;
+		Dungeons.Room target = fresh ? new Dungeons.Room() : existing;
+		if (fresh) target.name = name;
+		if (group != null && !target.groups.contains(group)) target.groups.add(group);
+		target.savedBy = by;
+		DungeonTemplates.saveRoom(server, level, a, b, target).whenComplete((ok, err) -> server.execute(() -> {
+			if (err != null) {
+				failed.accept(Component.literal("Could not save the room " + name + ": " + err.getMessage()));
+				return;
+			}
+			if (fresh) settings.rooms.add(target);
+			settings.fill();
+			saveSettings();
+			long doors = target.connectors.stream().filter(c -> !c.spot()).count();
+			String spots = spots(target.connectors);
+			Map<String, Integer> counts = new LinkedHashMap<>();
+			for (Dungeons.Marker m : target.markers) counts.merge(m.type, 1, Integer::sum);
+			String markers = counts.isEmpty() ? "" : ", " + counts.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).reduce((x, y) -> x + ", " + y).orElse("");
+			String names = target.connectors.stream().filter(c -> !c.spot()).map(c -> c.name).distinct().reduce((x, y) -> x + ", " + y).orElse("");
+			done.accept(Component.literal("Saved the room " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + doors + (doors == 1 ? " door" : " doors")
+					+ (names.isEmpty() ? "" : ": " + names) + (spots.isEmpty() ? "" : ", " + spots) + markers + ")"
+					+ (target.groups.isEmpty() ? ". Put it in a group (panel, or /dungeon room group " + name + " <group>) so spots can get it." : " in " + String.join(", ", target.groups) + ".")
+					+ (target.connectors.isEmpty() ? " It has no jigsaw blocks, so it can't join a spot." : "")).withStyle(target.connectors.isEmpty() ? ChatFormatting.GOLD : ChatFormatting.GREEN));
+		}));
+		return null;
+	}
+
+	/** "2 room spots: hall ×2" (empty without spots). */
+	private static String spots(List<Dungeons.Connector> connectors) {
+		Map<String, Integer> by = new LinkedHashMap<>();
+		for (Dungeons.Connector c : connectors) if (c.spot()) by.merge(c.pool, 1, Integer::sum);
+		if (by.isEmpty()) return "";
+		int n = by.values().stream().mapToInt(Integer::intValue).sum();
+		return n + (n == 1 ? " room spot: " : " room spots: ") + by.entrySet().stream().map(e -> e.getKey() + (e.getValue() > 1 ? " ×" + e.getValue() : "")).reduce((x, y) -> x + ", " + y).orElse("");
+	}
+
+	/** From the panel: saves a dungeon or a room again from the box it was built in. Server thread. */
+	public static String resave(MinecraftServer server, String kind, String name, String by) {
+		if ("room".equals(kind)) {
+			Dungeons.Room room = settings.room(name);
+			if (room == null) return "There's no such room.";
+			if (room.from == null || room.to == null || room.sourceDim == null) return "The room has no box to save from yet.";
+			return saveRoom(server, GameRuntime.levelOf(server, room.sourceDim), new BlockPos(room.from[0], room.from[1], room.from[2]), new BlockPos(room.to[0], room.to[1], room.to[2]),
+					room.name, null, by, msg -> NiceControlCenter.LOGGER.info(msg.getString()), msg -> NiceControlCenter.LOGGER.warn(msg.getString()));
+		}
+		Dungeon d = settings.dungeon(name);
+		if (d == null) return "There's no such dungeon.";
+		if (d.from == null || d.to == null || d.sourceDim == null) return "The dungeon has no box to save from yet.";
+		ServerLevel level = GameRuntime.levelOf(server, d.sourceDim);
+		if (level == null) return "That dimension isn't loaded.";
+		d.savedBy = by;
+		DungeonTemplates.save(server, level, new BlockPos(d.from[0], d.from[1], d.from[2]), new BlockPos(d.to[0], d.to[1], d.to[2]), d).whenComplete((ok, err) -> server.execute(() -> {
+			if (err != null) {
+				NiceControlCenter.LOGGER.warn("Could not save the dungeon {}: {}", d.name, err.getMessage());
+				return;
+			}
+			settings.fill();
+			saveSettings();
+			NiceControlCenter.LOGGER.info("Saved the dungeon {} again from its build ({} pieces{})", d.name, d.pieces, spots(d.connectors).isEmpty() ? "" : ", " + spots(d.connectors));
+		}));
+		return null;
+	}
+
+	/** /dungeon tool …: a vanilla block with its fields filled in (an op places it in creative and the data comes along). */
+	private static int tool(CommandContext<CommandSourceStack> ctx, String item, String data, String title, String lore) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		String cmd = "give " + p.getStringUUID() + " " + item + "[block_entity_data={" + data + "},custom_name=" + snbt(title) + ",lore=[" + snbt(lore) + "]]";
+		ConsoleRunner.quiet(ctx.getSource().getServer(), cmd);
+		ctx.getSource().sendSuccess(() -> Component.literal("Here's " + title + ". Place it in creative (as an op) and its settings come along.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		return 1;
+	}
+
+	/** /dungeon tool spot <group> <door> [turns_into]: a jigsaw that gets a room of the group, joined at its door. */
+	private static int spotTool(CommandContext<CommandSourceStack> ctx, String turnsInto) throws CommandSyntaxException {
+		String group = Dungeons.pool(StringArgumentType.getString(ctx, "group"));
+		String door = jigsawId(StringArgumentType.getString(ctx, "door"));
+		try {
+			turnsInto = net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(net.minecraft.commands.arguments.blocks.BlockStateParser
+					.parseForBlock(ctx.getSource().getServer().registryAccess().lookupOrThrow(Registries.BLOCK), turnsInto, false).blockState());
+		} catch (CommandSyntaxException e) {
+			return fail(ctx, "Not a block: " + turnsInto);
+		}
+		return tool(ctx, "minecraft:jigsaw", "id:\"minecraft:jigsaw\",name:" + snbt(door) + ",target:" + snbt(door) + ",pool:" + snbt("minecraft:" + group) + ",final_state:" + snbt(turnsInto)
+				+ ",joint:\"rollable\"", "Room spot: " + group + " (door " + door.replace("minecraft:", "") + ")", "Gets a random " + group + " room; face it out through the doorway. Empty: " + turnsInto);
+	}
+
+	private static String snbt(String text) {
+		return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+	}
+
+	/** A jigsaw id ("door" → "minecraft:door"). */
+	private static String jigsawId(String word) {
+		String w = word.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_./:-]", "");
+		return w.contains(":") ? w : "minecraft:" + w;
 	}
 
 	private DungeonRuntime() {
@@ -349,24 +505,35 @@ public final class DungeonRuntime {
 		if (level == null) return;
 		switch (r.state) {
 			case LOADING -> {
-				if (!r.loading.isDone()) return;
+				if (!r.loading.isDone() || !r.roomLoading.isDone()) return;
 				List<DungeonTemplates.Piece> pieces;
 				try {
 					pieces = r.loading.join();
+					r.roomBlocks = r.roomLoading.join();
 				} catch (RuntimeException e) {
 					fail(server, r, e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
 					return;
 				}
 				r.toPaste = new ArrayDeque<>(pieces);
-				r.total = pieces.size();
+				r.roomsToPaste = new ArrayDeque<>(r.layout.rooms());
+				r.total = pieces.size() + r.roomsToPaste.size();
 				forceChunks(level, r, true);
 				r.state = State.PASTING;
 			}
 			case PASTING -> {
 				RandomSource rs = level.getRandom();
-				for (int i = 0; i < settings.piecesPerTick && !r.toPaste.isEmpty(); i++) DungeonTemplates.paste(level, r.min, r.toPaste.poll(), rs);
-				if (r.bar != null) r.bar.setProgress(r.total == 0 ? 1f : 1f - r.toPaste.size() / (float) r.total);
-				if (r.toPaste.isEmpty()) begin(server, level, r);
+				// The dungeon's own pieces first, then its rooms on top (each room is one step).
+				for (int i = 0; i < settings.piecesPerTick && !(r.toPaste.isEmpty() && r.roomsToPaste.isEmpty()); i++) {
+					if (!r.toPaste.isEmpty()) {
+						DungeonTemplates.paste(level, r.min, r.toPaste.poll(), rs);
+					} else {
+						DungeonRooms.Placed room = r.roomsToPaste.poll();
+						DungeonTemplates.pasteRoom(level, r.min.offset(room.pos()), room.rotation(), r.roomBlocks.get(room.room().name), rs);
+					}
+				}
+				int left = r.toPaste.size() + r.roomsToPaste.size();
+				if (r.bar != null) r.bar.setProgress(r.total == 0 ? 1f : 1f - left / (float) r.total);
+				if (left == 0) begin(server, level, r);
 			}
 			case RUNNING -> running(server, level, r);
 			case ENDING -> {
@@ -598,6 +765,14 @@ public final class DungeonRuntime {
 		r.min = new BlockPos(x, BASE_Y, 0);
 		r.max = r.min.offset(d.sizeX - 1, d.sizeY - 1, d.sizeZ - 1);
 		r.loading = DungeonTemplates.load(server, d);
+		r.layout = DungeonRooms.plan(d, settings, random);
+		Set<String> roomNames = new LinkedHashSet<>();
+		for (DungeonRooms.Placed pl : r.layout.rooms()) roomNames.add(pl.room().name);
+		r.roomLoading = DungeonTemplates.onWorker(() -> {
+			Map<String, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> out = new HashMap<>();
+			for (String n : roomNames) out.put(n, DungeonTemplates.readRoom(server, n));
+			return out;
+		});
 		r.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal(fill(d.prepareMessage.isEmpty() ? "Preparing your dungeon…" : d.prepareMessage, r, null)),
 				BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
 		r.bar.setProgress(0);
@@ -616,7 +791,9 @@ public final class DungeonRuntime {
 
 	/** The copy is ready: markers become air (spawning what they say), everyone goes to the start. */
 	private static void begin(MinecraftServer server, ServerLevel level, Run r) {
-		for (Dungeons.Marker m : r.dungeon.markers) {
+		List<Dungeons.Marker> markers = new ArrayList<>(r.dungeon.markers);
+		markers.addAll(r.layout.markers());
+		for (Dungeons.Marker m : markers) {
 			BlockPos at = r.min.offset(m.x, m.y, m.z);
 			level.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
 			switch (m.type) {
@@ -634,6 +811,17 @@ public final class DungeonRuntime {
 				}
 			}
 		}
+		// Connectors (jigsaw blocks) become what they turn into: an open doorway, or a wall where no room came.
+		var blocks = level.registryAccess().lookupOrThrow(Registries.BLOCK);
+		for (DungeonRooms.Joint j : r.layout.joints()) {
+			net.minecraft.world.level.block.state.BlockState state;
+			try {
+				state = net.minecraft.commands.arguments.blocks.BlockStateParser.parseForBlock(blocks, j.finalState(), false).blockState();
+			} catch (CommandSyntaxException e) {
+				state = Blocks.AIR.defaultBlockState();
+			}
+			level.setBlock(r.min.offset(j.pos()), state, 2);
+		}
 		if (r.bar != null) r.bar.removeAllPlayers();
 		r.bar = null;
 		r.state = State.RUNNING;
@@ -641,6 +829,9 @@ public final class DungeonRuntime {
 		if (r.players.isEmpty()) {
 			// Tried from the console: it stands for a minute, then it's wiped.
 			NiceControlCenter.LOGGER.info("Dungeon {} copied into slot {} at {} (start {}); wiped in a minute", r.dungeon.name, r.slot, r.min.toShortString(), r.start.toShortString());
+			for (DungeonRooms.Placed pl : r.layout.rooms()) {
+				NiceControlCenter.LOGGER.info("  room {} (level {}) at {}, turned {}", pl.room().name, pl.level(), r.min.offset(pl.pos()).toShortString(), pl.rotation().getSerializedName());
+			}
 			r.state = State.ENDING;
 			r.endAt = System.currentTimeMillis() + 60_000;
 			return;
@@ -956,6 +1147,11 @@ public final class DungeonRuntime {
 		var admin = Permissions.require(PERMISSION, PermissionLevel.GAMEMASTERS);
 		var dungeonArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("name", StringArgumentType.word())
 				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.dungeons.stream().map(x -> x.name), b));
+		var roomArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("name", StringArgumentType.word())
+				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.rooms.stream().map(x -> x.name), b));
+		var groupArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("group", StringArgumentType.word())
+				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.groups.stream().map(g -> g.name), b));
+		var blockPos = (java.util.function.Function<String, com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, net.minecraft.commands.arguments.coordinates.Coordinates>>) n -> Commands.argument(n, net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos());
 		var poolArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("pool", StringArgumentType.word())
 				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.pools(), b));
 		d.register(Commands.literal("dungeon").requires(Everyone.unless("nicecontrolcenter.dungeons.use"))
@@ -995,6 +1191,67 @@ public final class DungeonRuntime {
 				.then(Commands.literal("save").requires(admin).then(dungeonArg.get().executes(DungeonRuntime::save)
 						.then(Commands.argument("from", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
 								.then(Commands.argument("to", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(DungeonRuntime::save)))))
+				.then(Commands.literal("room").requires(admin)
+						.then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes(DungeonRuntime::roomCorner1)
+								.then(blockPos.apply("pos").executes(DungeonRuntime::roomCorner1))))
+						.then(Commands.literal("save").then(roomArg.get().executes(DungeonRuntime::saveRoom)
+								.then(groupArg.get().executes(DungeonRuntime::saveRoom))
+								.then(blockPos.apply("from").then(blockPos.apply("to").executes(DungeonRuntime::saveRoom)
+										.then(groupArg.get().executes(DungeonRuntime::saveRoom))))))
+						.then(Commands.literal("group").then(roomArg.get().then(groupArg.get().executes(ctx -> {
+							Dungeons.Room x = settings.room(StringArgumentType.getString(ctx, "name"));
+							if (x == null) return fail(ctx, "There's no such room.");
+							String g = Dungeons.pool(StringArgumentType.getString(ctx, "group"));
+							boolean in = x.groups.remove(g);
+							if (!in) x.groups.add(g);
+							settings.fill();
+							saveSettings();
+							ctx.getSource().sendSuccess(() -> Component.literal(x.name + (in ? " left the group " : " is in the group ") + g + " (groups: " + (x.groups.isEmpty() ? "none" : String.join(", ", x.groups)) + ")."), true);
+							return 1;
+						}))))
+						.then(Commands.literal("weight").then(roomArg.get().then(Commands.argument("weight", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 100)).executes(ctx -> {
+							Dungeons.Room x = settings.room(StringArgumentType.getString(ctx, "name"));
+							if (x == null) return fail(ctx, "There's no such room.");
+							x.weight = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "weight");
+							saveSettings();
+							ctx.getSource().sendSuccess(() -> Component.literal(x.name + " has the weight " + x.weight + " now."), true);
+							return 1;
+						}))))
+						.then(Commands.literal("delete").then(roomArg.get().executes(ctx -> {
+							Dungeons.Room x = settings.room(StringArgumentType.getString(ctx, "name"));
+							if (x == null) return fail(ctx, "There's no such room.");
+							settings.rooms.remove(x);
+							settings.fill();
+							saveSettings();
+							DungeonTemplates.deleteRoom(ctx.getSource().getServer(), x.name);
+							ctx.getSource().sendSuccess(() -> Component.literal("Removed the room " + x.name + "."), true);
+							return 1;
+						})))
+						.then(Commands.literal("list").executes(ctx -> {
+							StringBuilder b = new StringBuilder();
+							for (Dungeons.Group g : settings.groups) {
+								List<String> names = settings.roomsIn(g.name).stream().map(x -> x.name + " (" + x.weight + (x.enabled ? "" : ", off") + ")").toList();
+								b.append("\n").append(g.name).append(g.fillChance < 100 ? " " + g.fillChance + "%" : "").append(": ").append(names.isEmpty() ? "no rooms" : String.join(", ", names));
+							}
+							long loose = settings.rooms.stream().filter(x -> x.groups.isEmpty()).count();
+							if (loose > 0) b.append("\n").append(loose).append(" room(s) in no group");
+							ctx.getSource().sendSuccess(() -> Component.literal("Room groups:" + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
+							return 1;
+						})))
+				.then(Commands.literal("tool").requires(admin)
+						.then(Commands.literal("marker").then(Commands.argument("text", StringArgumentType.greedyString())
+								.suggests((ctx, b) -> SharedSuggestionProvider.suggest(List.of("start", "exit", "checkpoint", "mob:zombie x3", "boss:"), b)).executes(ctx -> {
+									String text = StringArgumentType.getString(ctx, "text").strip();
+									return tool(ctx, "minecraft:structure_block", "id:\"minecraft:structure_block\",mode:\"DATA\",metadata:" + snbt(text), "Marker: " + text,
+											"A dungeon marker (data structure block)");
+								})))
+						.then(Commands.literal("door").then(Commands.argument("door", StringArgumentType.word()).executes(ctx -> {
+							String door = jigsawId(StringArgumentType.getString(ctx, "door"));
+							return tool(ctx, "minecraft:jigsaw", "id:\"minecraft:jigsaw\",name:" + snbt(door) + ",target:" + snbt(door) + ",pool:\"minecraft:empty\",final_state:\"minecraft:air\",joint:\"rollable\"",
+									"Room door: " + door.replace("minecraft:", ""), "Where this room joins a spot; face it out of the room");
+						})))
+						.then(Commands.literal("spot").then(groupArg.get().then(Commands.argument("door", StringArgumentType.word()).executes(ctx -> spotTool(ctx, "minecraft:air"))
+								.then(Commands.argument("turns_into", StringArgumentType.greedyString()).executes(ctx -> spotTool(ctx, StringArgumentType.getString(ctx, "turns_into").strip())))))))
 				.then(Commands.literal("kit").requires(admin).then(dungeonArg.get().executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
@@ -1116,7 +1373,8 @@ public final class DungeonRuntime {
 			Map<String, Integer> counts = new LinkedHashMap<>();
 			for (Dungeons.Marker m : target.markers) counts.merge(m.type, 1, Integer::sum);
 			String markers = counts.isEmpty() ? "no markers" : counts.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).reduce((x, y) -> x + ", " + y).orElse("");
-			ctx.getSource().sendSuccess(() -> Component.literal("Saved " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + target.pieces + " pieces, " + markers
+			String spots = spots(target.connectors);
+			ctx.getSource().sendSuccess(() -> Component.literal("Saved " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + target.pieces + " pieces, " + markers + (spots.isEmpty() ? "" : ", " + spots)
 					+ ") in the " + target.pool + " pool." + (target.hasMarker("start") ? "" : " It needs a start marker before players can get it.")
 					+ (target.hasMarker("exit") || "boss".equals(target.clearOn) ? "" : " Without an exit marker it can't be cleared.")).withStyle(target.hasMarker("start") ? ChatFormatting.GREEN : ChatFormatting.GOLD), true);
 		}));

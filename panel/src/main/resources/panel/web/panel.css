@@ -1091,3 +1091,7 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-dg-who .out { color: var(--faint); text-decoration: line-through; }
 .pn-dg-time { font-variant-numeric: tabular-nums; color: var(--muted); }
 .pn-dg-warn { color: #ffb86b; }
+.pn-dg-spots { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; }
+.pn-dg-spots li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--fs-sm); }
+.pn-dg-spots input, .pn-dg-inline input { width: 64px; }
+.pn-dg-inline { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }

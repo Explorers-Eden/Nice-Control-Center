@@ -2091,7 +2091,7 @@
           <span class="pn-rw-give-icon"><i class="bi bi-door-closed"></i></span>
           <b class="pn-gm-name">${esc(d.name)}</b><span class="np-chip">${esc(d.pool)}</span>
           ${d.pieces ? `<span class="np-chip">${d.sizeX} × ${d.sizeY} × ${d.sizeZ}</span>` : ''}
-          <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-dgdel="${i}" title="Remove the dungeon and its saved blocks"><i class="bi bi-trash"></i></button></span>
+          <span class="pn-rw-actions">${d.from ? `<button type="button" class="np-btn small" data-dgresave="dungeon" data-name="${esc(d.name)}" title="Copy the build in the world again (after changes to it)"><i class="bi bi-arrow-repeat"></i> Save again from the build</button>` : ''}<button type="button" class="np-btn small danger" data-dgdel="${i}" title="Remove the dungeon and its saved blocks"><i class="bi bi-trash"></i></button></span>
         </div>
         <p class="pn-hint"><i class="bi bi-pin-map"></i> ${esc(markers)}${d.savedAt ? ` · saved ${esc(new Date(d.savedAt).toLocaleString())}${d.savedBy ? ' by ' + esc(d.savedBy) : ''}` : ''}${warn ? ` · <span class="pn-dg-warn">${warn}</span>` : ''}</p>
         <div class="pn-gm-body"><div class="pn-rw-grid">
@@ -2111,9 +2111,14 @@
           ${field('Message when failed', text('failedMessage', '■ {dungeon}: the run is over.'), true)}
           ${field('Commands on entering ({player}, {party}, {dungeon})', lines('enterCommands'), true)}
           ${field('Commands on leaving or the end ({time}, {deaths})', lines('exitCommands'), true)}
+          ${field('Rooms inside rooms, levels', num('roomDepth', 1, 8))}
+          ${field('Rooms per copy, at most', num('maxRooms', 1, 200))}
+          ${dgSpots(d, i)}
         </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best clears</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}</div></div>
       </section>`;
     }).join('') || '<section class="np-card"><p class="np-empty">No dungeons yet. Build one, then <code>/dungeon create MyDungeon</code> at a corner in game.</p></section>';
+
+    renderRooms(edit);
 
     $('pn-dg-pads').innerHTML = s.pads.length ? `<ul class="pn-dg-runs">${s.pads.map((p, i) => `<li><span class="np-chip">${esc(p.pool)}</span>
         <span>${esc(dimShort(p.pos.dim))} · ${Math.round(p.pos.x)}, ${Math.round(p.pos.y)}, ${Math.round(p.pos.z)}</span>
@@ -2121,6 +2126,60 @@
         <button type="button" class="np-btn small danger" data-dgpad="${i}" ${edit ? '' : 'disabled'}><i class="bi bi-trash"></i></button></li>`).join('')}</ul>`
       : '<p class="pn-hint">No pads yet: stand where players should start and type <code>/dungeon pad add &lt;pool&gt;</code>.</p>';
     $('pn-dg-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+  }
+
+  /** A dungeon's room spots (jigsaws with a group), each with its own chance (empty: the group's). */
+  function dgSpots(d, i) {
+    const spots = (d.connectors || []).filter((c) => c.pool);
+    if (!spots.length) return '';
+    return `<div class="pn-field pn-field-wide"><span>Room spots (chance it gets a room; empty = the group's)</span><ul class="pn-dg-spots">${spots.map((c) => {
+      const key = `${c.x},${c.y},${c.z}`;
+      const v = (d.spotChances || {})[key];
+      const rooms = dg.settings.rooms.filter((r) => r.groups.includes(c.pool) && r.enabled).length;
+      return `<li><span class="np-chip">${esc(c.pool)}</span><small>${esc(key)} · facing ${esc(c.facing)} · door ${esc(c.target || '?')}</small>
+        <input type="number" min="0" max="100" data-dgspot="${esc(key)}" data-dungeon-i="${i}" value="${v == null ? '' : v}" placeholder="${dg.settings.groups.find((g) => g.name === c.pool)?.fillChance ?? 100}"> %
+        ${rooms ? '' : '<span class="pn-dg-warn">no rooms in this group</span>'}</li>`;
+    }).join('')}</ul></div>`;
+  }
+
+  function renderRooms(edit) {
+    const s = dg.settings;
+    const rooms = s.rooms || [];
+    $('pn-dg-groups').innerHTML = (s.groups || []).length ? `<ul class="pn-dg-runs">${s.groups.map((g, i) => {
+      const inGroup = rooms.filter((r) => r.groups.includes(g.name) && r.enabled);
+      const total = inGroup.reduce((n, r) => n + r.weight, 0);
+      const shares = inGroup.map((r) => `${esc(r.name)} ${Math.round(r.weight * 100 / total)}%`).join(', ');
+      return `<li data-group="${i}"><b>${esc(g.name)}</b>
+        <label class="pn-dg-inline">filled <input type="number" min="0" max="100" data-g="fillChance" value="${g.fillChance}"> %</label>
+        <label class="pn-dg-inline" title="0: right away; 1: only in rooms inside another room…">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
+        <small>${inGroup.length ? shares : '<span class="pn-dg-warn">no rooms (that are on)</span>'}</small></li>`;
+    }).join('')}</ul>` : '<p class="pn-hint">No groups yet: a spot\'s target pool or a room\'s group makes one.</p>';
+    $('pn-dg-rooms').innerHTML = rooms.map((r, i) => {
+      const doors = {};
+      (r.connectors || []).filter((c) => !c.pool).forEach((c) => { doors[c.name] = (doors[c.name] || 0) + 1; });
+      const spots = (r.connectors || []).filter((c) => c.pool).map((c) => c.pool);
+      const counts = {};
+      (r.markers || []).forEach((m) => { counts[m.type] = (counts[m.type] || 0) + 1; });
+      const info = [Object.entries(doors).map(([k, n]) => `door ${esc(k)}${n > 1 ? ' ×' + n : ''}`).join(', ') || '<span class="pn-dg-warn">no doors</span>',
+        spots.length ? 'spots: ' + spots.map(esc).join(', ') : '', Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ')].filter(Boolean).join(' · ');
+      return `<section class="pn-gm-card ${r.enabled ? '' : 'off'}" data-room="${i}">
+        <div class="pn-rw-head">
+          <label class="np-switch" title="Can be picked or not"><input type="checkbox" data-r="enabled" ${r.enabled ? 'checked' : ''}><span></span></label>
+          <span class="pn-rw-give-icon"><i class="bi bi-bounding-box"></i></span>
+          <b class="pn-gm-name">${esc(r.name)}</b>
+          ${r.sizeX ? `<span class="np-chip">${r.sizeX} × ${r.sizeY} × ${r.sizeZ}</span>` : ''}
+          <span class="pn-rw-actions">${r.from ? `<button type="button" class="np-btn small" data-dgresave="room" data-name="${esc(r.name)}" title="Copy the build in the world again (after changes to it)"><i class="bi bi-arrow-repeat"></i> Save again from the build</button>` : ''}<button type="button" class="np-btn small danger" data-dgroomdel="${i}" title="Remove the room and its saved blocks"><i class="bi bi-trash"></i></button></span>
+        </div>
+        <p class="pn-hint"><i class="bi bi-signpost-split"></i> ${info}${r.savedAt ? ` · saved ${esc(new Date(r.savedAt).toLocaleString())}${r.savedBy ? ' by ' + esc(r.savedBy) : ''}` : ''}</p>
+        <div class="pn-rw-grid">
+          <label class="pn-field pn-field-wide"><span>Groups (comma separated)</span><input type="text" data-r="groups" value="${esc(r.groups.join(', '))}" placeholder="hall"></label>
+          <label class="pn-field"><span>Weight (picked more often)</span><input type="number" data-r="weight" min="1" max="100" value="${r.weight}"></label>
+          <label class="pn-field"><span>Chance it's considered (%)</span><input type="number" data-r="chance" min="0" max="100" value="${r.chance}"></label>
+          <label class="pn-field"><span>At most per copy (0 = no limit)</span><input type="number" data-r="maxPerCopy" min="0" max="99" value="${r.maxPerCopy}"></label>
+        </div>
+      </section>`;
+    }).join('') || '<p class="pn-hint">No rooms yet: build one, then <code>/dungeon room create &lt;name&gt;</code> at a corner in game.</p>';
+    ['pn-dg-groups', 'pn-dg-rooms'].forEach((id) => $(id).querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; }));
   }
 
   function dgChanged(rerender) {
@@ -2147,7 +2206,65 @@
     if (k === 'enabled') card.classList.toggle('off', !d.enabled);
     dgChanged(k === 'gear');
   });
-  $('pn-dg-list').addEventListener('click', (e) => {
+  $('pn-dg-list').addEventListener('change', (e) => {
+    const spot = e.target.dataset.dgspot;
+    if (!spot) return;
+    const d = dg.settings.dungeons[+e.target.dataset.dungeonI];
+    d.spotChances = d.spotChances || {};
+    if (e.target.value === '') delete d.spotChances[spot];
+    else d.spotChances[spot] = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+    dgChanged(false);
+  });
+  $('pn-dg-groups').addEventListener('input', (e) => {
+    const li = e.target.closest('[data-group]');
+    if (!li || !e.target.dataset.g) return;
+    dg.settings.groups[+li.dataset.group][e.target.dataset.g] = Number(e.target.value) || 0;
+    dgChanged(false);
+  });
+  $('pn-dg-rooms').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-room]');
+    const k = e.target.dataset.r;
+    if (!card || !k) return;
+    const r = dg.settings.rooms[+card.dataset.room];
+    if (k === 'enabled') {
+      r.enabled = e.target.checked;
+      card.classList.toggle('off', !r.enabled);
+    } else if (k === 'groups') {
+      r.groups = e.target.value.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    } else {
+      r[k] = Number(e.target.value) || 0;
+    }
+    dgChanged(false);
+  });
+  // Group shares and warnings follow the room fields once a field is left.
+  $('pn-dg-rooms').addEventListener('change', () => renderRooms(can('settings.server')));
+  const dgResave = async (e) => {
+    const b = e.target.closest('[data-dgresave]');
+    if (!b) return false;
+    if (dg.dirty) {
+      formMsg('pn-dg-note', 'Save your changes first.', false);
+      return true;
+    }
+    try {
+      await api('api/dungeons/resave', { kind: b.dataset.dgresave, name: b.dataset.name });
+      formMsg('pn-dg-note', `Saving ${b.dataset.name} again from the build…`, true);
+      setTimeout(loadDungeons, 2500);
+    } catch (err) {
+      formMsg('pn-dg-note', err.message, false);
+    }
+    return true;
+  };
+  $('pn-dg-rooms').addEventListener('click', async (e) => {
+    if (await dgResave(e)) return;
+    const del = e.target.closest('[data-dgroomdel]');
+    if (!del) return;
+    const r = dg.settings.rooms[+del.dataset.dgroomdel];
+    if (!confirm(`Remove the room ${r.name}? Its saved blocks go too once you save; what you built stays in the world.`)) return;
+    dg.settings.rooms = dg.settings.rooms.filter((x) => x !== r);
+    dgChanged(true);
+  });
+  $('pn-dg-list').addEventListener('click', async (e) => {
+    if (await dgResave(e)) return;
     const del = e.target.closest('[data-dgdel]');
     const kit = e.target.closest('[data-dgkit]');
     if (del) {
