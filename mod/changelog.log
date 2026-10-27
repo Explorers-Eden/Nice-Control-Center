@@ -11,7 +11,7 @@
 
 ## 1.43.0
 - Game areas (admin options on server claims and their subclaims, for minigames): inventory, armour, off hand, XP and effects put aside on entering and given back on leaving; a kit on entering (/claim admin kit set|clear, or from the panel); items picked up inside vanish on leaving or go to the inbox; on death no grave (keepinv:has_died is blocked there), picked-up items drop or go to the inbox; logging out inside sends the player to their home or respawn point
-- No Nice Actions homes, beds or anchors in game areas, and /back can't lead into them; a dimension whitelist for Nice Actions homes (Gameplay → World & nature)
+- No Nice Actions homes, beds or anchors in game areas, and the Nice Actions back teleport (dialog) can't lead into them; a dimension whitelist for Nice Actions homes (Gameplay → World & nature)
 - /inbox opens the market mailbox
 - Warping Wonders admins (tag wawo.admin) may place waypoint hubs in dimensions where players can't
 

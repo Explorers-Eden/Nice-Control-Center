@@ -51,7 +51,7 @@ import eu.explorerseden.nicecontrolcenter.tweaks.TweaksControl;
  * Game claims (Claims.AdminOptions, set by admins on server or admin claims): on entering, what the player carries
  * (inventory, armour, off hand, XP, effects) is put aside and a kit handed out; on leaving, kit items vanish, items
  * picked up inside vanish or go to the market inbox, and their own things come back exactly. Dying inside makes no
- * grave; logging out inside sends them home. Also: no homes or spawn points inside, Nice Actions /back can't lead
+ * grave; logging out inside sends them home. Also: no homes or spawn points inside, the Nice Actions back teleport (dialog) can't lead
  * back in, and the Nice Actions home whitelist (Tweaks.homes).
  */
 public final class GameClaims {
@@ -350,11 +350,11 @@ public final class GameClaims {
 		p.sendSystemMessage(Component.literal(n + " item" + (n == 1 ? "" : "s") + " you picked up went to your inbox: /inbox").withStyle(ChatFormatting.GOLD));
 	}
 
-	// ---------------------------------------------------------------- homes and /back (Nice Actions)
+	// ---------------------------------------------------------------- homes and the back teleport (Nice Actions dialog)
 
 	private static final String TRIGGER = "nice_actions.dialog_trigger";
 
-	/** Before the data packs' tick: set-home (5, 16) and /back (15) where they aren't allowed are cancelled. */
+	/** Before the data packs' tick: set-home (5, 16) and back teleport (15) where they aren't allowed are cancelled. */
 	private static void triggers(MinecraftServer server) {
 		Objective obj = server.getScoreboard().getObjective(TRIGGER);
 		if (obj == null) return;
@@ -370,7 +370,7 @@ public final class GameClaims {
 			} else if (v == 15) {
 				CompoundTag back = playerData(server, p.getUUID()).getCompoundOrEmpty("back");
 				String dim = back.getStringOr("dimension", "");
-				if (!dim.isEmpty() && gameClaimAt(dim, (int) Math.floor(number(back, "x")), (int) Math.floor(number(back, "z"))) != null) why = "/back can't take you back into a game area.";
+				if (!dim.isEmpty() && gameClaimAt(dim, (int) Math.floor(number(back, "x")), (int) Math.floor(number(back, "z"))) != null) why = "The back teleport can't take you back into a game area.";
 			}
 			if (why == null) continue;
 			server.getScoreboard().getOrCreatePlayerScore(p, obj).set(0);

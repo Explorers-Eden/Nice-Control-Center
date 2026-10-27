@@ -355,7 +355,7 @@ public final class Claims {
 		public boolean removePickups = false;
 		/** Items picked up inside drop where the player dies (otherwise they go to the inbox). */
 		public boolean dropPickupsOnDeath = false;
-		/** No homes (Nice Actions), beds or anchors set a spawn inside, and /back can't lead here. */
+		/** No homes (Nice Actions), beds or anchors set a spawn inside, and the Nice Actions back teleport can't lead here. */
 		public boolean noHomes = false;
 
 		/** Does anything at all. */
