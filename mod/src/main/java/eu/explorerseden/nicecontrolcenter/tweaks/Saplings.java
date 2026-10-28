@@ -32,7 +32,7 @@ public final class Saplings {
 
 	/** From the item entity tick mixin, every tick; works once a second. */
 	public static void tick(ItemEntity entity) {
-		if (!(entity.level() instanceof ServerLevel level) || entity.getAge() % 20 != 0 || !entity.onGround()) return;
+		if (!(entity.level() instanceof ServerLevel level) || entity.getAge() % 20 != 0 || !entity.onGround() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return;
 		Tweaks.Saplings s = TweaksControl.settings().saplings;
 		if (!s.replant || entity.getAge() < s.delaySeconds * 20) return;
 		ItemStack stack = entity.getItem();

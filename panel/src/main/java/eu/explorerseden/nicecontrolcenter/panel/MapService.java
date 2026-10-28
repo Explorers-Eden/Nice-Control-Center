@@ -220,10 +220,13 @@ public final class MapService {
 	public record Dim(String key, String id, String name, Path regions, boolean ceiling, JsonObject info) {
 	}
 
-	/** From the mod's last report, or found on disk when the server never ran with the mod. */
+	/**
+	 * From the mod's last report, or found on disk when the server never ran with the mod. The dungeon dimension
+	 * (only generated copies) is left out: no map, no settings.
+	 */
 	public List<Dim> dimensions() {
 		List<String> roofs = settings.roofs == null ? List.of() : settings.roofs;
-		return found().stream().map(d -> d.ceiling() || !roofs.contains(d.id()) ? d : new Dim(d.key(), d.id(), d.name(), d.regions(), true, d.info())).toList();
+		return found().stream().filter(d -> !d.id().equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)).map(d -> d.ceiling() || !roofs.contains(d.id()) ? d : new Dim(d.key(), d.id(), d.name(), d.regions(), true, d.info())).toList();
 	}
 
 	private List<Dim> found() {

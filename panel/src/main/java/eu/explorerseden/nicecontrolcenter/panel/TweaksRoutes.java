@@ -40,6 +40,7 @@ final class TweaksRoutes {
 			List<Map<String, Object>> dims = new ArrayList<>();
 			for (MapService.Dim d : map.dimensions()) dims.add(Map.of("id", d.id(), "name", d.name()));
 			for (String id : s.tabList.dimensions.keySet()) {
+				if (id.equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)) continue;
 				if (dims.stream().noneMatch(d -> d.get("id").equals(id))) dims.add(Map.of("id", id, "name", id));
 			}
 			// Performance → quick despawn, so the saplings card can warn when saplings vanish before they plant.

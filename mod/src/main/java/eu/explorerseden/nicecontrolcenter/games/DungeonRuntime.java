@@ -438,6 +438,14 @@ public final class DungeonRuntime {
 		return r.lives.getOrDefault(p.getUUID(), 0) > 0 || r.dungeon.outSpectate && r.players.size() - r.out.size() > 1;
 	}
 
+	/**
+	 * The dungeon dimension: only generated copies, so no tweak or tuning setting applies there (and the panel
+	 * doesn't list it); it runs with its own light setup instead (PerfControl.dim).
+	 */
+	public static boolean dungeonWorld(net.minecraft.world.level.Level level) {
+		return level != null && level.dimension().identifier().toString().equals(Dungeons.DIMENSION);
+	}
+
 	public static boolean inDungeonDimension(ServerPlayer p) {
 		return p.level().dimension().identifier().toString().equals(Dungeons.DIMENSION);
 	}

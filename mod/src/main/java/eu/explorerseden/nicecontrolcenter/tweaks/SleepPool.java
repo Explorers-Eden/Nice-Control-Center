@@ -26,7 +26,7 @@ public final class SleepPool {
 
 	private static boolean on(ServerLevel level) {
 		Tweaks.Sleep s = TweaksControl.settings().sleep;
-		return s.shared && s.worlds.contains(level.dimension().identifier().toString());
+		return s.shared && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level) && s.worlds.contains(level.dimension().identifier().toString());
 	}
 
 	private static List<ServerLevel> others(ServerLevel level) {

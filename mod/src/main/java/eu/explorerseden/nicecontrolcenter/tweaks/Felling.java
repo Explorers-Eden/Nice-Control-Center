@@ -95,7 +95,7 @@ public final class Felling {
 
 	/** shiftDown: each log broken takes the top log of the tree instead, so the tree sinks. */
 	private static boolean before(Level level, Player p, BlockPos pos, BlockState state, BlockEntity be) {
-		if (busy || !(p instanceof ServerPlayer player) || !(level instanceof ServerLevel server)) return true;
+		if (busy || !(p instanceof ServerPlayer player) || !(level instanceof ServerLevel server) || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return true;
 		Tweaks.Felling fel = TweaksControl.settings().felling;
 		if (!fel.enabled || !"shiftDown".equals(fel.breakMode) || !TweaksControl.isLog(state)
 				|| !TweaksControl.fellingTool(player.getMainHandItem()) || !active(player, fel.sneak, fel.inCreative)) {
@@ -112,7 +112,7 @@ public final class Felling {
 	}
 
 	private static void after(Level level, Player p, BlockPos pos, BlockState state, BlockEntity be) {
-		if (busy || !(p instanceof ServerPlayer player) || !(level instanceof ServerLevel server)) return;
+		if (busy || !(p instanceof ServerPlayer player) || !(level instanceof ServerLevel server) || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return;
 		Tweaks.Settings s = TweaksControl.settings();
 		ItemStack tool = player.getMainHandItem();
 		if (s.felling.enabled && "instant".equals(s.felling.breakMode) && TweaksControl.isLog(state) && TweaksControl.fellingTool(tool)

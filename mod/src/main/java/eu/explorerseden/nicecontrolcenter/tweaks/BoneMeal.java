@@ -38,7 +38,7 @@ public final class BoneMeal {
 	}
 
 	private static InteractionResult use(Player p, Level lvl, InteractionHand hand, BlockHitResult hit) {
-		if (!(p instanceof ServerPlayer player) || !(lvl instanceof ServerLevel level) || player.isSpectator()) return InteractionResult.PASS;
+		if (!(p instanceof ServerPlayer player) || !(lvl instanceof ServerLevel level) || player.isSpectator() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return InteractionResult.PASS;
 		ItemStack held = player.getItemInHand(hand);
 		if (!held.is(Items.BONE_MEAL)) return InteractionResult.PASS;
 		BlockPos pos = hit.getBlockPos();

@@ -4851,7 +4851,8 @@
   /** Per-dimension tuning: one row per dimension (switches show what still happens there). */
   function renderDimTune() {
     const set = (perfSettings && perfSettings.dimensions) || {};
-    const ids = [...new Set([...dimTuneDims.map((d) => d.id), ...Object.keys(set)])];
+    // The dungeon dimension runs with its own setup (mod), so it's never listed here.
+    const ids = [...new Set([...dimTuneDims.map((d) => d.id), ...Object.keys(set)])].filter((id) => id !== 'nicecontrolcenter:dungeons');
     const name = (id) => (dimTuneDims.find((d) => d.id === id) || {}).name || id;
     const editable = can('settings.server');
     $('pn-dimtune').innerHTML = ids.map((id) => {

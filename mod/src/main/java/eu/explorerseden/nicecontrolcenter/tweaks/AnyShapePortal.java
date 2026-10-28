@@ -77,7 +77,7 @@ public final class AnyShapePortal {
 
 	/** Can fire placed here light a portal (for flint and steel against a side of the frame)? */
 	public static boolean canLight(Level level, BlockPos pos) {
-		if (!enabled() || !inPortalDimension(level)) return false;
+		if (!enabled() || !inPortalDimension(level) || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return false;
 		return area(level, pos, Direction.Axis.X, AnyShapePortal::isEmpty) != null || area(level, pos, Direction.Axis.Z, AnyShapePortal::isEmpty) != null;
 	}
 

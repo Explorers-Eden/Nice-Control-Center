@@ -1,3 +1,6 @@
+## 1.41.3
+- The dungeon dimension no longer shows anywhere: not on the map, the World tab, per-dimension tuning, claims, homes or the tab list (it only holds generated dungeon copies and has its own setup; mod 1.51.2)
+
 ## 1.41.2
 - Console: every line from the mod is a Panel entry, its section ("Claims:", "Games:", "Performance:"…) coloured by area: players and community green, games violet, performance orange, admin and settings cyan (mod 1.51.1)
 

@@ -69,7 +69,7 @@ public final class AntiXray {
 	/** The sections to send for this chunk: the real ones, or copies with hidden ores where needed. */
 	public static LevelChunkSection[] sections(LevelChunk chunk, LevelChunkSection[] real) {
 		Set<Block> hide = hidden;
-		if (hide.isEmpty() || !(chunk.getLevel() instanceof ServerLevel level)) return real;
+		if (hide.isEmpty() || !(chunk.getLevel() instanceof ServerLevel level) || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return real;
 		Object[] cached = last.get();
 		if (cached != null && cached[0] == chunk && cached[1] == real) {
 			last.remove();

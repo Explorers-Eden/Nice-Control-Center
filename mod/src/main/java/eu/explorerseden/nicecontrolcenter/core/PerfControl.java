@@ -453,8 +453,20 @@ public final class PerfControl {
 
 	// ── Ticking: frozen chunks and activation range ────────────────────────
 
+	/** The dungeon dimension's own setup (its settings in the panel don't apply): nothing spawns or grows, it stops while empty. */
+	private static final Performance.DimTuning DUNGEONS = dungeonTuning();
+
+	private static Performance.DimTuning dungeonTuning() {
+		Performance.DimTuning t = new Performance.DimTuning();
+		t.naturalSpawns = false;
+		t.randomTicks = false;
+		t.freezeWhenEmpty = true;
+		return t;
+	}
+
 	/** This dimension's tuning, or null. */
 	public static Performance.DimTuning dim(ServerLevel level) {
+		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return DUNGEONS;
 		if (settings.dimensions.isEmpty()) return null;
 		return settings.dimensions.get(level.dimension().identifier().toString());
 	}
@@ -488,7 +500,7 @@ public final class PerfControl {
 	public static boolean skip(ServerLevel level, Entity entity) {
 		if (entity instanceof Player) return false;
 		// A vehicle may carry a player, who must keep ticking.
-		if ((!frozen.isEmpty() || !settings.dimensions.isEmpty()) && !entity.isVehicle() && frozen(level, entity.getBlockX() >> 4, entity.getBlockZ() >> 4)) return true;
+		if ((!frozen.isEmpty() || !settings.dimensions.isEmpty() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) && !entity.isVehicle() && frozen(level, entity.getBlockX() >> 4, entity.getBlockZ() >> 4)) return true;
 		if (entity instanceof ArmorStand stand && settings.decor.armorStands) return stillStand(level, stand);
 		Performance.Activation a = settings.activation;
 		if (!a.enabled || !(entity instanceof Mob mob)) return false;

@@ -39,6 +39,8 @@ public final class Cleanup {
 		int items = 0;
 		int orbs = 0;
 		for (ServerLevel level : server.getAllLevels()) {
+			// Dungeon copies are wiped after each run; their mobs and loot are part of the game.
+			if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) continue;
 			int i = 0;
 			int o = 0;
 			List<Entity> doomed = new ArrayList<>();
@@ -127,6 +129,8 @@ public final class Cleanup {
 		Map<String, Map<String, Integer>> perChunk = new HashMap<>();
 		int total = 0;
 		for (ServerLevel level : server.getAllLevels()) {
+			// Dungeon copies are wiped after each run; their mobs and loot are part of the game.
+			if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) continue;
 			String dim = level.dimension().identifier().toString();
 			for (Entity e : level.getAllEntities()) {
 				if (e instanceof net.minecraft.server.level.ServerPlayer) continue;
@@ -165,6 +169,8 @@ public final class Cleanup {
 		int found = 0;
 		int removed = 0;
 		for (ServerLevel level : server.getAllLevels()) {
+			// Dungeon copies are wiped after each run; their mobs and loot are part of the game.
+			if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) continue;
 			String dim = level.dimension().identifier().toString();
 			if (dimension != null && !dimension.isBlank() && !dimension.equals(dim)) continue;
 			List<Entity> doomed = new ArrayList<>();
@@ -200,6 +206,8 @@ public final class Cleanup {
 		List<Map<String, Object>> chunks = new ArrayList<>();
 		int total = 0;
 		for (ServerLevel level : server.getAllLevels()) {
+			// Dungeon copies are wiped after each run; their mobs and loot are part of the game.
+			if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) continue;
 			Map<Key, List<Entity>> groups = new HashMap<>();
 			for (Entity e : level.getAllEntities()) {
 				if (removable(e)) groups.computeIfAbsent(new Key(e.chunkPosition(), e.getType()), k -> new ArrayList<>()).add(e);
@@ -236,6 +244,8 @@ public final class Cleanup {
 	public static int itemsOver(MinecraftServer server, int perChunk) {
 		int removed = 0;
 		for (ServerLevel level : server.getAllLevels()) {
+			// Dungeon copies are wiped after each run; their mobs and loot are part of the game.
+			if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) continue;
 			Map<ChunkPos, List<ItemEntity>> byChunk = new HashMap<>();
 			for (Entity e : level.getAllEntities()) {
 				if (e instanceof ItemEntity item) byChunk.computeIfAbsent(e.chunkPosition(), k -> new ArrayList<>()).add(item);

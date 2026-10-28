@@ -43,7 +43,7 @@ public final class DispenserPlace implements DispenseItemBehavior {
 		ServerLevel level = source.level();
 		Direction facing = source.state().getValue(DispenserBlock.FACING);
 		BlockPos target = source.pos().relative(facing);
-		if (!(stack.getItem() instanceof BlockItem block) || sulfurCubeAt(level, target)) return original.dispense(source, stack);
+		if (!(stack.getItem() instanceof BlockItem block) || sulfurCubeAt(level, target) || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return original.dispense(source, stack);
 		boolean placed = false;
 		// Like pistons: not into someone else's land claim.
 		if (!ClaimProtection.crossingBlocked(level, source.pos(), target)) {

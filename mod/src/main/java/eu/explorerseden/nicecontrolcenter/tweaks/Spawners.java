@@ -63,7 +63,7 @@ public final class Spawners {
 	}
 
 	private static void after(Level lvl, Player p, BlockPos pos, BlockState state, BlockEntity be) {
-		if (!state.is(Blocks.SPAWNER) || be == null || !(p instanceof ServerPlayer player) || !(lvl instanceof ServerLevel level)) return;
+		if (!state.is(Blocks.SPAWNER) || be == null || !(p instanceof ServerPlayer player) || !(lvl instanceof ServerLevel level) || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return;
 		Tweaks.Spawners s = TweaksControl.settings().spawners;
 		if (!s.silkTouch || player.isCreative()) return;
 		ItemStack tool = player.getMainHandItem();
