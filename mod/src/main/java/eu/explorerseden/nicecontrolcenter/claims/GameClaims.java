@@ -455,6 +455,16 @@ public final class GameClaims {
 		p.teleportTo(to.newLevel(), to.position().x, to.position().y, to.position().z, Set.of(), to.yRot(), to.xRot(), true);
 	}
 
+	/**
+	 * Chorus fruit doesn't teleport in game areas, dungeon runs, wave games or anywhere in the dungeon dimension
+	 * (it would skip parts or leave the box); foxes and other mobs eating it there stay put too.
+	 */
+	public static boolean blocksChorus(net.minecraft.world.entity.LivingEntity e) {
+		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(e.level())) return true;
+		if (e instanceof ServerPlayer p) return inGame(p);
+		return gameClaimAt(e.level(), e.blockPosition()) != null;
+	}
+
 	// ---------------------------------------------------------------- adventure mode, kit leftovers
 
 	/** In a game claim, or in a dungeon run inside the dungeon (not while waiting on the pad). */

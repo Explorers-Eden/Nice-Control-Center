@@ -51,6 +51,7 @@
 		"ExperienceBoostMixin",
 		"ToolCareMixin",
 		"JoinMessageMixin",
+		"GameChorusMixin",
 		"GameClaimPickupMixin",
 		"GameClaimSpawnMixin",
 		"DimRandomTickMixin",

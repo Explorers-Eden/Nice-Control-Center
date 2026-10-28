@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.52.1
+- Games: chorus fruit doesn't teleport in game claims, dungeon runs, wave games or anywhere in the dungeon dimension (players get a notice; mobs eating it stay put too)
+
 ## 1.52.0
 - Claims: a description (up to 100 characters) and an optional title: players walking into the claim see its name as a title in the claim's colour, with the description as subtitle (the same claim greets someone again only after a minute). Set in the claim menu's "Name and colour" page, the panel or the website profile; the description also shows on the map, like a waypoint's
 - Log: claim edits from the panel say when the description or the title changed
