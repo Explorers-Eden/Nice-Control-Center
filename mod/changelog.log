@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.53.0
+- Per-dimension tuning: "Always clear sky": players in that dimension never get rain or thunder from the server's weather, so its sky doesn't darken while it rains elsewhere (the weather itself carries on). On for the dungeon dimension and in the Flying Fair minigame preset
+
 ## 1.52.3
 - Claims: switching to spectator and back inside a claim no longer shows its title again (spectators keep the claim they were in)
 

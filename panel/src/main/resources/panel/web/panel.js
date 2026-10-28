@@ -4860,8 +4860,8 @@
       const on = (k, def) => (d[k] === undefined ? def : d[k]);
       const sw = (k, def) => `<td><label class="np-switch"><input type="checkbox" data-dt="${k}" ${on(k, def) ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label></td>`;
       return `<tr data-dim="${esc(id)}"><td class="name">${esc(name(id))}<small>${esc(id)}</small></td>${sw('naturalSpawns', true)}${sw('randomTicks', true)}${sw('freezeWhenEmpty', false)}
-        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td></tr>`;
-    }).join('') || '<tr><td colspan="5">No dimensions found yet: start the server once.</td></tr>';
+        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td>${sw('clearSky', false)}</tr>`;
+    }).join('') || '<tr><td colspan="6">No dimensions found yet: start the server once.</td></tr>';
   }
 
   /** The rows back into settings: only dimensions that differ from normal are kept. */
@@ -4870,15 +4870,15 @@
     $('pn-dimtune').querySelectorAll('tr[data-dim]').forEach((tr) => {
       const v = (k) => tr.querySelector(`[data-dt="${k}"]`);
       const d = { naturalSpawns: v('naturalSpawns').checked, randomTicks: v('randomTicks').checked, freezeWhenEmpty: v('freezeWhenEmpty').checked,
-        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)) };
-      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds) out[tr.dataset.dim] = d;
+        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)), clearSky: v('clearSky').checked };
+      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds || d.clearSky) out[tr.dataset.dim] = d;
     });
     return out;
   }
 
   $('pn-dimtune-fair').addEventListener('click', () => {
     const id = 'eden:flying_fair';
-    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60 } };
+    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60, clearSky: true } };
     if (!dimTuneDims.some((d) => d.id === id)) dimTuneDims.push({ id, name: 'Flying Fair' });
     renderDimTune();
     formMsg('pn-perf-msg', 'Flying Fair set as a minigame world: save to use it.', true);

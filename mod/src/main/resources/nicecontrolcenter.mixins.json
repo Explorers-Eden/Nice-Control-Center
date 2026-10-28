@@ -52,6 +52,7 @@
 		"ToolCareMixin",
 		"JoinMessageMixin",
 		"GameChorusMixin",
+		"WeatherPacketMixin",
 		"GameClaimPickupMixin",
 		"GameClaimSpawnMixin",
 		"DimRandomTickMixin",

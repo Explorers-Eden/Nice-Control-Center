@@ -1,3 +1,6 @@
+## 1.43.0
+- Performance, per-dimension tuning: "Always clear sky" column (and in the Flying Fair preset) (mod 1.53.0)
+
 ## 1.42.0
 - Claims: description and "show its name as a title to players walking in" in the claim editor; the map shows a claim's description in its popup; the website profile can edit both (mod 1.52.0)
 

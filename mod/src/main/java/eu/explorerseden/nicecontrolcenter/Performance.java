@@ -212,6 +212,8 @@ public final class Performance {
 		public boolean freezeWhenEmpty = false;
 		/** Dropped items go after this many seconds (0 = the usual 5 minutes). */
 		public int itemDespawnSeconds = 0;
+		/** The sky there never darkens for rain or thunder (the weather is the server's; players there just don't get it). */
+		public boolean clearSky = false;
 	}
 
 	public static final class Settings {

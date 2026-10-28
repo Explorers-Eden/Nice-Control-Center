@@ -461,6 +461,7 @@ public final class PerfControl {
 		t.naturalSpawns = false;
 		t.randomTicks = false;
 		t.freezeWhenEmpty = true;
+		t.clearSky = true;
 		return t;
 	}
 
@@ -469,6 +470,13 @@ public final class PerfControl {
 		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.dungeonWorld(level)) return DUNGEONS;
 		if (settings.dimensions.isEmpty()) return null;
 		return settings.dimensions.get(level.dimension().identifier().toString());
+	}
+
+	/** Players in this level never see rain or thunder (WeatherPacketMixin leaves the weather out of what they get). */
+	public static boolean clearSky(net.minecraft.world.level.Level level) {
+		if (!(level instanceof ServerLevel server)) return false;
+		Performance.DimTuning dt = dim(server);
+		return dt != null && dt.clearSky;
 	}
 
 	/** A dimension set to freeze while nobody is in it, and nobody is. */
