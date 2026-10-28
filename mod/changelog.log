@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.52.2
+- Claims: players in a claim with its title on, and Nice Mob Manager village name markers standing in one, carry the tag ncc.claim_title; Nice Mob Manager (next version) leaves out its village greeting for them, so it doesn't cover the claim's title
+
 ## 1.52.1
 - Games: chorus fruit doesn't teleport in game claims, dungeon runs, wave games or anywhere in the dungeon dimension (players get a notice; mobs eating it stay put too)
 

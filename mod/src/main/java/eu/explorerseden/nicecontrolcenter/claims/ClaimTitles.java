@@ -19,9 +19,15 @@ import eu.explorerseden.nicecontrolcenter.Claims.Claim;
  * Claims with the title switched on greet players walking in: the name as a title in the claim's colour, the
  * description as subtitle. Checked twice a second; the same claim greets a player again only after a minute, so
  * walking along its edge doesn't flash it over and over.
+ * <p>
+ * Players in such a claim, and Nice Mob Manager's village name markers standing in one, carry the tag
+ * {@value #TAG}: the pack leaves out its own village greeting for them, so the claim's title isn't covered by it.
  */
 public final class ClaimTitles {
 	private static final long AGAIN_MS = 60_000;
+	public static final String TAG = "ncc.claim_title";
+	/** Nice Mob Manager's armor stand that carries a village's name. */
+	private static final String VILLAGE = "mob_manager.village.name";
 	/** player → the claim they're in (innermost), or absent. */
 	private static final Map<UUID, String> inside = new HashMap<>();
 	/** player → claim → when it last greeted them. */
@@ -35,6 +41,7 @@ public final class ClaimTitles {
 			if (server.getTickCount() % 10 == 0) tick(server);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			handler.player.removeTag(TAG);
 			inside.remove(handler.player.getUUID());
 			greeted.remove(handler.player.getUUID());
 		});
@@ -47,6 +54,10 @@ public final class ClaimTitles {
 			Claim c = p.isSpectator() ? null : ClaimStore.claimAt(p.level(), p.blockPosition());
 			String id = c == null ? null : c.id;
 			String was = id == null ? inside.remove(p.getUUID()) : inside.put(p.getUUID(), id);
+			boolean titled = c != null && c.announce;
+			if (titled) p.addTag(TAG);
+			else p.removeTag(TAG);
+			if (server.getTickCount() % 100 == 0) villages(p);
 			if (id == null || id.equals(was) || !c.announce) continue;
 			Map<String, Long> times = greeted.computeIfAbsent(p.getUUID(), k -> new HashMap<>());
 			Long last = times.get(id);
@@ -54,6 +65,16 @@ public final class ClaimTitles {
 			times.put(id, now);
 			times.values().removeIf(t -> now - t > AGAIN_MS);
 			greet(p, c);
+		}
+	}
+
+	/** Village name markers around the player: tagged while they stand in a claim with a title. */
+	private static void villages(ServerPlayer p) {
+		var box = p.getBoundingBox().inflate(160);
+		for (var stand : p.level().getEntitiesOfClass(net.minecraft.world.entity.decoration.ArmorStand.class, box, e -> e.entityTags().contains(VILLAGE))) {
+			Claim at = ClaimStore.claimAt(stand.level(), stand.blockPosition());
+			if (at != null && at.announce) stand.addTag(TAG);
+			else stand.removeTag(TAG);
 		}
 	}
 
