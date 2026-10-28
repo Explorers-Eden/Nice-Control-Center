@@ -89,7 +89,7 @@
     // Our own claims: rectangles in the claim's colour (subclaims dashed).
     for (const c of (live.landClaims || []).filter((c) => c.dim === dim.id)) {
       L.rectangle([ll(c.minX, c.minZ), ll(c.maxX, c.maxZ)], { color: c.color, weight: c.sub ? 1 : 2, dashArray: c.sub ? '4 4' : null, fillColor: c.color, fillOpacity: c.sub ? 0.08 : 0.18 })
-        .bindPopup(`<b>${esc(c.name)}</b><br>${esc(c.owner)}${c.members.length ? `<br><small>Members: ${esc(c.members.join(', '))}</small>` : ''}`
+        .bindPopup(`<b>${esc(c.name)}</b>${c.description ? `<span class="mp-hub-sub">${esc(c.description)}</span>` : '<br>'}${esc(c.owner)}${c.members.length ? `<br><small>Members: ${esc(c.members.join(', '))}</small>` : ''}`
           + `<br><small>${c.maxX - c.minX} × ${c.maxZ - c.minZ} · ${Math.floor((c.minX + c.maxX) / 2)}, ${Math.floor((c.minZ + c.maxZ) / 2)}</small>`)
         .addTo(layers.claims);
     }

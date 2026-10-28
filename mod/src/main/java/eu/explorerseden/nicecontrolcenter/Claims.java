@@ -24,6 +24,8 @@ import java.util.UUID;
  */
 public final class Claims {
 	public static final String FILE = "nicecontrolcenter-claims.json";
+	/** A claim's description, at most this long. */
+	public static final int DESCRIPTION_MAX = 100;
 	/** Visual block setting: the concrete closest to the claim's colour. */
 	public static final String CLAIM_COLOR = "claim_color";
 	public static final String DATA_FILE = "nicecontrolcenter-claims.json";
@@ -397,6 +399,10 @@ public final class Claims {
 		public int maxX;
 		public int maxZ;
 		public String name = "";
+		/** A line about the claim: the subtitle of its title, and shown on the map (like a hub's description). */
+		public String description = "";
+		/** Players walking in see its name as a title (and the description as subtitle). */
+		public boolean announce = false;
 		public int color = 0xF2B233;
 		public Flags flags = new Flags();
 		/** Game-claim options only admins set (for minigames): null when none. */
@@ -435,6 +441,7 @@ public final class Claims {
 
 		Claim fill() {
 			if (name == null) name = "";
+			if (description == null) description = "";
 			if (flags == null) flags = new Flags();
 			if (members == null) members = new LinkedHashMap<>();
 			members.values().removeIf(m -> m == null || m.role == null || m.role == Role.OWNER);
@@ -744,6 +751,19 @@ public final class Claims {
 			return null;
 		}
 
+		public String describe(Claim c, String description, long now) {
+			String d = description == null ? "" : description.strip().replaceAll("\\s+", " ");
+			if (d.length() > DESCRIPTION_MAX) return "Descriptions are up to " + DESCRIPTION_MAX + " characters.";
+			c.description = d;
+			touch(c, now);
+			return null;
+		}
+
+		public void announce(Claim c, boolean on, long now) {
+			c.announce = on;
+			touch(c, now);
+		}
+
 		public void recolor(Claim c, int rgb, long now) {
 			c.color = rgb & 0xFFFFFF;
 			touch(c, now);
@@ -845,6 +865,7 @@ public final class Claims {
 					parent.isEmpty() ? null : parent, settings, true, now);
 			if (!r.ok()) return error(r.error);
 			if (a.has("name")) data.rename(r.claim, str(a, "name"), now);
+			if (a.has("description")) data.describe(r.claim, str(a, "description"), now);
 			out.put("ok", true);
 			out.put("claim", r.claim);
 			return out;
@@ -862,6 +883,11 @@ public final class Claims {
 					String err = data.rename(c, str(a, "name"), now);
 					if (err != null) return error(err);
 				}
+				if (a.has("description")) {
+					String err = data.describe(c, str(a, "description"), now);
+					if (err != null) return error(err);
+				}
+				if (a.has("announce") && a.get("announce").isJsonPrimitive()) data.announce(c, a.get("announce").getAsBoolean(), now);
 				if (a.has("color")) {
 					int rgb = parseColor(str(a, "color"));
 					if (rgb < 0) return error("That isn't a #RRGGBB colour.");

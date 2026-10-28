@@ -68,9 +68,9 @@ public final class ClaimApi {
 	}
 
 	/** A claim's settings before a change, to log only what changed. */
-	private record Snapshot(String name, int color, Map<String, Boolean> flags, Map<String, String> members, String owner, String admin) {
+	private record Snapshot(String name, String description, boolean announce, int color, Map<String, Boolean> flags, Map<String, String> members, String owner, String admin) {
 		Snapshot(Claim c) {
-			this(c.name, c.color, flagMap(c), memberMap(c), c.owner == null ? "server" : c.ownerName, adminText(c.admin));
+			this(c.name, c.description, c.announce, c.color, flagMap(c), memberMap(c), c.owner == null ? "server" : c.ownerName, adminText(c.admin));
 		}
 	}
 
@@ -108,6 +108,8 @@ public final class ClaimApi {
 			case "update", "admin" -> {
 				if (old == null) break;
 				if (!java.util.Objects.equals(old.name(), c.name)) out.add("renamed from \"" + (old.name() == null ? "" : old.name()) + "\" to \"" + c.displayName() + "\"");
+				if (!java.util.Objects.equals(old.description(), c.description)) out.add(c.description.isEmpty() ? "description removed" : "description \"" + c.description + "\"");
+				if (old.announce() != c.announce) out.add("title on entering " + (c.announce ? "on" : "off"));
 				if (old.color() != c.color) out.add(String.format("colour #%06X → #%06X", old.color(), c.color));
 				flagMap(c).forEach((k, v) -> {
 					if (!v.equals(old.flags().get(k))) out.add(k + (v ? " on" : " off"));
@@ -164,6 +166,7 @@ public final class ClaimApi {
 			m.put("maxX", c.maxX + 1);
 			m.put("maxZ", c.maxZ + 1);
 			m.put("name", c.displayName());
+			if (!c.description.isEmpty()) m.put("description", c.description);
 			m.put("owner", c.ownerName == null ? "Server" : c.ownerName);
 			m.put("color", Claims.hex(c.color));
 			m.put("sub", c.isSub());

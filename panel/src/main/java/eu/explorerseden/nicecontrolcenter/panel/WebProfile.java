@@ -120,6 +120,8 @@ final class WebProfile {
 				case "update" -> {
 					action.addProperty("action", "update");
 					if (in.has("name")) action.addProperty("name", Web.str(in, "name"));
+					if (in.has("description")) action.addProperty("description", Web.str(in, "description"));
+					if (in.has("announce") && in.get("announce").isJsonPrimitive()) action.addProperty("announce", in.get("announce").getAsBoolean());
 					if (in.has("color")) {
 						String color = Web.str(in, "color");
 						if (claims.settings().colors.values().stream().noneMatch(v -> v.equalsIgnoreCase(color))) {
@@ -278,6 +280,8 @@ final class WebProfile {
 			m.put("parent", c.parent);
 			m.put("parentName", parent == null ? null : parent.displayName());
 			m.put("name", c.name == null ? "" : c.name);
+			m.put("description", c.description == null ? "" : c.description);
+			m.put("announce", c.announce);
 			m.put("displayName", c.displayName());
 			m.put("ownerName", c.ownerName);
 			m.put("color", Claims.hex(c.color));

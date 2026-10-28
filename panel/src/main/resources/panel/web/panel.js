@@ -6146,6 +6146,8 @@
     f.querySelectorAll('[data-new]').forEach((el) => { el.hidden = !isNew; });
     f.querySelectorAll('[data-old]').forEach((el) => { el.hidden = isNew; });
     f.name.value = c ? c.name : '';
+    f.description.value = c ? c.description || '' : '';
+    f.announce.checked = !!(c && c.announce);
     f.color.value = c ? c.color.toLowerCase() : '#f2b233';
     f.ownerName.value = c ? c.ownerName || '' : '';
     f.ownerName.disabled = !!(c && c.parent);
@@ -6302,11 +6304,11 @@
     const owner = f.ownerName.value.trim();
     try {
       if (!c.id) {
-        await api('api/claims/action', { action: 'create', dim: f.dim.value.trim(), name: f.name.value, ownerName: owner, ...box });
+        await api('api/claims/action', { action: 'create', dim: f.dim.value.trim(), name: f.name.value, description: f.description.value, ownerName: owner, ...box });
       } else {
         const steps = [];
         const flags = Object.fromEntries(clData.flags.map((fl) => [fl.id, f['flag-' + fl.id].checked]));
-        steps.push({ action: 'update', name: f.name.value, color: f.color.value, flags });
+        steps.push({ action: 'update', name: f.name.value, description: f.description.value, announce: f.announce.checked, color: f.color.value, flags });
         if (['minX', 'minZ', 'maxX', 'maxZ'].some((k) => box[k] !== c[k])) steps.push({ action: 'resize', ...box });
         if (!c.parent && owner.toLowerCase() !== (c.ownerName || '').toLowerCase()) steps.push(owner ? { action: 'transfer', ownerName: owner } : { action: 'transfer', owner: '' });
         for (const m of c.members) if (!clMembers.some((x) => x.uuid === m.uuid)) steps.push({ action: 'member_remove', uuid: m.uuid });

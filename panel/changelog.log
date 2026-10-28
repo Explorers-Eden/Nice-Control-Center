@@ -1,3 +1,6 @@
+## 1.42.0
+- Claims: description and "show its name as a title to players walking in" in the claim editor; the map shows a claim's description in its popup; the website profile can edit both (mod 1.52.0)
+
 ## 1.41.3
 - The dungeon dimension no longer shows anywhere: not on the map, the World tab, per-dimension tuning, claims, homes or the tab list (it only holds generated dungeon copies and has its own setup; mod 1.51.2)
 

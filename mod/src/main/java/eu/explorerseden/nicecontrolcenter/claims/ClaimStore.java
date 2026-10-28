@@ -60,6 +60,7 @@ public final class ClaimStore {
 	/** Hooks claims into the server: events, ticks, joins and leaves, the /claim command. */
 	public static void register() {
 		ClaimProtection.register();
+		ClaimTitles.register();
 		net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher, access, env) -> ClaimCommand.register(dispatcher));
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(ClaimStore::load);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(s -> stop());

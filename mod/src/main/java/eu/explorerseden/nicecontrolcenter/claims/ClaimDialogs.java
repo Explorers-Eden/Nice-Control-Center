@@ -187,7 +187,7 @@ public final class ClaimDialogs {
 	private static void look(ServerPlayer player, Claim c, boolean fresh, String notice) {
 		Claims.Settings s = ClaimStore.settings();
 		List<DialogBody> body = new ArrayList<>();
-		if (fresh) body.add(text("Your land is protected. Give it a name and a colour (shown on its border and the web map).", ChatFormatting.WHITE));
+		if (fresh) body.add(text("Your land is protected. Give it a name, a colour (shown on its border and the web map) and, if you like, a description and a title for visitors.", ChatFormatting.WHITE));
 		if (notice != null) {
 			body.add(text(notice, ChatFormatting.RED));
 			Plop.play(player);
@@ -205,8 +205,10 @@ public final class ClaimDialogs {
 		List<Input> inputs = List.of(
 				new Input("name", new TextInput(250, Component.literal("Name"), true, c.name, 32, Optional.empty())),
 				new Input("color", new SingleOptionInput(250, colors, Component.literal("Colour"), true)),
-				new Input("hex", new TextInput(250, Component.literal("Or your own colour (#RRGGBB)"), true, "", 7, Optional.empty())));
-		List<ActionButton> buttons = List.of(button("Save", "Save the name and colour", "look_save", args("claim", c.id)), button("Back", "Back to the claim, without saving", "main", args("claim", c.id)));
+				new Input("hex", new TextInput(250, Component.literal("Or your own colour (#RRGGBB)"), true, "", 7, Optional.empty())),
+				new Input("description", new TextInput(250, Component.literal("Description (on the map, and under the title)"), true, c.description, Claims.DESCRIPTION_MAX, Optional.empty())),
+				new Input("announce", new BooleanInput(Component.literal("Show the name as a title to players walking in"), c.announce, "true", "false")));
+		List<ActionButton> buttons = List.of(button("Save", "Save the name, colour, description and title", "look_save", args("claim", c.id)), button("Back", "Back to the claim, without saving", "main", args("claim", c.id)));
 		menu(player, fresh ? Component.literal("Your new claim") : title(c), body, inputs, buttons, null);
 	}
 
@@ -434,10 +436,12 @@ public final class ClaimDialogs {
 					return;
 				}
 				String err = data.rename(c, str(in, "name"), now);
+				if (err == null) err = data.describe(c, str(in, "description"), now);
 				if (err != null) {
 					look(player, c, false, err);
 					return;
 				}
+				data.announce(c, bool(in, "announce"), now);
 				data.recolor(c, rgb, now);
 				ClaimStore.changed();
 				main(player, c);

@@ -382,6 +382,8 @@ final class ClaimService {
 				m.put("length", c.box().length());
 				m.put("area", c.box().area());
 				m.put("name", c.name);
+				m.put("description", c.description == null ? "" : c.description);
+				m.put("announce", c.announce);
 				m.put("displayName", c.displayName());
 				m.put("color", Claims.hex(c.color));
 				m.put("flags", c.flags);
