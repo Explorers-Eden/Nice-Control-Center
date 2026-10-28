@@ -145,6 +145,8 @@ public final class Tweaks {
 
 	/** The name shown for a dimension: the configured one, else "the_nether" → "Nether". */
 	public static Dimension dimension(TabList t, String id) {
+		// The dungeon dimension isn't listed in the panel: it always shows like this (red copper brown).
+		if (Dungeons.DIMENSION.equals(id)) return new Dimension("Dungeons", "#B4532A");
 		Dimension d = t.dimensions.get(id);
 		if (d != null && !d.name.isBlank()) return d;
 		String path = id.substring(id.indexOf(':') + 1).replaceFirst("^the_", "").replace('_', ' ');

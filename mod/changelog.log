@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.51.3
+- Tab list: players in the dungeon dimension show "Dungeons" in a red copper brown
+
 ## 1.51.2
 - Dungeons: the dungeon dimension is left out of every tweak and tuning setting and runs with its own light setup instead: no natural spawning at all (only the dungeons' markers spawn mobs), no random ticks, it stops while nobody is in it. Felling, vein mining, bone meal, sapling replanting, spawner pickup, anti-xray, shared sleep, any-shape portals and dispenser placing don't act there; the cleanup tool and auto caps never remove dungeon mobs or loot
 
