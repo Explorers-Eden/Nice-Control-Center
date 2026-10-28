@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.52.3
+- Claims: switching to spectator and back inside a claim no longer shows its title again (spectators keep the claim they were in)
+
 ## 1.52.2
 - Claims: players in a claim with its title on, and Nice Mob Manager village name markers standing in one, carry the tag ncc.claim_title; Nice Mob Manager (next version) leaves out its village greeting for them, so it doesn't cover the claim's title
 

@@ -51,7 +51,9 @@ public final class ClaimTitles {
 		if (!ClaimStore.enabled()) return;
 		long now = System.currentTimeMillis();
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			Claim c = p.isSpectator() ? null : ClaimStore.claimAt(p.level(), p.blockPosition());
+			// Spectators are left as they were: switching to spectator and back isn't walking in again.
+			if (p.isSpectator()) continue;
+			Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
 			String id = c == null ? null : c.id;
 			String was = id == null ? inside.remove(p.getUUID()) : inside.put(p.getUUID(), id);
 			boolean titled = c != null && c.announce;
