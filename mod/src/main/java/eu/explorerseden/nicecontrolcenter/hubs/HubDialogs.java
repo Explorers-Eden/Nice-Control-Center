@@ -241,7 +241,7 @@ public final class HubDialogs {
 			openingList = false;
 		}
 		if (!listShown) {
-			eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.warn("The waypoint list of hub {} didn't open for {} at {} in {}: {}", id, player.getGameProfile().name(),
+			eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.warn("Hubs: the waypoint list of hub {} didn't open for {} at {} in {}: {}", id, player.getGameProfile().name(),
 					player.blockPosition().toShortString(), player.level().dimension().identifier(), errors.isEmpty() ? "no error, but no list was shown" : errors);
 			ClaimTool.tell(player, "The waypoint list didn't open" + (errors.isEmpty() ? "." : ": " + errors) + " Please tell an admin.",
 					ChatFormatting.RED);

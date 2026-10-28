@@ -68,7 +68,7 @@ public final class GameRuleEditor {
 		}
 		apply.forEach(Runnable::run);
 		if (!changes.isEmpty()) {
-			NiceControlCenter.LOGGER.info("Gamerules changed by {}: {}", who, changes);
+			NiceControlCenter.LOGGER.info("Game rules: gamerules changed by {}: {}", who, changes);
 		}
 		return null;
 	}

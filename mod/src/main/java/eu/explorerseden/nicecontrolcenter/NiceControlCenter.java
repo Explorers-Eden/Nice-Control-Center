@@ -141,7 +141,7 @@ public class NiceControlCenter implements ModInitializer {
 					if (config.tokenExpired()) {
 						config.renewToken();
 						config.save();
-						LOGGER.info("The dashboard token is older than token_hours ({}), made a new one; run /ncc web for the link", config.token_hours);
+						LOGGER.info("Setup: the dashboard token is older than token_hours ({}), made a new one; run /ncc web for the link", config.token_hours);
 					}
 				});
 			}
@@ -161,10 +161,10 @@ public class NiceControlCenter implements ModInitializer {
 					setMonitoring(config.monitor_enabled);
 				}
 				if (ControlCenterConfig.color(config.message_color) == null) {
-					LOGGER.warn("message_color \"{}\" isn't a color; use a Minecraft color name (gold, dark_purple, aqua, …) or #RRGGBB.",
+					LOGGER.warn("Setup: message_color \"{}\" isn't a color; use a Minecraft color name (gold, dark_purple, aqua, …) or #RRGGBB.",
 							config.message_color);
 				}
-				LOGGER.info("Reloaded config/nicecontrolcenter.json (port, bind and sampler changes apply after a restart)");
+				LOGGER.info("Setup: reloaded config/nicecontrolcenter.json (port, bind and sampler changes apply after a restart)");
 			};
 			MinecraftServer current = server;
 			if (current != null) {
@@ -189,7 +189,7 @@ public class NiceControlCenter implements ModInitializer {
 			// Without token_hours a dashboard link only works until the next restart.
 			config.renewToken();
 			config.save();
-			LOGGER.info("New dashboard token; run /ncc web for the link");
+			LOGGER.info("Setup: new dashboard token; run /ncc web for the link");
 		}
 		History.clear();
 		SourceIndex.reload(server);
@@ -202,7 +202,7 @@ public class NiceControlCenter implements ModInitializer {
 		sampler.start();
 		eu.explorerseden.nicecontrolcenter.core.HostMetrics.start();
 
-		Recorder.announcer(message -> notifyAdmins(ControlCenterCommand.reportReady(message), message));
+		Recorder.announcer(message -> notifyAdmins(ControlCenterCommand.reportReady(message), "Reports: " + message));
 		Recorder.cleanUp(server);
 		AlertWatcher.reset();
 		Advisor.reset();
@@ -212,8 +212,8 @@ public class NiceControlCenter implements ModInitializer {
 		UpdateManager.start(server, config);
 		eu.explorerseden.nicecontrolcenter.players.XrayCheck.reset();
 		eu.explorerseden.nicecontrolcenter.schedule.Scheduler.start(server);
-		LOGGER.info(config.monitor_enabled ? "Nice Control Center is monitoring the server"
-				: "Nice Control Center is ready; monitoring is off (turn it on with /ncc monitor on)");
+		LOGGER.info(config.monitor_enabled ? "Setup: Nice Control Center is monitoring the server"
+				: "Setup: Nice Control Center is ready; monitoring is off (turn it on with /ncc monitor on)");
 	}
 
 	/**
@@ -248,7 +248,8 @@ public class NiceControlCenter implements ModInitializer {
 		boolean anyoneOnline = current != null && current.getPlayerList().getPlayers().stream()
 				.anyMatch(player -> Permissions.check(player, ControlCenterCommand.PERMISSION_NOTIFY, PermissionLevel.GAMEMASTERS));
 		if (anyoneOnline) {
-			notifyAdmins(Component.literal(text), text);
+			// Logged above already.
+			notifyAdmins(Component.literal(text), null);
 		} else {
 			laterMessages.add(text);
 		}
@@ -300,7 +301,7 @@ public class NiceControlCenter implements ModInitializer {
 			try {
 				report.get();
 			} catch (Exception e) {
-				LOGGER.warn("Report for the running recording could not be finished", e);
+				LOGGER.warn("Setup: report for the running recording could not be finished", e);
 			}
 		}
 		eu.explorerseden.nicecontrolcenter.schedule.Scheduler.stop();

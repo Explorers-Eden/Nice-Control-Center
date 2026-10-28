@@ -140,7 +140,7 @@ public final class ControlCenterConfig {
 			try (Reader reader = Files.newBufferedReader(path)) {
 				config = GSON.fromJson(reader, ControlCenterConfig.class);
 			} catch (IOException | JsonParseException e) {
-				NiceControlCenter.LOGGER.warn("Could not read {}, using defaults", path, e);
+				NiceControlCenter.LOGGER.warn("Config: could not read {}, using defaults", path, e);
 			}
 		}
 		if (config == null) {
@@ -281,7 +281,7 @@ public final class ControlCenterConfig {
 			}
 			savedAt = Files.getLastModifiedTime(path()).toMillis();
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save {}", path(), e);
+			NiceControlCenter.LOGGER.warn("Config: could not save {}", path(), e);
 		}
 	}
 

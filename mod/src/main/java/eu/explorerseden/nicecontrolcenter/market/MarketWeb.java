@@ -234,7 +234,7 @@ public final class MarketWeb {
 		};
 		if (done.startsWith("!")) return error(done.substring(1));
 		MarketStore.saveNow();
-		eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("[market] {} on the website: {}", name, done);
+		eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("Market: {} on the website: {}", name, done);
 		ServerPlayer online = server.getPlayerList().getPlayer(UUID.fromString(uuid));
 		if (online != null) {
 			online.sendSystemMessage(Component.literal("Website: " + done).withStyle(ChatFormatting.GOLD));

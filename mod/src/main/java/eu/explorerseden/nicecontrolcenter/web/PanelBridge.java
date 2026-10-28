@@ -163,7 +163,7 @@ public final class PanelBridge {
 			}
 			return Component.literal(answer.has("message") ? answer.get("message").getAsString() : "You can't join right now.");
 		} catch (Exception e) {
-			NiceControlCenter.LOGGER.warn("The panel didn't answer the login check for {} ({}); letting them in", player.name(), e.toString());
+			NiceControlCenter.LOGGER.warn("Panel: the panel didn't answer the login check for {} ({}); letting them in", player.name(), e.toString());
 			return null;
 		}
 	}

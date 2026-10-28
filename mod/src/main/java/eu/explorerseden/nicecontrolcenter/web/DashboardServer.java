@@ -89,14 +89,14 @@ public final class DashboardServer {
 				port = candidate;
 				break;
 			} catch (BindException e) {
-				NiceControlCenter.LOGGER.warn("Port {} is in use, trying {}", candidate, candidate + 1);
+				NiceControlCenter.LOGGER.warn("Web: port {} is in use, trying {}", candidate, candidate + 1);
 			} catch (IOException e) {
-				NiceControlCenter.LOGGER.error("Could not start the Nice Control Center dashboard on {}:{}", host, candidate, e);
+				NiceControlCenter.LOGGER.error("Web: could not start the Nice Control Center dashboard on {}:{}", host, candidate, e);
 				return;
 			}
 		}
 		if (http == null) {
-			NiceControlCenter.LOGGER.error("Could not find a free port for the Nice Control Center dashboard (tried {}-{})", config.port,
+			NiceControlCenter.LOGGER.error("Web: could not find a free port for the Nice Control Center dashboard (tried {}-{})", config.port,
 					config.port + PORT_ATTEMPTS - 1);
 			return;
 		}
@@ -109,9 +109,9 @@ public final class DashboardServer {
 		http.createContext("/", this::handle);
 		http.start();
 		if (panel) {
-			NiceControlCenter.LOGGER.info("Nice Control Center dashboard running for the panel on {}:{}", host, port);
+			NiceControlCenter.LOGGER.info("Web: Nice Control Center dashboard running for the panel on {}:{}", host, port);
 		} else {
-			NiceControlCenter.LOGGER.info("Nice Control Center dashboard listening on {}:{}. Run /ncc web for the link.", host, port);
+			NiceControlCenter.LOGGER.info("Web: Nice Control Center dashboard listening on {}:{}. Run /ncc web for the link.", host, port);
 		}
 	}
 
@@ -163,7 +163,7 @@ public final class DashboardServer {
 		try {
 			route(exchange);
 		} catch (ServerThreadException e) {
-			NiceControlCenter.LOGGER.warn("Dashboard request failed on the server thread", e);
+			NiceControlCenter.LOGGER.warn("Web: dashboard request failed on the server thread", e);
 			try {
 				sendText(exchange, 500, "application/json", "{\"error\":\"The server did not respond in time\"}");
 			} catch (IOException | RuntimeException ignored) {
@@ -178,7 +178,7 @@ public final class DashboardServer {
 				// Headers were already sent.
 			}
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Dashboard request failed", e);
+			NiceControlCenter.LOGGER.warn("Web: dashboard request failed", e);
 			try {
 				sendText(exchange, 500, "application/json", "{\"error\":\"Internal error, see the server log\"}");
 			} catch (IOException | RuntimeException ignored) {
@@ -228,7 +228,7 @@ public final class DashboardServer {
 				return;
 			}
 			UpdateManager.checkPackNow(config);
-			NiceControlCenter.LOGGER.info("Resource pack check requested by a build ping");
+			NiceControlCenter.LOGGER.info("Web: resource pack check requested by a build ping");
 			sendJson(exchange, Map.of("ok", true));
 			return;
 		}
@@ -461,7 +461,7 @@ public final class DashboardServer {
 				}
 				config.resource_pack_source = source;
 				config.save();
-				NiceControlCenter.LOGGER.info("Resource pack source set to \"{}\" from the dashboard", source);
+				NiceControlCenter.LOGGER.info("Web: resource pack source set to \"{}\" from the dashboard", source);
 				UpdateManager.checkPackNow(config);
 				sendJson(exchange, UpdateManager.summary(config));
 			}

@@ -78,7 +78,7 @@ public final class BloatCheck {
 		running = run(server).whenComplete((result, error) -> {
 			if (error != null) {
 				lastError = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
-				NiceControlCenter.LOGGER.warn("Bloat check failed", error);
+				NiceControlCenter.LOGGER.warn("Checks: bloat check failed", error);
 			}
 		});
 		return running;
@@ -184,7 +184,7 @@ public final class BloatCheck {
 				}
 			});
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Bloat check could not read the world folder", e);
+			NiceControlCenter.LOGGER.warn("Checks: bloat check could not read the world folder", e);
 		}
 		List<Item> folderItems = new ArrayList<>();
 		folders.forEach((name, size) -> folderItems.add(new Item(name, null, size)));

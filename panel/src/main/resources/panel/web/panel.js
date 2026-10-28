@@ -1200,6 +1200,14 @@
   });
   $('pn-console-debug').addEventListener('change', refilterConsole);
 
+  /** A mod line's section ("Claims: …", "Nice Actions: …") and the area each one is coloured by (else admin). */
+  const LOG_SECTION = /^([A-Z][A-Za-z-]*(?: [A-Za-z-]+){0,3}): /;
+  const LOG_AREAS = Object.fromEntries([
+    ...['Claims', 'Market', 'Pets', 'Rewards', 'Perks', 'Fly', 'Hubs', 'Players', 'Map'].map((k) => [k, 'players']),
+    ...['Games', 'Dungeons'].map((k) => [k, 'games']),
+    ...['Performance', 'Pregen', 'Chunks', 'Borders', 'Lag', 'Reports', 'Checks', 'Reload'].map((k) => [k, 'perf']),
+  ]);
+
   /** Notes made here in the browser get the time like the rest. */
   const panelNote = (text) => `[${new Date().toTimeString().slice(0, 8)}] [panel] ${text}`;
 
@@ -1216,7 +1224,12 @@
       if (div.dataset.level === 'PANEL' || mod) {
         const stamp = line.slice(0, line.length - rest.length);
         const text = mod ? rest.slice(mod[0].length) : rest.startsWith('[panel] ') ? rest.slice(8) : '/' + rest.slice(2).replace(/^\//, '');
-        div.append(stamp, Object.assign(document.createElement('span'), { className: 'pn-log-tag', textContent: 'Panel' }), ' ' + text);
+        div.append(stamp, Object.assign(document.createElement('span'), { className: 'pn-log-tag', textContent: 'Panel' }), ' ');
+        // The mod's lines start with their section ("Claims: …"): coloured by its area, so it's easy to see what's going on.
+        const sec = text.match(LOG_SECTION);
+        if (sec) div.append(Object.assign(document.createElement('span'), { className: 'pn-log-sec', textContent: sec[1] }), text.slice(sec[1].length));
+        else div.append(text);
+        if (sec) div.lastElementChild.dataset.area = LOG_AREAS[sec[1]] || 'admin';
       } else {
         div.textContent = line;
       }

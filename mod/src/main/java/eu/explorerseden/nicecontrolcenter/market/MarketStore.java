@@ -90,7 +90,7 @@ public final class MarketStore {
 		try {
 			data = Market.readData(file);
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.error("Couldn't read {}; the market starts empty and the file is kept as .broken", file, e);
+			NiceControlCenter.LOGGER.error("Market: couldn't read {}; the market starts empty and the file is kept as .broken", file, e);
 			try {
 				Files.copy(file, file.resolveSibling(file.getFileName() + ".broken"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException ignored) {
@@ -214,7 +214,7 @@ public final class MarketStore {
 			ItemStack one = ItemStack.CODEC.parse(s.registryAccess().createSerializationContext(JsonOps.INSTANCE), JsonParser.parseString(item.stack)).getOrThrow();
 			return one.copyWithCount(count);
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("A market item can't be read any more ({}): {}", item.id, e.toString());
+			NiceControlCenter.LOGGER.warn("Market: a market item can't be read any more ({}): {}", item.id, e.toString());
 			return ItemStack.EMPTY;
 		}
 	}

@@ -240,7 +240,7 @@ public final class TempFly {
 				if (g.left > 0) grants.put(UUID.fromString(e.getKey()), g);
 			}
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not read flight times: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Fly: could not read flight times: {}", e.getMessage());
 		}
 	}
 
@@ -254,7 +254,7 @@ public final class TempFly {
 			Files.writeString(tmp, Json.GSON.toJson(out), StandardCharsets.UTF_8);
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save flight times: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Fly: could not save flight times: {}", e.getMessage());
 		}
 	}
 }

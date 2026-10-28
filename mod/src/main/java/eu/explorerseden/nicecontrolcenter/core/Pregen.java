@@ -182,7 +182,7 @@ public final class Pregen {
 				return;
 			}
 			total = count();
-			NiceControlCenter.LOGGER.info("Pregenerating {} chunks in {} around {}, {} (radius {}{}, {})", total, dimension, centerX, centerZ, radius,
+			NiceControlCenter.LOGGER.info("Pregen: pregenerating {} chunks in {} around {}, {} (radius {}{}, {})", total, dimension, centerX, centerZ, radius,
 					skipRadius > 0 ? ", outside " + skipRadius : "", circle ? "circle" : "square");
 			boolean queueEmpty = false;
 			long saveAt = System.currentTimeMillis() + 30_000;
@@ -255,7 +255,7 @@ public final class Pregen {
 				else if (l.contains("pregen failed")) end.complete("LOD pregeneration failed: " + line);
 			};
 			lodStatus = "starting";
-			NiceControlCenter.LOGGER.info("Pregenerating Distant Horizons LODs in {} around {}, {} ({} chunks radius)", dimension, centerX, centerZ, chunkRadius);
+			NiceControlCenter.LOGGER.info("Pregen: pregenerating Distant Horizons LODs in {} around {}, {} ({} chunks radius)", dimension, centerX, centerZ, chunkRadius);
 			dh("dh pregen start " + dimension + " " + centerX + " " + centerZ + " " + chunkRadius, listen, end);
 			long nextStatus = 0;
 			while (!end.isDone()) {
@@ -311,7 +311,7 @@ public final class Pregen {
 				try {
 					server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSource(capture).withCallback((ok, value) -> ran[0] |= ok), command);
 				} catch (RuntimeException e) {
-					NiceControlCenter.LOGGER.warn("/{} failed: {}", command, e.toString());
+					NiceControlCenter.LOGGER.warn("Pregen: /{} failed: {}", command, e.toString());
 				}
 				if (!ran[0] && failed != null) failed.complete("LOD pregeneration not possible (this Distant Horizons version has no /dh pregen)");
 			});
@@ -382,7 +382,7 @@ public final class Pregen {
 	private static void add(Job j) {
 		if (job != null) {
 			queue.add(j);
-			NiceControlCenter.LOGGER.info("Pregeneration of {} queued ({} waiting)", j.dimension, queue.size());
+			NiceControlCenter.LOGGER.info("Pregen: pregeneration of {} queued ({} waiting)", j.dimension, queue.size());
 		} else {
 			launch(j);
 		}
@@ -408,7 +408,7 @@ public final class Pregen {
 				java.nio.file.Files.move(tmp, file(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
 			}
 		} catch (java.io.IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the pregeneration state: {}", e.toString());
+			NiceControlCenter.LOGGER.warn("Pregen: could not save the pregeneration state: {}", e.toString());
 		}
 	}
 
@@ -438,14 +438,14 @@ public final class Pregen {
 		try {
 			jobs = eu.explorerseden.nicecontrolcenter.Json.GSON.fromJson(java.nio.file.Files.readString(f), Saved[].class);
 		} catch (java.io.IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not read {}: {}", f, e.toString());
+			NiceControlCenter.LOGGER.warn("Pregen: could not read {}: {}", f, e.toString());
 			return;
 		}
 		if (jobs == null) return;
 		for (Saved s : jobs) {
 			Object made = create(server, s.dimension, s.x, s.z, s.radius, s.skipRadius, "circle".equals(s.shape), s.players, s.lods);
 			if (!(made instanceof Job j)) {
-				NiceControlCenter.LOGGER.warn("Not resuming the pregeneration of {}: {}", s.dimension, made);
+				NiceControlCenter.LOGGER.warn("Pregen: not resuming the pregeneration of {}: {}", s.dimension, made);
 				continue;
 			}
 			j.ring = Math.max(0, s.ring);
@@ -455,7 +455,7 @@ public final class Pregen {
 			j.doneAtRing = s.done;
 			j.failedAtRing = s.failed;
 			if ("lods".equals(s.phase) && j.lods) j.phase = "lods";
-			NiceControlCenter.LOGGER.info("Resuming the pregeneration of {} at ring {} ({} chunks done)", s.dimension, j.ring, s.done);
+			NiceControlCenter.LOGGER.info("Pregen: resuming the pregeneration of {} at ring {} ({} chunks done)", s.dimension, j.ring, s.done);
 			add(j);
 		}
 		save();
@@ -473,7 +473,7 @@ public final class Pregen {
 	private static synchronized void finished(Job j, String reason) {
 		j.stopReason = reason;
 		last = status(j);
-		NiceControlCenter.LOGGER.info("Pregeneration of {} {}: {} of {} chunks", j.dimension, reason, j.done.get() + j.skipped.get(), j.total);
+		NiceControlCenter.LOGGER.info("Pregen: pregeneration of {} {}: {} of {} chunks", j.dimension, reason, j.done.get() + j.skipped.get(), j.total);
 		if (job != j) return;
 		boolean shutdown = SHUTDOWN.equals(reason);
 		if (shutdown) {

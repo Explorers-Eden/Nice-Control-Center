@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.51.1
+- Log: every line the mod writes has one format, "[panel] Section: what happened" (e.g. "[panel] Pets: rule First Join gave Rubber Ducky for SteamPhantom"), so the panel shows all of them as Panel entries; lines that had no section got one
+
 ## 1.51.0
 - Dungeons: random prebuilt rooms. Build a room, save it with /dungeon room create <name>, /dungeon corner2 and /dungeon room save <name> [group]. A spot in a dungeon (a jigsaw block whose target pool names a group) gets a random room of that group, turned and placed so one of its doors (a jigsaw named like the spot's target) faces the spot, like vanilla jigsaw structures; no data packs needed. A filled spot becomes what the room's door turns into (the doorway); a spot no room came to becomes its own "turns into" block (a wall)
 - Dungeons, rooms: rooms can have spots of their own (rooms inside rooms, up to a set number of levels and rooms per copy); a room isn't used twice in a copy while others of its group are left; rooms never reach outside the dungeon's box nor overlap each other; markers inside rooms (mob, boss, checkpoint, exit) work and turn with the room

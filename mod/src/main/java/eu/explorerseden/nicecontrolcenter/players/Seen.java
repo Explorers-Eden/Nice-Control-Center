@@ -46,7 +46,7 @@ public final class Seen {
 				if (read != null) entries.putAll(read);
 			}
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't read {}: {}", file, e.toString());
+			NiceControlCenter.LOGGER.warn("Players: couldn't read {}: {}", file, e.toString());
 		}
 	}
 
@@ -122,7 +122,7 @@ public final class Seen {
 			Files.writeString(tmp, Json.GSON.toJson(entries), StandardCharsets.UTF_8);
 			Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't save {}: {}", f, e.toString());
+			NiceControlCenter.LOGGER.warn("Players: couldn't save {}: {}", f, e.toString());
 		}
 	}
 }

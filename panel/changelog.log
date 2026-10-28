@@ -1,3 +1,6 @@
+## 1.41.2
+- Console: every line from the mod is a Panel entry, its section ("Claims:", "Games:", "Performance:"…) coloured by area: players and community green, games violet, performance orange, admin and settings cyan (mod 1.51.1)
+
 ## 1.41.1
 - Logs & reports: the "Lag reports" page is called "Reports" now
 

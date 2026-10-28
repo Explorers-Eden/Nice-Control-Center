@@ -32,9 +32,9 @@ final class Migration {
 		}
 		try {
 			Files.move(from, to);
-			NiceControlCenter.LOGGER.info("Moved {} to {} (the mod was renamed from Nice Profiler)", from.getFileName(), to.getFileName());
+			NiceControlCenter.LOGGER.info("Setup: moved {} to {} (the mod was renamed from Nice Profiler)", from.getFileName(), to.getFileName());
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not move {} to {}", from, to, e);
+			NiceControlCenter.LOGGER.warn("Setup: could not move {} to {}", from, to, e);
 		}
 	}
 }

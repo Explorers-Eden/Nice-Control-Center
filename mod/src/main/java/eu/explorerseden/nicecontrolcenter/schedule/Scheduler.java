@@ -362,7 +362,7 @@ public final class Scheduler {
 			task.note = "That date and time has already passed.";
 		}
 		save();
-		NiceControlCenter.LOGGER.info("Scheduled task '{}' {} by {}", task.name, existing == null ? "created" : "changed", who);
+		NiceControlCenter.LOGGER.info("Schedule: scheduled task '{}' {} by {}", task.name, existing == null ? "created" : "changed", who);
 		return null;
 	}
 
@@ -456,7 +456,7 @@ public final class Scheduler {
 			}
 		}
 		save();
-		NiceControlCenter.LOGGER.info("Scheduled task '{}' deleted by {}", task.name, who);
+		NiceControlCenter.LOGGER.info("Schedule: scheduled task '{}' deleted by {}", task.name, who);
 		return null;
 	}
 
@@ -489,7 +489,7 @@ public final class Scheduler {
 		if (task.progress != null) {
 			return "\"" + task.name + "\" is still running.";
 		}
-		NiceControlCenter.LOGGER.info("Scheduled task '{}' run now by {}", task.name, who);
+		NiceControlCenter.LOGGER.info("Schedule: scheduled task '{}' run now by {}", task.name, who);
 		task.progress = "starting";
 		current.execute(() -> run(current, task, true));
 		return null;
@@ -521,7 +521,7 @@ public final class Scheduler {
 				}
 			}
 		} catch (IOException | JsonParseException e) {
-			NiceControlCenter.LOGGER.warn("Could not read {}", file, e);
+			NiceControlCenter.LOGGER.warn("Schedule: could not read {}", file, e);
 		}
 	}
 
@@ -537,7 +537,7 @@ public final class Scheduler {
 			}
 			Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the schedule", e);
+			NiceControlCenter.LOGGER.warn("Schedule: could not save the schedule", e);
 		}
 	}
 

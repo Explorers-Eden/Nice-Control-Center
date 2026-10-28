@@ -362,7 +362,7 @@ public final class Perks {
 				});
 			}
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not read the players' perks: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Perks: could not read the players' perks: {}", e.getMessage());
 		}
 	}
 
@@ -376,7 +376,7 @@ public final class Perks {
 			Files.writeString(tmp, Json.GSON.toJson(holders), StandardCharsets.UTF_8);
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the players' perks: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Perks: could not save the players' perks: {}", e.getMessage());
 		}
 	}
 }

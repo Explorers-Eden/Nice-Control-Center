@@ -307,7 +307,7 @@ public final class UpdateManager {
 				Files.deleteIfExists(f);
 			}
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not clean up old resource pack copies: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Updates: could not clean up old resource pack copies: {}", e.getMessage());
 		}
 	}
 
@@ -334,7 +334,7 @@ public final class UpdateManager {
 				// server.properties is about to get the panel's link; keep where the pack comes from.
 				config.resource_pack_source = source;
 				config.save();
-				NiceControlCenter.LOGGER.info("Resource pack source set to \"{}\", the panel hands out copies of it", source);
+				NiceControlCenter.LOGGER.info("Updates: resource pack source set to \"{}\", the panel hands out copies of it", source);
 			}
 			// The panel's link changes with every pack; without a fixed id, games would keep each one as another pack.
 			String newId = copies != null && (packId == null || packId.isBlank())
@@ -441,7 +441,7 @@ public final class UpdateManager {
 			failed.status = Status.FAILED;
 			failed.reason = "Check failed: " + e.getMessage();
 			packEntry = failed;
-			NiceControlCenter.LOGGER.warn("Resource pack check failed: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Updates: resource pack check failed: {}", e.getMessage());
 		} finally {
 			packChecking = false;
 		}
@@ -519,7 +519,7 @@ public final class UpdateManager {
 				state.lastError = e.getMessage();
 				save();
 			}
-			NiceControlCenter.LOGGER.warn("Update check failed: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Updates: update check failed: {}", e.getMessage());
 		} finally {
 			checking = false;
 		}
@@ -1016,7 +1016,7 @@ public final class UpdateManager {
 			if (state.pending.contains(p)) throw new IOException(result);
 			reloadPacks("Data pack updated: " + p.name + " " + p.oldVersion + " → " + p.newVersion);
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Installing {} now failed: {}", entry.name, e.getMessage());
+			NiceControlCenter.LOGGER.warn("Updates: installing {} now failed: {}", entry.name, e.getMessage());
 			NiceControlCenter.notifyAdmins(net.minecraft.network.chat.Component.literal("Nice Control Center · Couldn't install " + entry.name + " now: " + e.getMessage()),
 					"Couldn't install " + entry.name + " now: " + e.getMessage());
 		} finally {
@@ -1092,7 +1092,7 @@ public final class UpdateManager {
 			return;
 		}
 		String text = String.join("; ", state.lastApplied);
-		NiceControlCenter.LOGGER.info("Updates at the last stop: {}", text);
+		NiceControlCenter.LOGGER.info("Updates: at the last stop: {}", text);
 		List<String> applied = state.lastApplied;
 		state.lastApplied = new ArrayList<>();
 		save();
@@ -1176,7 +1176,7 @@ public final class UpdateManager {
 					}
 				}
 			} catch (IOException | JsonParseException e) {
-				NiceControlCenter.LOGGER.warn("Could not read {}", file, e);
+				NiceControlCenter.LOGGER.warn("Updates: could not read {}", file, e);
 			}
 		}
 	}
@@ -1188,7 +1188,7 @@ public final class UpdateManager {
 				Json.GSON.toJson(state, writer);
 			}
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the update state", e);
+			NiceControlCenter.LOGGER.warn("Updates: could not save the update state", e);
 		}
 	}
 

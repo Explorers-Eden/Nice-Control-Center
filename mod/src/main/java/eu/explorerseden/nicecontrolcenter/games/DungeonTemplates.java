@@ -217,7 +217,7 @@ public final class DungeonTemplates {
 			try {
 				Files.deleteIfExists(f);
 			} catch (IOException e) {
-				NiceControlCenter.LOGGER.warn("Could not remove the room file {}: {}", f, e.getMessage());
+				NiceControlCenter.LOGGER.warn("Dungeons: could not remove the room file {}: {}", f, e.getMessage());
 			}
 		});
 	}
@@ -238,7 +238,7 @@ public final class DungeonTemplates {
 			try {
 				deleteTree(target);
 			} catch (IOException e) {
-				NiceControlCenter.LOGGER.warn("Could not remove the dungeon files {}: {}", target, e.getMessage());
+				NiceControlCenter.LOGGER.warn("Dungeons: could not remove the dungeon files {}: {}", target, e.getMessage());
 			}
 		});
 	}

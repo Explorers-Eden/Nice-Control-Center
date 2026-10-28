@@ -134,12 +134,12 @@ public final class Recorder {
 						r.writer.newLine();
 					}
 				} catch (IOException e) {
-					NiceControlCenter.LOGGER.warn("Could not write recording", e);
+					NiceControlCenter.LOGGER.warn("Reports: could not write recording", e);
 				}
 			});
 			return true;
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.error("Could not start automatic recording", e);
+			NiceControlCenter.LOGGER.error("Reports: could not start automatic recording", e);
 			return false;
 		}
 	}
@@ -173,7 +173,7 @@ public final class Recorder {
 			current = new Recording(System.currentTimeMillis() + capped * 60_000L, startedBy, file, false, null);
 			return null;
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.error("Could not start recording", e);
+			NiceControlCenter.LOGGER.error("Reports: could not start recording", e);
 			return "Could not create the recording file: " + e.getMessage();
 		}
 	}
@@ -218,7 +218,7 @@ public final class Recorder {
 				r.writer.newLine();
 			}
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not write recording", e);
+			NiceControlCenter.LOGGER.warn("Reports: could not write recording", e);
 		}
 	}
 
@@ -249,7 +249,7 @@ public final class Recorder {
 				result.complete(report);
 				cleanUp(server);
 			} catch (IOException | RuntimeException e) {
-				NiceControlCenter.LOGGER.error("Could not write report", e);
+				NiceControlCenter.LOGGER.error("Reports: could not write report", e);
 				announcer.accept("Could not write the report: " + e.getMessage());
 				result.completeExceptionally(e);
 			} finally {
@@ -292,15 +292,15 @@ public final class Recorder {
 								deleted++;
 							}
 						} catch (IOException e) {
-							NiceControlCenter.LOGGER.warn("Could not delete old report {}", p, e);
+							NiceControlCenter.LOGGER.warn("Reports: could not delete old report {}", p, e);
 						}
 					}
 				} catch (IOException e) {
-					NiceControlCenter.LOGGER.warn("Could not clean up {}", dir, e);
+					NiceControlCenter.LOGGER.warn("Reports: could not clean up {}", dir, e);
 				}
 			}
 			if (deleted > 0) {
-				NiceControlCenter.LOGGER.info("Deleted {} recordings and reports older than {} days", deleted, days);
+				NiceControlCenter.LOGGER.info("Reports: deleted {} recordings and reports older than {} days", deleted, days);
 			}
 		});
 	}
@@ -322,7 +322,7 @@ public final class Recorder {
 		try {
 			if (!Files.deleteIfExists(file)) return "That report is already gone.";
 			if (!source.equals(running)) Files.deleteIfExists(source);
-			NiceControlCenter.LOGGER.info("Deleted report {}", report);
+			NiceControlCenter.LOGGER.info("Reports: deleted report {}", report);
 			return null;
 		} catch (IOException e) {
 			return "Could not delete it: " + e.getMessage();
@@ -345,7 +345,7 @@ public final class Recorder {
 				}
 			});
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not list reports", e);
+			NiceControlCenter.LOGGER.warn("Reports: could not list reports", e);
 		}
 		files.sort(Comparator.comparingLong(ReportFile::modified).reversed());
 		return files;

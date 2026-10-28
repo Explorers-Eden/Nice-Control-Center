@@ -50,7 +50,7 @@ public final class PackLang {
 						if (Files.isDirectory(pack)) folder(pack, found);
 						else if (pack.getFileName().toString().endsWith(".zip")) zip(pack, found);
 					} catch (IOException | RuntimeException e) {
-						NiceControlCenter.LOGGER.debug("Couldn't read the texts of {}: {}", pack, e.toString());
+						NiceControlCenter.LOGGER.debug("Discord: couldn't read the texts of {}: {}", pack, e.toString());
 					}
 				}
 			} catch (IOException e) {
@@ -58,7 +58,7 @@ public final class PackLang {
 			}
 		}
 		texts = Map.copyOf(found);
-		if (!found.isEmpty()) NiceControlCenter.LOGGER.info("{} texts from data packs for messages to Discord", found.size());
+		if (!found.isEmpty()) NiceControlCenter.LOGGER.info("Discord: {} texts from data packs for its messages", found.size());
 	}
 
 	private static void folder(Path pack, Map<String, String> into) throws IOException {

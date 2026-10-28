@@ -300,12 +300,12 @@ public final class DungeonRuntime {
 		d.savedBy = by;
 		DungeonTemplates.save(server, level, new BlockPos(d.from[0], d.from[1], d.from[2]), new BlockPos(d.to[0], d.to[1], d.to[2]), d).whenComplete((ok, err) -> server.execute(() -> {
 			if (err != null) {
-				NiceControlCenter.LOGGER.warn("Could not save the dungeon {}: {}", d.name, err.getMessage());
+				NiceControlCenter.LOGGER.warn("Dungeons: could not save the dungeon {}: {}", d.name, err.getMessage());
 				return;
 			}
 			settings.fill();
 			saveSettings();
-			NiceControlCenter.LOGGER.info("Saved the dungeon {} again from its build ({} pieces{})", d.name, d.pieces, spots(d.connectors).isEmpty() ? "" : ", " + spots(d.connectors));
+			NiceControlCenter.LOGGER.info("Dungeons: saved the dungeon {} again from its build ({} pieces{})", d.name, d.pieces, spots(d.connectors).isEmpty() ? "" : ", " + spots(d.connectors));
 		}));
 		return null;
 	}
@@ -415,7 +415,7 @@ public final class DungeonRuntime {
 			Dungeons.write(file(), settings);
 			modified = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(file());
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the dungeons: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Dungeons: could not save the dungeons: {}", e.getMessage());
 		}
 	}
 
@@ -490,7 +490,7 @@ public final class DungeonRuntime {
 			try {
 				step(server, r);
 			} catch (RuntimeException e) {
-				NiceControlCenter.LOGGER.error("Dungeon run in slot {} ({}) failed", r.slot, r.dungeon.name, e);
+				NiceControlCenter.LOGGER.error("Dungeons: dungeon run in slot {} ({}) failed", r.slot, r.dungeon.name, e);
 				fail(server, r, "Something went wrong with this dungeon; you're sent back.");
 			}
 		}
@@ -828,9 +828,9 @@ public final class DungeonRuntime {
 		r.startedAt = System.currentTimeMillis();
 		if (r.players.isEmpty()) {
 			// Tried from the console: it stands for a minute, then it's wiped.
-			NiceControlCenter.LOGGER.info("Dungeon {} copied into slot {} at {} (start {}); wiped in a minute", r.dungeon.name, r.slot, r.min.toShortString(), r.start.toShortString());
+			NiceControlCenter.LOGGER.info("Dungeons: dungeon {} copied into slot {} at {} (start {}); wiped in a minute", r.dungeon.name, r.slot, r.min.toShortString(), r.start.toShortString());
 			for (DungeonRooms.Placed pl : r.layout.rooms()) {
-				NiceControlCenter.LOGGER.info("  room {} (level {}) at {}, turned {}", pl.room().name, pl.level(), r.min.offset(pl.pos()).toShortString(), pl.rotation().getSerializedName());
+				NiceControlCenter.LOGGER.info("Dungeons:   room {} (level {}) at {}, turned {}", pl.room().name, pl.level(), r.min.offset(pl.pos()).toShortString(), pl.rotation().getSerializedName());
 			}
 			r.state = State.ENDING;
 			r.endAt = System.currentTimeMillis() + 60_000;
@@ -1115,9 +1115,9 @@ public final class DungeonRuntime {
 				if (level != null) forceChunks(level, r, true);
 				slots.put(r.slot, r);
 			}
-			if (!slots.isEmpty()) NiceControlCenter.LOGGER.info("Wiping {} dungeon cop{} left from before the restart", slots.size(), slots.size() == 1 ? "y" : "ies");
+			if (!slots.isEmpty()) NiceControlCenter.LOGGER.info("Dungeons: wiping {} dungeon cop{} left from before the restart", slots.size(), slots.size() == 1 ? "y" : "ies");
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not read the dungeon slots: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Dungeons: could not read the dungeon slots: {}", e.getMessage());
 		}
 	}
 

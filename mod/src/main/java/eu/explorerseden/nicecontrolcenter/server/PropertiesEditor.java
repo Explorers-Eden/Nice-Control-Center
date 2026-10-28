@@ -290,11 +290,11 @@ public final class PropertiesEditor {
 				return new DedicatedServerProperties(copy);
 			});
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not save server.properties", e);
+			NiceControlCenter.LOGGER.warn("Server settings: could not save server.properties", e);
 			return "Could not save: " + e.getMessage();
 		}
 		List<String> names = changes.keySet().stream().map(k -> SECRETS.contains(k) ? k + " (secret)" : k + "=" + changes.get(k)).toList();
-		NiceControlCenter.LOGGER.info("server.properties changed by {}: {}", who, String.join(", ", names));
+		NiceControlCenter.LOGGER.info("Server settings: server.properties changed by {}: {}", who, String.join(", ", names));
 		return null;
 	}
 
@@ -351,7 +351,7 @@ public final class PropertiesEditor {
 				}
 			}
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not back up server.properties", e);
+			NiceControlCenter.LOGGER.warn("Server settings: could not back up server.properties", e);
 		}
 	}
 }

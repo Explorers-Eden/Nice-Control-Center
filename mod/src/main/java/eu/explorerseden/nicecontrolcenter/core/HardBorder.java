@@ -93,7 +93,7 @@ public final class HardBorder {
 		modified = now;
 		borders = Map.copyOf(Borders.read(file));
 		long hard = borders.values().stream().filter(b -> b.hard > 0).count();
-		if (hard > 0) NiceControlCenter.LOGGER.info("Hard border active in {} dimension{}", hard, hard == 1 ? "" : "s");
+		if (hard > 0) NiceControlCenter.LOGGER.info("Borders: hard border active in {} dimension{}", hard, hard == 1 ? "" : "s");
 		borders.forEach((dim, b) -> {
 			if (b.hard <= 0 || b.circle() || !b.worldBorder) return;
 			Identifier id = Identifier.tryParse(dim);

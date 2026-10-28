@@ -119,7 +119,7 @@ public final class RewardsControl {
 		boolean first = modified < 0;
 		modified = now;
 		settings = Rewards.read(f);
-		if (!first) NiceControlCenter.LOGGER.info("Reloaded the event rewards ({} rules)", settings.rules.size());
+		if (!first) NiceControlCenter.LOGGER.info("Rewards: reloaded the event rewards ({} rules)", settings.rules.size());
 	}
 
 	private static void everySecond(MinecraftServer server) {
@@ -323,7 +323,7 @@ public final class RewardsControl {
 				try {
 					got.add(RewardActions.give(server, p.getUUID(), p.getGameProfile().name(), p, a, "rule " + r.name));
 				} catch (RewardActions.Refused e) {
-					NiceControlCenter.LOGGER.info("Reward \"{}\" for {}: {}", r.name, p.getGameProfile().name(), e.getMessage());
+					NiceControlCenter.LOGGER.info("Rewards: reward \"{}\" for {}: {}", r.name, p.getGameProfile().name(), e.getMessage());
 				}
 			}
 		}
@@ -346,7 +346,7 @@ public final class RewardsControl {
 			try {
 				server.getCommands().performPrefixedCommand(source, cmd);
 			} catch (RuntimeException e) {
-				NiceControlCenter.LOGGER.warn("{}: /{} failed: {}", what, cmd, e.getMessage());
+				NiceControlCenter.LOGGER.warn("Rewards: {}: /{} failed: {}", what, cmd, e.getMessage());
 			}
 		}
 	}
@@ -379,7 +379,7 @@ public final class RewardsControl {
 			Files.writeString(tmp, Json.GSON.toJson(state), StandardCharsets.UTF_8);
 			Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the event rewards' state: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Rewards: could not save the event rewards' state: {}", e.getMessage());
 		}
 	}
 

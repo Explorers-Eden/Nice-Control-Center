@@ -142,7 +142,7 @@ public final class MapExport {
 				}
 			} catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
 				if (liveClaims == null) eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info(
-						"Reading GOML claims from the saved world instead (new claims show after the next save): {}", e.toString());
+						"Map: reading GOML claims from the saved world instead (new claims show after the next save): {}", e.toString());
 				liveClaims = false;
 			}
 		}

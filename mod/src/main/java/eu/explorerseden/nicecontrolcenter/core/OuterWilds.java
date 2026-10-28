@@ -106,7 +106,7 @@ public final class OuterWilds {
 				remove = ServerPlayer.class.getMethod("removePostEffect", Identifier.class);
 				list = ServerPlayer.class.getMethod("getPostEffects");
 			} catch (NoSuchMethodException e) {
-				NiceControlCenter.LOGGER.info("Post effects need Minecraft 26.3 or newer; the outer wilds message works without");
+				NiceControlCenter.LOGGER.info("Outer Wilds: post effects need Minecraft 26.3 or newer; the outer wilds message works without");
 			}
 		}
 		if (list == null) return;
@@ -115,7 +115,7 @@ public final class OuterWilds {
 			if (on && !has) add.invoke(player, id);
 			else if (!on && has) remove.invoke(player, id);
 		} catch (ReflectiveOperationException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't set post effect {}: {}", id, e.toString());
+			NiceControlCenter.LOGGER.warn("Outer Wilds: couldn't set post effect {}: {}", id, e.toString());
 			list = null;
 		}
 	}

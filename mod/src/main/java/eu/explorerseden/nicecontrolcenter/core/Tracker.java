@@ -334,7 +334,7 @@ public final class Tracker {
 				// A monitoring problem (e.g. an unusual mod) must never crash the server. Log each kind once.
 				if (reportedErrors.add(e.getClass().getName() + e.getStackTrace().length + (e.getStackTrace().length > 0 ? e.getStackTrace()[0] : ""))) {
 					eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.error(
-							"Nice Control Center skipped a measurement because of an error; please report this", e);
+							"Performance: Nice Control Center skipped a measurement because of an error; please report this", e);
 				}
 			}
 		}

@@ -55,7 +55,7 @@ public final class BossBarMonitor {
 				viewers.addAll(saved);
 			}
 		} catch (IOException | JsonParseException e) {
-			NiceControlCenter.LOGGER.warn("Could not read {}", file, e);
+			NiceControlCenter.LOGGER.warn("Alerts: could not read {}", file, e);
 		}
 	}
 
@@ -63,7 +63,7 @@ public final class BossBarMonitor {
 		try (Writer writer = Files.newBufferedWriter(file())) {
 			Json.GSON.toJson(viewers, writer);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save {}", file(), e);
+			NiceControlCenter.LOGGER.warn("Alerts: could not save {}", file(), e);
 		}
 	}
 

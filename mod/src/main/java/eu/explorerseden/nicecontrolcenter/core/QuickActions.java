@@ -40,9 +40,9 @@ public final class QuickActions {
 				added += add(actions, "item/diamond", "Market", "Buy from other players and sell your own items.", "market");
 				added += add(actions, "item/bundle", "Inbox", "Items waiting for you: market sales, purchases, rewards and things from game areas.", "inbox");
 			}
-			if (added > 0) NiceControlCenter.LOGGER.info("Added {} button(s) to the Nice Actions menu", added);
+			if (added > 0) NiceControlCenter.LOGGER.info("Nice Actions: added {} button(s) to the Nice Actions menu", added);
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't add buttons to the Nice Actions menu: {}", e.toString());
+			NiceControlCenter.LOGGER.warn("Nice Actions: couldn't add buttons to the Nice Actions menu: {}", e.toString());
 		}
 		return json;
 	}

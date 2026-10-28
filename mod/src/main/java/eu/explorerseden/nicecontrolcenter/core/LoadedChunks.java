@@ -132,7 +132,7 @@ public final class LoadedChunks {
 				storage.removeTicket(pos, t);
 				released.merge(name(t.getType()), 1, Integer::sum);
 			}
-			NiceControlCenter.LOGGER.info("Released chunk {}, {} in {} ({})", x, z, dimension, released.isEmpty() ? "forceload" : released);
+			NiceControlCenter.LOGGER.info("Chunks: released chunk {}, {} in {} ({})", x, z, dimension, released.isEmpty() ? "forceload" : released);
 			return null;
 		}
 		return "Unknown dimension.";

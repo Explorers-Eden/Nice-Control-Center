@@ -37,7 +37,7 @@ public final class AsyncFiles {
 			try {
 				writeNow(file, latest);
 			} catch (IOException e) {
-				NiceControlCenter.LOGGER.warn("Couldn't save {}: {}", file, e.toString());
+				NiceControlCenter.LOGGER.warn("Files: couldn't save {}: {}", file, e.toString());
 			}
 		});
 	}
@@ -47,7 +47,7 @@ public final class AsyncFiles {
 		try {
 			WRITER.submit(() -> { }).get(15, TimeUnit.SECONDS);
 		} catch (Exception e) {
-			NiceControlCenter.LOGGER.warn("Waiting for files to be saved: {}", e.toString());
+			NiceControlCenter.LOGGER.warn("Files: waiting for files to be saved: {}", e.toString());
 		}
 	}
 

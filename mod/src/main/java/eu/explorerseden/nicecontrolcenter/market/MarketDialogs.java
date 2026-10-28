@@ -655,7 +655,7 @@ public final class MarketDialogs {
 		var server = player.level().getServer();
 		var pos = player.blockPosition();
 		String name = player.getPlainTextName();
-		eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("[market] {} bought {} × {}: running its commands", name, times, what);
+		eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("Market: {} bought {} × {}: running its commands", name, times, what);
 		for (int i = 0; i < times; i++) {
 			for (String c : commands) {
 				String cmd = c.replace("{player}", name).replace("{uuid}", player.getStringUUID())
@@ -664,7 +664,7 @@ public final class MarketDialogs {
 				try {
 					server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), cmd);
 				} catch (RuntimeException e) {
-					eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.warn("[market] Command for {} failed: {}", name, cmd, e);
+					eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.warn("Market: command for {} failed: {}", name, cmd, e);
 				}
 			}
 		}

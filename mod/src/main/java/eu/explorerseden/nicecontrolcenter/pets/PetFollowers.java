@@ -1055,7 +1055,7 @@ final class PetFollowers {
 		try {
 			return ItemStack.CODEC.parse(server.registryAccess().createSerializationContext(JsonOps.INSTANCE), json).getOrThrow();
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("A head can't be made: {}", e.toString());
+			NiceControlCenter.LOGGER.warn("Pets: a head can't be made: {}", e.toString());
 			return ItemStack.EMPTY;
 		}
 	}

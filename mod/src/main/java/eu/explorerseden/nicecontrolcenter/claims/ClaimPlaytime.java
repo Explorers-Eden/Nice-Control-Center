@@ -90,12 +90,12 @@ public final class ClaimPlaytime {
 			// Like an admin hand-over: the claim doesn't need the new owner's claim blocks.
 			data.transfer(c, heir, heirName, s, true, now);
 			passed++;
-			NiceControlCenter.LOGGER.info("Claim {} of {} (away more than {} days) went to its co-owner {}", c.displayName(), oldName, s.inactiveDays, heirName);
+			NiceControlCenter.LOGGER.info("Claims: claim {} of {} (away more than {} days) went to its co-owner {}", c.displayName(), oldName, s.inactiveDays, heirName);
 		}
 		gone.forEach(data::delete);
 		if (gone.isEmpty() && passed == 0) return;
 		ClaimStore.changed();
-		if (!gone.isEmpty()) NiceControlCenter.LOGGER.info("Removed {} claims of players away more than {} days", gone.size(), s.inactiveDays);
+		if (!gone.isEmpty()) NiceControlCenter.LOGGER.info("Claims: removed {} claims of players away more than {} days", gone.size(), s.inactiveDays);
 	}
 
 	/** Has this player been away longer than the cutoff (players never seen don't count as away)? */

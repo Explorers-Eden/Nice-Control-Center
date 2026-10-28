@@ -87,7 +87,7 @@ public final class HostMetrics implements Runnable {
 			try {
 				readOnce();
 			} catch (RuntimeException e) {
-				eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.debug("Host metrics failed", e);
+				eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.debug("Performance: host metrics failed", e);
 			}
 		}
 	}

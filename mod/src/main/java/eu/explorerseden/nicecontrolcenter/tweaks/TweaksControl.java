@@ -94,7 +94,7 @@ public final class TweaksControl {
 				blocks(next.felling.leaves), items(next.veins.tools), items(next.veins.deniedTools), blocks(next.veins.blocks), blocks(next.veins.deniedBlocks),
 				items(next.saplings.items), blocks(next.saplings.ground), items(next.spawners.tools));
 		AntiXray.rebuild(next, blocks(next.antiXray.blocks));
-		if (!first) NiceControlCenter.LOGGER.info("Reloaded the gameplay tweaks");
+		if (!first) NiceControlCenter.LOGGER.info("Tweaks: reloaded the gameplay tweaks");
 	}
 
 	private static List<Match<Item>> items(List<String> list) {

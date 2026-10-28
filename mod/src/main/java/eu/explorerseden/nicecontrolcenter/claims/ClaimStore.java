@@ -100,7 +100,7 @@ public final class ClaimStore {
 		try {
 			data = Claims.readData(file);
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.error("Couldn't read {}; claims start empty and the file is kept as .broken", file, e);
+			NiceControlCenter.LOGGER.error("Claims: couldn't read {}; claims start empty and the file is kept as .broken", file, e);
 			try {
 				Files.copy(file, file.resolveSibling(file.getFileName() + ".broken"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException ignored) {
@@ -112,7 +112,7 @@ public final class ClaimStore {
 		reloadSettings();
 		reindex();
 		dirty = false;
-		if (!data.claims.isEmpty()) NiceControlCenter.LOGGER.info("{} claims loaded{}", data.claims.size(), settings.enabled ? "" : " (claims are off)");
+		if (!data.claims.isEmpty()) NiceControlCenter.LOGGER.info("Claims: {} claims loaded{}", data.claims.size(), settings.enabled ? "" : " (claims are off)");
 	}
 
 	public static void stop() {
@@ -152,7 +152,7 @@ public final class ClaimStore {
 		boolean wasOn = settings.enabled;
 		settings = Claims.read(f);
 		if (!first && wasOn != settings.enabled) {
-			NiceControlCenter.LOGGER.info("Claims are now {}", settings.enabled ? "on" : "off");
+			NiceControlCenter.LOGGER.info("Claims: claims are now {}", settings.enabled ? "on" : "off");
 			if (!settings.enabled) ClaimMode.endAll();
 		}
 	}

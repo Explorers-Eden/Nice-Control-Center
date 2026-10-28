@@ -188,7 +188,7 @@ public final class ClaimMode {
 			return ItemStack.CODEC.encodeStart(player.registryAccess().createSerializationContext(JsonOps.INSTANCE), stack).getOrThrow().toString();
 		} catch (RuntimeException e) {
 			// Can't keep it: better in a free spot on the ground than gone.
-			NiceControlCenter.LOGGER.warn("Couldn't keep {}'s item for claim mode: {}", player.getPlainTextName(), e.toString());
+			NiceControlCenter.LOGGER.warn("Claims: couldn't keep {}'s item for claim mode: {}", player.getPlainTextName(), e.toString());
 			dropAtFeet(player, stack.copy());
 			return "";
 		}
@@ -198,7 +198,7 @@ public final class ClaimMode {
 		try {
 			return ItemStack.CODEC.parse(player.registryAccess().createSerializationContext(JsonOps.INSTANCE), JsonParser.parseString(json)).getOrThrow();
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't give {} back their item from claim mode: {} ({})", player.getPlainTextName(), e.toString(), json);
+			NiceControlCenter.LOGGER.warn("Claims: couldn't give {} back their item from claim mode: {} ({})", player.getPlainTextName(), e.toString(), json);
 			return ItemStack.EMPTY;
 		}
 	}

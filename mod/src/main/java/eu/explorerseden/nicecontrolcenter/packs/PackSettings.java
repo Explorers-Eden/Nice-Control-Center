@@ -300,7 +300,7 @@ public final class PackSettings {
 			return null;
 		}
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), text);
-		NiceControlCenter.LOGGER.info("Dashboard ({}) changed {} settings: {}", who, definition.pack(), String.join(", ", changes));
+		NiceControlCenter.LOGGER.info("Packs: dashboard ({}) changed {} settings: {}", who, definition.pack(), String.join(", ", changes));
 		return null;
 	}
 
@@ -559,7 +559,7 @@ public final class PackSettings {
 			reader.setStrictness(Strictness.LENIENT);
 			dialog = JsonParser.parseReader(reader).getAsJsonObject();
 		} catch (JsonParseException | IllegalStateException e) {
-			NiceControlCenter.LOGGER.debug("Could not read settings dialog {}", function, e);
+			NiceControlCenter.LOGGER.debug("Packs: could not read settings dialog {}", function, e);
 			return null;
 		}
 		JsonArray inputs = dialog.getAsJsonArray("inputs");

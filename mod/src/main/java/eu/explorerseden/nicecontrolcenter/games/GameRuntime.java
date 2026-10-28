@@ -178,7 +178,7 @@ public final class GameRuntime {
 			Games.write(file(), settings);
 			modified = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(file());
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save the games: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Games: could not save the games: {}", e.getMessage());
 		}
 	}
 
@@ -840,7 +840,7 @@ public final class GameRuntime {
 			}
 			Files.deleteIfExists(placedFile);
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("Could not clear old parkour blocks: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Games: could not clear old parkour blocks: {}", e.getMessage());
 		}
 	}
 
@@ -850,7 +850,7 @@ public final class GameRuntime {
 			Files.writeString(tmp, text, StandardCharsets.UTF_8);
 			Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.warn("Could not save {}: {}", f.getFileName(), e.getMessage());
+			NiceControlCenter.LOGGER.warn("Games: could not save {}: {}", f.getFileName(), e.getMessage());
 		}
 	}
 }

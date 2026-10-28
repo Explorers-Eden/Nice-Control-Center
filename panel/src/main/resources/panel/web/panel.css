@@ -943,6 +943,12 @@ body .pn-borders select { -webkit-appearance: none; appearance: none; padding-ri
 
 .pn-log .pn-log-tag { display: inline-block; padding: 0 6px; margin-right: 2px; border-radius: 5px; font-size: .85em; font-weight: 700; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 .pn-log .panel.cmd { color: var(--accent); font-weight: 600; }
+/* The section of a mod line, coloured by its area (readable on both themes). */
+.pn-log-sec { font-weight: 600; }
+.pn-log-sec[data-area="players"] { color: #3fbf7f; }
+.pn-log-sec[data-area="games"] { color: #c27ef0; }
+.pn-log-sec[data-area="perf"] { color: #f0a04b; }
+.pn-log-sec[data-area="admin"] { color: #3bbcd0; }
 
 /* Own commands */
 .pn-own-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); box-shadow: 0 10px 30px -18px rgba(0,0,0,.45); }

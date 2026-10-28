@@ -68,7 +68,7 @@ public final class ConsoleRunner {
 				return true;
 			}
 		};
-		NiceControlCenter.LOGGER.info("{} ran: /{}", who, text);
+		NiceControlCenter.LOGGER.info("Console: {} ran: /{}", who, text);
 		boolean[] result = {false, false};
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSource(capture).withCallback((success, value) -> {
 			result[0] = true;

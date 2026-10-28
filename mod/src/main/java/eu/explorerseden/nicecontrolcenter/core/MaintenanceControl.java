@@ -96,13 +96,13 @@ public final class MaintenanceControl {
 		if (!applied) {
 			normalIcon = ((StatusIconAccessor) server).nicecontrolcenter$statusIcon();
 			applied = true;
-			NiceControlCenter.LOGGER.info("Maintenance mode is on: only operators and staff can join");
+			NiceControlCenter.LOGGER.info("Maintenance: on, only operators and staff can join");
 		}
 		Path icon = server.getServerDirectory().resolve(Maintenance.ICON);
 		try {
 			if (Files.isRegularFile(icon)) ((StatusIconAccessor) server).nicecontrolcenter$setStatusIcon(new ServerStatus.Favicon(Files.readAllBytes(icon)));
 		} catch (java.io.IOException e) {
-			NiceControlCenter.LOGGER.warn("Couldn't read {}: {}", Maintenance.ICON, e.toString());
+			NiceControlCenter.LOGGER.warn("Maintenance: couldn't read {}: {}", Maintenance.ICON, e.toString());
 		}
 		server.invalidateStatus();
 	}
@@ -112,7 +112,7 @@ public final class MaintenanceControl {
 		applied = false;
 		((StatusIconAccessor) server).nicecontrolcenter$setStatusIcon(normalIcon);
 		server.invalidateStatus();
-		NiceControlCenter.LOGGER.info("Maintenance mode is off");
+		NiceControlCenter.LOGGER.info("Maintenance: off");
 	}
 
 	private static boolean allowed(MinecraftServer server, NameAndId player) {

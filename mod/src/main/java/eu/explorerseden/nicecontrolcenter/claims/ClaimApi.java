@@ -254,7 +254,7 @@ public final class ClaimApi {
 		}
 		if (run && imported > 0) {
 			ClaimStore.changed();
-			NiceControlCenter.LOGGER.info("Imported {} GOML claims", imported);
+			NiceControlCenter.LOGGER.info("Claims: imported {} GOML claims", imported);
 		}
 		out.put("claims", list);
 		out.put("imported", imported);

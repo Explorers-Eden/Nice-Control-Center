@@ -100,7 +100,7 @@ public final class AntiXray {
 		} catch (RuntimeException e) {
 			if (!warned) {
 				warned = true;
-				NiceControlCenter.LOGGER.warn("Hiding ores failed; chunks are sent as they are", e);
+				NiceControlCenter.LOGGER.warn("Anti-xray: hiding ores failed; chunks are sent as they are", e);
 			}
 			out = real;
 		}

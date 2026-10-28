@@ -122,7 +122,7 @@ public final class StackSampler implements Runnable {
 					}
 				}
 			} catch (RuntimeException e) {
-				NiceControlCenter.LOGGER.debug("Sampling failed", e);
+				NiceControlCenter.LOGGER.debug("Performance: sampling failed", e);
 			}
 		}
 	}

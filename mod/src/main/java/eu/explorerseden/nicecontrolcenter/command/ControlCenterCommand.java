@@ -213,7 +213,7 @@ public final class ControlCenterCommand {
 				source.sendFailure(Component.literal("Couldn't take the histogram: " + (error.getCause() != null ? error.getCause().getMessage() : error.getMessage())));
 				return;
 			}
-			StringBuilder log = new StringBuilder("Memory by class (live objects, " + Diagnoser.bytes(result.totalBytes()) + " in total):");
+			StringBuilder log = new StringBuilder("Commands: /ncc heap, memory by class (live objects, " + Diagnoser.bytes(result.totalBytes()) + " in total):");
 			MutableComponent message = header("Memory by class").append("\n").append(muted("Live objects: " + Diagnoser.bytes(result.totalBytes()) + " in "
 					+ Diagnoser.count(result.totalInstances()) + " objects. " + (filter == null ? "Largest:" : "Classes with \"" + filter + "\":")));
 			var shown = filter == null ? result.top(30) : result.matching(filter, 30);
@@ -265,7 +265,7 @@ public final class ControlCenterCommand {
 				// Size unknown.
 			}
 			String rel = serverDir.relativize(file).toString().replace('\\', '/');
-			NiceControlCenter.LOGGER.info("Heap dump written: {} ({})", rel, Diagnoser.bytes(size));
+			NiceControlCenter.LOGGER.info("Commands: /ncc heap dump written: {} ({})", rel, Diagnoser.bytes(size));
 			source.sendSystemMessage(header("Heap dump").append("\n").append(Component.literal(rel + " (" + Diagnoser.bytes(size) + ")"))
 					.append("\n").append(muted("Download it from the panel's Files. Only the newest two are kept.")));
 		}));

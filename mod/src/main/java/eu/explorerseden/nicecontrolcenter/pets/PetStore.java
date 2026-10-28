@@ -146,7 +146,7 @@ public final class PetStore {
 		try {
 			data = Pets.readData(file);
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.error("Couldn't read {}; pets start empty and the file is kept as .broken", file, e);
+			NiceControlCenter.LOGGER.error("Pets: couldn't read {}; pets start empty and the file is kept as .broken", file, e);
 			try {
 				Files.copy(file, file.resolveSibling(file.getFileName() + ".broken"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException ignored) {

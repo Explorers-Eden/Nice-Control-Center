@@ -169,7 +169,7 @@ public final class PerfControl {
 			if (PanelBridge.active()) {
 				PanelBridge.alert("perf", text);
 			} else {
-				NiceControlCenter.LOGGER.info(text);
+				NiceControlCenter.LOGGER.info("Performance: " + text);
 			}
 		}
 	}
@@ -187,7 +187,7 @@ public final class PerfControl {
 		modified = now;
 		fileSettings = Performance.read(file);
 		apply(server);
-		if (!first || now != 0) NiceControlCenter.LOGGER.info("Performance settings loaded ({})", summary(settings));
+		if (!first || now != 0) NiceControlCenter.LOGGER.info("Performance: settings loaded ({})", summary(settings));
 	}
 
 	/** Uses the file's settings: the item, mob and save lists they name, then the settings themselves. */
@@ -361,7 +361,7 @@ public final class PerfControl {
 		if (PanelBridge.active()) {
 			PanelBridge.alert("perf", text);
 		} else {
-			NiceControlCenter.LOGGER.info(text);
+			NiceControlCenter.LOGGER.info("Performance: " + text);
 		}
 	}
 
@@ -377,7 +377,7 @@ public final class PerfControl {
 		rangeStep = 0;
 		tracking = 100;
 		taken.clear();
-		NiceControlCenter.LOGGER.info("Distances back to normal ({})", why);
+		NiceControlCenter.LOGGER.info("Performance: distances back to normal ({})", why);
 		lastChange = "Back to normal (" + why + ")";
 		baseSim = baseView = sim = view = -1;
 	}

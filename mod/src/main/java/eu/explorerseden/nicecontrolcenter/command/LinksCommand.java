@@ -94,7 +94,7 @@ public final class LinksCommand {
 			for (String name : c.names()) {
 				if (registered.containsKey(name)) continue;
 				if (dispatcher.getRoot().getChild(name) != null) {
-					NiceControlCenter.LOGGER.warn("The link command /{} isn't added: another command has that name", name);
+					NiceControlCenter.LOGGER.warn("Own commands: the link command /{} isn't added: another command has that name", name);
 					continue;
 				}
 				Command<CommandSourceStack> run = ctx -> custom(ctx.getSource(), name, "");
@@ -144,7 +144,7 @@ public final class LinksCommand {
 				f.setAccessible(true);
 				((Map<?, ?>) f.get(root)).remove(name);
 			} catch (ReflectiveOperationException | RuntimeException e) {
-				NiceControlCenter.LOGGER.warn("Couldn't remove the link command /{}: {}", name, e.toString());
+				NiceControlCenter.LOGGER.warn("Own commands: couldn't remove the link command /{}: {}", name, e.toString());
 			}
 		}
 	}

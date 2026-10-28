@@ -196,7 +196,7 @@ public final class WaveRuntime {
 		g.nextAt = System.currentTimeMillis() + 3000;
 		games.put(a.id, g);
 		clearBox(server, g);
-		NiceControlCenter.LOGGER.info("Wave arena {} tried from the console: wave 1 in 3 seconds, ends in 3 minutes", a.name);
+		NiceControlCenter.LOGGER.info("Games: wave arena {} tried from the console: wave 1 in 3 seconds, ends in 3 minutes", a.name);
 		return null;
 	}
 
@@ -440,7 +440,7 @@ public final class WaveRuntime {
 		}
 		g.nextAt = System.currentTimeMillis() + a.breakSeconds * 1000L;
 		level.playSound(null, a.spawn.x, a.spawn.y, a.spawn.z, SoundEvents.RAID_HORN.value(), SoundSource.PLAYERS, 1f, 1f);
-		NiceControlCenter.LOGGER.info("Wave arena {} started by {}", a.name, String.join(", ", g.names.values()));
+		NiceControlCenter.LOGGER.info("Games: wave arena {} started by {}", a.name, String.join(", ", g.names.values()));
 		return null;
 	}
 
@@ -754,7 +754,7 @@ public final class WaveRuntime {
 			if (p.isAlive()) finishFor(server, a, p);
 			else afterRespawn.put(id, a);
 		}
-		NiceControlCenter.LOGGER.info("Wave arena {} ended ({}) after {} waves: {}", a.name, won ? "cleared" : why == null ? "over" : why, g.cleared, String.join(", ", g.names.values()));
+		NiceControlCenter.LOGGER.info("Games: wave arena {} ended ({}) after {} waves: {}", a.name, won ? "cleared" : why == null ? "over" : why, g.cleared, String.join(", ", g.names.values()));
 	}
 
 	/** Mobs of the game (and anything left lying in the box) gone. */

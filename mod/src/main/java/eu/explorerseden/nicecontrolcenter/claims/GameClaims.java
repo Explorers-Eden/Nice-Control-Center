@@ -722,7 +722,7 @@ public final class GameClaims {
 		try {
 			return ItemStack.CODEC.parse(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), JsonParser.parseString(json)).getOrThrow();
 		} catch (RuntimeException e) {
-			NiceControlCenter.LOGGER.warn("A game-claim item can't be read: {}", e.getMessage());
+			NiceControlCenter.LOGGER.warn("Claims: a game-claim item can't be read: {}", e.getMessage());
 			return ItemStack.EMPTY;
 		}
 	}
@@ -743,7 +743,7 @@ public final class GameClaims {
 				if (saved != null) adventure.addAll(saved);
 			}
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.error("Could not read who plays games in adventure mode ({})", adventureFile, e);
+			NiceControlCenter.LOGGER.error("Claims: could not read who plays games in adventure mode ({})", adventureFile, e);
 		}
 		try {
 			if (Files.exists(file)) {
@@ -751,7 +751,7 @@ public final class GameClaims {
 				if (saved != null) stashes.putAll(saved);
 			}
 		} catch (IOException | RuntimeException e) {
-			NiceControlCenter.LOGGER.error("Could not read the game-claim stashes ({}): kept as .broken", file, e);
+			NiceControlCenter.LOGGER.error("Claims: could not read the game-claim stashes ({}): kept as .broken", file, e);
 			try {
 				Files.copy(file, file.resolveSibling(file.getFileName() + ".broken"), StandardCopyOption.REPLACE_EXISTING);
 			} catch (IOException ignored) {
@@ -767,7 +767,7 @@ public final class GameClaims {
 			Files.writeString(tmp, Json.GSON.toJson(List.copyOf(adventure)), StandardCharsets.UTF_8);
 			Files.move(tmp, adventureFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.error("Could not save who plays games in adventure mode", e);
+			NiceControlCenter.LOGGER.error("Claims: could not save who plays games in adventure mode", e);
 		}
 	}
 
@@ -779,7 +779,7 @@ public final class GameClaims {
 			Files.writeString(tmp, Json.GSON.toJson(stashes), StandardCharsets.UTF_8);
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			NiceControlCenter.LOGGER.error("Could not save the game-claim stashes", e);
+			NiceControlCenter.LOGGER.error("Claims: could not save the game-claim stashes", e);
 		}
 	}
 }
