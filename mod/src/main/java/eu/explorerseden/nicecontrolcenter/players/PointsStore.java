@@ -160,6 +160,8 @@ public final class PointsStore {
 		Map<String, Object> m = new LinkedHashMap<>();
 		Points.Account a = data.accounts.get(uuid);
 		m.put("name", settings.name);
+		m.put("singular", Points.one(settings));
+		m.put("abbreviation", settings.abbreviation);
 		m.put("balance", a == null ? 0 : a.balance);
 		m.put("earned", a == null ? 0 : a.earned);
 		List<Points.Change> h = a == null ? List.of() : new ArrayList<>(a.history);
@@ -267,7 +269,7 @@ public final class PointsStore {
 		for (NameAndId w : profiles(ctx)) {
 			long now = add(w.id().toString(), w.name(), amount, why(ctx, reason));
 			ServerPlayer online = ctx.getSource().getServer().getPlayerList().getPlayer(w.id());
-			if (online != null) online.sendOverlayMessage(Component.literal("+" + Points.amount(settings, amount) + (reason.isBlank() ? "" : " · " + reason) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
+			if (online != null) online.sendOverlayMessage(Component.literal("+" + Points.shortAmount(settings, amount) + (reason.isBlank() ? "" : " · " + reason) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
 			done++;
 			ctx.getSource().sendSuccess(() -> Component.literal(w.name() + ": +" + Points.amount(settings, amount) + ", now " + String.format(Locale.ROOT, "%,d", now) + "."), false);
 		}
@@ -287,7 +289,7 @@ public final class PointsStore {
 			}
 			done++;
 			ServerPlayer online = ctx.getSource().getServer().getPlayerList().getPlayer(w.id());
-			if (online != null) online.sendOverlayMessage(Component.literal("-" + Points.amount(settings, amount) + (reason.isBlank() ? "" : " · " + reason) + " (" + String.format(Locale.ROOT, "%,d", balance(id)) + " left)").withStyle(ChatFormatting.YELLOW));
+			if (online != null) online.sendOverlayMessage(Component.literal("-" + Points.shortAmount(settings, amount) + (reason.isBlank() ? "" : " · " + reason) + " (" + String.format(Locale.ROOT, "%,d", balance(id)) + " left)").withStyle(ChatFormatting.YELLOW));
 			ctx.getSource().sendSuccess(() -> Component.literal(w.name() + ": -" + Points.amount(settings, amount) + ", " + String.format(Locale.ROOT, "%,d", balance(id)) + " left."), false);
 		}
 		// A real failure (not just 0), so execute store success and conditional command blocks see it.

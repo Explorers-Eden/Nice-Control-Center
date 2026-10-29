@@ -2143,7 +2143,8 @@
       pt.balances = d.balances || { accounts: [], sold: {} };
       pt.live = !!d.live;
       pt.skins = d.skins || {};
-      pt.actions = d.actions || [];
+      pt.pointsName = d.settings.name;
+      pt.actions = (d.actions || []).map((t) => (t.id === 'points' ? { ...t, label: d.settings.name } : t));
       pt.pets = d.pets || [];
       pt.dirty = false;
       renderPoints();
@@ -2175,8 +2176,11 @@
     const s = pt.settings;
     const edit = can('settings.server');
     $('pn-pt-name').value = s.name;
+    $('pn-pt-singular').value = s.singular || '';
+    $('pn-pt-short').value = s.abbreviation || '';
+    ptExample();
     $('pn-pt-enabled').checked = s.enabled;
-    ['pn-pt-name', 'pn-pt-enabled', 'pn-pt-give', 'pn-pt-take', 'pn-pt-player', 'pn-pt-amount', 'pn-pt-reason', 'pn-pt-save'].forEach((id) => { $(id).disabled = !edit; });
+    ['pn-pt-name', 'pn-pt-singular', 'pn-pt-short', 'pn-pt-enabled', 'pn-pt-give', 'pn-pt-take', 'pn-pt-player', 'pn-pt-amount', 'pn-pt-reason', 'pn-pt-save'].forEach((id) => { $(id).disabled = !edit; });
     $('pn-pt-live').textContent = pt.live ? '' : 'Server off: balances from the world file.';
     const q = $('pn-pt-search').value.trim().toLowerCase();
     const rows = (pt.balances.accounts || []).filter((a) => !q || (a.name || '').toLowerCase().includes(q));
@@ -2231,7 +2235,7 @@
     const actions = (e.actions || []).map((a, ai) => rwActionRow(a, 0, ai, pt, 'data-entry-action="1"')).join('');
     const add = `<select data-addentryaction="1"><option value="">+ Also give…</option>${pt.actions.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join('')}</select>`;
     return `<div class="pn-ps-entry" data-entry="${ei}">
-      <div class="pn-rw-head"><span class="pn-rw-give-icon">${icon}</span><b>${esc(e.name || 'New reward')}</b><span class="np-chip gold">${ptNum(e.price)} ${esc(pt.settings.name.toLowerCase())}</span>${sold ? `<span class="np-chip">bought ${ptNum(sold)}×</span>` : ''}
+      <div class="pn-rw-head"><span class="pn-rw-give-icon">${icon}</span><b>${esc(e.name || 'New reward')}</b><span class="np-chip gold">${esc(ptShort(e.price))}</span>${sold ? `<span class="np-chip">bought ${ptNum(sold)}×</span>` : ''}
         <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-sact="entryrm" title="Remove this reward"><i class="bi bi-x-lg"></i></button></span></div>
       <div class="pn-rw-grid">
         ${field('name', 'Name', `<input type="text" data-e="name" value="${esc(e.name)}" maxlength="64">`)}
@@ -2255,7 +2259,16 @@
     if (rerender) renderPoints();
   }
 
-  $('pn-pt-name').addEventListener('input', (e) => { pt.settings.name = e.target.value; ptChanged(false); });
+  /** "1 ticket · 5 tickets · 5 T" as players will see it. */
+  const ptOne = (s) => (s.singular || '').trim() || (/s$/i.test(s.name.trim()) && s.name.trim().length > 1 ? s.name.trim().slice(0, -1) : s.name.trim());
+  const ptShort = (n) => { const s = pt.settings; return (s.abbreviation || '').trim() ? `${ptNum(n)} ${s.abbreviation.trim()}` : `${ptNum(n)} ${(n === 1 ? ptOne(s) : s.name).toLowerCase()}`; };
+  function ptExample() {
+    const s = pt.settings;
+    $('pn-pt-example').textContent = `Players see: 1 ${ptOne(s).toLowerCase()} · 5 ${s.name.trim().toLowerCase()} · prices and the action bar: ${ptShort(5)}`;
+  }
+  $('pn-pt-name').addEventListener('input', (e) => { pt.settings.name = e.target.value; ptExample(); ptChanged(false); });
+  $('pn-pt-singular').addEventListener('input', (e) => { pt.settings.singular = e.target.value; ptExample(); ptChanged(false); });
+  $('pn-pt-short').addEventListener('input', (e) => { pt.settings.abbreviation = e.target.value; ptExample(); ptChanged(false); });
   $('pn-pt-enabled').addEventListener('change', (e) => { pt.settings.enabled = e.target.checked; ptChanged(false); });
   $('pn-pt-search').addEventListener('input', renderPointsTab);
 
@@ -2676,7 +2689,7 @@
   function rwActionRow(a, ri, ai, src = rw, holder = `data-rule="${ri}"`) {
     const type = src.actions.find((x) => x.id === a.type) || { fields: '', label: a.type };
     const f = type.fields;
-    const amountLabel = { points: 'Points (minus takes)', claimblocks: 'Blocks (minus takes)', petslots: 'Extra pets (1–2)', listings: 'Extra slots', coupons: 'How many coupons' }[a.type] || 'Amount';
+    const amountLabel = { points: `${src.pointsName || 'Points'} (minus takes)`, claimblocks: 'Blocks (minus takes)', petslots: 'Extra pets (1–2)', listings: 'Extra slots', coupons: 'How many coupons' }[a.type] || 'Amount';
     const levelLabel = a.type === 'points' ? '+ per score (games)' : a.type === 'haste' ? 'Level (1–3)' : a.type === 'coupons' ? 'Each worth (currency items)' : 'Multiplier (×)';
     const [unit, factor] = rwUnit(a.seconds);
     const fields = [
@@ -2714,7 +2727,9 @@
       const d = await api('api/rewards');
       rw.settings = d.settings;
       rw.triggers = d.triggers;
-      rw.actions = d.actions || [];
+      // The "Points" reward carries the points' own name.
+      rw.pointsName = d.pointsName || 'Points';
+      rw.actions = (d.actions || []).map((t) => (t.id === 'points' ? { ...t, label: rw.pointsName } : t));
       rw.pets = d.pets || [];
       rw.dirty = false;
       renderRewards();

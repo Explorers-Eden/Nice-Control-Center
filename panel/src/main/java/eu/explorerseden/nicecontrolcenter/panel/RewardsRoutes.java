@@ -28,7 +28,10 @@ final class RewardsRoutes {
 		routes.get("/api/rewards", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			// The pets admins can give (by name), for the "Also give" picker.
 			var pets = eu.explorerseden.nicecontrolcenter.Pets.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Pets.FILE)).pets.stream().map(p -> p.name).toList();
-			json(ctx, Map.of("settings", Rewards.read(file()), "triggers", Rewards.TRIGGERS, "actions", Rewards.ACTIONS, "pets", pets));
+			// The points' own name, for the "Points" reward's label.
+			var points = eu.explorerseden.nicecontrolcenter.Points.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Points.FILE));
+			json(ctx, Map.of("settings", Rewards.read(file()), "triggers", Rewards.TRIGGERS, "actions", Rewards.ACTIONS, "pets", pets,
+					"pointsName", points.name, "pointsShort", points.abbreviation));
 		}));
 		routes.post("/api/rewards", guard(Permissions.SETTINGS_SERVER, (ctx, me) -> {
 			Rewards.Settings next;

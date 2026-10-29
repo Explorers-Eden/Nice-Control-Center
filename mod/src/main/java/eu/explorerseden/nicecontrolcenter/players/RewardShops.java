@@ -118,7 +118,7 @@ public final class RewardShops {
 
 	/** What the NPC looks like: made again when it changes. */
 	private static String looksTag(Points.Shop s, Games.Pos at) {
-		return "ncc_look_" + Integer.toHexString((s.texture + "|" + s.shown() + "|" + at.yaw).hashCode());
+		return "ncc_look_" + Integer.toHexString((s.texture + "|" + s.shown() + "|" + at.yaw + "|" + PointsStore.settings().name).hashCode());
 	}
 
 	/** Every five seconds: NPCs where they should be (once their chunk is loaded), the rest gone. */
@@ -157,7 +157,7 @@ public final class RewardShops {
 		StringBuilder nbt = new StringBuilder("{Tags:[\"" + TAG + "\",\"" + TAG + "_" + shop.id + "\",\"" + spotTag(shop, at) + "\",\"" + looksTag(shop, at) + "\"]");
 		nbt.append(",Rotation:[").append(at.yaw).append("f,0f],Invulnerable:1b,immovable:1b,NoGravity:1b,Silent:1b,CustomNameVisible:1b");
 		nbt.append(",CustomName:").append(Json.GSON.toJson(shop.shown()));
-		nbt.append(",description:").append(Json.GSON.toJson("Reward shop · right-click"));
+		nbt.append(",description:").append(Json.GSON.toJson("Spend your " + PointsStore.settings().name.toLowerCase(Locale.ROOT) + " · right-click"));
 		if (texture != null) nbt.append(",profile:{properties:[{name:\"textures\",value:\"").append(texture).append("\"}]}");
 		nbt.append("}");
 		ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:mannequin %.2f %.2f %.2f %s", at.dim, at.x, at.y, at.z, nbt));
@@ -277,7 +277,7 @@ public final class RewardShops {
 			boolean afford = balance >= e.price;
 			MutableComponent desc = Component.empty()
 					.append(Component.literal(e.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
-					.append(Component.literal("  " + (e.price == 0 ? "free" : Points.amount(s, e.price))).withStyle(afford ? ChatFormatting.GOLD : ChatFormatting.RED));
+					.append(Component.literal("  " + (e.price == 0 ? "free" : Points.shortAmount(s, e.price))).withStyle(afford ? ChatFormatting.GOLD : ChatFormatting.RED));
 			List<String> limits = new ArrayList<>();
 			if (e.stock > 0) limits.add(Math.max(0, e.stock - PointsStore.sold(e.id)) + " left");
 			if (e.perPlayer > 0) limits.add("bought " + PointsStore.bought(p.getStringUUID(), e.id) + " of " + e.perPlayer);
@@ -309,7 +309,7 @@ public final class RewardShops {
 		body.add(text("Price " + (e.price == 0 ? "free" : Points.amount(s, e.price)) + " · you have " + Points.amount(s, balance), balance >= e.price ? ChatFormatting.GOLD : ChatFormatting.RED));
 		String why = blocked(p, e);
 		List<ActionButton> buttons = new ArrayList<>();
-		if (why == null && balance >= e.price) buttons.add(button(Component.literal("Buy for " + Points.amount(s, e.price)).withStyle(ChatFormatting.GREEN), "Takes the points and gives it to you now", "buy", args("shop", shop.id, "entry", e.id, "price", String.valueOf(e.price))));
+		if (why == null && balance >= e.price) buttons.add(button(Component.literal("Buy for " + Points.amount(s, e.price)).withStyle(ChatFormatting.GREEN), "Takes the " + s.name.toLowerCase(Locale.ROOT) + " and gives it to you now", "buy", args("shop", shop.id, "entry", e.id, "price", String.valueOf(e.price))));
 		else body.add(text(why != null ? "You can't buy it: " + why + "." : "You need " + Points.amount(s, e.price - balance) + " more.", ChatFormatting.RED));
 		menu(p, shop.shown() + " · " + e.name, body, buttons, button(Component.literal("Back"), "Back to the shop", "home", args("shop", shop.id)));
 	}

@@ -31,8 +31,12 @@ public final class Points {
 
 	public static final class Settings {
 		public boolean enabled = true;
-		/** What they're called ("Points", "Tickets"…). */
+		/** What they're called ("Points", "Tickets"…), shown everywhere: in game, the panel and the website. */
 		public String name = "Points";
+		/** One of them ("Ticket"); empty = the name without its last "s". */
+		public String singular = "";
+		/** Short form for tight spots ("pts", "T"): prices, the action bar; empty = the full name. */
+		public String abbreviation = "";
 		public List<Shop> shops = new ArrayList<>();
 
 		public Shop shop(String idOrName) {
@@ -42,6 +46,9 @@ public final class Points {
 
 		public Settings fill() {
 			if (name == null || name.isBlank()) name = "Points";
+			name = name.strip();
+			singular = singular == null ? "" : singular.strip();
+			abbreviation = abbreviation == null ? "" : abbreviation.strip();
 			if (shops == null) shops = new ArrayList<>();
 			shops.removeIf(s -> s == null);
 			Set<String> ids = new HashSet<>();
@@ -182,17 +189,29 @@ public final class Points {
 		}
 	}
 
-	/** "5 points", "1 point" with the server's own name for them. */
-	public static String amount(Settings s, long n) {
+	/** One of them: the singular set, else the name without its last "s". */
+	public static String one(Settings s) {
+		if (!s.singular.isBlank()) return s.singular;
 		String plural = s.name.strip();
-		String one = plural.toLowerCase(Locale.ROOT).endsWith("s") ? plural.substring(0, plural.length() - 1) : plural;
-		return String.format(Locale.ROOT, "%,d", n) + " " + (n == 1 || n == -1 ? one : plural).toLowerCase(Locale.ROOT);
+		return plural.toLowerCase(Locale.ROOT).endsWith("s") && plural.length() > 1 ? plural.substring(0, plural.length() - 1) : plural;
+	}
+
+	/** "5 tickets", "1 ticket" with the server's own name for them. */
+	public static String amount(Settings s, long n) {
+		return String.format(Locale.ROOT, "%,d", n) + " " + (n == 1 || n == -1 ? one(s) : s.name).toLowerCase(Locale.ROOT);
+	}
+
+	/** "5 T" with the abbreviation (as written), else the same as {@link #amount}. */
+	public static String shortAmount(Settings s, long n) {
+		return s.abbreviation.isBlank() ? amount(s, n) : String.format(Locale.ROOT, "%,d", n) + " " + s.abbreviation;
 	}
 
 	public static String validate(Settings s) {
 		if (s == null) return "No settings.";
 		s.fill();
 		Set<String> names = new HashSet<>();
+		if (s.name.length() > 32 || s.singular.length() > 32) return "The name is up to 32 characters.";
+		if (s.abbreviation.length() > 8) return "The abbreviation is up to 8 characters.";
 		for (Shop shop : s.shops) {
 			if (!shop.name.matches("[A-Za-z0-9_-]{1,32}")) return "A shop needs a one-word name (letters, digits, - and _).";
 			if (!names.add(shop.name.toLowerCase(Locale.ROOT))) return "Two shops are called \"" + shop.name + "\".";
@@ -201,7 +220,7 @@ public final class Points {
 			for (Entry e : shop.entries) {
 				if (e.name.isBlank() || e.name.length() > 64) return "Every reward in " + shop.name + " needs a name (up to 64 characters).";
 				if (e.description.length() > 300) return "The description of " + e.name + " is too long.";
-				if (e.items.isEmpty() && e.commands.isEmpty() && e.actions.isEmpty()) return e.name + " in " + shop.name + " gives nothing yet: add items, commands or rewards.";
+				if (e.items.isEmpty() && e.commands.isEmpty() && e.actions.isEmpty()) return e.name + " in " + shop.name + " gives nothing yet: add commands or other rewards (items come from the hand in game: /points shop item).";
 				for (String c : e.commands) if (c.length() > 2000 || c.contains("\n")) return "A command of " + e.name + " is too long.";
 			}
 		}

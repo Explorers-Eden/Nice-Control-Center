@@ -1,3 +1,6 @@
+## 1.47.0
+- Games → Points: name, one of them (singular) and abbreviation, with an example of how players see it; the Rewards "Points" reward, shop price chips and the website use them (mod 1.57.0)
+
 ## 1.46.0
 - Games: new tabs Points (what they're called, how to earn them, give or take, balances) and Reward shops (shops with NPC skin, greeting, NPC spots, and rewards: price, limits, icon item or head, items, commands, other rewards) (mod 1.56.0)
 - Rewards: the new reward "Points" (amount, + per score)

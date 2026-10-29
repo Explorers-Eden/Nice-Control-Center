@@ -372,6 +372,8 @@ final class WebProfile {
 		java.util.Collections.reverse(h);
 		Map<String, Object> m = new LinkedHashMap<>();
 		m.put("name", s.name);
+		m.put("singular", eu.explorerseden.nicecontrolcenter.Points.one(s));
+		m.put("abbreviation", s.abbreviation);
 		m.put("balance", a == null ? 0 : a.balance);
 		m.put("earned", a == null ? 0 : a.earned);
 		m.put("history", h);
