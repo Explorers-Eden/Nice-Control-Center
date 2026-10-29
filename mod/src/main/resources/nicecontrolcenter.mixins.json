@@ -51,6 +51,7 @@
 		"ExperienceBoostMixin",
 		"ToolCareMixin",
 		"GameChorusMixin",
+		"FishingFrenzyMixin",
 		"WeatherPacketMixin",
 		"GameClaimPickupMixin",
 		"GameClaimSpawnMixin",

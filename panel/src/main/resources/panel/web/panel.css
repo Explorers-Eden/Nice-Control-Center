@@ -1064,6 +1064,11 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-gm-setup { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--muted); }
 .pn-gm-setup li i { color: var(--muted); }
 .pn-gm-setup li.done { color: var(--text); }
+.pn-gm-heads { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; max-height: 220px; overflow-y: auto; font-size: var(--fs-sm); }
+.pn-gm-heads li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px solid var(--card-border); }
+.pn-gm-skin { display: flex; align-items: center; gap: 8px; }
+.pn-gm-skin input { flex: 1; min-width: 0; }
+.pn-gm-headface { image-rendering: pixelated; border-radius: 4px; flex: none; }
 .pn-gm-setup li.done i { color: var(--ok, #4be07a); }
 .pn-gm-setup code { font-size: .92em; }
 .pn-gm-top { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: var(--fs-sm); }

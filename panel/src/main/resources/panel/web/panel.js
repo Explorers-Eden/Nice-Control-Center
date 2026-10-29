@@ -138,7 +138,7 @@
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
-        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights): settings and the best players.' },
+        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
         { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
@@ -1863,10 +1863,14 @@
 
   // ── Games ──────────────────────────────────────────────────────────────
 
-  const gm = { settings: null, live: null, scores: null, dirty: false };
-  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded' };
-  const gmHigher = (type) => type === 'parkour' || type === 'waves';
-  const gmScore = (type, v) => type === 'parkour' ? `${v} jump${v === 1 ? '' : 's'}` : type === 'waves' ? `${v} wave${v === 1 ? '' : 's'}` : gmClock(v);
+  const gm = { settings: null, live: null, scores: null, headSkins: {}, dirty: false };
+  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded',
+    ghasts: 'bi-fire', colorfloor: 'bi-grid-3x3-gap', anvils: 'bi-cloud-hail', treasure: 'bi-gem', fishing: 'bi-water', heads: 'bi-person-bounding-box' };
+  const GAME_LABELS = { waves: 'wave fight', ghasts: 'ghast deflect', colorfloor: 'colour floor', anvils: 'anvil rain', treasure: 'treasure grab', fishing: 'fishing frenzy', heads: 'head hunt' };
+  const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing'];
+  const gmHigher = (type) => !['race', 'dropper', 'maze'].includes(type);
+  const gmWord = { parkour: ['jump', 'jumps'], waves: ['wave', 'waves'], ghasts: ['ghast', 'ghasts'], colorfloor: ['colour', 'colours'], treasure: ['point', 'points'], fishing: ['point', 'points'], heads: ['head', 'heads'] };
+  const gmScore = (type, v) => type === 'anvils' ? `${v} s` : gmWord[type] ? `${v} ${gmWord[type][v === 1 ? 0 : 1]}` : gmClock(v);
   const gmClock = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${Math.floor((ms % 1000) / 100)}`; };
 
   async function loadGames() {
@@ -1876,6 +1880,7 @@
       gm.settings = d.settings;
       gm.live = d.live || null;
       gm.scores = d.scores || null;
+      gm.headSkins = d.headSkins || {};
       gm.dirty = false;
       renderArenas();
       Dirty.reset('games');
@@ -1899,15 +1904,21 @@
       const top = live ? live.top : Object.values((gm.scores || {})[a.id] || {}).sort((x, y) => gmHigher(a.type) ? y.best - x.best : x.best - y.best).slice(0, 10);
       const where = a.start ? `${dimShort(a.start.dim)} · ${Math.round(a.start.x)}, ${Math.round(a.start.y)}, ${Math.round(a.start.z)}` : 'no start yet';
       const field = (k, label, html) => `<label class="pn-field"><span>${label}</span>${html}</label>`;
-      const num = (k, min, max) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}">`;
+      const num = (k, min, max, step) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}"${step ? ` step="${step}"` : ''}>`;
       const text = (k, label, hint) => field(k, label, `<input type="text" data-g="${k}" value="${esc(a[k] || '')}" placeholder="${esc(hint)}">`);
       const lines = (k, label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="${k}" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a[k] || []).join('\n'))}</textarea></label>`;
       const waves = a.type === 'waves';
-      const own = (waves ? '' : field('cooldown', 'Wait between runs (seconds)', num('cooldown', 0, 3600)))
+      const quick = GM_QUICK.includes(a.type);
+      const heads = a.type === 'heads';
+      const own = heads
+        ? text('finishMessage', 'Message when all heads are found', 'default line')
+          + lines('finishCommands', 'Commands when all heads are found ({player}, {found}, {total})')
+        : (waves ? '' : field('cooldown', quick ? 'Wait after a round (seconds)' : 'Wait between runs (seconds)', num('cooldown', 0, 3600)))
         + text('startMessage', 'Start message', 'default line')
-        + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : 'Finish message ({score})', 'default line')
+        + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : quick ? 'Message when their score counts ({score})' : 'Finish message ({score})', 'default line')
         + lines('startCommands', 'Commands on start ({player}, {game})')
-        + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards' : 'Commands when a run counts ({score})');
+        + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards'
+          : quick ? 'Commands for each player whose score counts ({score}): round rewards' : 'Commands when a run counts ({score})');
       const fields = {
         parkour: field('palette', 'Blocks (ids, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
           + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes', num('laneSpacing', 16, 256))
@@ -1922,23 +1933,27 @@
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
           + `<p class="pn-hint">After changing the size or blocks: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
         waves: gmWaveFields(a, field, num, text, lines),
-      }[a.type] || '';
+        heads: gmHeadFields(a, field, num, lines),
+      }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
       const allFields = fields + own;
-      const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${gmScore(a.type, t.best)}</span><small>${t.runs} run${t.runs === 1 ? '' : 's'}</small></li>`).join('')}</ol>` : '<p class="pn-hint">No runs yet.</p>';
+      const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
+      const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
+        : `<i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · ${waves ? 'a party leader stands on it to start (or queue up while a game runs)'
+          : quick ? `everyone stepping on it within ${a.joinSeconds} s plays the same round (or <code>/game join ${esc(a.name)}</code>)` : `players join with <code>/game join ${esc(a.name)}</code> or by stepping on it`}.`;
       return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
         <div class="pn-rw-head">
           <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
-          <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(a.type === 'waves' ? 'wave fight' : a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} playing${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
+          <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(GAME_LABELS[a.type] || a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting to start' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
           <span class="pn-rw-actions">
             <button type="button" class="np-btn small" data-gact="reset" title="Clear the best scores"><i class="bi bi-trophy"></i> Reset scores</button>
             <button type="button" class="np-btn small danger" data-gact="delete" title="Remove the arena (what it built stays)"><i class="bi bi-trash"></i></button>
           </span>
         </div>
-        <p class="pn-hint"><i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · ${a.type === 'waves' ? 'a party leader stands on it to start (or queue up while a game runs)' : `players join with <code>/game join ${esc(a.name)}</code> or by stepping on it`}.</p>
+        <p class="pn-hint">${padHint}</p>
         <div class="pn-gm-body"><div class="pn-rw-grid">${allFields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
       </section>`;
-    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze, waves).</p>';
+    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze, waves, ghasts, colorfloor, anvils, treasure, fishing, heads).</p>';
     $('pn-gm-list').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; });
     $('pn-gm-save').disabled = !edit;
   }
@@ -1978,6 +1993,69 @@
       + '<p class="pn-hint pn-field-wide">Clearing the game runs the finish message and commands below (and the Rewards triggers "Finishes a game" / "Clears a wave in a wave arena").</p>';
   }
 
+  /** A quick round's own fields (ghasts, colour floor, anvils, treasure, fishing), and what's still to set up in game. */
+  function gmQuickFields(a, field, num, lines) {
+    const p = (pos) => pos ? `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}` : '';
+    const n = esc(a.name);
+    const floor = a.type === 'colorfloor';
+    const box = a.areaMin && a.areaMax
+      ? `${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}` : '';
+    const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
+    const span = a.platformSize * 3 + a.platformGap * 2;
+    const steps = [
+      floor ? ok(!!a.corner, a.corner ? `Grid ${span} × ${span} from ${p(a.corner)}` : 'Grid (stand where its corner goes):', a.corner ? '' : `/game edit ${n} grid`) : '',
+      floor ? '' : ok(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
+      ok(!!box || floor, box ? `Play box ${box}` : floor ? 'Play box: around the grid (optional: corner1 / corner2)' : 'Play box (two corners, height included):', box || floor ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
+      a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
+      ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
+    ].join('');
+    const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)' }[a.type] || '';
+    const setup = `<ul class="pn-gm-setup">${steps}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (a round with only you).${floor ? ` After changing the size: <code>/game edit ${n} build</code>.` : ''}</p>`;
+    const survival = floor || a.type === 'anvils';
+    const pool = (label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="pool" data-lines="1" rows="2" spellcheck="false" placeholder="zombie">${esc((a.pool || []).join('\n'))}</textarea></label>`;
+    const own = {
+      ghasts: pool('Ghasts (one per line; <code>{ExplosionPower:0}</code> keeps the arena whole)') + field('maxAlive', 'Ghasts at once', num('maxAlive', 1, 200)),
+      colorfloor: field('colors', 'Colours (block ids, comma-separated)', `<input type="text" data-g="colors" value="${esc((a.colors || []).join(', '))}">`)
+        + field('platformSize', 'Platform size (blocks)', num('platformSize', 1, 16)) + field('platformGap', 'Gap between platforms', num('platformGap', 0, 16))
+        + field('roundSeconds', 'Seconds before a colour vanishes', num('roundSeconds', 1, 60, 0.1)) + field('speedUp', 'Faster after each refill (s)', num('speedUp', 0, 30, 0.1))
+        + field('minRoundSeconds', 'Fastest (s)', num('minRoundSeconds', 1, 60, 0.1)) + field('refillEvery', 'Colours before the grid refills', num('refillEvery', 1, 8))
+        + field('mobsEvery', 'A mob every … colours (0 = none)', num('mobsEvery', 0, 100)) + field('maxAlive', 'Mobs at most', num('maxAlive', 1, 200))
+        + pool('Mobs (one per line, e.g. <code>zombie</code>)'),
+      anvils: field('anvilRate', 'Anvils a second at the start', num('anvilRate', 0.1, 50, 0.1)) + field('anvilGrowth', '% more every 10 seconds', num('anvilGrowth', 0, 500)),
+      treasure: `<label class="pn-field pn-field-wide"><span>Treasure (one per line: <code>item=points</code>; the more it's worth, the rarer)</span><textarea data-g="treasureItems" data-lines="1" rows="3" spellcheck="false" placeholder="minecraft:diamond=5">${esc((a.treasureItems || []).join('\n'))}</textarea></label>`
+        + field('maxAlive', 'Treasure lying around at once', num('maxAlive', 1, 200)),
+      fishing: field('fishPoints', 'Points: cod, salmon', num('fishPoints', 0, 1000)) + field('rareFishPoints', 'Points: pufferfish, tropical fish', num('rareFishPoints', 0, 1000))
+        + field('treasurePoints', 'Points: treasure', num('treasurePoints', 0, 1000)) + field('junkPoints', 'Points: junk', num('junkPoints', 0, 1000)),
+    }[a.type] || '';
+    const gear = `<select data-g="gear"><option value="kit" ${a.gear === 'kit' ? 'selected' : ''}>kit (their things are kept safe)</option><option value="own" ${a.gear === 'own' ? 'selected' : ''}>their own</option></select>`;
+    return `<div class="pn-field pn-field-wide"><span>Setup in game</span>${setup}</div>`
+      + field('joinSeconds', 'Join window (seconds)', num('joinSeconds', 0, 120)) + field('maxPlayers', 'Players at most', num('maxPlayers', 1, 32))
+      + field('timeLimit', survival ? 'Longest round (seconds, 0 = until the last one is out)' : 'Round length (seconds)', num('timeLimit', 0, 3600))
+      + own + field('gear', `Gear${starter}`, gear)
+      + `<p class="pn-hint pn-field-wide">${survival ? 'Score: how long they lasted; with two or more players the last one standing wins.' : 'Score: the most when the time is up.'} Nobody dies in a round: a deadly hit knocks them out (their score still counts). Rewards: the commands below, or the Rewards triggers "Finishes a game" / "Sets a personal best".</p>`;
+  }
+
+  /** A head hunt's fields: the skin, the reward every few heads, and where the heads are. */
+  function gmHeadFields(a, field, num, lines) {
+    const n = esc(a.name);
+    const skin = gm.headSkins[a.id];
+    const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
+    const setup = `<ul class="pn-gm-setup">${[
+      ok(!!skin, skin ? 'Head skin set' : 'Head skin (below, or in game):', skin ? '' : `/game edit ${n} texture <url>`),
+      ok(a.heads.length > 0, a.heads.length ? `${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden; more:` : 'Hide heads: take some and place them', `/game edit ${n} headitem`),
+    ].join('')}</ul><p class="pn-hint">Placing a head from <code>headitem</code> adds it; <code>/game edit ${n} head add</code> adds a player head you look at. Break one in creative (as an admin) to take it out; players can't break them.</p>`;
+    const face = skin ? `<img class="pn-gm-headface" src="info/heads/${esc(skin)}" alt="" width="32" height="32">` : '';
+    const list = a.heads.length
+      ? `<ul class="pn-gm-heads">${a.heads.map((h, hi) => `<li><span>${esc(dimShort(h.dim))} · ${Math.round(h.x)}, ${Math.round(h.y)}, ${Math.round(h.z)}</span><button type="button" class="np-btn small danger" data-gact="headrm" data-h="${hi}" title="Take this head out of the hunt (the block stays)"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
+      : '<p class="pn-hint">No heads hidden yet.</p>';
+    return `<div class="pn-field pn-field-wide"><span>Setup in game</span>${setup}</div>`
+      + `<label class="pn-field pn-field-wide"><span>Head skin (textures.minecraft.net URL, its hash, or the base64 value)</span><span class="pn-gm-skin">${face}<input type="text" data-g="headTexture" value="${esc(a.headTexture || '')}" placeholder="http://textures.minecraft.net/texture/…"></span></label>`
+      + field('rewardEvery', 'A reward every … heads (0 = none)', num('rewardEvery', 0, 10000))
+      + lines('everyCommands', 'Commands every few heads ({player}, {found}, {total})')
+      + `<div class="pn-field pn-field-wide"><span>Where the heads are</span>${list}</div>`
+      + '<p class="pn-hint pn-field-wide">Also the Rewards trigger "Finds hidden heads" (every … heads). Finding them all runs the commands below and "Finishes a game".</p>';
+  }
+
   function gmChanged(rerender) {
     gm.dirty = true;
     $('pn-gm-save').disabled = false;
@@ -2001,7 +2079,7 @@
         if (m) a[k][String(Number(m[1]))] = m[2];
       });
     }
-    else if (k === 'palette') a[k] = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
+    else if (k === 'palette' || k === 'colors') a[k] = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
     else if (e.target.dataset.lines) a[k] = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
     else a[k] = e.target.value;
     if (k === 'enabled') card.classList.toggle('off', !a.enabled);
@@ -2011,7 +2089,10 @@
     const b = e.target.closest('[data-gact]');
     if (!b) return;
     const a = gm.settings.arenas[+b.closest('[data-arena]').dataset.arena];
-    if (b.dataset.gact === 'delete') {
+    if (b.dataset.gact === 'headrm') {
+      a.heads.splice(+b.dataset.h, 1);
+      gmChanged(true);
+    } else if (b.dataset.gact === 'delete') {
       if (!confirm(`Remove ${a.name}? Its scores stay in the world file; what it built stays in the world.`)) return;
       gm.settings.arenas = gm.settings.arenas.filter((x) => x !== a);
       gmChanged(true);

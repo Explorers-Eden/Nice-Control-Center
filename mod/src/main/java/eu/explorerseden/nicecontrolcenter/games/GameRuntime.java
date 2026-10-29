@@ -64,7 +64,8 @@ import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
  * action-bar line shows how it goes, and the end keeps a personal best and fires the Rewards triggers
  * "Game finished" and "New personal best". Templates: infinite parkour (jumps made ahead of you, each player in their
  * own lane), race course (checkpoints in order; running, boat or elytra), dropper (fall into the water at the bottom)
- * and maze (generated; made new daily or after each run). Wave arenas (parties, mobs) run in {@link WaveRuntime}.
+ * and maze (generated; made new daily or after each run). Wave arenas (parties, mobs) run in {@link WaveRuntime}, quick
+ * rounds (ghasts, colour floor, anvils, treasure, fishing) in {@link QuickRuntime}, head hunts in {@link HeadHunt}.
  */
 public final class GameRuntime {
 	public static final String PERMISSION = "nicecontrolcenter.games.admin";
@@ -173,7 +174,7 @@ public final class GameRuntime {
 		settings = Games.read(file());
 	}
 
-	private static void saveSettings() {
+	static void saveSettings() {
 		try {
 			Games.write(file(), settings);
 			modified = eu.explorerseden.nicecontrolcenter.core.FileWatch.modified(file());
@@ -189,7 +190,7 @@ public final class GameRuntime {
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			Session s = sessions.get(p.getUUID());
 			if (s == null) {
-				if (!settings.enabled || cooldown.getOrDefault(p.getUUID(), 0L) > now) continue;
+				if (!settings.enabled || cooldown.getOrDefault(p.getUUID(), 0L) > now || QuickRuntime.inGame(p) || WaveRuntime.inGame(p)) continue;
 				Arena a = onStartPad(p);
 				if (a != null) start(server, p, a);
 				continue;
@@ -215,7 +216,7 @@ public final class GameRuntime {
 	private static Arena onStartPad(ServerPlayer p) {
 		String dim = dim(p);
 		for (Arena a : settings.arenas) {
-			if (!a.enabled || a.start == null || !a.start.dim.equals(dim) || a.type.equals("waves")) continue;
+			if (!a.enabled || a.start == null || !a.start.dim.equals(dim) || a.type.equals("waves") || Games.quick(a.type) || a.type.equals("heads")) continue;
 			double dx = p.getX() - a.start.x, dz = p.getZ() - a.start.z, dy = p.getY() - a.start.y;
 			if (dx * dx + dz * dz <= 1.0 && dy > -0.6 && dy < 1.5) return a;
 		}
@@ -511,8 +512,18 @@ public final class GameRuntime {
 					if (a == null || !a.enabled) return fail(ctx, "There's no such game.");
 					ServerLevel level = level(ctx.getSource().getServer(), a.start.dim);
 					if (level == null) return fail(ctx, "That arena's dimension isn't there.");
+					if (a.type.equals("heads")) {
+						HeadHunt.progress(p, a);
+						return 1;
+					}
+					if (Games.quick(a.type)) {
+						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
+						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": you're on the pad; the round starts once the join window closes."), false);
+						return 1;
+					}
 					if (a.type.equals("waves")) {
-						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
+						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
 						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
 						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": the party leader stands on the pad to start (or queue up)."), false);
 						return 1;
@@ -523,6 +534,7 @@ public final class GameRuntime {
 				.then(Commands.literal("leave").executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					if (WaveRuntime.leave(ctx.getSource().getServer(), p)) return 1;
+					if (QuickRuntime.leave(ctx.getSource().getServer(), p)) return 1;
 					Session s = sessions.get(p.getUUID());
 					if (s == null) return fail(ctx, "You're not in a game.");
 					end(ctx.getSource().getServer(), s, "You left the game.", false);
@@ -565,6 +577,7 @@ public final class GameRuntime {
 					if (a == null) return fail(ctx, "There's no such game.");
 					for (Session s : List.copyOf(sessions.values())) if (s.arena == a) end(ctx.getSource().getServer(), s, "This game was removed.", false);
 					WaveRuntime.stop(ctx.getSource().getServer(), a);
+					QuickRuntime.stop(ctx.getSource().getServer(), a);
 					settings.arenas.remove(a);
 					saveSettings();
 					ctx.getSource().sendSuccess(() -> Component.literal("Removed " + a.name + " (the blocks it built stay)."), true);
@@ -572,7 +585,13 @@ public final class GameRuntime {
 				})))
 				.then(Commands.literal("try").requires(admin).then(arenaArg.get().executes(ctx -> {
 					Arena a = arena(ctx);
-					if (a == null || !a.type.equals("waves")) return fail(ctx, "Only wave arenas can be tried.");
+					if (a != null && Games.quick(a.type)) {
+						String err = QuickRuntime.trial(ctx.getSource().getServer(), a, ctx.getSource().getPlayerOrException());
+						if (err != null) return fail(ctx, err);
+						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": a round with only you in it; /game leave ends it."), true);
+						return 1;
+					}
+					if (a == null || !a.type.equals("waves")) return fail(ctx, "Only wave arenas and quick rounds can be tried.");
 					String err = WaveRuntime.trial(ctx.getSource().getServer(), a);
 					if (err != null) return fail(ctx, err);
 					ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
@@ -649,10 +668,35 @@ public final class GameRuntime {
 							return "Size " + a.size + ": /game edit " + a.name + " build makes it.";
 						}))))
 						.then(Commands.literal("build").executes(ctx -> edit(ctx, (a, p) -> {
-							if (!a.type.equals("maze") || a.corner == null) return "Only mazes are built.";
+							if (a.type.equals("colorfloor") && a.corner != null) {
+								QuickRuntime.previewGrid((ServerLevel) p.level(), a);
+								return "Grid built (each round lays it out again, colours shuffled).";
+							}
+							if (!a.type.equals("maze") || a.corner == null) return "Only mazes and colour floors are built.";
 							buildMaze((ServerLevel) p.level(), a);
 							return "Maze built.";
-						}))))));
+						})))
+						// Colour floor: the grid's corner at their feet (platforms go +X and +Z, the floor at this height).
+						.then(Commands.literal("grid").executes(ctx -> edit(ctx, (a, p) -> {
+							if (!a.type.equals("colorfloor")) return "Only colour floors have a grid.";
+							Games.Pos at = pos(p);
+							a.corner = new Games.Pos(at.dim, Math.floor(at.x), at.y - 1, Math.floor(at.z), 0);
+							QuickRuntime.previewGrid((ServerLevel) p.level(), a);
+							int span = a.platformSize * 3 + a.platformGap * 2;
+							return "Grid built here: " + span + " × " + span + " blocks (+X and +Z, at the block under your feet). Keep the space below open: falling = out.";
+						})))
+						// Head hunts.
+						.then(Commands.literal("texture").then(Commands.argument("texture", StringArgumentType.greedyString()).executes(ctx -> edit(ctx, (a, p) -> {
+							String t = StringArgumentType.getString(ctx, "texture").strip();
+							if (eu.explorerseden.nicecontrolcenter.Pets.texture(t) == null) return "That isn't a head texture: use a textures.minecraft.net URL, its hash, or the base64 value.";
+							a.headTexture = t;
+							return "Head skin set; heads already hidden take it within a few seconds. /game edit " + a.name + " headitem gives you heads to hide.";
+						}))))
+						.then(Commands.literal("headitem").executes(ctx -> headItem(ctx, 16))
+								.then(Commands.argument("count", IntegerArgumentType.integer(1, 64)).executes(ctx -> headItem(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
+						.then(Commands.literal("head")
+								.then(Commands.literal("add").executes(ctx -> lookedAtHead(ctx, true)))
+								.then(Commands.literal("remove").executes(ctx -> lookedAtHead(ctx, false)))))));
 	}
 
 	/** {player}, {game}, {score} in an arena's own lines and commands. */
@@ -716,8 +760,35 @@ public final class GameRuntime {
 			case "waves" -> "This spot is the start pad (a party leader stands on it). Then: /game edit " + name + " spawn (where players appear), corner1 / corner2 [x y z] (the fight box, height included),"
 					+ " mobspawn add (where mobs come from; several), optionally spectate [radius] and exitpad add, and kit. Waves and rewards are set in the panel (Games).";
 			case "dropper" -> "This spot is the start pad. Stand where players drop from: /game edit " + name + " top; then in the water at the bottom: /game edit " + name + " finish <radius>.";
+			case "ghasts" -> "This spot is the start pad (everyone on it within " + a.joinSeconds + " s plays). Then: /game edit " + name + " spawn, corner1 / corner2 (the play box, height included),"
+					+ " mobspawn add (where ghasts appear, up high; several). Try it with /game try " + name + ".";
+			case "colorfloor" -> "This spot is the start pad. Stand where the grid's corner goes and type /game edit " + name + " grid (it builds 3×3 platforms toward +X and +Z). Colours, speed and mobs are set in the panel.";
+			case "anvils", "treasure", "fishing" -> "This spot is the start pad. Then: /game edit " + name + " spawn and corner1 / corner2 (the play box, height included"
+					+ (type.equals("anvils") ? "; anvils fall from its top" : type.equals("fishing") ? "; put water in it" : "; treasure appears on its floor") + "). Try it with /game try " + name + ".";
+			case "heads" -> "Set the heads' skin: /game edit " + name + " texture <url or value>, then /game edit " + name + " headitem gives you heads to hide (placing one adds it)."
+					+ " Rewards every few heads are set in the panel.";
 			default -> "The maze is built from this corner (" + (a.size * 2 + 1) + " blocks each way, +X and +Z). The start pad is here too; move it with /game edit " + name + " start.";
 		};
+		// Sensible starts for the quick rounds.
+		switch (type) {
+			case "ghasts" -> {
+				a.pool = new ArrayList<>(List.of("ghast {ExplosionPower:0}"));
+				a.maxAlive = 4;
+				a.timeLimit = 90;
+			}
+			case "colorfloor" -> {
+				a.pool = new ArrayList<>(List.of("zombie"));
+				a.maxAlive = 4;
+			}
+			case "treasure" -> {
+				a.maxAlive = 8;
+				a.timeLimit = 60;
+			}
+			case "fishing" -> a.timeLimit = 120;
+			case "anvils" -> a.timeLimit = 300;
+			default -> {
+			}
+		}
 		if (type.equals("maze")) {
 			a.corner = pos(p);
 			a.start = new Games.Pos(a.corner.dim, a.corner.x - 2, a.corner.y, a.corner.z - 2, 0);
@@ -728,6 +799,33 @@ public final class GameRuntime {
 		if (type.equals("maze")) buildMaze((ServerLevel) p.level(), a);
 		ctx.getSource().sendSuccess(() -> Component.literal("Made the " + type + " game " + name + ". " + next).withStyle(ChatFormatting.GREEN), true);
 		return 1;
+	}
+
+	private static int headItem(CommandContext<CommandSourceStack> ctx, int count) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		Arena a = arena(ctx);
+		if (a == null || !a.type.equals("heads")) return fail(ctx, "There's no such head hunt.");
+		net.minecraft.world.item.ItemStack st = HeadHunt.headItem(p, a, count);
+		if (st == null) return fail(ctx, "Set the heads' skin first: /game edit " + a.name + " texture <url or value>.");
+		if (!p.getInventory().add(st)) p.level().addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
+		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": here are heads to hide; each one you place joins the hunt (break it in creative to take it out)."), false);
+		return 1;
+	}
+
+	/** Adds or takes out the player head they look at. */
+	private static int lookedAtHead(CommandContext<CommandSourceStack> ctx, boolean add) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		Arena a = arena(ctx);
+		if (a == null || !a.type.equals("heads")) return fail(ctx, "There's no such head hunt.");
+		var hit = p.pick(8, 1f, false);
+		if (!(hit instanceof net.minecraft.world.phys.BlockHitResult b) || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK || !HeadHunt.isHead(p.level().getBlockState(b.getBlockPos()))) {
+			return fail(ctx, "Look at a player head (8 blocks at most).");
+		}
+		boolean done = add ? HeadHunt.add(a, p.level(), b.getBlockPos()) : HeadHunt.remove(a, p.level(), b.getBlockPos());
+		String msg = add ? (done ? "Head added (" + a.heads.size() + " hidden); it takes the hunt's skin." : "That head is in the hunt already.")
+				: (done ? "Head taken out (" + a.heads.size() + " left)." : "That head isn't in the hunt.");
+		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": " + msg), true);
+		return done ? 1 : 0;
 	}
 
 	private static Arena arena(CommandContext<CommandSourceStack> ctx) {
@@ -756,6 +854,22 @@ public final class GameRuntime {
 		return better;
 	}
 
+	/** A count that only grows (heads found): their best is the count now, without counting a run. */
+	static void setBest(Arena a, ServerPlayer p, long score) {
+		Map<String, Games.Score> board = scores.computeIfAbsent(a.id, k -> new LinkedHashMap<>());
+		Games.Score sc = board.computeIfAbsent(p.getStringUUID(), k -> new Games.Score());
+		sc.name = p.getGameProfile().name();
+		if (score <= sc.best && sc.at != 0) return;
+		sc.best = score;
+		sc.at = System.currentTimeMillis();
+		saveScores();
+	}
+
+	/** In a parkour, race, dropper or maze run. */
+	public static boolean inRun(ServerPlayer p) {
+		return sessions.containsKey(p.getUUID());
+	}
+
 	/** The best players of an arena. */
 	public static List<Games.Score> top(Arena a, int n) {
 		List<Games.Score> list = new ArrayList<>(scores.getOrDefault(a.id, Map.of()).values());
@@ -770,6 +884,8 @@ public final class GameRuntime {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("id", a.id);
 			if (a.type.equals("waves")) m.putAll(WaveRuntime.live(a.id));
+			else if (Games.quick(a.type)) m.putAll(QuickRuntime.live(a.id));
+			else if (a.type.equals("heads")) m.putAll(HeadHunt.live(a));
 			else m.put("playing", sessions.values().stream().filter(s -> s.arena == a).count());
 			m.put("top", top(a, 10));
 			out.add(m);
@@ -779,6 +895,7 @@ public final class GameRuntime {
 
 	public static boolean resetScores(String arenaId) {
 		boolean had = scores.remove(arenaId) != null;
+		HeadHunt.reset(arenaId);
 		saveScores();
 		return had;
 	}

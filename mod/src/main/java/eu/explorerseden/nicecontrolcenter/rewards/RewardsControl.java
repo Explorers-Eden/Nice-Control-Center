@@ -244,6 +244,23 @@ public final class RewardsControl {
 		}
 	}
 
+	/** A count that grows (heads found): rules for that game (value, empty = any) whose number divides it (0 = every one). */
+	public static void fireEvery(MinecraftServer server, String trigger, ServerPlayer player, String arena, long count) {
+		Rewards.Settings s = settings;
+		if (server == null || !s.enabled) return;
+		extra.set(Map.of("{score}", String.valueOf(count), "{game}", arena));
+		try {
+			for (Rewards.Rule r : s.rules) {
+				if (!r.enabled || !r.trigger.equals(trigger)) continue;
+				if (!r.value.isBlank() && !r.value.strip().equalsIgnoreCase(arena)) continue;
+				if (r.number > 0 && count % r.number != 0) continue;
+				run(server, r, player, arena);
+			}
+		} finally {
+			extra.remove();
+		}
+	}
+
 	/** World triggers: once with no player, or once per player for commands that use {player}. */
 	private static void runWorld(MinecraftServer server, Rewards.Rule r, String value) {
 		boolean perPlayer = r.who.equals("player") || r.claimsOnly || r.commands.stream().anyMatch(c -> c.contains("{player}") || c.contains("{uuid}")) || (!r.message.isBlank() && !r.messageEveryone);

@@ -96,6 +96,8 @@ public final class ClaimProtection {
 	private static InteractionResult useBlock(Player p, Level level, InteractionHand hand, BlockHitResult hit) {
 		if (!(p instanceof ServerPlayer player) || !ClaimStore.enabled()) return InteractionResult.PASS;
 		BlockPos pos = hit.getBlockPos();
+		// A head hunt's heads are there to be clicked by anyone.
+		if (eu.explorerseden.nicecontrolcenter.games.HeadHunt.isHuntHead(level, pos)) return InteractionResult.PASS;
 		BlockState state = level.getBlockState(pos);
 		ItemStack held = player.getItemInHand(hand);
 		Role needed;

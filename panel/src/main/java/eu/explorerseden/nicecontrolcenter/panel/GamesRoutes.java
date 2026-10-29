@@ -41,6 +41,13 @@ final class GamesRoutes {
 			Games.Settings s = Games.read(file());
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("settings", s);
+			// Head hunts: the skin's hash, for the face picture (info/heads/<hash>).
+			Map<String, String> skins = new LinkedHashMap<>();
+			for (Games.Arena a : s.arenas) {
+				String hash = a.type.equals("heads") ? eu.explorerseden.nicecontrolcenter.Pets.skinHash(eu.explorerseden.nicecontrolcenter.Pets.texture(a.headTexture)) : null;
+				if (hash != null) skins.put(a.id, hash);
+			}
+			out.put("headSkins", skins);
 			// Live (players in each arena now, top 10) while the server runs; else the saved scores.
 			JsonElement live = null;
 			try {
@@ -87,6 +94,10 @@ final class GamesRoutes {
 				a.spectateRadius = was.spectateRadius;
 				a.exitPads = was.exitPads;
 				a.kit = was.kit;
+				// Head hunts: heads are hidden in game; the page can only take some out.
+				java.util.Set<String> kept = new java.util.HashSet<>();
+				for (Games.Pos h : a.heads) kept.add(h.dim + "|" + (int) Math.floor(h.x) + "|" + (int) Math.floor(h.y) + "|" + (int) Math.floor(h.z));
+				a.heads = new java.util.ArrayList<>(was.heads.stream().filter(h -> kept.contains(h.dim + "|" + (int) Math.floor(h.x) + "|" + (int) Math.floor(h.y) + "|" + (int) Math.floor(h.z))).toList());
 			}
 			Games.write(file(), next);
 			audit.log(me.name(), "games.settings", next.arenas.size() + " arenas", clientIp(ctx));

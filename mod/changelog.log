@@ -1,4 +1,14 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.55.0
+- Games: quick rounds, five new templates. The first player on the start pad opens a join window (10 s); everyone who steps on it plays the same round, each for their own score (solo works too). Nobody dies in a round: a deadly hit knocks them out, healed, nothing dropped. Kit or own gear, exit pads, /game try for a round with only you
+  - Ghast deflect (ghasts): hit the ghasts' fireballs back with snowballs (handed out and refilled); a ghast killed by one counts. Default ghasts carry ExplosionPower:0 so the arena stays whole
+  - Colour floor (colorfloor): /game edit <name> grid builds a 3×3 grid of coloured platforms (colours, size and gap set in the panel). A colour is called and vanishes after a few seconds; after a few colours the grid refills and it gets faster; a mob from the pool every few colours. Last one standing wins
+  - Anvil rain (anvils): anvils fall from the top of the play box, more and more (half of them near a player); landed ones vanish. Last one standing wins
+  - Treasure grab (treasure): glowing items appear on the box's floor (item=points, rarer the more they're worth); walk into them
+  - Fishing frenzy (fishing): catches score points (fish, rare fish, treasure, junk) instead of landing
+- Games: head hunts (heads). Player heads with the hunt's own skin (/game edit <name> texture <url or value>) hidden in the world: /game edit <name> headitem gives heads to hide (placing one adds it), head add|remove for a head you look at. Players right-click them (also inside claims); a reward every few heads (commands with {found}/{total}, and the new Rewards trigger "Finds hidden heads"), finding all of them runs the finish commands. Players can't break them; an admin in creative can. /game join <hunt> shows how far you are
+- Rewards: new trigger "Finds hidden heads (head hunt)" (every … heads)
+
 ## 1.54.0
 - Market spotlight (reward): shines on one listing per player instead of all of them. Players pick which one: "★ Put in spotlight" on their listing in /market → My listings, or "Spotlight" on the website profile; until they pick, it's on their newest listing
 - Market: spotlit listings stand out more in game: a gold "In the spotlight" section on the market's front page (up to 3, a fair shuffle), a gold banner over them at the top of Browse with a divider before the rest, gold names and a ★

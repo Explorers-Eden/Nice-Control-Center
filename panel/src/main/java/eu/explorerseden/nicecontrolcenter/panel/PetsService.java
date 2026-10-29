@@ -238,6 +238,12 @@ final class PetsService {
 		this.market = market;
 	}
 
+	/** A head hunt's skin (Games): its face may be shown in the panel. */
+	private boolean isHuntHead(String hash) {
+		eu.explorerseden.nicecontrolcenter.Games.Settings games = eu.explorerseden.nicecontrolcenter.Games.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Games.FILE));
+		return games.arenas.stream().anyMatch(a -> a.type.equals("heads") && hash.equals(Pets.skinHash(Pets.texture(a.headTexture))));
+	}
+
 	/** The face picture for a skin hash (fetched once), or null. */
 	Path head(String hash) {
 		if (hash == null || !hash.matches("[0-9a-f]{32,128}")) return null;
@@ -358,7 +364,7 @@ final class PetsService {
 			WaypointHubs hubs = waypointHubs;
 			MarketService shop = market;
 			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture))) || hubs != null && hubs.isOwnerHead(hash)
-					|| shop != null && shop.isOfferHead(hash);
+					|| shop != null && shop.isOfferHead(hash) || isHuntHead(hash);
 			Path f = known ? head(hash) : null;
 			if (f == null) {
 				ctx.status(HttpStatus.NOT_FOUND);

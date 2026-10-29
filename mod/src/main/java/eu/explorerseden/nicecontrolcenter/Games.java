@@ -15,14 +15,21 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Mini-game arenas (templates: infinite parkour, race course, dropper, maze, wave fight), kept in
+ * Mini-game arenas (templates: infinite parkour, race course, dropper, maze, wave fight, the quick rounds ghast
+ * deflect, colour floor, anvil rain, treasure grab and fishing frenzy, and head hunts), kept in
  * config/nicecontrolcenter-games.json: made with /game in game, changed in the panel's Games page. Scores are kept
  * by the mod in the world folder (nicecontrolcenter-games-scores.json). Minecraft-free so both compile it.
  */
 public final class Games {
 	public static final String FILE = "nicecontrolcenter-games.json";
 	public static final String SCORES = "nicecontrolcenter-games-scores.json";
-	public static final List<String> TYPES = List.of("parkour", "race", "dropper", "maze", "waves");
+	public static final List<String> TYPES = List.of("parkour", "race", "dropper", "maze", "waves", "ghasts", "colorfloor", "anvils", "treasure", "fishing", "heads");
+	/** Quick rounds: everyone on the start pad during the join window plays the same round, each for their own score. */
+	public static final List<String> QUICK = List.of("ghasts", "colorfloor", "anvils", "treasure", "fishing");
+
+	public static boolean quick(String type) {
+		return QUICK.contains(type);
+	}
 
 	/** A spot in a dimension. */
 	public static final class Pos {
@@ -151,6 +158,43 @@ public final class Games {
 		public List<String> waveCommands = new ArrayList<>();
 		/** Shown when the party loses ({wave}: waves cleared). Empty = the default line. */
 		public String loseMessage = "";
+
+		// Quick rounds (ghasts, colorfloor, anvils, treasure, fishing); they also use spawn, the box, mobSpawns, pool,
+		// maxAlive, timeLimit (0 = until the last one is out), exitPads and gear/kit.
+		/** Seconds the start pad waits for more players once the first one stepped on it; most players in a round. */
+		public int joinSeconds = 10;
+		public int maxPlayers = 8;
+		/** Colour floor: the 3×3 grid of platforms (corner = its lowest north-west block), their size and the gap between. */
+		public List<String> colors = new ArrayList<>(List.of("minecraft:red_wool", "minecraft:orange_wool", "minecraft:yellow_wool", "minecraft:lime_wool",
+				"minecraft:light_blue_wool", "minecraft:blue_wool", "minecraft:purple_wool", "minecraft:pink_wool", "minecraft:white_wool"));
+		public int platformSize = 5;
+		public int platformGap = 2;
+		/** Colour floor: seconds before the called colour vanishes, how much faster after each refill, and the fastest. */
+		public double roundSeconds = 6;
+		public double speedUp = 0.5;
+		public double minRoundSeconds = 2;
+		/** Colour floor: colours that vanish before the grid is filled again; a mob from the pool every … colours (0 = none). */
+		public int refillEvery = 4;
+		public int mobsEvery = 3;
+		/** Anvil rain: anvils a second at the start, and % more every 10 seconds. */
+		public double anvilRate = 2;
+		public int anvilGrowth = 25;
+		/** Treasure grab: "minecraft:diamond=5" (item = points); rarer the more it's worth. */
+		public List<String> treasureItems = new ArrayList<>(List.of("minecraft:emerald=1", "minecraft:gold_ingot=2", "minecraft:diamond=5"));
+		/** Fishing frenzy: points for a fish, a pufferfish or tropical fish, a treasure, and junk. */
+		public int fishPoints = 1;
+		public int rareFishPoints = 3;
+		public int treasurePoints = 5;
+		public int junkPoints = 0;
+
+		// Head hunt: player heads hidden in the world; right-click to find one.
+		/** The heads' skin: a textures.minecraft.net URL, its hash, or the base64 value. */
+		public String headTexture = "";
+		/** Where the heads are (block positions). */
+		public List<Pos> heads = new ArrayList<>();
+		/** A reward every this many heads found (0 = none): everyCommands ({found}, {total}, {player}, {game}). */
+		public int rewardEvery = 5;
+		public List<String> everyCommands = new ArrayList<>();
 	}
 
 	public static final class Settings {
@@ -220,6 +264,31 @@ public final class Games {
 				if (a.kit == null) a.kit = new ArrayList<>();
 				if (a.waveCommands == null) a.waveCommands = new ArrayList<>();
 				if (a.loseMessage == null) a.loseMessage = "";
+				a.joinSeconds = Math.max(0, Math.min(120, a.joinSeconds));
+				a.maxPlayers = Math.max(1, Math.min(32, a.maxPlayers));
+				if (a.colors == null) a.colors = new ArrayList<>();
+				a.colors.removeIf(x -> x == null || x.isBlank());
+				if (a.colors.isEmpty()) a.colors = new Arena().colors;
+				a.platformSize = Math.max(1, Math.min(16, a.platformSize));
+				a.platformGap = Math.max(0, Math.min(16, a.platformGap));
+				a.roundSeconds = Math.max(1, Math.min(60, a.roundSeconds));
+				a.speedUp = Math.max(0, Math.min(30, a.speedUp));
+				a.minRoundSeconds = Math.max(1, Math.min(a.roundSeconds, a.minRoundSeconds));
+				a.refillEvery = Math.max(1, Math.min(8, a.refillEvery));
+				a.mobsEvery = Math.max(0, Math.min(100, a.mobsEvery));
+				a.anvilRate = Math.max(0.1, Math.min(50, a.anvilRate));
+				a.anvilGrowth = Math.max(0, Math.min(500, a.anvilGrowth));
+				if (a.treasureItems == null) a.treasureItems = new ArrayList<>();
+				a.treasureItems.removeIf(x -> x == null || x.isBlank());
+				a.fishPoints = Math.max(0, Math.min(1000, a.fishPoints));
+				a.rareFishPoints = Math.max(0, Math.min(1000, a.rareFishPoints));
+				a.treasurePoints = Math.max(0, Math.min(1000, a.treasurePoints));
+				a.junkPoints = Math.max(0, Math.min(1000, a.junkPoints));
+				if (a.headTexture == null) a.headTexture = "";
+				if (a.heads == null) a.heads = new ArrayList<>();
+				a.heads.removeIf(x -> x == null || x.dim == null);
+				a.rewardEvery = Math.max(0, Math.min(10_000, a.rewardEvery));
+				if (a.everyCommands == null) a.everyCommands = new ArrayList<>();
 			}
 			return this;
 		}
@@ -233,16 +302,21 @@ public final class Games {
 		public int runs;
 	}
 
-	/** Higher scores are better (parkour jumps, waves cleared), else lower times. */
+	/** Higher scores are better (parkour jumps, waves cleared, quick rounds, heads found), else lower times. */
 	public static boolean higherIsBetter(String type) {
-		return type.equals("parkour") || type.equals("waves");
+		return type.equals("parkour") || type.equals("waves") || quick(type) || type.equals("heads");
 	}
 
-	/** A score as words: "12 jumps", "5 waves", or a time. */
+	/** A score as words: "12 jumps", "5 waves", "3 ghasts", "47 s", or a time. */
 	public static String scoreText(String type, long score, java.util.function.LongFunction<String> clock) {
 		return switch (type) {
 			case "parkour" -> score + (score == 1 ? " jump" : " jumps");
 			case "waves" -> score + (score == 1 ? " wave" : " waves");
+			case "ghasts" -> score + (score == 1 ? " ghast" : " ghasts");
+			case "colorfloor" -> score + (score == 1 ? " colour" : " colours");
+			case "anvils" -> score + " s";
+			case "treasure", "fishing" -> score + (score == 1 ? " point" : " points");
+			case "heads" -> score + (score == 1 ? " head" : " heads");
 			default -> clock.apply(score);
 		};
 	}
