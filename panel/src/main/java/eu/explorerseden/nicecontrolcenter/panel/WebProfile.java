@@ -76,6 +76,8 @@ final class WebProfile {
 				if (account != null && account.has("seen")) out.put("seen", account.get("seen"));
 				JsonObject pets = mod("pets", link, null);
 				if (pets != null && !pets.has("error")) out.put("pets", pets);
+				JsonObject points = mod("points", link, null);
+				if (points != null && !points.has("error")) out.put("points", points);
 			} else {
 				Market.Data offline = market.worldData();
 				List<Map<String, Object>> listings = new ArrayList<>();
@@ -84,6 +86,7 @@ final class WebProfile {
 					listings.add(Map.of("id", l.id, "name", l.item.name, "item", l.item.id, "amount", l.amount, "price", l.price, "per", l.lot(), "expires", l.expires, "spotlight", l.spotlight));
 				}
 				out.put("listings", listings);
+				out.put("points", offlinePoints(link.uuid().toLowerCase(Locale.ROOT)));
 			}
 			json(ctx, out);
 		});
@@ -360,6 +363,21 @@ final class WebProfile {
 	}
 
 	/** One action on the mod's website endpoint for this player (body may be null). */
+	/** The player's points from the world's file (server off). */
+	private Map<String, Object> offlinePoints(String uuid) {
+		eu.explorerseden.nicecontrolcenter.Points.Data d = eu.explorerseden.nicecontrolcenter.Points.readData(market.worldPath(eu.explorerseden.nicecontrolcenter.Points.DATA));
+		eu.explorerseden.nicecontrolcenter.Points.Account a = d.accounts.get(uuid);
+		eu.explorerseden.nicecontrolcenter.Points.Settings s = eu.explorerseden.nicecontrolcenter.Points.read(market.configPath(eu.explorerseden.nicecontrolcenter.Points.FILE));
+		List<eu.explorerseden.nicecontrolcenter.Points.Change> h = a == null ? new ArrayList<>() : new ArrayList<>(a.history);
+		java.util.Collections.reverse(h);
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("name", s.name);
+		m.put("balance", a == null ? 0 : a.balance);
+		m.put("earned", a == null ? 0 : a.earned);
+		m.put("history", h);
+		return m;
+	}
+
 	private JsonObject mod(String action, Discord.Link link, JsonObject body) throws InterruptedException {
 		JsonObject b = body == null ? new JsonObject() : body;
 		b.addProperty("action", action);

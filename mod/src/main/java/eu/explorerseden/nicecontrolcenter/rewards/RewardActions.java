@@ -66,6 +66,14 @@ public final class RewardActions {
 				TempFly.add(uuid, online, ms);
 				return "+" + Perks.human(ms) + " flight in your claims";
 			}
+			case "points" -> {
+				// A fixed amount, plus per score for game triggers ("2 + 1 per jump").
+				long n = a.amount + Math.round(a.level * RewardsControl.currentScore());
+				if (n == 0) throw new Refused("no points this time.");
+				long now = eu.explorerseden.nicecontrolcenter.players.PointsStore.add(id, name, n, by);
+				var s = eu.explorerseden.nicecontrolcenter.players.PointsStore.settings();
+				return (n > 0 ? "+" : "") + eu.explorerseden.nicecontrolcenter.Points.amount(s, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")";
+			}
 			case "claimblocks" -> {
 				var data = ClaimStore.data();
 				var pb = data.player(id);
@@ -176,6 +184,9 @@ public final class RewardActions {
 					.then(Commands.argument("time", TimeArgument.time(1)).executes(ctx -> run(ctx, type, a -> a.seconds = ctx.getArgument("time", Integer.class) / 20L)))));
 		}
 		// Amounts.
+		root.then(Commands.literal("points").then(players.get()
+				.then(Commands.argument("amount", IntegerArgumentType.integer(-1_000_000, 1_000_000))
+						.executes(ctx -> run(ctx, "points", a -> a.amount = IntegerArgumentType.getInteger(ctx, "amount"))))));
 		root.then(Commands.literal("claimblocks").then(players.get()
 				.then(Commands.argument("amount", IntegerArgumentType.integer(-1_000_000, 1_000_000))
 						.executes(ctx -> run(ctx, "claimblocks", a -> a.amount = IntegerArgumentType.getInteger(ctx, "amount"))))));

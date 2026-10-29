@@ -1271,6 +1271,60 @@
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-dg-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-dg-msg"></span></div>
 			</div>
 
+			<div class="np-tab-panel" data-tab="points" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-coin"></i> Points</h3>
+					<p class="np-card-intro">One balance per player, for all games. They earn points through Rewards rules and spend them at the reward shops (next tab).</p>
+					<dl class="pn-gm-howto">
+						<dt>Earn</dt><dd>In <b>Rewards</b>, give a rule the reward "Points": a fixed amount, plus some per score for game triggers (finishes a game, personal best, wave cleared, dungeon cleared, heads found…). The same rule can also give real rewards.</dd>
+						<dt>Own games</dt><dd>Command blocks: <code>/points give @p 5 [reason]</code>; <code>/points take @p 10</code> fails when they don't have enough, so a conditional command block after it only runs once they've paid; <code>/points check @p 10</code> succeeds when they have at least that many</dd>
+						<dt>Players</dt><dd><code>/points</code> shows their balance and what they got it for, <code>/points top</code> the most; the website profile shows it too</dd>
+					</dl>
+					<div class="pn-rw-grid">
+						<label class="pn-field"><span>What they're called</span><input type="text" id="pn-pt-name" maxlength="32" placeholder="Points"></label>
+					</div>
+					<div class="np-filters">
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-pt-enabled"><span></span></span> Points and shops on</label>
+						<span class="np-form-msg" id="pn-pt-note"></span>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-plus-slash-minus"></i> Give or take</h3>
+					<div class="pn-rw-grid">
+						<label class="pn-field"><span>Player</span><input type="text" id="pn-pt-player" placeholder="name" autocomplete="off"></label>
+						<label class="pn-field"><span>How many</span><input type="number" id="pn-pt-amount" min="1" value="10"></label>
+						<label class="pn-field pn-field-wide"><span>Reason (shown to them)</span><input type="text" id="pn-pt-reason" maxlength="80" placeholder="e.g. won the build contest"></label>
+					</div>
+					<div class="np-filters">
+						<button type="button" class="np-btn primary" id="pn-pt-give"><i class="bi bi-plus-lg"></i> Give</button>
+						<button type="button" class="np-btn" id="pn-pt-take"><i class="bi bi-dash-lg"></i> Take</button>
+						<span class="np-form-msg" id="pn-pt-adjust-msg"></span>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-list-ol"></i> Balances</h3>
+					<div class="np-filters"><input type="search" id="pn-pt-search" class="pn-pt-search" placeholder="Search players" aria-label="Search players"><span class="pn-hint" id="pn-pt-live"></span></div>
+					<div class="np-table-wrap"><table class="np-table" id="pn-pt-table"></table></div>
+				</section>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-pt-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-pt-msg"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="rewardshops" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shop-window"></i> Reward shops</h3>
+					<p class="np-card-intro">NPCs players right-click to spend their points. Each shop has its own skin and rewards; it can have several NPCs. They can't be hurt, pushed or put in boats, and come back by themselves if they go missing.</p>
+					<dl class="pn-gm-howto">
+						<dt>New shop</dt><dd><code>/points shop create &lt;name&gt;</code> where its NPC should stand (facing the way you look)</dd>
+						<dt>More NPCs</dt><dd><code>/points shop npc add &lt;shop&gt;</code>; <code>/points shop npc remove</code> next to one</dd>
+						<dt>Item rewards</dt><dd>Hold the item: <code>/points shop item &lt;shop&gt; &lt;price&gt; &lt;name&gt;</code>. Commands and other rewards (flight, pets, perks…) are added below</dd>
+						<dt>Test</dt><dd><code>/points shop open &lt;shop&gt;</code></dd>
+					</dl>
+					<div class="np-filters"><button type="button" class="np-btn" id="pn-ps-add"><i class="bi bi-plus-lg"></i> New shop</button><span class="np-form-msg" id="pn-ps-note"></span></div>
+				</section>
+				<div id="pn-ps-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-ps-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-ps-msg"></span></div>
+			</div>
+
 			<div class="np-tab-panel" data-tab="owncommands" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-terminal-plus"></i> Own commands</h3>

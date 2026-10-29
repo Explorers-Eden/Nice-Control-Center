@@ -87,6 +87,16 @@ final class MarketService {
 		return Market.read(settingsFile());
 	}
 
+	/** A file in the server's config folder. */
+	Path configPath(String file) {
+		return serverDir.resolve("config").resolve(file);
+	}
+
+	/** A file in the world folder (for other data the mod keeps there). */
+	Path worldPath(String file) {
+		return worldFile().resolveSibling(file);
+	}
+
 	private Path worldFile() {
 		String name = ServerTuning.readProperties(serverDir.resolve("server.properties")).getProperty("level-name", "world").strip();
 		return serverDir.resolve(name.isEmpty() ? "world" : name).resolve(Market.DATA_FILE);

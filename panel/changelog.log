@@ -1,3 +1,9 @@
+## 1.46.0
+- Games: new tabs Points (what they're called, how to earn them, give or take, balances) and Reward shops (shops with NPC skin, greeting, NPC spots, and rewards: price, limits, icon item or head, items, commands, other rewards) (mod 1.56.0)
+- Rewards: the new reward "Points" (amount, + per score)
+- Games: quick rounds' setup lists the optional spectator area; Dungeons lists the pools' waiting areas (can be removed here)
+- Website profile: points balance and last changes (needs the website update)
+
 ## 1.45.0
 - Games: cards for the new quick rounds (ghast deflect, colour floor, anvil rain, treasure grab, fishing frenzy: join window, players, round length, per-game settings, setup checklist) and head hunts (skin with a face preview, reward every few heads, where every head is, with a button to take one out) (mod 1.55.0)
 

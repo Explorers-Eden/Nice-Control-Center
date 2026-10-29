@@ -223,6 +223,15 @@ public final class RewardsControl {
 	/** For game triggers: {score} and {game} while their rules run. */
 	private static final ThreadLocal<Map<String, String>> extra = ThreadLocal.withInitial(Map::of);
 
+	/** The {score} of the game trigger whose rule is running (0 when there's none, or it's a time). */
+	public static long currentScore() {
+		try {
+			return Long.parseLong(extra.get().getOrDefault("{score}", "0").replace(",", ""));
+		} catch (NumberFormatException e) {
+			return 0;
+		}
+	}
+
 	/**
 	 * A game run ended (gameFinished) or set a personal best (gameRecord): rules for that arena (value, empty = any)
 	 * whose number is met: at least that many jumps, or (timed games) within that many seconds; 0 = any.

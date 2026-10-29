@@ -139,7 +139,9 @@
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
         { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
-        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' }] },
+        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
+        { tab: 'points', label: 'Points', perm: 'server.view', desc: 'One points balance per player for all games: how they earn it, balances, giving and taking.' },
+        { tab: 'rewardshops', label: 'Reward shops', perm: 'server.view', desc: 'NPCs players spend their points at: skin, NPC spots and the rewards each shop sells.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rewards', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, and at in-game times.' }] },
       { id: 'discord', hue: '#7983f5', label: 'Discord', icon: 'bi-discord', subs: [
@@ -599,6 +601,7 @@
     if (tab === 'rewards') loadRewards();
     if (tab === 'games') loadGames();
     if (tab === 'dungeons') loadDungeons();
+    if (tab === 'points' || tab === 'rewardshops') loadPoints();
     if (tab === 'owncommands') loadOwnCommands();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
@@ -1204,7 +1207,7 @@
   const LOG_SECTION = /^([A-Z][A-Za-z-]*(?: [A-Za-z-]+){0,3}): /;
   const LOG_AREAS = Object.fromEntries([
     ...['Claims', 'Market', 'Pets', 'Rewards', 'Perks', 'Fly', 'Hubs', 'Players', 'Map'].map((k) => [k, 'players']),
-    ...['Games', 'Dungeons'].map((k) => [k, 'games']),
+    ...['Games', 'Dungeons', 'Points'].map((k) => [k, 'games']),
     ...['Performance', 'Pregen', 'Chunks', 'Borders', 'Lag', 'Reports', 'Checks', 'Reload'].map((k) => [k, 'perf']),
   ]);
 
@@ -2008,6 +2011,8 @@
       ok(!!box || floor, box ? `Play box ${box}` : floor ? 'Play box: around the grid (optional: corner1 / corner2)' : 'Play box (two corners, height included):', box || floor ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, radius ${a.spectateRadius}: the queue for the next round waits here, players who are out watch from here`
+        : 'Spectator area (optional; where the queue for the next round waits and players who are out watch):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
     ].join('');
     const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)' }[a.type] || '';
     const setup = `<ul class="pn-gm-setup">${steps}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (a round with only you).${floor ? ` After changing the size: <code>/game edit ${n} build</code>.` : ''}</p>`;
@@ -2125,6 +2130,250 @@
     }
   });
 
+  // ── Points and reward shops ─────────────────────────────────────────────
+
+  const pt = { settings: null, balances: { accounts: [], sold: {} }, live: false, skins: {}, actions: [], pets: [], dirty: false };
+  const ptNum = (n) => Number(n || 0).toLocaleString();
+
+  async function loadPoints(force) {
+    if (pt.dirty && pt.settings && !force) { renderPoints(); return; }
+    try {
+      const d = await api('api/points');
+      pt.settings = d.settings;
+      pt.balances = d.balances || { accounts: [], sold: {} };
+      pt.live = !!d.live;
+      pt.skins = d.skins || {};
+      pt.actions = d.actions || [];
+      pt.pets = d.pets || [];
+      pt.dirty = false;
+      renderPoints();
+      Dirty.reset('points');
+      Dirty.reset('rewardshops');
+    } catch (err) {
+      formMsg('pn-pt-note', err.message, false);
+    }
+  }
+
+  /** New balances after giving or taking, without touching unsaved settings. */
+  async function refreshBalances() {
+    try {
+      const d = await api('api/points');
+      pt.balances = d.balances || pt.balances;
+      pt.live = !!d.live;
+      renderPointsTab();
+    } catch (err) {
+      formMsg('pn-pt-adjust-msg', err.message, false);
+    }
+  }
+
+  function renderPoints() {
+    renderPointsTab();
+    renderShops();
+  }
+
+  function renderPointsTab() {
+    const s = pt.settings;
+    const edit = can('settings.server');
+    $('pn-pt-name').value = s.name;
+    $('pn-pt-enabled').checked = s.enabled;
+    ['pn-pt-name', 'pn-pt-enabled', 'pn-pt-give', 'pn-pt-take', 'pn-pt-player', 'pn-pt-amount', 'pn-pt-reason', 'pn-pt-save'].forEach((id) => { $(id).disabled = !edit; });
+    $('pn-pt-live').textContent = pt.live ? '' : 'Server off: balances from the world file.';
+    const q = $('pn-pt-search').value.trim().toLowerCase();
+    const rows = (pt.balances.accounts || []).filter((a) => !q || (a.name || '').toLowerCase().includes(q));
+    $('pn-pt-table').innerHTML = `<thead><tr><th>Player</th><th>${esc(s.name)}</th><th>Earned in all</th><th>Last change</th></tr></thead><tbody>${rows.map((a) => {
+      const h = (a.history || [])[0];
+      const last = h ? `<span class="${h.amount > 0 ? 'pn-pt-plus' : 'pn-pt-minus'}">${h.amount > 0 ? '+' : ''}${ptNum(h.amount)}</span> ${esc(h.why || '')} <small class="pn-hint">${esc(new Date(h.time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))}</small>` : '';
+      return `<tr><td>${esc(a.name || a.uuid)}</td><td><b>${ptNum(a.balance)}</b></td><td>${ptNum(a.earned)}</td><td>${last}</td></tr>`;
+    }).join('') || `<tr><td colspan="4" class="np-empty">${q ? 'Nobody matches.' : 'Nobody has any yet.'}</td></tr>`}</tbody>`;
+  }
+
+  function renderShops() {
+    const edit = can('settings.server');
+    const s = pt.settings;
+    $('pn-ps-list').innerHTML = s.shops.map((shop, si) => {
+      const face = pt.skins[shop.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(pt.skins[shop.id])}" alt="" width="32" height="32">` : '';
+      const field = (k, label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
+      const spots = shop.npcs.length
+        ? `<ul class="pn-gm-heads">${shop.npcs.map((n, ni) => `<li><span>${esc(dimShort(n.dim))} · ${Math.round(n.x)}, ${Math.round(n.y)}, ${Math.round(n.z)}</span><button type="button" class="np-btn small danger" data-sact="npcrm" data-n="${ni}" title="Take this NPC away"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
+        : `<p class="pn-hint">No NPCs yet: <code>/points shop npc add ${esc(shop.name)}</code> where one should stand.</p>`;
+      return `<section class="np-card pn-ps-shop" data-shop="${si}">
+        <div class="pn-rw-head">
+          <span class="pn-rw-give-icon">${face || '<i class="bi bi-shop-window"></i>'}</span>
+          <b class="pn-gm-name">${esc(shop.title || shop.name || 'New shop')}</b><span class="np-chip">${shop.npcs.length} NPC${shop.npcs.length === 1 ? '' : 's'}</span><span class="np-chip">${shop.entries.length} reward${shop.entries.length === 1 ? '' : 's'}</span>
+          <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-sact="delete" title="Remove the shop and its NPCs"><i class="bi bi-trash"></i></button></span>
+        </div>
+        <div class="pn-rw-grid">
+          ${field('name', 'Name (one word, for the commands)', `<input type="text" data-s="name" value="${esc(shop.name)}" maxlength="32">`)}
+          ${field('title', 'Shown above the NPCs', `<input type="text" data-s="title" value="${esc(shop.title)}" maxlength="64" placeholder="${esc(shop.name)}">`)}
+          ${field('lookAtPlayers', 'NPCs look at players', `<select data-s="lookAtPlayers" data-bool="1"><option value="true" ${shop.lookAtPlayers ? 'selected' : ''}>yes</option><option value="false" ${shop.lookAtPlayers ? '' : 'selected'}>no</option></select>`)}
+          ${field('greeting', 'Greeting on top of the shop', `<input type="text" data-s="greeting" value="${esc(shop.greeting)}" maxlength="300" placeholder="Spend your points on something nice!">`, true)}
+          ${field('texture', 'NPC skin (textures.minecraft.net URL, its hash, or the base64 value)', `<span class="pn-gm-skin">${face}<input type="text" data-s="texture" value="${esc(shop.texture)}" placeholder="http://textures.minecraft.net/texture/…"></span>`, true)}
+          <div class="pn-field pn-field-wide"><span>NPCs</span>${spots}</div>
+        </div>
+        <h4 class="pn-ps-sub"><i class="bi bi-gift"></i> Rewards</h4>
+        ${shop.entries.map((e, ei) => ptEntry(shop, e, ei)).join('') || '<p class="pn-hint">No rewards yet.</p>'}
+        <button type="button" class="np-btn small" data-sact="addentry"><i class="bi bi-plus-lg"></i> Add a reward</button>
+      </section>`;
+    }).join('') || '<p class="np-empty">No reward shops yet. Stand where the NPC should be in game and type <code>/points shop create MyShop</code>, or make one here and place its NPCs later.</p>';
+    $('pn-ps-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-ps-add').disabled = !edit;
+    $('pn-ps-save').disabled = !edit;
+  }
+
+  function ptEntry(shop, e, ei) {
+    const sold = (pt.balances.sold || {})[e.id] || 0;
+    const icon = pt.skins[e.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(pt.skins[e.id])}" alt="" width="24" height="24">` : '<i class="bi bi-gift"></i>';
+    const field = (k, label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
+    const num = (k, min, max) => `<input type="number" data-e="${k}" value="${e[k]}" min="${min}" max="${max}">`;
+    const items = e.items.length
+      ? `<ul class="pn-gm-heads">${e.items.map((st, ii) => `<li><span><input type="number" class="pn-ps-count" data-ik="${ii}" value="${st.count}" min="1" max="6400"> × ${esc(st.item.name)}</span><button type="button" class="np-btn small danger" data-sact="itemrm" data-i="${ii}" title="Remove this item"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
+      : `<p class="pn-hint">None. Items come from the hand in game: <code>/points shop item ${esc(shop.name)} &lt;price&gt; &lt;name&gt;</code> makes a reward with what you hold.</p>`;
+    const actions = (e.actions || []).map((a, ai) => rwActionRow(a, 0, ai, pt, 'data-entry-action="1"')).join('');
+    const add = `<select data-addentryaction="1"><option value="">+ Also give…</option>${pt.actions.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join('')}</select>`;
+    return `<div class="pn-ps-entry" data-entry="${ei}">
+      <div class="pn-rw-head"><span class="pn-rw-give-icon">${icon}</span><b>${esc(e.name || 'New reward')}</b><span class="np-chip gold">${ptNum(e.price)} ${esc(pt.settings.name.toLowerCase())}</span>${sold ? `<span class="np-chip">bought ${ptNum(sold)}×</span>` : ''}
+        <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-sact="entryrm" title="Remove this reward"><i class="bi bi-x-lg"></i></button></span></div>
+      <div class="pn-rw-grid">
+        ${field('name', 'Name', `<input type="text" data-e="name" value="${esc(e.name)}" maxlength="64">`)}
+        ${field('price', 'Price', num('price', 0, 1000000000))}
+        ${field('perPlayer', 'Times per player (0 = no limit)', num('perPlayer', 0, 1000000))}
+        ${field('stock', 'Times in all (0 = no limit)', num('stock', 0, 1000000))}
+        ${field('description', 'Description', `<input type="text" data-e="description" value="${esc(e.description)}" maxlength="300">`, true)}
+        ${field('icon', 'Icon item', `<input type="text" data-e="icon" value="${esc(e.icon)}" placeholder="minecraft:chest">`)}
+        ${field('iconTexture', 'Or a head as icon (skin URL or value)', `<input type="text" data-e="iconTexture" value="${esc(e.iconTexture)}" placeholder="optional">`, true)}
+        <div class="pn-field pn-field-wide"><span>Items it gives</span>${items}</div>
+        <label class="pn-field pn-field-wide"><span>Commands it runs ({player}, {uuid}), one per line, without /</span><textarea data-e="commands" rows="2" spellcheck="false" placeholder="effect give {player} minecraft:speed 600 1">${esc((e.commands || []).join('\n'))}</textarea></label>
+        <div class="pn-field pn-field-wide"><span>Other rewards</span>${actions}${add}</div>
+      </div>
+    </div>`;
+  }
+
+  function ptChanged(rerender) {
+    pt.dirty = true;
+    formMsg('pn-pt-msg', 'Not saved yet.', true);
+    formMsg('pn-ps-msg', 'Not saved yet.', true);
+    if (rerender) renderPoints();
+  }
+
+  $('pn-pt-name').addEventListener('input', (e) => { pt.settings.name = e.target.value; ptChanged(false); });
+  $('pn-pt-enabled').addEventListener('change', (e) => { pt.settings.enabled = e.target.checked; ptChanged(false); });
+  $('pn-pt-search').addEventListener('input', renderPointsTab);
+
+  async function ptAdjust(sign) {
+    const player = $('pn-pt-player').value.trim();
+    const amount = Math.floor(Number($('pn-pt-amount').value) || 0);
+    if (!player || amount <= 0) { formMsg('pn-pt-adjust-msg', 'Who, and how many?', false); return; }
+    try {
+      const res = await api('api/points/adjust', { player, amount: sign * amount, reason: $('pn-pt-reason').value.trim() });
+      formMsg('pn-pt-adjust-msg', `${res.name}: now ${ptNum(res.balance)}.`, true);
+      refreshBalances();
+    } catch (err) {
+      formMsg('pn-pt-adjust-msg', err.message, false);
+    }
+  }
+  $('pn-pt-give').addEventListener('click', () => ptAdjust(1));
+  $('pn-pt-take').addEventListener('click', () => ptAdjust(-1));
+
+  $('pn-ps-add').addEventListener('click', () => {
+    const name = (prompt('One-word name for the new shop (used in /points shop … commands):') || '').trim();
+    if (!name) return;
+    pt.settings.shops.push({ id: '', name, title: '', texture: '', greeting: '', lookAtPlayers: true, npcs: [], entries: [] });
+    ptChanged(true);
+  });
+
+  /** An entry's "other rewards" rows: same fields as in Rewards rules. */
+  function ptEntryAction(e, entry) {
+    const el = e.target.closest('[data-ak]');
+    if (!el || !el.closest('[data-entry-action]')) return false;
+    const a = entry.actions[+el.dataset.a];
+    const k = el.dataset.ak;
+    if (e.type === 'click') {
+      if (k === 'remove') {
+        entry.actions.splice(+el.dataset.a, 1);
+        ptChanged(true);
+      }
+      return true;
+    }
+    if (k === 'time' || k === 'unit') {
+      const row = el.closest('.pn-rw-time');
+      const n = Number(row.querySelector('[data-ak="time"]').value) || 0;
+      a.seconds = Math.round(n * RW_UNITS.find(([u]) => u === row.querySelector('[data-ak="unit"]').value)[1]);
+    } else if (k === 'target') a.target = el.value;
+    else a[k] = Number(el.value) || 0;
+    ptChanged(false);
+    return true;
+  }
+
+  function ptInput(e) {
+    const card = e.target.closest('[data-shop]');
+    if (!card) return;
+    const shop = pt.settings.shops[+card.dataset.shop];
+    const box = e.target.closest('[data-entry]');
+    const entry = box ? shop.entries[+box.dataset.entry] : null;
+    const t = e.target;
+    if (entry && t.dataset.addentryaction !== undefined) {
+      if (e.type !== 'change' || !t.value) return;
+      entry.actions.push({ type: t.value, amount: 0, level: 0, seconds: 0, target: t.value === 'pet' ? (pt.pets[0] || '') : '', ...(RW_DEFAULT[t.value] || {}) });
+      ptChanged(true);
+      return;
+    }
+    if (entry && ptEntryAction(e, entry)) return;
+    if (entry && t.dataset.ik !== undefined) {
+      entry.items[+t.dataset.ik].count = Math.max(1, Math.floor(Number(t.value) || 1));
+      ptChanged(false);
+      return;
+    }
+    if (entry && t.dataset.e) {
+      const k = t.dataset.e;
+      if (t.type === 'number') entry[k] = Number(t.value) || 0;
+      else if (k === 'commands') entry[k] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      else entry[k] = t.value;
+      ptChanged(false);
+      return;
+    }
+    if (t.dataset.s) {
+      shop[t.dataset.s] = t.dataset.bool ? t.value === 'true' : t.value;
+      ptChanged(false);
+    }
+  }
+  $('pn-ps-list').addEventListener('input', (e) => { if (e.target.dataset.addentryaction === undefined) ptInput(e); });
+  $('pn-ps-list').addEventListener('change', (e) => { if (e.target.dataset.addentryaction !== undefined || e.target.tagName === 'SELECT') ptInput(e); });
+  $('pn-ps-list').addEventListener('click', (e) => {
+    const card = e.target.closest('[data-shop]');
+    if (!card) return;
+    const shop = pt.settings.shops[+card.dataset.shop];
+    const box = e.target.closest('[data-entry]');
+    const entry = box ? shop.entries[+box.dataset.entry] : null;
+    if (entry && e.target.closest('[data-ak]') && ptEntryAction(e, entry)) return;
+    const b = e.target.closest('[data-sact]');
+    if (!b) return;
+    const act = b.dataset.sact;
+    if (act === 'delete') {
+      if (!confirm(`Remove the shop ${shop.name} and its NPCs? What players bought stays theirs.`)) return;
+      pt.settings.shops = pt.settings.shops.filter((x) => x !== shop);
+    } else if (act === 'npcrm') shop.npcs.splice(+b.dataset.n, 1);
+    else if (act === 'addentry') shop.entries.push({ id: '', name: 'New reward', description: '', icon: 'minecraft:chest', iconTexture: '', price: 10, perPlayer: 0, stock: 0, items: [], commands: [], actions: [] });
+    else if (act === 'entryrm') {
+      if (!confirm(`Remove ${entry.name} from ${shop.name}?`)) return;
+      shop.entries = shop.entries.filter((x) => x !== entry);
+    } else if (act === 'itemrm') entry.items.splice(+b.dataset.i, 1);
+    else return;
+    ptChanged(true);
+  });
+
+  async function ptSave(msgId) {
+    try {
+      await api('api/points', pt.settings);
+      pt.dirty = false;
+      formMsg(msgId, serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+      loadPoints(true);
+    } catch (err) {
+      formMsg(msgId, err.message, false);
+    }
+  }
+  $('pn-pt-save').addEventListener('click', () => ptSave('pn-pt-msg'));
+  $('pn-ps-save').addEventListener('click', () => ptSave('pn-ps-msg'));
+
   // ── Dungeons ───────────────────────────────────────────────────────────
 
   const dg = { settings: null, runs: [], scores: {}, dirty: false };
@@ -2219,6 +2468,11 @@
         ${s.dungeons.some((d) => d.pool === p.pool && d.enabled) ? '' : '<span class="pn-dg-warn">no dungeon in this pool</span>'}
         <button type="button" class="np-btn small danger" data-dgpad="${i}" ${edit ? '' : 'disabled'}><i class="bi bi-trash"></i></button></li>`).join('')}</ul>`
       : '<p class="pn-hint">No pads yet: stand where players should start and type <code>/dungeon pad add &lt;pool&gt;</code>.</p>';
+    // Waiting areas: where parties queue when every copy is in use (set in game, per pool).
+    const areas = Object.entries(s.waiting || {});
+    $('pn-dg-pads').innerHTML += `<p class="pn-hint pn-dg-wait-head"><i class="bi bi-hourglass-split"></i> Waiting areas (optional): when every copy is in use, a party on the pad queues there and starts as soon as one is free. Without one, they try again later. Set one with <code>/dungeon pad wait &lt;pool&gt; [radius]</code> (radius ${Number(s.waitRadius || 8)}).</p>`
+      + (areas.length ? `<ul class="pn-dg-runs">${areas.map(([pool, a]) => `<li><span class="np-chip">${esc(pool)}</span><span>${esc(dimShort(a.dim))} · ${Math.round(a.x)}, ${Math.round(a.y)}, ${Math.round(a.z)}</span>
+        <button type="button" class="np-btn small danger" data-dgwait="${esc(pool)}" ${edit ? '' : 'disabled'} title="No waiting area for this pool"><i class="bi bi-trash"></i></button></li>`).join('')}</ul>` : '');
     $('pn-dg-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
   }
 
@@ -2372,6 +2626,12 @@
     }
   });
   $('pn-dg-pads').addEventListener('click', (e) => {
+    const w = e.target.closest('[data-dgwait]');
+    if (w) {
+      delete dg.settings.waiting[w.dataset.dgwait];
+      dgChanged(true);
+      return;
+    }
     const b = e.target.closest('[data-dgpad]');
     if (!b) return;
     dg.settings.pads.splice(+b.dataset.dgpad, 1);
@@ -2406,25 +2666,26 @@
   // "Also give": non-item rewards a rule hands out (the same as /reward). Time is kept in seconds.
   const RW_UNITS = [['s', 1, 'seconds'], ['m', 60, 'minutes'], ['h', 3600, 'hours'], ['d', 86400, 'days']];
   const rwUnit = (sec) => RW_UNITS.slice().reverse().find(([, f]) => sec > 0 && sec % f === 0) || RW_UNITS[1];
-  const RW_DEFAULT = { fly: { seconds: 1800 }, claimblocks: { amount: 500 }, pet: {}, petslots: { amount: 1 }, listings: { amount: 2 }, coupons: { amount: 1, level: 3 },
+  const RW_DEFAULT = { points: { amount: 10 }, fly: { seconds: 1800 }, claimblocks: { amount: 500 }, pet: {}, petslots: { amount: 1 }, listings: { amount: 2 }, coupons: { amount: 1, level: 3 },
     spotlight: { seconds: 86400 }, xp: { level: 2, seconds: 3600 }, haste: { level: 2, seconds: 3600 }, blockboost: { level: 2, seconds: 7200 },
     bondboost: { level: 2, seconds: 7200 }, toolcare: { seconds: 3600 } };
-  const RW_ICONS = { fly: 'bi-feather', claimblocks: 'bi-bounding-box', pet: 'bi-emoji-smile', petslots: 'bi-people', listings: 'bi-shop', coupons: 'bi-ticket-perforated',
+  const RW_ICONS = { points: 'bi-coin', fly: 'bi-feather', claimblocks: 'bi-bounding-box', pet: 'bi-emoji-smile', petslots: 'bi-people', listings: 'bi-shop', coupons: 'bi-ticket-perforated',
     spotlight: 'bi-star', xp: 'bi-stars', haste: 'bi-lightning', blockboost: 'bi-graph-up-arrow', bondboost: 'bi-heart', toolcare: 'bi-tools' };
 
-  function rwActionRow(a, ri, ai) {
-    const type = rw.actions.find((x) => x.id === a.type) || { fields: '', label: a.type };
+  /** One "also give" row; src has the action types and pets, holder the attribute that tells the input handler whose it is. */
+  function rwActionRow(a, ri, ai, src = rw, holder = `data-rule="${ri}"`) {
+    const type = src.actions.find((x) => x.id === a.type) || { fields: '', label: a.type };
     const f = type.fields;
-    const amountLabel = { claimblocks: 'Blocks (minus takes)', petslots: 'Extra pets (1–2)', listings: 'Extra slots', coupons: 'How many coupons' }[a.type] || 'Amount';
-    const levelLabel = a.type === 'haste' ? 'Level (1–3)' : a.type === 'coupons' ? 'Each worth (currency items)' : 'Multiplier (×)';
+    const amountLabel = { points: 'Points (minus takes)', claimblocks: 'Blocks (minus takes)', petslots: 'Extra pets (1–2)', listings: 'Extra slots', coupons: 'How many coupons' }[a.type] || 'Amount';
+    const levelLabel = a.type === 'points' ? '+ per score (games)' : a.type === 'haste' ? 'Level (1–3)' : a.type === 'coupons' ? 'Each worth (currency items)' : 'Multiplier (×)';
     const [unit, factor] = rwUnit(a.seconds);
     const fields = [
-      f.includes('t') ? `<label class="pn-field"><span>Pet</span><select data-a="${ai}" data-ak="target">${rw.pets.map((n) => `<option ${n === a.target ? 'selected' : ''}>${esc(n)}</option>`).join('') || '<option value="">no pets yet</option>'}</select></label>` : '',
+      f.includes('t') ? `<label class="pn-field"><span>Pet</span><select data-a="${ai}" data-ak="target">${src.pets.map((n) => `<option ${n === a.target ? 'selected' : ''}>${esc(n)}</option>`).join('') || '<option value="">no pets yet</option>'}</select></label>` : '',
       f.includes('a') ? `<label class="pn-field"><span>${amountLabel}</span><input type="number" data-a="${ai}" data-ak="amount" value="${a.amount}"></label>` : '',
-      f.includes('l') ? `<label class="pn-field"><span>${levelLabel}</span><input type="number" data-a="${ai}" data-ak="level" value="${a.level}" step="${a.type === 'coupons' || a.type === 'haste' ? 1 : 0.5}" min="1"></label>` : '',
+      f.includes('l') ? `<label class="pn-field"><span>${levelLabel}</span><input type="number" data-a="${ai}" data-ak="level" value="${a.level}" step="${a.type === 'coupons' || a.type === 'haste' ? 1 : 0.5}" min="${a.type === 'points' ? 0 : 1}"></label>` : '',
       f.includes('s') ? `<label class="pn-field"><span>For how long</span><span class="pn-rw-time"><input type="number" data-a="${ai}" data-ak="time" value="${a.seconds / factor}" min="1"><select data-a="${ai}" data-ak="unit">${RW_UNITS.map(([u, , l]) => `<option value="${u}" ${u === unit ? 'selected' : ''}>${l}</option>`).join('')}</select></span></label>` : '',
     ].join('');
-    return `<div class="pn-rw-give" data-rule="${ri}">
+    return `<div class="pn-rw-give" ${holder}>
       <span class="pn-rw-give-icon"><i class="bi ${RW_ICONS[a.type] || 'bi-gift'}"></i></span><b>${esc(type.label)}</b>
       <div class="pn-rw-give-fields">${fields}</div>
       <button type="button" class="np-btn small danger" data-a="${ai}" data-ak="remove" title="Remove"><i class="bi bi-x-lg"></i></button>
@@ -7392,6 +7653,8 @@
   Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
   // Pages that keep their state in script: the same floating Save/Cancel bar, their state compared as a whole.
   const tabPanel = (t) => document.querySelector(`.np-tab-panel[data-tab="${t}"]`);
+  Dirty.track('points', tabPanel('points'), { saveButtons: [$('pn-pt-save')], reload: () => { pt.dirty = false; loadPoints(true); }, extra: () => pt.settings });
+  Dirty.track('rewardshops', tabPanel('rewardshops'), { saveButtons: [$('pn-ps-save')], reload: () => { pt.dirty = false; loadPoints(true); }, extra: () => pt.settings });
   Dirty.track('games', tabPanel('games'), { saveButtons: [$('pn-gm-save')], reload: () => { gm.dirty = false; loadGames(); }, extra: () => gm.settings });
   Dirty.track('dungeons', tabPanel('dungeons'), { saveButtons: [$('pn-dg-save')], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings });
   Dirty.track('rewards', tabPanel('rewards'), { saveButtons: [$('pn-rw-save')], reload: () => { rw.dirty = false; loadRewards(); }, extra: () => rw.settings });

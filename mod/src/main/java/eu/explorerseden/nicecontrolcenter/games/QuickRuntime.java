@@ -66,7 +66,9 @@ import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
  * colour vanishes at a time, refilled and faster every few colours, mobs now and then), anvil rain (survive the falling
  * anvils), treasure grab (glowing items appear, walk into them) and fishing frenzy (catches score points). Survival
  * rounds (colour floor, anvils) end when the last player is out (with two or more, the last one standing wins); point
- * rounds when the time is up. Players never die here: a deadly hit knocks them out of the round.
+ * rounds when the time is up. Players never die here: a deadly hit knocks them out of the round. With a spectator area
+ * set, players who step on the pad while a round is on wait there for the next one (it opens its join window for them
+ * when this one ends), and players who are out watch the rest of the round from there.
  */
 public final class QuickRuntime {
 	enum State { LOBBY, PLAYING, ENDED }
@@ -80,6 +82,10 @@ public final class QuickRuntime {
 		final Set<UUID> out = new HashSet<>();
 		/** Players whose score counts (out by playing, or there at the end), in the order they went out. */
 		final List<UUID> counted = new ArrayList<>();
+		/** Waiting in the spectator area for the next round. */
+		final List<UUID> next = new ArrayList<>();
+		/** Out of this round, watching from the spectator area. */
+		final Set<UUID> watching = new HashSet<>();
 		State state = State.LOBBY;
 		long startsAt;
 		long started;
@@ -210,6 +216,12 @@ public final class QuickRuntime {
 			out(server, r, p, "You left " + r.arena.name + ".", false);
 			return true;
 		}
+		for (Round on : rounds.values()) {
+			if (on.next.remove(p.getUUID())) {
+				p.sendSystemMessage(Component.literal("You left the queue for " + on.arena.name + ".").withStyle(ChatFormatting.GRAY));
+				return true;
+			}
+		}
 		for (Round lobby : rounds.values()) {
 			if (lobby.state == State.LOBBY && lobby.players.remove(p.getUUID())) {
 				lobby.names.remove(p.getUUID());
@@ -257,10 +269,16 @@ public final class QuickRuntime {
 			Round r = rounds.get(a.id);
 			if (r != null && r.players.contains(p.getUUID())) continue;
 			if (r != null && r.state != State.LOBBY) {
-				if (server.getTickCount() % 40 == 0) p.sendOverlayMessage(Component.literal("A round of " + a.name + " is on; the next one starts after it").withStyle(ChatFormatting.GRAY));
+				if (a.spectate != null && !r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && toSpectate(server, a, p)) {
+					r.next.add(p.getUUID());
+					r.names.putIfAbsent(p.getUUID(), p.getGameProfile().name());
+					p.sendSystemMessage(Component.literal("A round of " + a.name + " is on: you're in the queue for the next one (" + r.next.size() + "). Wait here; walking away leaves the queue.").withStyle(ChatFormatting.GOLD));
+				} else if (server.getTickCount() % 40 == 0) {
+					p.sendOverlayMessage(Component.literal("A round of " + a.name + " is on; the next one starts after it").withStyle(ChatFormatting.GRAY));
+				}
 				continue;
 			}
-			if (rounds.values().stream().anyMatch(o -> o.state == State.LOBBY && o.players.contains(p.getUUID()))) continue;
+			if (rounds.values().stream().anyMatch(o -> o.state == State.LOBBY && o.players.contains(p.getUUID()) || o.next.contains(p.getUUID()))) continue;
 			if (r == null) {
 				String err = check(server, a);
 				if (err != null) {
@@ -337,7 +355,7 @@ public final class QuickRuntime {
 		List<ServerPlayer> going = new ArrayList<>();
 		for (UUID id : List.copyOf(r.players)) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
-			boolean near = p != null && a.start != null && dim(p).equals(a.start.dim) && p.distanceToSqr(a.start.x, a.start.y, a.start.z) <= LOBBY_RANGE * LOBBY_RANGE;
+			boolean near = p != null && nearPad(a, p);
 			// (/game try puts the admin in from anywhere.)
 			if (p != null && p.isAlive() && (near || r.players.size() == 1 && r.startsAt == 0)) going.add(p);
 			else {
@@ -412,7 +430,7 @@ public final class QuickRuntime {
 		if (r.state == State.LOBBY) {
 			r.players.removeIf(id -> {
 				ServerPlayer p = server.getPlayerList().getPlayer(id);
-				boolean gone = p == null || !dim(p).equals(a.start.dim) || p.distanceToSqr(a.start.x, a.start.y, a.start.z) > LOBBY_RANGE * LOBBY_RANGE;
+				boolean gone = p == null || !nearPad(a, p);
 				if (gone && p != null) p.sendSystemMessage(Component.literal("You walked away from " + a.name + ": not in the next round.").withStyle(ChatFormatting.GRAY));
 				return gone;
 			});
@@ -433,6 +451,14 @@ public final class QuickRuntime {
 			end(server, r, "The arena's dimension is gone.");
 			return;
 		}
+		// The queue for the next round stays in the spectator area.
+		r.next.removeIf(id -> {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			boolean gone = p == null || a.spectate == null || !inSpectate(a, p, 3);
+			if (gone && p != null) p.sendSystemMessage(Component.literal("You left the spectator area: out of the queue for " + a.name + ".").withStyle(ChatFormatting.GRAY));
+			if (!gone && server.getTickCount() % 40 == 0) p.sendOverlayMessage(Component.literal(a.name + ": you're next (" + (r.next.indexOf(id) + 1) + " in the queue)").withStyle(ChatFormatting.GOLD));
+			return gone;
+		});
 		boolean survival = survival(a);
 		List<ServerPlayer> alive = alive(server, r);
 		AABB box = box(a);
@@ -857,6 +883,11 @@ public final class QuickRuntime {
 			p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
 		}
 		finishFor(server, r.arena, p);
+		// Out but not gone: they watch the rest of the round from the spectator area.
+		if (counts && r.state == State.PLAYING && r.arena.spectate != null && toSpectate(server, r.arena, p)) {
+			r.watching.add(id);
+			p.sendSystemMessage(Component.literal("Watch the rest of the round from here.").withStyle(ChatFormatting.GRAY));
+		}
 		if (r.state == State.PLAYING && r.players.stream().noneMatch(r::in)) end(server, r, null);
 	}
 
@@ -912,6 +943,26 @@ public final class QuickRuntime {
 		}
 		for (UUID id : r.players) playing.remove(id);
 		clearBox(server, r);
+		// Those who watched go back to the start pad (unless they queued for the next round).
+		for (UUID id : r.watching) {
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p == null || r.next.contains(id) || !inSpectate(a, p, 3)) continue;
+			ServerLevel level = a.start == null ? null : GameRuntime.levelOf(server, a.start.dim);
+			if (level != null) p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+		}
+		// The queue becomes the next round's join window.
+		if (wasPlaying && !r.next.isEmpty() && GameRuntime.settings().enabled && a.enabled) {
+			Round n = new Round(a);
+			n.startsAt = System.currentTimeMillis() + Math.max(5, a.joinSeconds) * 1000L;
+			for (UUID id : r.next) {
+				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				if (p == null) continue;
+				n.players.add(id);
+				n.names.put(id, p.getGameProfile().name());
+				p.sendSystemMessage(Component.literal("▶ The next round of " + a.name + " starts in " + Math.max(5, a.joinSeconds) + " s. Others can still step on the pad to join.").withStyle(ChatFormatting.GREEN));
+			}
+			if (!n.players.isEmpty()) rounds.put(a.id, n);
+		}
 		if (wasPlaying) NiceControlCenter.LOGGER.info("Games: quick round {} ended: {}", a.name, String.join(", ", r.counted.stream().map(id -> r.names.get(id) + " " + r.score.getOrDefault(id, 0L)).toList()));
 	}
 
@@ -970,6 +1021,28 @@ public final class QuickRuntime {
 		if (a.areaMin == null || a.areaMax == null) return new AABB(0, 0, 0, 0, 0, 0);
 		return new AABB(Math.min(a.areaMin.x, a.areaMax.x), Math.min(a.areaMin.y, a.areaMax.y), Math.min(a.areaMin.z, a.areaMax.z),
 				Math.max(a.areaMin.x, a.areaMax.x) + 1, Math.max(a.areaMin.y, a.areaMax.y) + 1, Math.max(a.areaMin.z, a.areaMax.z) + 1);
+	}
+
+	/** Close to the start pad, or in the spectator area (where the queue waits). */
+	private static boolean nearPad(Arena a, ServerPlayer p) {
+		if (a.start != null && dim(p).equals(a.start.dim) && p.distanceToSqr(a.start.x, a.start.y, a.start.z) <= LOBBY_RANGE * LOBBY_RANGE) return true;
+		return a.spectate != null && inSpectate(a, p, 3);
+	}
+
+	private static boolean inSpectate(Arena a, ServerPlayer p, double slack) {
+		Games.Pos s = a.spectate;
+		double r = a.spectateRadius + slack;
+		return s != null && dim(p).equals(s.dim) && p.distanceToSqr(s.x, s.y, s.z) <= r * r;
+	}
+
+	/** To the spectator area (false when its dimension is gone). */
+	private static boolean toSpectate(MinecraftServer server, Arena a, ServerPlayer p) {
+		Games.Pos s = a.spectate;
+		ServerLevel level = s == null ? null : GameRuntime.levelOf(server, s.dim);
+		if (level == null || !p.isAlive()) return false;
+		p.teleportTo(level, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);
+		p.resetFallDistance();
+		return true;
 	}
 
 	/** Where players start: the spawn, or a colour floor's middle platform. */

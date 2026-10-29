@@ -128,6 +128,7 @@ final class Commands {
 			Map.entry("nccreply", "Answer a private message the admins sent you from the panel."),
 			Map.entry("claim", "Land claims: opens the claim menu (members, what everyone else may do, name and colour, your claim blocks)."),
 			Map.entry("fly", "Switch your flight time on or off (given as a reward or by an admin): only inside your claims and ones you're a Builder in; the time only runs while it's on and you're not AFK."),
+			Map.entry("points", "Your points and what you got them for; top shows the most. Admins and command blocks: give, take (fails when they don't have enough) and check (succeeds when they have at least that many); shop sets up reward shops and their NPCs."),
 			Map.entry("reward", "Give players non-item rewards: flight time, claim blocks, pets and pet slots, listing slots, shop coupons, a market spotlight and timed perks (XP, haste, claim-block and bond boosts, tool care); give gives a reward rule by name."),
 			Map.entry("perks", "See your rewards: flight time, perks and how long they last, coupons, extra slots."),
 			Map.entry("inbox", "Open your inbox: items from the market, from game areas and other things waiting for you."),

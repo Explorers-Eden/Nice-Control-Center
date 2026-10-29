@@ -607,6 +607,17 @@ public final class DashboardServer {
 						: eu.explorerseden.nicecontrolcenter.core.Cleanup.items(minecraft, run)));
 			}
 			case "/api/games" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.games.GameRuntime::view));
+			case "/api/points" -> sendJson(exchange, onServerThread(eu.explorerseden.nicecontrolcenter.players.PointsStore::all));
+			case "/api/points/adjust" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				String who = body.has("player") ? body.get("player").getAsString().strip() : "";
+				long amount = body.has("amount") ? body.get("amount").getAsLong() : 0;
+				String why = body.has("reason") ? body.get("reason").getAsString() : "";
+				sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.players.PointsStore.adjust(minecraft, who, amount, why)));
+			}
 			case "/api/games/reset" -> {
 				if (!requirePost(exchange)) {
 					return;
@@ -740,6 +751,7 @@ public final class DashboardServer {
 					case "hubs" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.list(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
 					case "hub" -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.edit(minecraft, body);
 					case "pets" -> eu.explorerseden.nicecontrolcenter.pets.PetWeb.list(minecraft, body.has("uuid") ? body.get("uuid").getAsString() : "");
+					case "points" -> eu.explorerseden.nicecontrolcenter.players.PointsStore.view(body.has("uuid") ? body.get("uuid").getAsString() : "");
 					case "pet" -> eu.explorerseden.nicecontrolcenter.pets.PetWeb.edit(minecraft, body);
 					default -> Map.of("error", "Unknown action.");
 				}));

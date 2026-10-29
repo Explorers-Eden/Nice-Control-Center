@@ -187,6 +187,9 @@ public final class Dungeons {
 		public int cooldown = 10;
 		public List<Dungeon> dungeons = new ArrayList<>();
 		public List<Pad> pads = new ArrayList<>();
+		/** Optional waiting areas per pool: when every copy is in use, a party queues there and starts once one is free. */
+		public java.util.Map<String, Games.Pos> waiting = new java.util.LinkedHashMap<>();
+		public int waitRadius = 8;
 		public List<Room> rooms = new ArrayList<>();
 		public List<Group> groups = new ArrayList<>();
 
@@ -223,6 +226,9 @@ public final class Dungeons {
 		public Settings fill() {
 			if (dungeons == null) dungeons = new ArrayList<>();
 			if (pads == null) pads = new ArrayList<>();
+			if (waiting == null) waiting = new java.util.LinkedHashMap<>();
+			waiting.values().removeIf(p -> p == null || p.dim == null);
+			waitRadius = Math.max(2, Math.min(64, waitRadius));
 			dungeons.removeIf(d -> d == null);
 			pads.removeIf(p -> p == null || p.pos == null);
 			maxParty = Math.max(1, Math.min(4, maxParty));

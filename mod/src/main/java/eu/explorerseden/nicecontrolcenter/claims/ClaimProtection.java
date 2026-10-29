@@ -176,6 +176,8 @@ public final class ClaimProtection {
 	/** Using or hitting an entity that isn't alive (frames, vehicles) or using a living one. */
 	private static InteractionResult entityAction(Player p, Level level, Entity entity, boolean attack) {
 		if (!(p instanceof ServerPlayer player) || !ClaimStore.enabled()) return InteractionResult.PASS;
+		// Reward shop NPCs are there for everyone to talk to (and nobody to hit: RewardShops).
+		if (eu.explorerseden.nicecontrolcenter.players.RewardShops.isNpc(entity)) return InteractionResult.PASS;
 		Role needed = entityRole(entity, attack);
 		if (needed == null) return InteractionResult.PASS;
 		if (allowed(player, level, entity.blockPosition(), needed)) return InteractionResult.PASS;

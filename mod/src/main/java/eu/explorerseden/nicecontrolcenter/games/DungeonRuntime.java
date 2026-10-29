@@ -503,6 +503,7 @@ public final class DungeonRuntime {
 			}
 		}
 		if (t % 2 == 0 && settings.enabled) pads(server);
+		if (t % 20 == 0) queues(server);
 		if (t % 20 == 0) padParticles(server);
 		if (t % 10 == 0) outlines(server);
 		if (t % 1200 == 0) noGraveUntil.values().removeIf(until -> until < System.currentTimeMillis());
@@ -671,7 +672,7 @@ public final class DungeonRuntime {
 		long now = System.currentTimeMillis();
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			Dungeons.Pad pad = padUnder(p);
-			if (pad == null || playing.containsKey(p.getUUID()) || p.isSpectator() || cooldown.getOrDefault(p.getUUID(), 0L) > now) {
+			if (pad == null || playing.containsKey(p.getUUID()) || queued(p.getUUID()) || p.isSpectator() || cooldown.getOrDefault(p.getUUID(), 0L) > now) {
 				onPad.remove(p.getUUID());
 				continue;
 			}
@@ -693,6 +694,12 @@ public final class DungeonRuntime {
 			cooldown.put(p.getUUID(), now + 5000);
 			List<UUID> missing = new ArrayList<>(Parties.members(p.getUUID()));
 			party.forEach(x -> missing.remove(x.getUUID()));
+			// Every copy in use (or others waiting already) and the pool has a waiting area: the party queues there.
+			Games.Pos area = settings.waiting.get(pad.pool);
+			if (area != null && (freeSlot() < 0 || !queues.getOrDefault(pad.pool, new java.util.ArrayDeque<>()).isEmpty())) {
+				queue(server, pad.pool, area, party);
+				continue;
+			}
 			String err = start(server, party, pad.pool);
 			if (err != null) {
 				p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
@@ -703,6 +710,78 @@ public final class DungeonRuntime {
 				}
 			}
 		}
+	}
+
+	// ---------------------------------------------------------------- the queue (pools with a waiting area)
+
+	/** pool → parties waiting (leader first), oldest first. */
+	private static final Map<String, java.util.Deque<List<UUID>>> queues = new HashMap<>();
+
+	private static int freeSlot() {
+		for (int i = 0; i < settings.maxSlots; i++) if (!slots.containsKey(i)) return i;
+		return -1;
+	}
+
+	private static boolean queued(UUID id) {
+		for (var q : queues.values()) for (List<UUID> party : q) if (party.contains(id)) return true;
+		return false;
+	}
+
+	private static void queue(MinecraftServer server, String pool, Games.Pos area, List<ServerPlayer> party) {
+		ServerLevel level = GameRuntime.levelOf(server, area.dim);
+		if (level == null) return;
+		List<UUID> ids = new ArrayList<>();
+		for (ServerPlayer m : party) {
+			ids.add(m.getUUID());
+			m.teleportTo(level, area.x, area.y, area.z, Set.of(), area.yaw, 0, true);
+			m.resetFallDistance();
+		}
+		var q = queues.computeIfAbsent(pool, k -> new java.util.ArrayDeque<>());
+		q.add(ids);
+		for (ServerPlayer m : party) {
+			m.sendSystemMessage(Component.literal("Every dungeon copy is in use: your party is " + ordinal(q.size()) + " in the queue. Wait here; walking away leaves it.").withStyle(ChatFormatting.LIGHT_PURPLE));
+		}
+		NiceControlCenter.LOGGER.info("Dungeons: {} queued for the {} pool ({} waiting)", String.join(", ", party.stream().map(x -> x.getGameProfile().name()).toList()), pool, q.size());
+	}
+
+	/** Every second: players who left the waiting area drop out; the first party starts once a copy is free. */
+	private static void queues(MinecraftServer server) {
+		for (Map.Entry<String, java.util.Deque<List<UUID>>> e : queues.entrySet()) {
+			Games.Pos area = settings.waiting.get(e.getKey());
+			double r = settings.waitRadius + 3;
+			for (List<UUID> party : e.getValue()) {
+				party.removeIf(id -> {
+					ServerPlayer p = server.getPlayerList().getPlayer(id);
+					boolean gone = p == null || area == null || !p.level().dimension().identifier().toString().equals(area.dim) || p.distanceToSqr(area.x, area.y, area.z) > r * r;
+					if (gone && p != null) p.sendSystemMessage(Component.literal("You left the waiting area: out of the dungeon queue.").withStyle(ChatFormatting.GRAY));
+					return gone;
+				});
+			}
+			e.getValue().removeIf(List::isEmpty);
+			int place = 1;
+			for (List<UUID> party : e.getValue()) {
+				for (UUID id : party) {
+					ServerPlayer p = server.getPlayerList().getPlayer(id);
+					if (p != null) p.sendOverlayMessage(Component.literal("Dungeon queue: " + ordinal(place) + " in line").withStyle(ChatFormatting.LIGHT_PURPLE));
+				}
+				place++;
+			}
+			if (e.getValue().isEmpty() || freeSlot() < 0 || !settings.enabled) continue;
+			List<UUID> first = e.getValue().poll();
+			List<ServerPlayer> party = new ArrayList<>();
+			for (UUID id : first) {
+				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				if (p != null && !playing.containsKey(id)) party.add(p);
+			}
+			if (party.isEmpty()) continue;
+			String err = start(server, party, e.getKey());
+			if (err != null) for (ServerPlayer p : party) p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+		}
+		queues.values().removeIf(java.util.Deque::isEmpty);
+	}
+
+	private static String ordinal(int n) {
+		return n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : switch (n % 10) { case 1 -> "st"; case 2 -> "nd"; case 3 -> "rd"; default -> "th"; });
 	}
 
 	/** The leader and the party members close to the pad who can come along. */
@@ -1309,6 +1388,17 @@ public final class DungeonRuntime {
 							ctx.getSource().sendSuccess(() -> Component.literal("Pad for the " + pad.pool + " pool here: the party leader standing on it for two seconds starts a run."), true);
 							return 1;
 						})))
+						// A pool's waiting area: when every copy is in use, parties queue there.
+						.then(Commands.literal("wait").then(poolArg.get()
+								.executes(ctx -> waitArea(ctx, -1))
+								.then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(2, 64)).executes(ctx -> waitArea(ctx, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "radius"))))
+								.then(Commands.literal("clear").executes(ctx -> {
+									String pool = Dungeons.pool(StringArgumentType.getString(ctx, "pool"));
+									if (settings.waiting.remove(pool) == null) return fail(ctx, "The " + pool + " pool has no waiting area.");
+									saveSettings();
+									ctx.getSource().sendSuccess(() -> Component.literal("The " + pool + " pool has no waiting area any more: when every copy is in use, players try again later."), true);
+									return 1;
+								}))))
 						.then(Commands.literal("remove").executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							String dim = p.level().dimension().identifier().toString();
@@ -1386,6 +1476,17 @@ public final class DungeonRuntime {
 					+ ") in the " + target.pool + " pool." + (target.hasMarker("start") ? "" : " It needs a start marker before players can get it.")
 					+ (target.hasMarker("exit") || "boss".equals(target.clearOn) ? "" : " Without an exit marker it can't be cleared.")).withStyle(target.hasMarker("start") ? ChatFormatting.GREEN : ChatFormatting.GOLD), true);
 		}));
+		return 1;
+	}
+
+	/** /dungeon pad wait <pool> [radius]: the pool's waiting area where the admin stands. */
+	private static int waitArea(CommandContext<CommandSourceStack> ctx, int radius) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		String pool = Dungeons.pool(StringArgumentType.getString(ctx, "pool"));
+		settings.waiting.put(pool, new Games.Pos(p.level().dimension().identifier().toString(), Math.floor(p.getX()) + 0.5, Math.floor(p.getY()), Math.floor(p.getZ()) + 0.5, Math.round(p.getYRot() / 90f) * 90f));
+		if (radius > 0) settings.waitRadius = radius;
+		saveSettings();
+		ctx.getSource().sendSuccess(() -> Component.literal("Waiting area for the " + pool + " pool here (radius " + settings.waitRadius + "): when every copy is in use, parties queue here and start as soon as one is free."), true);
 		return 1;
 	}
 

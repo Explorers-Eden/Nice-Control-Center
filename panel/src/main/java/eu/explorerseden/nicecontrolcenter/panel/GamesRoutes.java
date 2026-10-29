@@ -170,6 +170,10 @@ final class GamesRoutes {
 				r.savedBy = was.savedBy;
 			}
 			next.rooms.removeIf(r -> now.room(r.id) == null);
+			// Waiting areas are set in game; the page can only take some away.
+			java.util.Set<String> keepAreas = next.waiting == null ? java.util.Set.of() : next.waiting.keySet();
+			next.waiting = new java.util.LinkedHashMap<>();
+			for (var e : now.waiting.entrySet()) if (keepAreas.contains(e.getKey())) next.waiting.put(e.getKey(), e.getValue());
 			for (Dungeons.Room was : now.rooms) {
 				if (next.room(was.id) != null || !was.name.matches("[A-Za-z0-9_-]{1,32}")) continue;
 				try {

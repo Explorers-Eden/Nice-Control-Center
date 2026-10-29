@@ -618,16 +618,17 @@ public final class GameRuntime {
 								}))))
 						.then(Commands.literal("spectate").executes(ctx -> edit(ctx, (a, p) -> {
 									a.spectate = pos(p);
-									return "Spectator area here (radius " + a.spectateRadius + "): the dead wait here, other parties queue here.";
+									return "Spectator area here (radius " + a.spectateRadius + "): " + spectateUse(a) + ".";
 								}))
 								.then(Commands.argument("radius", IntegerArgumentType.integer(2, 64)).executes(ctx -> edit(ctx, (a, p) -> {
 									a.spectate = pos(p);
 									a.spectateRadius = IntegerArgumentType.getInteger(ctx, "radius");
-									return "Spectator area here (radius " + a.spectateRadius + "): the dead wait here, other parties queue here.";
+									return "Spectator area here (radius " + a.spectateRadius + "): " + spectateUse(a) + ".";
 								})))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
 									a.spectate = null;
-									return "No spectator area: the dead watch a teammate, queued parties wait at the pad.";
+									return Games.quick(a.type) ? "No spectator area: players who step on the pad during a round try again after it, players who are out go back to the pad."
+										: "No spectator area: the dead watch a teammate, queued parties wait at the pad.";
 								}))))
 						.then(Commands.literal("exitpad")
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
@@ -828,6 +829,12 @@ public final class GameRuntime {
 		return done ? 1 : 0;
 	}
 
+	/** What the spectator area is for, by type. */
+	private static String spectateUse(Arena a) {
+		return Games.quick(a.type) ? "players who step on the pad during a round queue here for the next one, players who are out watch from here"
+				: a.type.equals("waves") ? "the dead wait here, other parties queue here" : "only wave arenas and quick rounds use it";
+	}
+
 	private static Arena arena(CommandContext<CommandSourceStack> ctx) {
 		return settings.arena(StringArgumentType.getString(ctx, "arena"));
 	}
@@ -917,7 +924,7 @@ public final class GameRuntime {
 		return a.start == null ? "" : a.start.dim;
 	}
 
-	static ServerLevel levelOf(MinecraftServer server, String dim) {
+	public static ServerLevel levelOf(MinecraftServer server, String dim) {
 		return level(server, dim);
 	}
 

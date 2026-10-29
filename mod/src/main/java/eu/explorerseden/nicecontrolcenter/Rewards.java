@@ -96,7 +96,7 @@ public final class Rewards {
 		public String type = "fly";
 		/** Claim blocks, listing slots, pet slots, coupon count. */
 		public int amount = 0;
-		/** Multiplier for xp/blockboost/bondboost (2 = ×2), haste level, what a coupon is worth (currency items off). */
+		/** Multiplier for xp/blockboost/bondboost (2 = ×2), haste level, what a coupon is worth (currency items off), points per score. */
 		public double level = 0;
 		/** How long, in seconds (0 = for good where that's allowed). */
 		public long seconds = 0;
@@ -110,6 +110,7 @@ public final class Rewards {
 
 	public static final List<ActionType> ACTIONS = List.of(
 			new ActionType("fly", "Flight time (claims only)", "s"),
+			new ActionType("points", "Points", "al"),
 			new ActionType("claimblocks", "Claim blocks", "a"),
 			new ActionType("pet", "A pet", "t"),
 			new ActionType("petslots", "Extra pet out at once", "a"),
@@ -218,6 +219,11 @@ public final class Rewards {
 		switch (a.type) {
 			case "claimblocks" -> {
 				if (a.amount == 0 || Math.abs(a.amount) > 1_000_000) return "claim blocks are -1,000,000 to 1,000,000 (not 0).";
+			}
+			case "points" -> {
+				if (Math.abs(a.amount) > 1_000_000) return "points are -1,000,000 to 1,000,000.";
+				if (a.level < 0 || a.level > 10_000) return "points per score are 0 to 10,000.";
+				if (a.amount == 0 && a.level == 0) return "how many points?";
 			}
 			case "petslots" -> {
 				if (a.amount < 1 || a.amount > 2) return "1 or 2 extra pets (3 out at most).";

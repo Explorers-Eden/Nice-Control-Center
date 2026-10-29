@@ -74,7 +74,7 @@ public final class Links {
 	}
 
 	/** Names the mod uses itself, never taken by an own link. */
-	public static final Set<String> RESERVED = Set.of("info", "pets", "market", "claim", "ncc", "nicecontrolcenter", "merl", "nccreply", "fly", "reward", "perks", "inbox", "game", "dungeon", "party");
+	public static final Set<String> RESERVED = Set.of("info", "pets", "market", "claim", "ncc", "nicecontrolcenter", "merl", "nccreply", "fly", "reward", "perks", "inbox", "points", "game", "dungeon", "party");
 
 	/** Checks and tidies the own links (lower-case names, full addresses). Error for the panel, or null. */
 	public static String validate(List<Custom> custom) {
