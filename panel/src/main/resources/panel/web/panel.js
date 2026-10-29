@@ -2326,10 +2326,10 @@
   const RW_UNITS = [['s', 1, 'seconds'], ['m', 60, 'minutes'], ['h', 3600, 'hours'], ['d', 86400, 'days']];
   const rwUnit = (sec) => RW_UNITS.slice().reverse().find(([, f]) => sec > 0 && sec % f === 0) || RW_UNITS[1];
   const RW_DEFAULT = { fly: { seconds: 1800 }, claimblocks: { amount: 500 }, pet: {}, petslots: { amount: 1 }, listings: { amount: 2 }, coupons: { amount: 1, level: 3 },
-    spotlight: { seconds: 86400 }, joinmessage: { seconds: 0 }, xp: { level: 2, seconds: 3600 }, haste: { level: 2, seconds: 3600 }, blockboost: { level: 2, seconds: 7200 },
+    spotlight: { seconds: 86400 }, xp: { level: 2, seconds: 3600 }, haste: { level: 2, seconds: 3600 }, blockboost: { level: 2, seconds: 7200 },
     bondboost: { level: 2, seconds: 7200 }, toolcare: { seconds: 3600 } };
   const RW_ICONS = { fly: 'bi-feather', claimblocks: 'bi-bounding-box', pet: 'bi-emoji-smile', petslots: 'bi-people', listings: 'bi-shop', coupons: 'bi-ticket-perforated',
-    spotlight: 'bi-star', joinmessage: 'bi-megaphone', xp: 'bi-stars', haste: 'bi-lightning', blockboost: 'bi-graph-up-arrow', bondboost: 'bi-heart', toolcare: 'bi-tools' };
+    spotlight: 'bi-star', xp: 'bi-stars', haste: 'bi-lightning', blockboost: 'bi-graph-up-arrow', bondboost: 'bi-heart', toolcare: 'bi-tools' };
 
   function rwActionRow(a, ri, ai) {
     const type = rw.actions.find((x) => x.id === a.type) || { fields: '', label: a.type };
@@ -2337,13 +2337,11 @@
     const amountLabel = { claimblocks: 'Blocks (minus takes)', petslots: 'Extra pets (1–2)', listings: 'Extra slots', coupons: 'How many coupons' }[a.type] || 'Amount';
     const levelLabel = a.type === 'haste' ? 'Level (1–3)' : a.type === 'coupons' ? 'Each worth (currency items)' : 'Multiplier (×)';
     const [unit, factor] = rwUnit(a.seconds);
-    const forever = a.type === 'joinmessage' && !a.seconds;
     const fields = [
       f.includes('t') ? `<label class="pn-field"><span>Pet</span><select data-a="${ai}" data-ak="target">${rw.pets.map((n) => `<option ${n === a.target ? 'selected' : ''}>${esc(n)}</option>`).join('') || '<option value="">no pets yet</option>'}</select></label>` : '',
       f.includes('a') ? `<label class="pn-field"><span>${amountLabel}</span><input type="number" data-a="${ai}" data-ak="amount" value="${a.amount}"></label>` : '',
       f.includes('l') ? `<label class="pn-field"><span>${levelLabel}</span><input type="number" data-a="${ai}" data-ak="level" value="${a.level}" step="${a.type === 'coupons' || a.type === 'haste' ? 1 : 0.5}" min="1"></label>` : '',
-      f.includes('s') ? (forever ? `<label class="pn-field"><span>For how long</span><span class="pn-rw-forever">for good <button type="button" class="np-link-btn" data-a="${ai}" data-ak="timed">set a time</button></span></label>`
-        : `<label class="pn-field"><span>For how long</span><span class="pn-rw-time"><input type="number" data-a="${ai}" data-ak="time" value="${a.seconds / factor}" min="1"><select data-a="${ai}" data-ak="unit">${RW_UNITS.map(([u, , l]) => `<option value="${u}" ${u === unit ? 'selected' : ''}>${l}</option>`).join('')}</select>${a.type === 'joinmessage' ? `<button type="button" class="np-link-btn" data-a="${ai}" data-ak="forever">for good</button>` : ''}</span></label>`) : '',
+      f.includes('s') ? `<label class="pn-field"><span>For how long</span><span class="pn-rw-time"><input type="number" data-a="${ai}" data-ak="time" value="${a.seconds / factor}" min="1"><select data-a="${ai}" data-ak="unit">${RW_UNITS.map(([u, , l]) => `<option value="${u}" ${u === unit ? 'selected' : ''}>${l}</option>`).join('')}</select></span></label>` : '',
     ].join('');
     return `<div class="pn-rw-give" data-rule="${ri}">
       <span class="pn-rw-give-icon"><i class="bi ${RW_ICONS[a.type] || 'bi-gift'}"></i></span><b>${esc(type.label)}</b>
@@ -2456,10 +2454,8 @@
     }
     const a = r.actions[+el.dataset.a];
     const k = el.dataset.ak;
-    if (e.type === 'click' && ['remove', 'forever', 'timed'].includes(k)) {
-      if (k === 'remove') r.actions.splice(+el.dataset.a, 1);
-      if (k === 'forever') a.seconds = 0;
-      if (k === 'timed') a.seconds = 86400;
+    if (e.type === 'click' && k === 'remove') {
+      r.actions.splice(+el.dataset.a, 1);
       rwChanged(true);
       return true;
     }

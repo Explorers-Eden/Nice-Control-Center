@@ -115,7 +115,6 @@ public final class Rewards {
 			new ActionType("listings", "Extra market listing slots", "a"),
 			new ActionType("coupons", "Shop coupons", "al"),
 			new ActionType("spotlight", "Market spotlight", "s"),
-			new ActionType("joinmessage", "Own join message", "s"),
 			new ActionType("xp", "XP boost", "ls"),
 			new ActionType("haste", "Haste in their claims", "ls"),
 			new ActionType("blockboost", "Claim-block boost", "ls"),
@@ -155,9 +154,14 @@ public final class Rewards {
 				}
 				r.commands = cmds;
 				if (r.actions == null) r.actions = new ArrayList<>();
+				// The own join message reward is gone (1.54.0).
+				boolean hadJoin = r.actions.removeIf(a -> a != null && "joinmessage".equals(a.type));
 				r.actions.removeIf(a -> a == null || a.type == null);
 				for (Action a : r.actions) if (a.target == null) a.target = "";
+				if (hadJoin && r.actions.isEmpty() && r.commands.isEmpty() && r.message.isBlank()) r.id = null;
 			}
+			// A rule that only gave a join message has nothing left to give.
+			rules.removeIf(r -> r.id == null);
 			return this;
 		}
 	}
@@ -237,8 +241,7 @@ public final class Rewards {
 			}
 		}
 		if (f.contains("s")) {
-			boolean forever = a.type.equals("joinmessage") && a.seconds == 0;
-			if (!forever && (a.seconds < 1 || a.seconds > 365L * 86_400)) return "a time from 1 second to 365 days" + (a.type.equals("joinmessage") ? " (0 = for good)." : ".");
+			if (a.seconds < 1 || a.seconds > 365L * 86_400) return "a time from 1 second to 365 days.";
 		}
 		return null;
 	}

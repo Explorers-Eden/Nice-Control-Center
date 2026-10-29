@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.54.0
+- Market spotlight (reward): shines on one listing per player instead of all of them. Players pick which one: "★ Put in spotlight" on their listing in /market → My listings, or "Spotlight" on the website profile; until they pick, it's on their newest listing
+- Market: spotlit listings stand out more in game: a gold "In the spotlight" section on the market's front page (up to 3, a fair shuffle), a gold banner over them at the top of Browse with a divider before the rest, gold names and a ★
+- Fix: /reward spotlight <player> off now takes the star off the listing (it stayed when nobody else had a perk)
+- Removed the own join message reward (/joinmessage and /reward joinmessage); reward rules lose that reward on load (a rule that only gave a join message goes away)
+
 ## 1.53.0
 - Per-dimension tuning: "Always clear sky": players in that dimension never get rain or thunder from the server's weather, so its sky doesn't darken while it rains elsewhere (the weather itself carries on). On for the dungeon dimension and in the Flying Fair minigame preset
 

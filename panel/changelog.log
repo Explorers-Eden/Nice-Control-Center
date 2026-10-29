@@ -1,3 +1,7 @@
+## 1.44.0
+- Market spotlight shines on one listing a player picks (mod 1.54.0); website profile can move it (needs the website update)
+- Rewards: the own join message reward is gone (rule editor, command list)
+
 ## 1.43.0
 - Performance, per-dimension tuning: "Always clear sky" column (and in the Flying Fair preset) (mod 1.53.0)
 

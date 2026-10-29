@@ -72,6 +72,7 @@ final class WebProfile {
 				JsonObject account = mod("account", link, null);
 				if (account != null && account.has("listings")) out.put("listings", account.get("listings"));
 				if (account != null && account.has("maxPrice")) out.put("maxPrice", account.get("maxPrice"));
+				if (account != null && account.has("hasSpotlight")) out.put("hasSpotlight", account.get("hasSpotlight"));
 				if (account != null && account.has("seen")) out.put("seen", account.get("seen"));
 				JsonObject pets = mod("pets", link, null);
 				if (pets != null && !pets.has("error")) out.put("pets", pets);
@@ -80,7 +81,7 @@ final class WebProfile {
 				List<Map<String, Object>> listings = new ArrayList<>();
 				if (offline != null) for (Market.Listing l : offline.listings.values()) {
 					if (!link.uuid().equalsIgnoreCase(l.seller)) continue;
-					listings.add(Map.of("id", l.id, "name", l.item.name, "item", l.item.id, "amount", l.amount, "price", l.price, "per", l.lot(), "expires", l.expires));
+					listings.add(Map.of("id", l.id, "name", l.item.name, "item", l.item.id, "amount", l.amount, "price", l.price, "per", l.lot(), "expires", l.expires, "spotlight", l.spotlight));
 				}
 				out.put("listings", listings);
 			}
@@ -214,7 +215,7 @@ final class WebProfile {
 			if (link == null || !slowDown(ctx, in) || !running(ctx, "Listings can be changed while the server runs.")) return;
 			JsonObject body = new JsonObject();
 			body.addProperty("id", Web.str(in, "id"));
-			for (String k : List.of("price", "per", "amount")) if (in.has(k) && !in.get(k).isJsonNull()) body.add(k, in.get(k));
+			for (String k : List.of("price", "per", "amount", "spotlight")) if (in.has(k) && !in.get(k).isJsonNull()) body.add(k, in.get(k));
 			JsonObject answer = mod("listing", link, body);
 			if (!answered(ctx, answer)) return;
 			audit.log("website", "market.webedit", link.name() + " changed a listing: " + Web.str(answer, "message"), Web.clientIp(ctx));

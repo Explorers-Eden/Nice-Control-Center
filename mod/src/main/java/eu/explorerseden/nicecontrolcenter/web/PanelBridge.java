@@ -108,17 +108,6 @@ public final class PanelBridge {
 		});
 	}
 
-	/** A join with the player's own join line (JoinMessageMixin): the panel and Discord hear it like a normal join. */
-	public static void customJoin(net.minecraft.server.MinecraftServer server, String name, String text) {
-		JsonObject event = new JsonObject();
-		event.addProperty("type", "join");
-		event.addProperty("name", name);
-		event.addProperty("text", text);
-		event.addProperty("players", server.getPlayerCount());
-		event.addProperty("maxPlayers", server.getMaxPlayers());
-		send(event);
-	}
-
 	/**
 	 * Called from PlayerList.canPlayerLogin after vanilla's own checks passed. Returns the kick message,
 	 * or null to let the player in. The answer was usually fetched while the login waited (QUERY_START). If the panel can't answer, the player is let in (with a warning),

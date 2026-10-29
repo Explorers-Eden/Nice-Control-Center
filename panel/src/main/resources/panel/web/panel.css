@@ -1040,7 +1040,6 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-rw-give-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pn-rw-time { display: flex; gap: 6px; align-items: center; }
 .pn-rw-time input { width: 80px; }
-.pn-rw-forever { display: flex; align-items: center; gap: 8px; height: 36px; font-weight: 600; }
 .pn-rw-claims { align-self: end; padding-bottom: 9px; white-space: nowrap; }
 @media (max-width: 700px) { .pn-rw-give { grid-template-columns: auto 1fr auto; } .pn-rw-give-fields { grid-column: 1 / -1; } }
 

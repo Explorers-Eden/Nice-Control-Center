@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import eu.explorerseden.nicecontrolcenter.core.Plop;
+import eu.explorerseden.nicecontrolcenter.players.Perks;
 
 /**
  * The market menu (/market), as dialogs: browse and buy, sell from your inventory, your listings and your
@@ -54,6 +55,8 @@ public final class MarketDialogs {
 	private static final int TEXT_WIDTH = 310;
 	/** Listings per Browse page: all of them in one scrolling list, pages only for a very full market. */
 	private static final int PAGE = 100;
+	/** Spotlit listings shown on the market's first page. */
+	private static final int SPOTLIGHT_HOME = 3;
 
 	private MarketDialogs() {
 	}
@@ -182,6 +185,7 @@ public final class MarketDialogs {
 		long balance = data.balance(me);
 		body.add(text("Your bank: " + money(balance) + (balance > 0 ? " · spent first when you buy" : ""), ChatFormatting.GOLD));
 		if (mail != null && !mail.isEmpty()) body.add(text("Your inbox: " + mailSummary(mail), ChatFormatting.GOLD));
+		spotlight(player, body);
 		List<ActionButton> buttons = new ArrayList<>();
 		if (serverShopOpen()) buttons.add(button("Server shop", "What the server sells", "server", args()));
 		buttons.add(button(serverShopOpen() ? "Player listings" : "Browse", "Everything players sell", "browse", args("page", "0")));
@@ -190,6 +194,32 @@ public final class MarketDialogs {
 		buttons.add(button("Inbox" + (mail != null && !mail.isEmpty() ? " ●" : ""), "Items that came back or didn't fit, what you bought on the website, and things from game areas (also /inbox)", "mail", args()));
 		buttons.add(button("Bank", "Deposit and withdraw " + MarketStore.currencyName() + "; sales are paid in here", "bank", args()));
 		menu(player, "Market", body, List.of(), buttons);
+	}
+
+	/** The spotlit listings (a reward, one per seller) under a gold banner, on the market's first page. */
+	private static void spotlight(ServerPlayer player, List<DialogBody> body) {
+		List<Market.Listing> spot = new ArrayList<>(MarketStore.data().listings.values().stream().filter(l -> l.spotlight).toList());
+		if (spot.isEmpty()) return;
+		// A fair turn for everyone when there are more than fit.
+		java.util.Collections.shuffle(spot);
+		body.add(new PlainMessage(Component.literal("★ ★ ★  IN THE SPOTLIGHT  ★ ★ ★").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), TEXT_WIDTH));
+		for (Market.Listing l : spot.subList(0, Math.min(SPOTLIGHT_HOME, spot.size()))) body.add(row(player, l, true));
+		if (spot.size() > SPOTLIGHT_HOME) body.add(text("+" + (spot.size() - SPOTLIGHT_HOME) + " more on top of the player listings", ChatFormatting.YELLOW));
+	}
+
+	/** One listing in a list: a spotlit one in gold with a ★ and its seller in yellow. */
+	private static DialogBody row(ServerPlayer player, Market.Listing l, boolean spot) {
+		boolean own = l.seller.equals(player.getStringUUID());
+		Component desc = Component.empty()
+				.append(spot ? Component.literal("★ ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD) : Component.empty())
+				.append(Component.literal(l.item.name).withStyle(spot ? new ChatFormatting[] { ChatFormatting.GOLD, ChatFormatting.BOLD } : new ChatFormatting[] { ChatFormatting.WHITE }))
+				.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
+				.append(Component.literal("\n"))
+				.append(own ? link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA)
+						: link("Buy", "See it and buy", "view", args("id", l.id), ChatFormatting.GREEN))
+				.append(Component.literal("  " + price(l)).withStyle(ChatFormatting.GOLD))
+				.append(Component.literal(" · " + (own ? "you" : l.sellerName)).withStyle(spot ? ChatFormatting.YELLOW : ChatFormatting.GRAY));
+		return itemRow(player, l.item, l.amount, desc).orElseGet(() -> new PlainMessage(desc, TEXT_WIDTH));
 	}
 
 	/** "2 parcels and 1 purchase to claim". */
@@ -354,19 +384,12 @@ public final class MarketDialogs {
 		// Which part of the list this page is, so nobody misses the listings on the next pages.
 		String shown = pages > 1 ? "Showing " + (p * PAGE + 1) + "–" + Math.min(all.size(), (p + 1) * PAGE) + " of " + all.size() + " listings" : all.size() + (all.size() == 1 ? " listing" : " listings");
 		body.add(text((all.isEmpty() ? "Nothing found" : shown) + (q.isEmpty() ? "" : " for \"" + query.strip() + "\"") + " · " + sortName, ChatFormatting.GRAY));
+		boolean inSpot = false;
 		for (Market.Listing l : all.subList(p * PAGE, Math.min(all.size(), (p + 1) * PAGE))) {
-			boolean own = l.seller.equals(player.getStringUUID());
-			boolean spot = l.spotlight;
-			Component desc = Component.empty()
-					.append(Component.literal(spot ? "★ " : "").withStyle(ChatFormatting.GOLD))
-					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
-					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
-					.append(Component.literal("\n"))
-					.append(own ? link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA)
-							: link("Buy", "See it and buy", "view", args("id", l.id), ChatFormatting.GREEN))
-					.append(Component.literal("  " + price(l)).withStyle(ChatFormatting.GOLD))
-					.append(Component.literal(" · " + (own ? "you" : l.sellerName)).withStyle(ChatFormatting.GRAY));
-			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
+			if (l.spotlight && !inSpot) body.add(new PlainMessage(Component.literal("★ ★ ★  IN THE SPOTLIGHT  ★ ★ ★").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), TEXT_WIDTH));
+			if (!l.spotlight && inSpot) body.add(new PlainMessage(Component.literal("─────────  All listings  ─────────").withStyle(ChatFormatting.DARK_GRAY), TEXT_WIDTH));
+			inSpot = l.spotlight;
+			body.add(row(player, l, l.spotlight));
 		}
 		// The pages again below the list, where the eye ends up.
 		if (pages > 1) {
@@ -438,6 +461,10 @@ public final class MarketDialogs {
 			buttons.add(button("Save price", "Price and how many at a time", "edit", args("id", l.id)));
 			buttons.add(button("Add more", "From your inventory; runs " + MarketStore.settings().listingDays + " days again", "restock", args("id", l.id)));
 			buttons.add(button("Take it back", "Into your inbox", "cancel", args("id", l.id)));
+			if (l.spotlight) body.add(text("★ This listing is in your spotlight: shown first, in gold, on the market's front page.", ChatFormatting.GOLD));
+			else if (Perks.has(l.seller, Perks.Kind.SPOTLIGHT)) {
+				buttons.add(button(Component.literal("★ Put in spotlight").withStyle(ChatFormatting.GOLD), "Your spotlight is on one listing at a time: move it to this one", "spotlight", args("id", l.id)));
+			}
 			menu(player, l.item.name, body, inputs, buttons, back("mine", args()));
 			return;
 		}
@@ -771,13 +798,17 @@ public final class MarketDialogs {
 		List<Market.Listing> mine = MarketStore.data().of(player.getStringUUID());
 		List<DialogBody> body = new ArrayList<>();
 		if (mine.isEmpty()) body.add(text("You're not selling anything.", ChatFormatting.GRAY));
+		else if (mine.size() > 1 && Perks.has(player.getStringUUID(), Perks.Kind.SPOTLIGHT)) {
+			body.add(text("★ You have a market spotlight: it shines on one listing at a time. Open another one to move it there.", ChatFormatting.GOLD));
+		}
 		for (Market.Listing l : mine) {
 			long days = Math.max(0, (l.expires - System.currentTimeMillis()) / 86_400_000L);
 			Component desc = Component.empty()
-					.append(Component.literal(l.item.name).withStyle(ChatFormatting.WHITE))
+					.append(l.spotlight ? Component.literal("★ ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD) : Component.empty())
+					.append(Component.literal(l.item.name).withStyle(l.spotlight ? ChatFormatting.GOLD : ChatFormatting.WHITE))
 					.append(Component.literal("  ×" + String.format(Locale.ROOT, "%,d", l.amount)).withStyle(ChatFormatting.GRAY))
 					.append(Component.literal("\n"))
-					.append(link("View", "See it or take it back", "view", args("id", l.id), ChatFormatting.AQUA))
+					.append(link("View", l.spotlight ? "In your spotlight. See it or take it back" : "See it, put it in your spotlight or take it back", "view", args("id", l.id), ChatFormatting.AQUA))
 					.append(Component.literal("  " + price(l)).withStyle(ChatFormatting.GOLD))
 					.append(Component.literal(" · " + days + (days == 1 ? " day" : " days") + " left").withStyle(ChatFormatting.GRAY));
 			itemRow(player, l.item, l.amount, desc).ifPresentOrElse(body::add, () -> body.add(new PlainMessage(desc, TEXT_WIDTH)));
@@ -893,6 +924,12 @@ public final class MarketDialogs {
 				data.withdraw(l);
 				MarketStore.saveNow();
 				mail(player);
+			}
+			case "spotlight" -> {
+				Market.Listing l = data.listings.get(str(in, "id"));
+				if (l == null || !l.seller.equals(player.getStringUUID())) home(player, "That listing is gone.");
+				else if (!Perks.chooseSpotlight(l.seller, l.id)) view(player, l, "Your market spotlight has run out.");
+				else view(player, l, null, "★ Your spotlight is on this listing now.");
 			}
 			case "collect" -> collect(player);
 			case "claim" -> claim(player, in);

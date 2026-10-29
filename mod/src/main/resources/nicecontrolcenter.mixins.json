@@ -50,7 +50,6 @@
 		"AdvancementRewardMixin",
 		"ExperienceBoostMixin",
 		"ToolCareMixin",
-		"JoinMessageMixin",
 		"GameChorusMixin",
 		"WeatherPacketMixin",
 		"GameClaimPickupMixin",

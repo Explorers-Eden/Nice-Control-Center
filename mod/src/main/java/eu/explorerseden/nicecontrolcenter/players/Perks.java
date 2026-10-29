@@ -32,7 +32,7 @@ import eu.explorerseden.nicecontrolcenter.core.PlayerActivity;
 
 /**
  * Non-item rewards a player holds (see /reward): timed perks whose time only runs while they work, shop coupons,
- * the market spotlight and the right to a custom join message. Kept in the
+ * and the market spotlight (on one listing the player picks). Kept in the
  * world folder (nicecontrolcenter-perks.json); checked every quarter second.
  */
 public final class Perks {
@@ -43,8 +43,7 @@ public final class Perks {
 		BLOCKBOOST("Claim-block boost", Clock.ACTIVE, true),
 		BONDBOOST("Pet bond boost", Clock.ACTIVE, true),
 		TOOLCARE("Tool care", Clock.ACTIVE, false),
-		SPOTLIGHT("Market spotlight", Clock.LISTING, false),
-		JOINMESSAGE("Own join message", Clock.REAL, false);
+		SPOTLIGHT("Market spotlight", Clock.LISTING, false);
 
 		public final String label;
 		final Clock clock;
@@ -94,7 +93,8 @@ public final class Perks {
 		public Map<String, Perk> perks = new LinkedHashMap<>();
 		/** Coupons: worth (currency items off one purchase) → how many. */
 		public Map<Integer, Integer> coupons = new TreeMap<>();
-		public String joinText;
+		/** The listing their spotlight is on (missing or gone: their newest listing). */
+		public String spotlightListing;
 	}
 
 	private static final Map<String, Holder> holders = new ConcurrentHashMap<>();
@@ -135,11 +135,25 @@ public final class Perks {
 		return active(uuid, k) != null;
 	}
 
-	/** Their join line (with {player} filled in), when they have the right and set a text. */
-	public static String joinLine(String uuid, String name) {
+	/** The listing their spotlight is on, or null without a spotlight or listings. */
+	public static String spotlightListing(String uuid) {
+		if (!has(uuid, Kind.SPOTLIGHT)) return null;
+		var mine = eu.explorerseden.nicecontrolcenter.market.MarketStore.data().of(uuid);
+		if (mine.isEmpty()) return null;
 		Holder h = holders.get(uuid);
-		if (h == null || h.joinText == null || h.joinText.isBlank() || active(uuid, Kind.JOINMESSAGE) == null) return null;
-		return h.joinText.replace("{player}", name);
+		String chosen = h == null ? null : h.spotlightListing;
+		for (var l : mine) if (l.id.equals(chosen)) return l.id;
+		return mine.stream().max(java.util.Comparator.comparingLong((eu.explorerseden.nicecontrolcenter.Market.Listing l) -> l.created)).get().id;
+	}
+
+	/** Puts their spotlight on one of their listings (only one at a time); false without a spotlight. */
+	public static synchronized boolean chooseSpotlight(String uuid, String listingId) {
+		Holder h = holders.get(uuid);
+		if (h == null || !has(uuid, Kind.SPOTLIGHT)) return false;
+		h.spotlightListing = listingId;
+		changed();
+		syncSpotlight();
+		return true;
 	}
 
 	/**
@@ -219,6 +233,7 @@ public final class Perks {
 		Holder h = holders.get(uuid);
 		if (h == null || h.perks.remove(k.name()) == null) return false;
 		changed();
+		if (k == Kind.SPOTLIGHT) syncSpotlight();
 		return true;
 	}
 
@@ -237,11 +252,6 @@ public final class Perks {
 		return true;
 	}
 
-	public static synchronized void setJoinText(String uuid, String name, String text) {
-		holderFor(uuid, name).joinText = text;
-		changed();
-	}
-
 	public static void changed() {
 		dirty = true;
 	}
@@ -252,7 +262,11 @@ public final class Perks {
 		long now = System.currentTimeMillis();
 		long elapsed = lastTick == 0 ? 0 : Math.min(5_000, now - lastTick);
 		lastTick = now;
-		if (holders.isEmpty()) return;
+		if (holders.isEmpty()) {
+			// A spotlight taken from the last holder still has to come off the listing.
+			if (second) syncSpotlight();
+			return;
+		}
 		Map<String, ServerPlayer> online = new java.util.HashMap<>();
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) online.put(p.getStringUUID(), p);
 		for (Map.Entry<String, Holder> e : holders.entrySet()) {
@@ -291,12 +305,13 @@ public final class Perks {
 		if (dirty && now - lastSave > 30_000) save();
 	}
 
-	/** Marks the listings of sellers with a spotlight, so /market, the panel and the website show them first. */
-	private static void syncSpotlight() {
+	/** Marks the one spotlit listing of each seller with a spotlight, so /market, the panel and the website show it first. */
+	public static synchronized void syncSpotlight() {
 		var data = eu.explorerseden.nicecontrolcenter.market.MarketStore.data();
+		Map<String, String> chosen = new java.util.HashMap<>();
 		boolean any = false;
 		for (var l : data.listings.values()) {
-			boolean want = has(l.seller, Kind.SPOTLIGHT);
+			boolean want = l.id.equals(chosen.computeIfAbsent(l.seller, s -> String.valueOf(spotlightListing(s))));
 			if (l.spotlight == want) continue;
 			l.spotlight = want;
 			l.rev = data.bump();
@@ -358,6 +373,8 @@ public final class Perks {
 				if (saved != null) saved.forEach((k, v) -> {
 					if (v.perks == null) v.perks = new LinkedHashMap<>();
 					if (v.coupons == null) v.coupons = new TreeMap<>();
+					// The own join message reward is gone (1.54.0).
+					v.perks.remove("JOINMESSAGE");
 					holders.put(k, v);
 				});
 			}
@@ -370,7 +387,7 @@ public final class Perks {
 		lastSave = System.currentTimeMillis();
 		dirty = false;
 		if (file == null) return;
-		holders.values().removeIf(h -> h.perks.isEmpty() && h.coupons.isEmpty() && (h.joinText == null || h.joinText.isBlank()));
+		holders.values().removeIf(h -> h.perks.isEmpty() && h.coupons.isEmpty());
 		try {
 			Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 			Files.writeString(tmp, Json.GSON.toJson(holders), StandardCharsets.UTF_8);

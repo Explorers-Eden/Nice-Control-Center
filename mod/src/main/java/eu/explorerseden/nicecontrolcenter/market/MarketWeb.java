@@ -90,6 +90,7 @@ public final class MarketWeb {
 			row.put("price", l.price);
 			row.put("per", l.lot());
 			row.put("expires", l.expires);
+			row.put("spotlight", l.spotlight);
 			row.put("lore", l.item.lore);
 			row.put("enchantments", l.item.enchantments);
 			int[] have = spare(server, l);
@@ -97,6 +98,8 @@ public final class MarketWeb {
 			listings.add(row);
 		}
 		out.put("listings", listings);
+		// A market spotlight (reward): the player picks which one listing it's on.
+		out.put("hasSpotlight", eu.explorerseden.nicecontrolcenter.players.Perks.has(uuid, eu.explorerseden.nicecontrolcenter.players.Perks.Kind.SPOTLIGHT));
 		out.put("maxPrice", MarketStore.settings().maxPrice);
 		// "Member since" and the last visit, for the website's profile.
 		out.put("seen", eu.explorerseden.nicecontrolcenter.players.Seen.view(server, UUID.fromString(uuid)));
@@ -133,6 +136,10 @@ public final class MarketWeb {
 		if (l == null) l = data.listings.values().stream().filter(x -> id.equals(x.id)).findFirst().orElse(null);
 		if (l == null) return Map.of("error", "That listing is gone (sold out or ended).");
 		if (!uuid.equals(l.seller)) return Map.of("error", "That isn't your listing.");
+		if (in.has("spotlight")) {
+			if (!eu.explorerseden.nicecontrolcenter.players.Perks.chooseSpotlight(uuid, l.id)) return Map.of("error", "You don't have a market spotlight right now.");
+			return Map.of("ok", true, "message", "Your spotlight is on " + l.item.name + " now.");
+		}
 		int price, per, amount;
 		try {
 			price = in.has("price") ? in.get("price").getAsInt() : l.price;

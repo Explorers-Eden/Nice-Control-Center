@@ -99,15 +99,12 @@ public final class RewardActions {
 				Perks.addCoupons(id, name, value, a.amount);
 				return a.amount + " × " + Perks.couponName(value) + (a.amount == 1 ? "" : "s") + " for the server shop";
 			}
-			case "joinmessage" -> {
-				long left = Perks.add(id, name, Perks.Kind.JOINMESSAGE, 0, a.seconds == 0 ? -1 : ms);
-				return "your own join message (" + Perks.human(left) + "; set it with /joinmessage <text>)";
-			}
 			default -> {
 				Perks.Kind k = Perks.Kind.of(a.type);
 				if (k == null) throw new Refused("unknown reward \"" + a.type + "\".");
 				int level = k == Perks.Kind.HASTE ? (int) Math.round(a.level) : k == Perks.Kind.SPOTLIGHT || k == Perks.Kind.TOOLCARE ? 0 : (int) Math.round(a.level * 10);
 				long left = Perks.add(id, name, k, level, ms);
+				if (k == Perks.Kind.SPOTLIGHT) Perks.syncSpotlight();
 				String lv = Perks.levelText(k, level);
 				return k.label + (lv.isEmpty() ? "" : " " + lv) + " for " + Perks.human(ms) + (left > ms ? " (" + Perks.human(left) + " in all)" : "");
 			}
@@ -178,10 +175,6 @@ public final class RewardActions {
 					.then(Commands.literal("off").executes(ctx -> off(ctx, type)))
 					.then(Commands.argument("time", TimeArgument.time(1)).executes(ctx -> run(ctx, type, a -> a.seconds = ctx.getArgument("time", Integer.class) / 20L)))));
 		}
-		root.then(Commands.literal("joinmessage").then(players.get()
-				.then(Commands.literal("off").executes(ctx -> off(ctx, "joinmessage")))
-				.then(Commands.literal("forever").executes(ctx -> run(ctx, "joinmessage", a -> a.seconds = 0)))
-				.then(Commands.argument("time", TimeArgument.time(1)).executes(ctx -> run(ctx, "joinmessage", a -> a.seconds = ctx.getArgument("time", Integer.class) / 20L)))));
 		// Amounts.
 		root.then(Commands.literal("claimblocks").then(players.get()
 				.then(Commands.argument("amount", IntegerArgumentType.integer(-1_000_000, 1_000_000))
@@ -247,30 +240,6 @@ public final class RewardActions {
 					.withStyle(lines.isEmpty() ? ChatFormatting.GRAY : ChatFormatting.GOLD));
 			return 1;
 		}));
-		d.register(Commands.literal("joinmessage").requires(Everyone.unless("nicecontrolcenter.joinmessage.use"))
-				.then(Commands.literal("off").executes(ctx -> {
-					ServerPlayer p = ctx.getSource().getPlayerOrException();
-					Perks.setJoinText(p.getStringUUID(), p.getPlainTextName(), null);
-					ctx.getSource().sendSuccess(() -> Component.literal("Your join message is the normal one again."), false);
-					return 1;
-				}))
-				.then(Commands.argument("text", StringArgumentType.greedyString()).executes(ctx -> {
-					ServerPlayer p = ctx.getSource().getPlayerOrException();
-					if (!Perks.has(p.getStringUUID(), Perks.Kind.JOINMESSAGE)) {
-						ctx.getSource().sendFailure(Component.literal("An own join message is a reward; you don't have it right now."));
-						return 0;
-					}
-					String text = StringArgumentType.getString(ctx, "text").strip();
-					if (text.length() > 80) {
-						ctx.getSource().sendFailure(Component.literal("Up to 80 characters, please."));
-						return 0;
-					}
-					if (!text.contains("{player}") && !text.toLowerCase(Locale.ROOT).contains(p.getPlainTextName().toLowerCase(Locale.ROOT))) text = "{player} " + text;
-					Perks.setJoinText(p.getStringUUID(), p.getPlainTextName(), text);
-					String shown = text.replace("{player}", p.getPlainTextName());
-					ctx.getSource().sendSuccess(() -> Component.literal("Your join message: ").withStyle(ChatFormatting.GRAY).append(Component.literal(shown).withStyle(ChatFormatting.YELLOW)), false);
-					return 1;
-				})));
 	}
 
 	private interface Fill {
