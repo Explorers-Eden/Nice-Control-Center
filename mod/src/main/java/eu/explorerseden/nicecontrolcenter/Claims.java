@@ -365,10 +365,22 @@ public final class Claims {
 		public double[] respawn;
 		/** No homes (Nice Actions), beds or anchors set a spawn inside, and the Nice Actions back teleport can't lead here. */
 		public boolean noHomes = false;
+		/**
+		 * The game mode survival players play in here: "" = adventure (the default for game areas), or adventure,
+		 * survival (left as it is), creative, spectator. Set alone, it makes the claim a game area too.
+		 */
+		public String gameMode = "";
+
+		public static final List<String> GAME_MODES = List.of("adventure", "survival", "creative", "spectator");
+
+		/** The mode in effect ("adventure" when none was picked). */
+		public String mode() {
+			return gameMode == null || !GAME_MODES.contains(gameMode) ? "adventure" : gameMode;
+		}
 
 		/** Does anything at all. */
 		public boolean active() {
-			return inventory || removePickups || noHomes || deaths > 0 || (kit != null && !kit.isEmpty());
+			return inventory || removePickups || noHomes || deaths > 0 || (kit != null && !kit.isEmpty()) || gameMode != null && GAME_MODES.contains(gameMode);
 		}
 
 		/** Players respawn inside after dying here (a death limit or a respawn point is set). */
@@ -916,6 +928,11 @@ public final class Claims {
 						case "keepKitOnDeath" -> c.admin.keepKitOnDeath = on;
 						default -> c.admin.noHomes = on;
 					}
+				}
+				if (a.has("gameMode") && a.get("gameMode").isJsonPrimitive()) {
+					String m = a.get("gameMode").getAsString().strip().toLowerCase(java.util.Locale.ROOT);
+					if (!m.isEmpty() && !AdminOptions.GAME_MODES.contains(m)) return error("Game mode: adventure, survival, creative or spectator.");
+					c.admin.gameMode = m;
 				}
 				if (a.has("deaths") && a.get("deaths").isJsonPrimitive()) c.admin.deaths = Math.max(0, Math.min(1000, a.get("deaths").getAsInt()));
 				if (a.has("clearKit") && a.get("clearKit").getAsBoolean()) c.admin.kit = new ArrayList<>();

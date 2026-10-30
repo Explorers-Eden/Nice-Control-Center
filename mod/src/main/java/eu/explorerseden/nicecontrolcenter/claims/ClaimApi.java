@@ -95,6 +95,7 @@ public final class ClaimApi {
 		if (a.dropPickupsOnDeath) on.add("pickups drop on death");
 		if (a.keepKitOnDeath) on.add("kit kept on death");
 		if (a.noHomes) on.add("no homes");
+		if (a.gameMode != null && !a.gameMode.isEmpty()) on.add(a.gameMode + " mode");
 		if (a.deaths > 0) on.add("sent out after " + a.deaths + " deaths");
 		if (a.kit != null && !a.kit.isEmpty()) on.add("kit of " + a.kit.size() + " stacks");
 		if (a.respawn != null && a.respawn.length >= 3) on.add("respawn point " + (int) Math.floor(a.respawn[0]) + " " + (int) Math.floor(a.respawn[1]) + " " + (int) Math.floor(a.respawn[2]));

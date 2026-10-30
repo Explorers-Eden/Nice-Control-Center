@@ -98,8 +98,8 @@ public final class GameClaims {
 	/** Died with deaths left: respawn inside this claim. */
 	private static final Map<UUID, String> respawnIn = new HashMap<>();
 	private static Path file;
-	/** Players put into adventure mode for a game (survival again once they're out); kept across restarts. */
-	private static final Set<String> adventure = new java.util.HashSet<>();
+	/** Players put into another game mode by a game (uuid → the mode they were put in; survival again once they're out); kept across restarts. */
+	private static final Map<String, String> adventure = new java.util.HashMap<>();
 	private static Path adventureFile;
 
 	private GameClaims() {
@@ -471,27 +471,53 @@ public final class GameClaims {
 
 	/** In a game claim, or in a dungeon run inside the dungeon (not while waiting on the pad). */
 	private static boolean playing(ServerPlayer p) {
-		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) && eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inDungeonDimension(p)) return true;
-		if (eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) return true;
-		return gameClaimAt(p.level(), p.blockPosition()) != null;
+		return playMode(p) != null;
 	}
 
 	/**
-	 * Survival players in a game play in adventure mode; out of it they're in survival again (only if still in
-	 * adventure: creative or a dungeon's spectating is left alone). With {@code sweep}, kit items they still have
-	 * outside a game vanish.
+	 * The mode survival players play in where they are: adventure in dungeon runs, wave games and quick rounds, the
+	 * game claim's own choice in a game claim (null for survival: left alone), null outside games.
+	 */
+	private static GameType playMode(ServerPlayer p) {
+		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) && eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inDungeonDimension(p)) return GameType.ADVENTURE;
+		if (eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) return GameType.ADVENTURE;
+		Claim c = gameClaimAt(p.level(), p.blockPosition());
+		if (c == null) return null;
+		return switch (c.admin.mode()) {
+			case "creative" -> GameType.CREATIVE;
+			case "spectator" -> GameType.SPECTATOR;
+			case "survival" -> null;
+			default -> GameType.ADVENTURE;
+		};
+	}
+
+	/**
+	 * Survival players in a game play in its mode (adventure, or a game claim's own choice); out of it they're in
+	 * survival again (only if still in the mode the game put them in: a mode an admin gave them, or a dungeon's
+	 * spectating, is left alone). With {@code sweep}, kit items they still have outside a game vanish.
 	 */
 	public static void gameMode(ServerPlayer p, boolean sweep) {
 		String id = p.getStringUUID();
-		if (playing(p)) {
-			if (p.gameMode.getGameModeForPlayer() == GameType.SURVIVAL) {
-				p.setGameMode(GameType.ADVENTURE);
-				if (adventure.add(id)) saveAdventure();
+		GameType want = playMode(p);
+		GameType now = p.gameMode.getGameModeForPlayer();
+		String set = adventure.get(id);
+		boolean ours = set != null && now.getName().equals(set);
+		if (want != null) {
+			// From survival, or from the mode another game area put them in.
+			if (now != want && (now == GameType.SURVIVAL && set == null || ours)) {
+				p.setGameMode(want);
+				adventure.put(id, want.getName());
+				saveAdventure();
 			}
 			return;
 		}
-		if (adventure.remove(id)) {
-			if (p.gameMode.getGameModeForPlayer() == GameType.ADVENTURE) p.setGameMode(GameType.SURVIVAL);
+		if (set != null) {
+			adventure.remove(id);
+			if (ours) {
+				p.setGameMode(GameType.SURVIVAL);
+				// Spectators or fliers coming back to survival in the air shouldn't fall to their death.
+				p.resetFallDistance();
+			}
 			saveAdventure();
 		}
 		if (sweep && (removeKits(p.getInventory()) | removeKits(p.getEnderChestInventory()))) {
@@ -759,8 +785,14 @@ public final class GameClaims {
 		adventure.clear();
 		try {
 			if (Files.exists(adventureFile)) {
-				List<String> saved = Json.GSON.fromJson(Files.readString(adventureFile), new com.google.gson.reflect.TypeToken<List<String>>() { }.getType());
-				if (saved != null) adventure.addAll(saved);
+				var json = com.google.gson.JsonParser.parseString(Files.readString(adventureFile));
+				if (json.isJsonObject()) {
+					Map<String, String> saved = Json.GSON.fromJson(json, new com.google.gson.reflect.TypeToken<Map<String, String>>() { }.getType());
+					if (saved != null) adventure.putAll(saved);
+				} else if (json.isJsonArray()) {
+					// Files from before the game mode choice: everyone in it was put in adventure.
+					for (var e : json.getAsJsonArray()) adventure.put(e.getAsString(), "adventure");
+				}
 			}
 		} catch (IOException | RuntimeException e) {
 			NiceControlCenter.LOGGER.error("Claims: could not read who plays games in adventure mode ({})", adventureFile, e);
@@ -784,7 +816,7 @@ public final class GameClaims {
 		if (adventureFile == null) return;
 		try {
 			Path tmp = adventureFile.resolveSibling(adventureFile.getFileName() + ".tmp");
-			Files.writeString(tmp, Json.GSON.toJson(List.copyOf(adventure)), StandardCharsets.UTF_8);
+			Files.writeString(tmp, Json.GSON.toJson(adventure), StandardCharsets.UTF_8);
 			Files.move(tmp, adventureFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
 			NiceControlCenter.LOGGER.error("Claims: could not save who plays games in adventure mode", e);

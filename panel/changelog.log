@@ -1,3 +1,7 @@
+## 1.48.0
+- Every table: click a column header to sort by it, again for the other way (▲/▼); numbers, sizes and dates sort as such, and the order stays when the table refreshes
+- Claims: "Game mode inside" for game claims (adventure, survival, creative, spectator) (mod 1.58.0)
+
 ## 1.47.2
 - Fix: Games → Points and Reward shops couldn't save (the Pets page had a function of the same name, which took over the Save button; three Points elements also shared ids with the Pets page)
 - Fix: Settings → Java couldn't save when the saved memory wasn't a multiple of 256 counted from 128 (e.g. 2304 MB): the browser blocked it without saying why. The browser no longer blocks any page's Save; the panel checks the values and says what's wrong

@@ -718,6 +718,16 @@
 								<label class="np-check"><input type="checkbox" data-admin="keepKitOnDeath"> Keep the kit on death (when they respawn inside the game; otherwise it vanishes)</label>
 								<label class="np-check"><input type="checkbox" data-admin="noHomes"> No homes, beds or anchors, and the back teleport can't lead into it (always on with the first switch)</label>
 							</div>
+							<div class="pn-cl-kit"><span>Game mode inside</span>
+								<select id="pn-cl-gamemode">
+									<option value="">Adventure (default)</option>
+									<option value="adventure">Adventure</option>
+									<option value="survival">Survival (left as it is)</option>
+									<option value="creative">Creative</option>
+									<option value="spectator">Spectator</option>
+								</select>
+								<span>for players in survival; back to survival when they leave. Admins in another mode are left alone.</span>
+							</div>
 							<div class="pn-cl-kit"><span>Sent out after</span>
 								<input type="number" id="pn-cl-deaths" min="0" max="1000" step="1" class="pn-cl-deaths">
 								<span>deaths (0 = no limit; counted per visit). Until then they respawn inside.</span>

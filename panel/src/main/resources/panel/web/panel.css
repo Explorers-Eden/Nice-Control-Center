@@ -1114,3 +1114,10 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-dg-inline { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
 .pn-po-search { height: 34px; box-sizing: border-box; padding: 0 10px; font: inherit; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; min-width: 0; width: 100%; max-width: 320px; }
 .pn-po-search:focus { outline: none; border-color: var(--accent); }
+
+/* Sortable table headers: click to sort, again for the other way. */
+.np-table thead th.pn-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.np-table thead th.pn-sortable:hover { color: var(--text); }
+.np-table thead th.pn-sortable::after { content: '↕'; margin-left: 5px; opacity: .3; font-size: .9em; }
+.np-table thead th.pn-sort-asc::after { content: '▲'; opacity: .9; color: var(--accent); }
+.np-table thead th.pn-sort-desc::after { content: '▼'; opacity: .9; color: var(--accent); }

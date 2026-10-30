@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.58.0
+- Game claims: choose the game mode inside (panel claim editor, or /claim admin gamemode <mode> standing in it): adventure (still the default), survival (left as it is), creative or spectator. Survival players switch on entering and are back in survival on leaving (no fall damage after spectator or creative); admins who were in another mode are left alone; moving between game claims with different modes switches straight over. Choosing a mode alone makes a server claim a game area
+
 ## 1.57.1
 - Points: their name keeps its capitals as written in the panel ("5 Cloud Coins", "1 Cloud Coin")
 

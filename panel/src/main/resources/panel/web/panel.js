@@ -1606,6 +1606,69 @@
   })();
 
   window.addEventListener('beforeunload', (e) => { if (Dirty.any()) { e.preventDefault(); e.returnValue = ''; } });
+
+  // ── Sorting tables ──────────────────────────────────────────────────────
+  // Every table's column headers sort it (click again: the other way). The order stays when the table is drawn
+  // again. Tables of input rows (editors) aren't sorted; a row spanning all columns right after another (details)
+  // moves with it.
+  const TableSort = (() => {
+    const state = new Map();
+    const key = (t) => t.id || [...document.querySelectorAll('table.np-table')].indexOf(t);
+    const busy = new WeakSet();
+    const MONTH = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i;
+    function value(td) {
+      if (!td) return { kind: 2, v: '' };
+      const raw = (td.dataset.sort ?? td.textContent).trim();
+      if (raw === '' || raw === '—' || raw === '-') return { kind: 2, v: '' };
+      const n = raw.match(/^[+-−]?\s*\d[\d,]*(\.\d+)?/);
+      if (n && td.dataset.sort === undefined && !MONTH.test(raw)) return { kind: 0, v: Number(n[0].replace(/[,\s]/g, '').replace('−', '-')) };
+      if (td.dataset.sort !== undefined && raw !== '' && !Number.isNaN(Number(raw))) return { kind: 0, v: Number(raw) };
+      if (MONTH.test(raw) && /\d/.test(raw)) { const d = Date.parse(raw.replace(/ · .*/, '')); if (Number.isFinite(d)) return { kind: 0, v: d }; }
+      return { kind: 1, v: raw.toLowerCase() };
+    }
+    const sortable = (t) => t.tBodies[0] && !t.tBodies[0].querySelector('input:not([type="checkbox"]), select, textarea');
+    function apply(t) {
+      const s = state.get(key(t));
+      t.querySelectorAll('thead th').forEach((th, i) => {
+        th.classList.toggle('pn-sort-asc', !!s && s.col === i && s.dir > 0);
+        th.classList.toggle('pn-sort-desc', !!s && s.col === i && s.dir < 0);
+        if (th.textContent.trim()) th.classList.add('pn-sortable');
+      });
+      if (!s || !sortable(t)) return;
+      const body = t.tBodies[0];
+      const groups = [];
+      for (const tr of [...body.rows]) {
+        const span = tr.cells.length === 1 && tr.cells[0].colSpan > 1;
+        if (span && groups.length) groups[groups.length - 1].push(tr);
+        else groups.push([tr]);
+      }
+      // A lone spanning row is an empty-state line: nothing to sort.
+      if (groups.length < 2) return;
+      const sorted = groups.map((g, i) => ({ g, i, v: value(g[0].cells[s.col]) })).sort((a, b) => {
+        if (a.v.kind !== b.v.kind) return a.v.kind - b.v.kind;
+        const c = a.v.kind === 1 ? a.v.v.localeCompare(b.v.v, undefined, { numeric: true }) : a.v.v - b.v.v;
+        return (c || a.i - b.i) * (a.v.kind === 2 ? 1 : s.dir);
+      });
+      if (sorted.every((x, i) => x.i === i)) return;
+      busy.add(t);
+      for (const x of sorted) for (const tr of x.g) body.appendChild(tr);
+      queueMicrotask(() => busy.delete(t));
+    }
+    document.addEventListener('click', (e) => {
+      const th = e.target.closest('table.np-table thead th');
+      if (!th || e.target.closest('input, button, select, a') || !th.textContent.trim()) return;
+      const t = th.closest('table');
+      if (!sortable(t)) return;
+      const col = [...th.parentElement.children].indexOf(th);
+      const s = state.get(key(t));
+      state.set(key(t), { col, dir: s && s.col === col ? -s.dir : 1 });
+      apply(t);
+    });
+    // Drawn again (new data): sorted the same way again.
+    const watch = (t) => new MutationObserver(() => { if (!busy.has(t)) apply(t); }).observe(t, { childList: true, subtree: true });
+    document.querySelectorAll('table.np-table').forEach((t) => { watch(t); apply(t); });
+    return { apply };
+  })();
   // The browser never blocks a Save by itself: a saved value off a field's step (2304 MB with steps of 256) made it
   // refuse silently. The panel checks every value and says what's wrong.
   document.querySelectorAll('form').forEach((f) => { f.noValidate = true; });
@@ -6526,6 +6589,8 @@
     $('pn-cl-admin').querySelectorAll('[data-admin]').forEach((el) => { el.checked = !!a[el.dataset.admin]; el.disabled = !can('claims.manage'); });
     $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering.` : 'No kit: be in game with the items in your inventory, then:';
     $('pn-cl-kit-clear').hidden = !a.kit;
+    $('pn-cl-gamemode').value = a.gameMode || '';
+    $('pn-cl-gamemode').disabled = !can('claims.manage');
     $('pn-cl-deaths').value = a.deaths || 0;
     $('pn-cl-deaths').disabled = !can('claims.manage');
     $('pn-cl-respawn-text').textContent = a.respawn
@@ -6548,6 +6613,10 @@
     }
   }
   $('pn-cl-admin').addEventListener('change', (e) => {
+    if (e.target.id === 'pn-cl-gamemode') {
+      if (clOpen && clOpen.id) clAdminSend({ action: 'admin', gameMode: e.target.value }, 'Saved.');
+      return;
+    }
     if (e.target.id === 'pn-cl-deaths') {
       if (clOpen && clOpen.id) clAdminSend({ action: 'admin', deaths: Math.max(0, parseInt(e.target.value, 10) || 0) }, 'Saved.');
       return;

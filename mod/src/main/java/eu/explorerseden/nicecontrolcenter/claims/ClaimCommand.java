@@ -86,6 +86,28 @@ public final class ClaimCommand {
 									ClaimTool.tell(p, "The kit of " + c.displayName() + " is gone.", ChatFormatting.GOLD);
 									return 1;
 								})))
+						// Game claims: the game mode survival players play in there.
+						.then(Commands.literal("gamemode").then(Commands.argument("mode", com.mojang.brigadier.arguments.StringArgumentType.word())
+								.suggests((ctx, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(Claims.AdminOptions.GAME_MODES, b))
+								.executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
+									String mode = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "mode").toLowerCase(java.util.Locale.ROOT);
+									if (c == null || c.owner != null && c.parent == null) {
+										ClaimTool.tell(p, "Stand in a server claim (or one of its subclaims) first.", ChatFormatting.RED);
+										return 0;
+									}
+									if (!Claims.AdminOptions.GAME_MODES.contains(mode)) {
+										ClaimTool.tell(p, "Game modes: " + String.join(", ", Claims.AdminOptions.GAME_MODES) + ".", ChatFormatting.RED);
+										return 0;
+									}
+									if (c.admin == null) c.admin = new Claims.AdminOptions();
+									c.admin.gameMode = mode;
+									ClaimStore.changed();
+									eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("Claims: \"{}\": game area mode set to {} by {}", c.displayName(), mode, p.getGameProfile().name());
+									ClaimTool.tell(p, "Survival players play " + c.displayName() + " in " + mode + " mode" + (mode.equals("survival") ? " (left as they are)." : "."), ChatFormatting.GOLD);
+									return 1;
+								})))
 						// Game claims: where players respawn while they have deaths left (where you stand, facing your way).
 						.then(Commands.literal("respawn")
 								.then(Commands.literal("set").executes(ctx -> {
