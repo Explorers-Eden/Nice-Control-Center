@@ -36,6 +36,14 @@ final class GamesRoutes {
 		return serverDir.resolve("config").resolve(Dungeons.FILE);
 	}
 
+	/** What the file has, without what the page took away (matched by spot). */
+	private static java.util.List<Games.Pos> kept(java.util.List<Games.Pos> was, java.util.List<Games.Pos> page) {
+		java.util.function.Function<Games.Pos, String> key = (p) -> p.dim + "|" + Math.round(p.x * 2) + "|" + Math.round(p.y * 2) + "|" + Math.round(p.z * 2);
+		java.util.Set<String> keep = new java.util.HashSet<>();
+		if (page != null) for (Games.Pos p : page) if (p != null) keep.add(key.apply(p));
+		return new java.util.ArrayList<>(was.stream().filter(p -> keep.contains(key.apply(p))).toList());
+	}
+
 	void register(JavalinDefaultRoutingApi routes) {
 		routes.get("/api/games", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			Games.Settings s = Games.read(file());
@@ -92,7 +100,10 @@ final class GamesRoutes {
 				a.mobSpawns = was.mobSpawns;
 				a.spectate = was.spectate;
 				a.spectateRadius = was.spectateRadius;
-				a.exitPads = was.exitPads;
+				// Placed in game; the page can only take some away.
+				a.exitPads = kept(was.exitPads, a.exitPads);
+				a.entrances = kept(was.entrances, a.entrances);
+				a.watchEntrances = kept(was.watchEntrances, a.watchEntrances);
 				a.kit = was.kit;
 				// Head hunts: heads are hidden in game; the page can only take some out.
 				java.util.Set<String> kept = new java.util.HashSet<>();

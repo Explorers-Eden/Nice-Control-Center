@@ -181,7 +181,7 @@ public final class WaveRuntime {
 	public static boolean leave(MinecraftServer server, ServerPlayer p) {
 		Game g = playing.get(p.getUUID());
 		if (g != null) {
-			out(server, g, p, "You left " + g.arena.name + ".");
+			out(server, g, p, "You left " + g.arena.shown() + ".");
 			return true;
 		}
 		return unqueue(p.getUUID());
@@ -219,9 +219,9 @@ public final class WaveRuntime {
 					int ticks = onExit.merge(p.getUUID(), 2, Integer::sum);
 					if (ticks >= EXIT_TICKS) {
 						onExit.remove(p.getUUID());
-						out(server, in, p, "You left " + in.arena.name + " early.");
+						out(server, in, p, "You left " + in.arena.shown() + " early.");
 					} else if (ticks % 20 == 2) {
-						p.sendOverlayMessage(Component.literal("Leaving " + in.arena.name + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
+						p.sendOverlayMessage(Component.literal("Leaving " + in.arena.shown() + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
 					}
 				} else {
 					onExit.remove(p.getUUID());
@@ -234,13 +234,13 @@ public final class WaveRuntime {
 				continue;
 			}
 			if (!Parties.isLeader(p.getUUID())) {
-				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Component.literal("Your party leader starts " + a.name + " from the pad").withStyle(ChatFormatting.GRAY));
+				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Component.literal("Your party leader starts " + a.shown() + " from the pad").withStyle(ChatFormatting.GRAY));
 				continue;
 			}
 			List<ServerPlayer> party = partyNear(server, p, a);
 			if (party.size() < a.minParty || party.size() > a.maxParty) {
 				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) {
-					p.sendOverlayMessage(Component.literal(a.name + " is for " + (a.minParty == a.maxParty ? a.minParty : a.minParty + "–" + a.maxParty) + " player" + (a.maxParty == 1 ? "" : "s")
+					p.sendOverlayMessage(Component.literal(a.shown() + " is for " + (a.minParty == a.maxParty ? a.minParty : a.minParty + "–" + a.maxParty) + " player" + (a.maxParty == 1 ? "" : "s")
 							+ " (your party here: " + party.size() + ")").withStyle(ChatFormatting.RED));
 				}
 				continue;
@@ -250,7 +250,7 @@ public final class WaveRuntime {
 				if (ticks % 20 == 2) {
 					Game busy = games.get(a.id);
 					String who = party.size() == 1 ? "" : " with " + String.join(", ", party.subList(1, party.size()).stream().map(x -> x.getGameProfile().name()).toList());
-					String what = busy == null ? a.name + who + " starts" : "Queueing for " + a.name + who;
+					String what = busy == null ? a.shown() + who + " starts" : "Queueing for " + a.shown() + who;
 					p.sendOverlayMessage(Component.literal(what + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.GOLD));
 					p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.6f, 0.8f);
 				}
@@ -305,7 +305,7 @@ public final class WaveRuntime {
 		ServerLevel level = a.spectate == null ? null : GameRuntime.levelOf(server, a.spectate.dim);
 		for (ServerPlayer m : party) {
 			if (level != null) m.teleportTo(level, a.spectate.x, a.spectate.y, a.spectate.z, Set.of(), a.spectate.yaw, 0, true);
-			m.sendSystemMessage(Component.literal("A game is running in " + a.name + ": you're number " + q.size() + " in the queue"
+			m.sendSystemMessage(Component.literal("A game is running in " + a.shown() + ": you're number " + q.size() + " in the queue"
 					+ (level != null ? ". Wait here (leaving the area leaves the queue)." : ". Stay near the pad.") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
 		}
 	}
@@ -348,7 +348,7 @@ public final class WaveRuntime {
 				ServerPlayer leader = server.getPlayerList().getPlayer(party.get(0));
 				if (leader == null || !waiting(a, leader)) {
 					q.remove(party);
-					if (leader != null) leader.sendSystemMessage(Component.literal("You left the queue for " + a.name + ".").withStyle(ChatFormatting.GRAY));
+					if (leader != null) leader.sendSystemMessage(Component.literal("You left the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
 				}
 			}
 			Game g = games.get(a.id);
@@ -359,7 +359,7 @@ public final class WaveRuntime {
 					ServerPlayer m = server.getPlayerList().getPlayer(id);
 					if (m == null) continue;
 					String state = g != null ? "wave " + g.wave + (a.rounds > 0 ? "/" + a.rounds : "") + " running" : i == 1 ? "starting soon" : "waiting";
-					if (server.getTickCount() % 40 == 0) m.sendOverlayMessage(Component.literal(a.name + " · " + state + " · you're " + ordinal(i) + " in the queue").withStyle(ChatFormatting.GOLD));
+					if (server.getTickCount() % 40 == 0) m.sendOverlayMessage(Component.literal(a.shown() + " · " + state + " · you're " + ordinal(i) + " in the queue").withStyle(ChatFormatting.GOLD));
 				}
 			}
 			if (g != null || q.isEmpty()) {
@@ -372,7 +372,7 @@ public final class WaveRuntime {
 				if (server.getTickCount() % 20 == 0) {
 					for (UUID id : first) {
 						ServerPlayer m = server.getPlayerList().getPlayer(id);
-						if (m != null) m.sendOverlayMessage(Component.literal(a.name + " starts in " + ((at - now) / 1000 + 1) + "…").withStyle(ChatFormatting.GREEN));
+						if (m != null) m.sendOverlayMessage(Component.literal(a.shown() + " starts in " + ((at - now) / 1000 + 1) + "…").withStyle(ChatFormatting.GREEN));
 					}
 				}
 				continue;
@@ -385,7 +385,7 @@ public final class WaveRuntime {
 				if (m != null && !playing.containsKey(id) && waiting(a, m)) party.add(m);
 			}
 			if (party.size() < a.minParty || party.size() > a.maxParty) {
-				for (ServerPlayer m : party) m.sendSystemMessage(Component.literal("Not enough of your party is here for " + a.name + ": left the queue.").withStyle(ChatFormatting.RED));
+				for (ServerPlayer m : party) m.sendSystemMessage(Component.literal("Not enough of your party is here for " + a.shown() + ": left the queue.").withStyle(ChatFormatting.RED));
 				continue;
 			}
 			String err = start(server, a, party);
@@ -407,14 +407,14 @@ public final class WaveRuntime {
 		if (a.spawn == null) return a.name + " has no player spawn yet (/game edit " + a.name + " spawn).";
 		if (a.areaMin == null || a.areaMax == null) return a.name + " has no fight box yet (/game edit " + a.name + " corner1 / corner2).";
 		if (a.mobSpawns.isEmpty()) return a.name + " has no mob spawns yet (/game edit " + a.name + " mobspawn add).";
-		if (a.pool.isEmpty() && a.waveLines.isEmpty()) return a.name + " has no mobs to send (mob pool or wave lines in the panel).";
+		if (a.pool.isEmpty() && a.waveLines.isEmpty()) return a.shown() + " has no mobs to send (mob pool or wave lines in the panel).";
 		if (GameRuntime.levelOf(server, a.spawn.dim) == null) return "That arena's dimension isn't there.";
 		return null;
 	}
 
 	static String start(MinecraftServer server, Arena a, List<ServerPlayer> party) {
 		if (!GameRuntime.settings().enabled) return "Games are closed right now.";
-		if (games.containsKey(a.id)) return "A game is running in " + a.name + ".";
+		if (games.containsKey(a.id)) return "A game is running in " + a.shown() + ".";
 		String err = check(server, a);
 		if (err != null) return err;
 		ServerLevel level = GameRuntime.levelOf(server, a.spawn.dim);
@@ -435,7 +435,7 @@ public final class WaveRuntime {
 			GameClaims.gameMode(p, false);
 			String hint = (a.rounds > 0 ? "Survive " + a.rounds + " waves" : "Survive as many waves as you can")
 					+ (a.teamLives > 0 ? "; the team has " + a.teamLives + (a.teamLives == 1 ? " life" : " lives") : "") + ". Exit pads or /game leave take you out.";
-			p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.name + ": " + hint : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
+			p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + hint : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");
 		}
 		g.nextAt = System.currentTimeMillis() + a.breakSeconds * 1000L;
@@ -496,7 +496,7 @@ public final class WaveRuntime {
 		Spectating.follow(server, g.watching.keySet(), alive);
 		if (g.state == State.BREAK) {
 			long left = g.nextAt - now;
-			bar(server, g, Component.literal(g.arena.name + " · wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
+			bar(server, g, Component.literal(g.arena.shown() + " · wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
 			if (left <= 0) beginWave(server, g, level);
 			return;
 		}
@@ -534,7 +534,7 @@ public final class WaveRuntime {
 		}
 		// (Just summoned ones count too: they're not in the list taken above.)
 		int left = mobs.size() + spawned + g.toSpawn.size();
-		bar(server, g, Component.literal(g.arena.name + " · wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " · " + left + (left == 1 ? " mob left" : " mobs left")),
+		bar(server, g, Component.literal(g.arena.shown() + " · wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " · " + left + (left == 1 ? " mob left" : " mobs left")),
 				g.waveSize == 0 ? 0 : Math.min(1f, left / (float) g.waveSize), BossEvent.BossBarColor.RED);
 		if (left == 0) waveCleared(server, g, level);
 	}
@@ -703,7 +703,7 @@ public final class WaveRuntime {
 		if (!g.trial && g.players.stream().noneMatch(g::in)) end(server, g, false, null);
 	}
 
-	/** Out of the game: their things back, and to the start pad. */
+	/** Out of the game: their things back, and to the game hub spawn (else the start point). */
 	private static void finishFor(MinecraftServer server, Arena a, ServerPlayer p) {
 		if (kit(a)) {
 			GameClaims.giveBackKept(p);
@@ -712,7 +712,8 @@ public final class WaveRuntime {
 			GameClaims.restoreFor(p, false);
 		}
 		ServerLevel level = a.start == null ? null : GameRuntime.levelOf(server, a.start.dim);
-		if (level != null) p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+		// To the game hub spawn (else the start point).
+		if (!Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
 		p.resetFallDistance();
 		cooldown.put(p.getUUID(), System.currentTimeMillis() + 5000);
 		GameClaims.gameMode(p, false);
@@ -736,9 +737,9 @@ public final class WaveRuntime {
 			if (p == null) continue;
 			boolean record = g.cleared > 0 && GameRuntime.recordScore(a, p, g.cleared);
 			String line;
-			if (won) line = a.finishMessage.isBlank() ? "■ " + a.name + " cleared: all " + g.cleared + " waves!" : fill(a.finishMessage, a, p, score);
+			if (won) line = a.finishMessage.isBlank() ? "■ " + a.shown() + " cleared: all " + g.cleared + " waves!" : fill(a.finishMessage, a, p, score);
 			else if (a.rounds == 0 && !a.finishMessage.isBlank()) line = fill(a.finishMessage, a, p, score);
-			else line = a.loseMessage.isBlank() ? "✖ " + a.name + ": " + (why == null ? "the game is over" : why.replaceAll("\\.$", "")) + " after " + g.cleared + (g.cleared == 1 ? " wave" : " waves") + "."
+			else line = a.loseMessage.isBlank() ? "✖ " + a.shown() + ": " + (why == null ? "the game is over" : why.replaceAll("\\.$", "")) + " after " + g.cleared + (g.cleared == 1 ? " wave" : " waves") + "."
 					: fill(a.loseMessage, a, p, score).replace("{wave}", score);
 			p.sendSystemMessage(Component.literal(line + (record ? " · new personal best!" : "")).withStyle(won ? ChatFormatting.GOLD : record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
 			if (finished && g.cleared > 0) {
@@ -807,7 +808,7 @@ public final class WaveRuntime {
 	}
 
 	private static String fill(String text, Arena a, ServerPlayer p, String score) {
-		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.name).replace("{score}", score);
+		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {

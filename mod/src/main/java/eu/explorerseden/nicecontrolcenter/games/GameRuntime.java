@@ -60,7 +60,7 @@ import eu.explorerseden.nicecontrolcenter.command.Everyone;
 import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
 
 /**
- * Runs the mini-game arenas (see {@link Games}): stepping on an arena's start pad (or /game join) starts a run, an
+ * Runs the mini-game arenas (see {@link Games}): stepping into an entrance, onto its start point or /game join starts a run, an
  * action-bar line shows how it goes, and the end keeps a personal best and fires the Rewards triggers
  * "Game finished" and "New personal best". Templates: infinite parkour (jumps made ahead of you, each player in their
  * own lane), race course (checkpoints in order; running, boat or elytra), dropper (fall into the water at the bottom)
@@ -77,8 +77,11 @@ public final class GameRuntime {
 		final long started = System.currentTimeMillis();
 		/** Parkour: jumps; race: next checkpoint; dropper: tries. */
 		int progress;
-		/** Parkour: its lane and the blocks lying ahead (oldest first). */
+		/** Parkour: its lane and the blocks lying ahead (oldest first); in a box, the way the jumps go (0 +Z, 1 -X, 2 -Z, 3 +X). */
 		int lane = -1;
+		int heading;
+		/** Parkour: what the last jump is (0 a block, 1 a slab, 2 a thin block). */
+		int lastKind;
 		final Deque<BlockPos> blocks = new ArrayDeque<>();
 		BlockPos lastBlock;
 
@@ -95,7 +98,7 @@ public final class GameRuntime {
 	private static volatile Games.Settings settings = new Games.Settings().fill();
 	private static long modified = -1;
 	private static final Map<UUID, Session> sessions = new HashMap<>();
-	/** After a run ends, the start pad waits a moment before starting the next one. */
+	/** After a run ends, the start point waits a moment before starting the next one. */
 	private static final Map<UUID, Long> cooldown = new HashMap<>();
 	private static Map<String, Map<String, Games.Score>> scores = new LinkedHashMap<>();
 	private static Path scoresFile;
@@ -225,12 +228,12 @@ public final class GameRuntime {
 
 	private static void hud(ServerPlayer p, Session s) {
 		String line = switch (s.arena.type) {
-			case "parkour" -> "Jumps: " + s.progress + best(s, " · best ");
+			case "parkour" -> "Jumps: " + s.progress + " · level " + (parkourLevel(s.arena, s.progress) + 1) + best(s, " · best ");
 			case "race" -> clock(s.millis()) + " · checkpoint " + Math.min(s.progress, s.arena.checkpoints.size()) + "/" + s.arena.checkpoints.size() + best(s, " · best ");
 			case "dropper" -> clock(s.millis()) + (s.progress > 0 ? " · try " + (s.progress + 1) : "") + best(s, " · best ");
 			default -> clock(s.millis()) + best(s, " · best ");
 		};
-		p.sendOverlayMessage(Component.literal(s.arena.name + " · " + line).withStyle(ChatFormatting.AQUA));
+		p.sendOverlayMessage(Component.literal(s.arena.shown() + " · " + line).withStyle(ChatFormatting.AQUA));
 	}
 
 	private static String best(Session s, String lead) {
@@ -249,7 +252,7 @@ public final class GameRuntime {
 		switch (a.type) {
 			case "parkour" -> {
 				int lane = freeLane(a);
-				if (lane < 0) return "All " + a.lanes + " lanes are in use; try again in a moment.";
+				if (lane < 0) return "All " + laneCount(a) + " lanes are in use; try again in a moment.";
 				s.lane = lane;
 				sessions.put(p.getUUID(), s);
 				BlockPos first = laneStart(a, lane);
@@ -285,7 +288,7 @@ public final class GameRuntime {
 			case "dropper" -> "Land in the water at the bottom." + (a.maxTries > 0 ? " " + a.maxTries + " tries." : "");
 			default -> "Find the way to the glowing corner.";
 		};
-		p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.name + " started. " + hint + " /game leave stops." : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
+		p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.shown() + " started. " + hint + " /game leave stops." : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 		commands(server, a.startCommands, a, p, "");
 		return null;
 	}
@@ -305,14 +308,14 @@ public final class GameRuntime {
 		if (p != null) {
 			String result = Games.higherIsBetter(s.arena.type) ? s.progress + " jump" + (s.progress == 1 ? "" : "s") : clock(score);
 			if (finished) {
-				String line = s.arena.finishMessage.isBlank() ? "■ " + s.arena.name + ": " + result : fill(s.arena.finishMessage, s.arena, p, result);
+				String line = s.arena.finishMessage.isBlank() ? "■ " + s.arena.shown() + ": " + result : fill(s.arena.finishMessage, s.arena, p, result);
 				p.sendSystemMessage(Component.literal(line + (record ? " · new personal best!" : "")).withStyle(record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
 				commands(server, s.arena.finishCommands, s.arena, p, result);
 			}
 			else if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
-			// Back to the start pad (not after dying: the respawn takes care of that).
-			if (level != null && p.isAlive() && why != null && !why.startsWith("You left")) {
-				p.teleportTo(level, s.arena.start.x, s.arena.start.y, s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
+			// To the game hub spawn, else the start point (not after dying: the respawn does that; not when they left for another dimension).
+			if (p.isAlive() && (why == null || !why.startsWith("You left the arena"))) {
+				if (!Portals.returnTo(server, p, s.arena) && level != null) p.teleportTo(level, s.arena.start.x, s.arena.start.y, s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
 				cooldown.put(s.player, System.currentTimeMillis() + Math.max(3, s.arena.cooldown) * 1000L);
 			}
 			if (finished) {
@@ -326,39 +329,150 @@ public final class GameRuntime {
 	// ---------------------------------------------------------------- parkour
 
 	private static int freeLane(Arena a) {
-		boolean[] used = new boolean[a.lanes];
-		for (Session s : sessions.values()) if (s.arena == a && s.lane >= 0 && s.lane < a.lanes) used[s.lane] = true;
-		for (int i = 0; i < a.lanes; i++) if (!used[i]) return i;
+		int lanes = laneCount(a);
+		boolean[] used = new boolean[lanes];
+		for (Session s : sessions.values()) if (s.arena == a && s.lane >= 0 && s.lane < lanes) used[s.lane] = true;
+		for (int i = 0; i < lanes; i++) if (!used[i]) return i;
 		return -1;
 	}
 
-	/** Lanes run side by side along X, each laneSpacing apart, starting a lane beyond the start pad. */
+	/** The parkour box, when its corners are set (same dimension as the start). */
+	private static int[] parkourBox(Arena a) {
+		if (a.areaMin == null || a.areaMax == null || a.start == null || !a.areaMin.dim.equals(a.start.dim)) return null;
+		return new int[] { (int) Math.min(a.areaMin.x, a.areaMax.x), (int) Math.min(a.areaMin.y, a.areaMax.y), (int) Math.min(a.areaMin.z, a.areaMax.z),
+				(int) Math.max(a.areaMin.x, a.areaMax.x), (int) Math.max(a.areaMin.y, a.areaMax.y), (int) Math.max(a.areaMin.z, a.areaMax.z) };
+	}
+
+	/** Lanes at once: as set, but in a box only as many as get 9 blocks each (side by side along X). */
+	private static int laneCount(Arena a) {
+		int[] b = parkourBox(a);
+		return b == null ? a.lanes : Math.max(1, Math.min(a.lanes, (b[3] - b[0] + 1) / 9));
+	}
+
+	/** A lane's own part of the box: x from, x to (the whole box's z and y). */
+	private static int[] laneStrip(Arena a, int lane) {
+		int[] b = parkourBox(a);
+		int width = (b[3] - b[0] + 1) / laneCount(a);
+		return new int[] { b[0] + lane * width, b[0] + (lane + 1) * width - 1 };
+	}
+
+	/** Lanes run side by side along X, each laneSpacing apart, starting a lane beyond the start point. */
 	private static BlockPos laneStart(Arena a, int lane) {
+		int[] b = parkourBox(a);
+		if (b != null) {
+			// In a box: at the near (north) edge of the lane's strip, at the start point's height (kept inside).
+			int[] strip = laneStrip(a, lane);
+			int y = (int) Math.max(b[1] + 1, Math.min(b[4] - 3, a.start.y));
+			return new BlockPos((strip[0] + strip[1]) / 2, y, b[2] + 1);
+		}
 		return BlockPos.containing(a.start.x + (lane + 1) * a.laneSpacing, a.start.y, a.start.z);
+	}
+
+	/** Parkour presets: a new level every … jumps, the first level, the highest. */
+	private static int[] preset(Arena a) {
+		return switch (a.difficulty) {
+			case "easy" -> new int[] { 25, 0, 2 };
+			case "hard" -> new int[] { 10, 1, 5 };
+			case "extreme" -> new int[] { 8, 2, 6 };
+			default -> new int[] { 15, 0, 4 };
+		};
+	}
+
+	/** The level a parkour run is at after this many jumps. */
+	static int parkourLevel(Arena a, int jumps) {
+		int[] p = preset(a);
+		return Math.min(p[2], p[1] + jumps / p[0]);
+	}
+
+	/** One jump: how far ahead, up or down, to the side, and what it lands on (0 a block, 1 a slab, 2 a thin block). */
+	private record Jump(int forward, int dy, int side, int kind) {
+	}
+
+	/**
+	 * A jump for the level, always one a sprinting player can make: up one only onto a block or a slab and at most 3
+	 * ahead, never up from a slab or onto a thin block, thin blocks and slabs at most 3 ahead, 5 ahead only straight
+	 * and one down at the highest levels; never past the arena's longest gap.
+	 */
+	private static Jump jump(Arena a, int lvl, int lastKind) {
+		double r = random.nextDouble();
+		int kind = lvl >= 4 && r < 0.25 ? 2 : lvl >= 3 && r < 0.55 ? 1 : 0;
+		int dy = lvl == 0 ? (random.nextInt(5) == 0 ? -1 : 0) : random.nextInt(3) - 1;
+		if (lastKind == 1 || kind == 2) dy = Math.min(dy, 0);
+		int side = lvl == 0 ? 0 : random.nextInt(3) - 1;
+		int max = dy > 0 || lastKind != 0 || kind != 0 ? 3 : 4;
+		if (lvl >= 6 && dy < 0 && side == 0 && kind == 0 && lastKind == 0) max = 5;
+		int min = lvl >= 5 ? 3 : 2;
+		int forward = lvl <= 1 ? 2 + random.nextInt(2) : min + random.nextInt(Math.max(1, max - min + 1));
+		forward = Math.max(2, Math.min(Math.min(forward, max), a.maxGap));
+		return new Jump(forward, dy, side, kind);
+	}
+
+	private static net.minecraft.world.level.block.state.BlockState jumpBlock(Arena a, int kind) {
+		return switch (kind) {
+			case 1 -> Blocks.SMOOTH_STONE_SLAB.defaultBlockState();
+			case 2 -> (random.nextBoolean() ? Blocks.GLASS_PANE : Blocks.IRON_BARS).defaultBlockState();
+			default -> block(a.palette.get(random.nextInt(a.palette.size()))).defaultBlockState();
+		};
+	}
+
+	/** Free to place a jump: the spot and two above it are air, and none of the jumps ahead is in the way. */
+	private static boolean free(ServerLevel level, Session s, BlockPos at) {
+		for (int up = 0; up < 3; up++) if (!level.getBlockState(at.above(up)).isAir()) return false;
+		for (BlockPos b : s.blocks) if (Math.abs(b.getX() - at.getX()) <= 1 && Math.abs(b.getZ() - at.getZ()) <= 1 && Math.abs(b.getY() - at.getY()) <= 2) return false;
+		return true;
 	}
 
 	private static void nextJump(ServerLevel level, Session s, Arena a) {
 		BlockPos last = s.lastBlock;
-		// Gaps grow with the score; never more than 4 forward or 1 up.
-		int hard = Math.min(3, s.progress / 15);
-		int dy = random.nextInt(3) - 1;
-		int forward = 2 + random.nextInt(2) + (hard > 0 ? random.nextInt(hard + 1) / 2 : 0);
-		if (dy > 0) forward = Math.min(forward, 3);
-		forward = Math.min(forward, s.arena.maxGap);
-		int side = random.nextInt(3) - 1;
-		BlockPos lane = laneStart(a, s.lane);
-		// Keep within the lane (laneSpacing wide) and within the world's height.
-		int x = Math.max(lane.getX() - a.laneSpacing / 3, Math.min(lane.getX() + a.laneSpacing / 3, last.getX() + side));
-		int y = Math.max(level.getMinY() + 4, Math.min(level.getMaxY() - 8, last.getY() + dy));
-		place(level, s, new BlockPos(x, y, last.getZ() + forward), a);
+		int lvl = parkourLevel(a, s.progress);
+		int[] box = parkourBox(a);
+		for (int attempt = 0; attempt < 12; attempt++) {
+			Jump j = jump(a, attempt < 8 ? lvl : 0, s.lastKind);
+			if (box != null) {
+				// In a box: on along the heading within the lane's strip (and the box's height), turning at a wall.
+				int[] strip = laneStrip(a, s.lane);
+				int y = Math.max(box[1] + 1, Math.min(box[4] - 3, last.getY() + j.dy()));
+				if (attempt == 0 && random.nextInt(8) == 0) s.heading = (s.heading + (random.nextBoolean() ? 1 : 3)) % 4;
+				for (int turn = 0; turn < 4; turn++) {
+					int h = (s.heading + turn) % 4;
+					int dx = h == 1 ? -j.forward() : h == 3 ? j.forward() : j.side(), dz = h == 0 ? j.forward() : h == 2 ? -j.forward() : j.side();
+					BlockPos next = new BlockPos(last.getX() + dx, y, last.getZ() + dz);
+					if (next.getX() < strip[0] + 1 || next.getX() > strip[1] - 1 || next.getZ() < box[2] + 1 || next.getZ() > box[5] - 1 || !free(level, s, next)) continue;
+					s.heading = h;
+					place(level, s, next, a, j.kind());
+					return;
+				}
+				continue;
+			}
+			BlockPos lane = laneStart(a, s.lane);
+			// Keep within the lane (laneSpacing wide) and within the world's height.
+			int x = Math.max(lane.getX() - a.laneSpacing / 3, Math.min(lane.getX() + a.laneSpacing / 3, last.getX() + j.side()));
+			int y = Math.max(level.getMinY() + 4, Math.min(level.getMaxY() - 8, last.getY() + j.dy()));
+			BlockPos next = new BlockPos(x, y, last.getZ() + j.forward());
+			if (!free(level, s, next)) continue;
+			place(level, s, next, a, j.kind());
+			return;
+		}
+		// Hemmed in: a plain short jump (two ahead, same height) toward the middle of the box, or straight on.
+		if (box != null) {
+			int[] strip = laneStrip(a, s.lane);
+			int mx = (strip[0] + strip[1]) / 2, mz = (box[2] + box[5]) / 2;
+			place(level, s, last.offset(Integer.signum(mx - last.getX()) * 2, 0, Integer.signum(mz - last.getZ()) * 2), a, 0);
+		} else {
+			place(level, s, last.offset(0, 0, 2), a, 0);
+		}
 	}
 
 	private static void place(ServerLevel level, Session s, BlockPos pos, Arena a) {
-		Block block = block(a.palette.get(random.nextInt(a.palette.size())));
+		place(level, s, pos, a, 0);
+	}
+
+	private static void place(ServerLevel level, Session s, BlockPos pos, Arena a, int kind) {
 		if (!level.getBlockState(pos).isAir()) pos = pos.above();
-		level.setBlock(pos, block.defaultBlockState(), 3);
+		level.setBlock(pos, jumpBlock(a, kind), 3);
 		s.blocks.addLast(pos);
 		s.lastBlock = pos;
+		s.lastKind = kind;
 		placed.add(level.dimension().identifier() + "|" + pos.getX() + "|" + pos.getY() + "|" + pos.getZ());
 		placedDirty = true;
 	}
@@ -387,12 +501,41 @@ public final class GameRuntime {
 					unplace(level, s.blocks.removeFirst());
 					s.progress++;
 					nextJump(level, s, s.arena);
+					milestone(server, p, s);
 				}
 				level.playSound(null, under, SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.PLAYERS, 0.6f, 1.2f + Math.min(0.8f, s.progress / 50f));
 				return;
 			}
 			i++;
 		}
+	}
+
+	/** Every few jumps: the arena's reward commands and the Rewards trigger "Makes jumps in parkour". */
+	private static void milestone(MinecraftServer server, ServerPlayer p, Session s) {
+		Arena a = s.arena;
+		String jumps = String.valueOf(s.progress);
+		int lvl = parkourLevel(a, s.progress);
+		if (lvl > parkourLevel(a, s.progress - 1)) {
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Component.literal("Level " + (lvl + 1)).withStyle(ChatFormatting.GOLD)));
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket(Component.literal(switch (lvl) {
+				case 1 -> "up, down and sideways";
+				case 2 -> "longer jumps";
+				case 3 -> "slabs";
+				case 4 -> "thin blocks";
+				case 5 -> "far and high";
+				default -> "the longest jumps";
+			}).withStyle(ChatFormatting.GRAY)));
+			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.0f);
+		}
+		if (a.everyJumps > 0 && s.progress % a.everyJumps == 0) {
+			p.sendOverlayMessage(Component.literal("★ " + s.progress + " jumps!").withStyle(ChatFormatting.GOLD));
+			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.4f);
+			for (String line : a.everyCommands) {
+				String cmd = fill(line.strip().replaceFirst("^/", ""), a, p, jumps).replace("{jumps}", jumps);
+				if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
+			}
+		}
+		RewardsControl.fireEvery(server, "parkourJumps", p, a.name, s.progress);
 	}
 
 	// ---------------------------------------------------------------- race, dropper, maze
@@ -412,6 +555,12 @@ public final class GameRuntime {
 			if (inside(p, cps.get(s.progress))) {
 				s.progress++;
 				p.level().playSound(null, p.blockPosition(), SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.7f, 1.0f + s.progress * 0.05f);
+				// The arena's commands at each checkpoint ({checkpoint}).
+				String cp = String.valueOf(s.progress);
+				for (String line : s.arena.checkpointCommands) {
+					String cmd = fill(line.strip().replaceFirst("^/", ""), s.arena, p, cp).replace("{checkpoint}", cp);
+					if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
+				}
 			}
 			return;
 		}
@@ -519,13 +668,13 @@ public final class GameRuntime {
 					if (Games.quick(a.type)) {
 						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
 						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
-						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": you're on the pad; the round starts once the join window closes."), false);
+						ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": you're on the pad; the round starts once the join window closes."), false);
 						return 1;
 					}
 					if (a.type.equals("waves")) {
 						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
 						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
-						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": the party leader stands on the pad to start (or queue up)."), false);
+						ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": the party leader stands on the pad to start (or queue up)."), false);
 						return 1;
 					}
 					String err = start(ctx.getSource().getServer(), p, a);
@@ -544,14 +693,14 @@ public final class GameRuntime {
 					Arena a = arena(ctx);
 					if (a == null) return fail(ctx, "There's no such game.");
 					List<Games.Score> list = top(a, 10);
-					StringBuilder b = new StringBuilder(a.name + (list.isEmpty() ? ": no runs yet." : ":"));
+					StringBuilder b = new StringBuilder(a.shown() + (list.isEmpty() ? ": no runs yet." : ":"));
 					int i = 1;
 					for (Games.Score sc : list) b.append("\n").append(i++).append(". ").append(sc.name).append(" · ").append(Games.scoreText(a.type, sc.best, GameRuntime::clock));
 					ctx.getSource().sendSuccess(() -> Component.literal(b.toString()).withStyle(ChatFormatting.GOLD), false);
 					return 1;
 				})))
 				.then(Commands.literal("list").executes(ctx -> {
-					String names = settings.arenas.stream().filter(a -> a.enabled).map(a -> a.name + " (" + a.type + ")").reduce((x, y) -> x + ", " + y).orElse("none yet");
+					String names = settings.arenas.stream().filter(a -> a.enabled).map(a -> a.shown() + (a.shown().equals(a.name) ? "" : " (/game join " + a.name + ")") + " · " + a.type).reduce((x, y) -> x + ", " + y).orElse("none yet");
 					ctx.getSource().sendSuccess(() -> Component.literal("Games: " + names), false);
 					return 1;
 				}))
@@ -580,7 +729,7 @@ public final class GameRuntime {
 					QuickRuntime.stop(ctx.getSource().getServer(), a);
 					settings.arenas.remove(a);
 					saveSettings();
-					ctx.getSource().sendSuccess(() -> Component.literal("Removed " + a.name + " (the blocks it built stay)."), true);
+					ctx.getSource().sendSuccess(() -> Component.literal("Removed " + a.shown() + " (the blocks it built stay)."), true);
 					return 1;
 				})))
 				.then(Commands.literal("try").requires(admin).then(arenaArg.get().executes(ctx -> {
@@ -588,13 +737,13 @@ public final class GameRuntime {
 					if (a != null && Games.quick(a.type)) {
 						String err = QuickRuntime.trial(ctx.getSource().getServer(), a, ctx.getSource().getPlayerOrException());
 						if (err != null) return fail(ctx, err);
-						ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": a round with only you in it; /game leave ends it."), true);
+						ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": a round with only you in it; /game leave ends it."), true);
 						return 1;
 					}
 					if (a == null || !a.type.equals("waves")) return fail(ctx, "Only wave arenas and quick rounds can be tried.");
 					String err = WaveRuntime.trial(ctx.getSource().getServer(), a);
 					if (err != null) return fail(ctx, err);
-					ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
+					ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
 					return 1;
 				})))
 				.then(Commands.literal("edit").requires(admin).then(arenaArg.get()
@@ -686,6 +835,17 @@ public final class GameRuntime {
 							int span = a.platformSize * 3 + a.platformGap * 2;
 							return "Grid built here: " + span + " × " + span + " blocks (+X and +Z, at the block under your feet). Keep the space below open: falling = out.";
 						})))
+						// Ways in and out, placed anywhere (e.g. in the hub): particles and a label above each.
+						.then(points("entrance", a -> a.entrances, "Entrance", "stepping in for a second takes players to the game; its name and top 3 float above it"))
+						.then(points("watch", a -> a.watchEntrances, "Watch point", "stepping in takes players to the spectator area (/game edit … spectate)"))
+						.then(points("back", a -> a.exitPads, "Back point", "the way out of spectator areas and the like: to the game hub spawn (inside a wave game or quick round: 5 seconds on it leaves the game)"))
+						// What players see, spaces allowed (the one-word name stays for the commands).
+						.then(Commands.literal("title").then(Commands.argument("title", StringArgumentType.greedyString()).executes(ctx -> edit(ctx, (a, p) -> {
+							String t = StringArgumentType.getString(ctx, "title").strip();
+							if (t.length() > 48) return "Up to 48 characters, please (nothing changed).";
+							a.title = t.equals(a.name) ? "" : t;
+							return "Players see it as \"" + a.shown() + "\" now; commands still use " + a.name + ".";
+						}))))
 						// Head hunts.
 						.then(Commands.literal("texture").then(Commands.argument("texture", StringArgumentType.greedyString()).executes(ctx -> edit(ctx, (a, p) -> {
 							String t = StringArgumentType.getString(ctx, "texture").strip();
@@ -702,7 +862,7 @@ public final class GameRuntime {
 
 	/** {player}, {game}, {score} in an arena's own lines and commands. */
 	private static String fill(String text, Arena a, ServerPlayer p, String score) {
-		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.name).replace("{score}", score);
+		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {
@@ -722,7 +882,7 @@ public final class GameRuntime {
 		if (a == null) return fail(ctx, "There's no such game.");
 		String msg = e.apply(a, p);
 		saveSettings();
-		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": " + msg), true);
+		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
 		return 1;
 	}
 
@@ -740,8 +900,8 @@ public final class GameRuntime {
 		BlockPos o = other == null || !other.dim.equals(pos.dim) ? null : BlockPos.containing(other.x, other.y, other.z);
 		Corners.show(p, at, o);
 		String msg = "Corner " + (first ? 1 : 2) + " at " + at.toShortString() + (o == null ? ". Now the opposite corner (height included): /game edit " + a.name + (first ? " corner2" : " corner1") + " [x y z] or look at it."
-				: ". Fight box " + Corners.size(at, o) + ".");
-		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": " + msg), true);
+				: ". Box " + Corners.size(at, o) + ".");
+		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
 		return 1;
 	}
 
@@ -756,19 +916,19 @@ public final class GameRuntime {
 		a.type = type;
 		a.start = pos(p);
 		String next = switch (type) {
-			case "parkour" -> "Stepping on this spot starts a run; lanes go off along +X every " + a.laneSpacing + " blocks, so keep that space free.";
+			case "parkour" -> "This spot is the start point; lanes go off along +X every " + a.laneSpacing + " blocks, so keep that space free. Or keep it in a box: /game edit " + name + " corner1 / corner2 (lanes share it, 9 blocks wide each).";
 			case "race" -> "This spot is the start. Add checkpoints in order with /game edit " + name + " checkpoint add <radius>, then /game edit " + name + " finish <radius>.";
-			case "waves" -> "This spot is the start pad (a party leader stands on it). Then: /game edit " + name + " spawn (where players appear), corner1 / corner2 [x y z] (the fight box, height included),"
+			case "waves" -> "This spot is the start point (a party leader stands on it). Then: /game edit " + name + " spawn (where players appear), corner1 / corner2 [x y z] (the fight box, height included),"
 					+ " mobspawn add (where mobs come from; several), optionally spectate [radius] and exitpad add, and kit. Waves and rewards are set in the panel (Games).";
-			case "dropper" -> "This spot is the start pad. Stand where players drop from: /game edit " + name + " top; then in the water at the bottom: /game edit " + name + " finish <radius>.";
-			case "ghasts" -> "This spot is the start pad (everyone on it within " + a.joinSeconds + " s plays). Then: /game edit " + name + " spawn, corner1 / corner2 (the play box, height included),"
+			case "dropper" -> "This spot is the start point. Stand where players drop from: /game edit " + name + " top; then in the water at the bottom: /game edit " + name + " finish <radius>.";
+			case "ghasts" -> "This spot is the start point (everyone on it within " + a.joinSeconds + " s plays). Then: /game edit " + name + " spawn, corner1 / corner2 (the play box, height included),"
 					+ " mobspawn add (where ghasts appear, up high; several). Try it with /game try " + name + ".";
-			case "colorfloor" -> "This spot is the start pad. Stand where the grid's corner goes and type /game edit " + name + " grid (it builds 3×3 platforms toward +X and +Z). Colours, speed and mobs are set in the panel.";
-			case "anvils", "treasure", "fishing" -> "This spot is the start pad. Then: /game edit " + name + " spawn and corner1 / corner2 (the play box, height included"
+			case "colorfloor" -> "This spot is the start point. Stand where the grid's corner goes and type /game edit " + name + " grid (it builds 3×3 platforms toward +X and +Z). Colours, speed and mobs are set in the panel.";
+			case "anvils", "treasure", "fishing" -> "This spot is the start point. Then: /game edit " + name + " spawn and corner1 / corner2 (the play box, height included"
 					+ (type.equals("anvils") ? "; anvils fall from its top" : type.equals("fishing") ? "; put water in it" : "; treasure appears on its floor") + "). Try it with /game try " + name + ".";
 			case "heads" -> "Set the heads' skin: /game edit " + name + " texture <url or value>, then /game edit " + name + " headitem gives you heads to hide (placing one adds it)."
 					+ " Rewards every few heads are set in the panel.";
-			default -> "The maze is built from this corner (" + (a.size * 2 + 1) + " blocks each way, +X and +Z). The start pad is here too; move it with /game edit " + name + " start.";
+			default -> "The maze is built from this corner (" + (a.size * 2 + 1) + " blocks each way, +X and +Z). The start point is here too; move it with /game edit " + name + " start.";
 		};
 		// Sensible starts for the quick rounds.
 		switch (type) {
@@ -798,8 +958,36 @@ public final class GameRuntime {
 		settings.fill();
 		saveSettings();
 		if (type.equals("maze")) buildMaze((ServerLevel) p.level(), a);
-		ctx.getSource().sendSuccess(() -> Component.literal("Made the " + type + " game " + name + ". " + next).withStyle(ChatFormatting.GREEN), true);
+		ctx.getSource().sendSuccess(() -> Component.literal("Made the " + type + " game " + name + ". " + next + (type.equals("heads") ? "" : " Then its entrance, e.g. in the hub: /game edit " + name + " entrance add (and a display name: /game edit " + name + " title …).")).withStyle(ChatFormatting.GREEN), true);
 		return 1;
+	}
+
+	/** add (here) | remove (the nearest within 5 blocks) | clear, for a list of points. */
+	private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> points(String word, java.util.function.Function<Arena, List<Games.Pos>> list, String label, String what) {
+		return Commands.literal(word)
+				.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+					list.apply(a).add(pos(p));
+					return label + " " + list.apply(a).size() + " here: " + what + ".";
+				})))
+				.then(Commands.literal("remove").executes(ctx -> edit(ctx, (a, p) -> {
+					Games.Pos near = null;
+					double best = 25;
+					for (Games.Pos x : list.apply(a)) {
+						if (!x.dim.equals(dim(p))) continue;
+						double d = p.distanceToSqr(x.x, x.y, x.z);
+						if (d < best) {
+							best = d;
+							near = x;
+						}
+					}
+					if (near == null) return "No " + label.toLowerCase(Locale.ROOT) + " within 5 blocks (nothing changed).";
+					list.apply(a).remove(near);
+					return label + " removed (" + list.apply(a).size() + " left).";
+				})))
+				.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+					list.apply(a).clear();
+					return "All " + label.toLowerCase(Locale.ROOT) + "s removed.";
+				})));
 	}
 
 	private static int headItem(CommandContext<CommandSourceStack> ctx, int count) throws CommandSyntaxException {
@@ -809,7 +997,7 @@ public final class GameRuntime {
 		net.minecraft.world.item.ItemStack st = HeadHunt.headItem(p, a, count);
 		if (st == null) return fail(ctx, "Set the heads' skin first: /game edit " + a.name + " texture <url or value>.");
 		if (!p.getInventory().add(st)) p.level().addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
-		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": here are heads to hide; each one you place joins the hunt (break it in creative to take it out)."), false);
+		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": here are heads to hide; each one you place joins the hunt (break it in creative to take it out)."), false);
 		return 1;
 	}
 
@@ -825,7 +1013,7 @@ public final class GameRuntime {
 		boolean done = add ? HeadHunt.add(a, p.level(), b.getBlockPos()) : HeadHunt.remove(a, p.level(), b.getBlockPos());
 		String msg = add ? (done ? "Head added (" + a.heads.size() + " hidden); it takes the hunt's skin." : "That head is in the hunt already.")
 				: (done ? "Head taken out (" + a.heads.size() + " left)." : "That head isn't in the hunt.");
-		ctx.getSource().sendSuccess(() -> Component.literal(a.name + ": " + msg), true);
+		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
 		return done ? 1 : 0;
 	}
 
@@ -870,6 +1058,12 @@ public final class GameRuntime {
 		sc.best = score;
 		sc.at = System.currentTimeMillis();
 		saveScores();
+	}
+
+	/** A back point: their solo run ends (it doesn't count). */
+	static void leaveRun(MinecraftServer server, ServerPlayer p) {
+		Session s = sessions.get(p.getUUID());
+		if (s != null) end(server, s, "You left the game.", false);
 	}
 
 	/** In a parkour, race, dropper or maze run. */

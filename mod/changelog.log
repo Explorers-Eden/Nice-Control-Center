@@ -1,4 +1,16 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.60.0
+- Games: entrances, watch points and back points, placed anywhere (e.g. in the hub) with /game edit <name> entrance|watch|back add|remove|clear. Each has particles and a floating label: entrances show the game's name, what it is, who's playing and the top 3, and stepping in for a second takes players to the game (solo games start the run, wave games bring the party to the start point, quick rounds join the next round); watch points take players to the spectator area; back points are the way out of spectator areas (inside a wave game or quick round, 5 seconds on one leaves it, as before). Spectator areas, dungeon pads and dungeon waiting areas get labels too
+- Games: after a game players go to the game hub spawn (/game spawn set), else back where they came from; the start point (formerly start pad) is just where a game begins
+- Games: display names with spaces (/game edit <name> title Sky Run, or the panel); commands keep the one-word name
+- Parkour: optional box (/game edit <name> corner1 / corner2): lanes share it and the jumps turn at its walls
+- Parkour: a reward every … jumps (commands with {jumps}) and the Rewards trigger "Makes jumps in parkour"; the old finish commands are "when a run ends" (they fell)
+- Parkour: gets harder in levels (shown on screen, title at each new level), with presets easy, normal, hard, extreme: up and down and diagonal jumps, longer gaps, slabs, then glass panes and iron bars; only jumps a sprinting player can make
+- Race: commands at each checkpoint ({checkpoint})
+
+## 1.59.0
+- (in 1.60.0)
+
 ## 1.58.0
 - Game claims: choose the game mode inside (panel claim editor, or /claim admin gamemode <mode> standing in it): adventure (still the default), survival (left as it is), creative or spectator. Survival players switch on entering and are back in survival on leaving (no fall damage after spectator or creative); admins who were in another mode are left alone; moving between game claims with different modes switches straight over. Choosing a mode alone makes a server claim a game area
 

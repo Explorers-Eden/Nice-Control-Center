@@ -1984,13 +1984,22 @@
         + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : quick ? 'Message when their score counts ({score})' : 'Finish message ({score})', 'default line')
         + lines('startCommands', 'Commands on start ({player}, {game})')
         + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards'
-          : quick ? 'Commands for each player whose score counts ({score}): round rewards' : 'Commands when a run counts ({score})');
+          : quick ? 'Commands for each player whose score counts ({score}): round rewards'
+          : a.type === 'parkour' ? 'Commands when a run ends (they fell; {score} = jumps made, only with at least one)' : 'Commands when they finish ({score} = their time)');
       const fields = {
         parkour: field('palette', 'Blocks (ids, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
-          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes', num('laneSpacing', 16, 256))
+          + `<p class="pn-hint pn-field-wide"><i class="bi bi-bounding-box"></i> ${a.areaMin && a.areaMax
+            ? `Kept in a box ${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}: lanes share it (9 blocks wide each) and the jumps turn at its walls.`
+            : `No box: lanes go off along +X from the start pad, jumps along +Z without end. Keep it in a box with <code>/game edit ${esc(a.name)} corner1</code> + <code>corner2</code>.`}</p>`
+          + field('difficulty', 'Gets harder', `<select data-g="difficulty">${[['easy', 'easy (a level every 25 jumps, up to level 3)'], ['normal', 'normal (every 15, up to 5)'], ['hard', 'hard (every 10, from level 2 up to 6)'], ['extreme', 'extreme (every 8, from level 3 up to 7)']].map(([v, l]) => `<option value="${v}" ${a.difficulty === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
+          + '<p class="pn-hint pn-field-wide">Levels add up and down, diagonal jumps, longer gaps, slabs, then glass panes and iron bars; only jumps a sprinting player can make, never longer than the longest gap below.</p>'
+          + field('everyJumps', 'A reward every … jumps (0 = none)', num('everyJumps', 0, 10000))
+          + lines('everyCommands', 'Commands every … jumps ({jumps}, {player}, {game}); also the Rewards trigger "Makes jumps in parkour"')
+          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes (without a box)', num('laneSpacing', 16, 256))
           + field('ahead', 'Jumps shown ahead', num('ahead', 1, 8)) + field('maxGap', 'Longest gap (blocks)', num('maxGap', 2, 5)),
         race: field('mode', 'Race by', `<select data-g="mode">${[['run', 'running'], ['boat', 'boat'], ['elytra', 'elytra']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
           + field('timeLimit', 'Time limit (seconds, 0 = none)', num('timeLimit', 0, 3600))
+          + lines('checkpointCommands', 'Commands at each checkpoint ({checkpoint}, {player}, {game})')
           + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
         dropper: field('maxTries', 'Tries (0 = as many as it takes)', num('maxTries', 0, 999)) + `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
         maze: field('size', 'Cells per side', num('size', 4, 40)) + field('wall', 'Wall block', `<input type="text" data-g="wall" value="${esc(a.wall)}">`)
@@ -2001,22 +2010,31 @@
         waves: gmWaveFields(a, field, num, text, lines),
         heads: gmHeadFields(a, field, num, lines),
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
-      const allFields = fields + own;
+      const allFields = field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`) + fields + own;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
       const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
-        : `<i class="bi bi-geo-alt"></i> Start pad: ${esc(where)} · ${waves ? 'a party leader stands on it to start (or queue up while a game runs)'
-          : quick ? `everyone stepping on it within ${a.joinSeconds} s plays the same round (or <code>/game join ${esc(a.name)}</code>)` : `players join with <code>/game join ${esc(a.name)}</code> or by stepping on it`}.`;
+        : `<i class="bi bi-geo-alt"></i> Start point (where the game begins): ${esc(where)}${waves ? ' · the party leader stands on it to start' : quick ? ` · everyone on it within ${a.joinSeconds} s plays the same round` : ''}. Move it with <code>/game edit ${esc(a.name)} start</code>.`;
+      // Entrances, watch points and back points: placed in game, listed (and removable) here.
+      const pts = (list, k) => (list || []).map((x, xi) => `<li><span>${esc(dimShort(x.dim))} · ${Math.round(x.x)}, ${Math.round(x.y)}, ${Math.round(x.z)}</span><button type="button" class="np-btn small danger" data-gact="ptrm" data-pk="${k}" data-pi="${xi}" title="Take it away"><i class="bi bi-x-lg"></i></button></li>`).join('');
+      const way = (k, icon, label, how, list, note) => `<div class="pn-gm-way"><b><i class="bi ${icon}"></i> ${label} <span class="np-chip">${(list || []).length}</span></b>
+        <small>${note} <code>/game edit ${esc(a.name)} ${how} add</code> where you stand (<code>remove</code> next to one).</small>${(list || []).length ? `<ul class="pn-gm-heads">${pts(list, k)}</ul>` : ''}</div>`;
+      const ways = `<div class="pn-gm-ways">
+        ${way('entrances', 'bi-door-open', 'Entrances', 'entrance', a.entrances, 'Anywhere, e.g. in the hub: particles, the name and top 3 above it; stepping in takes players to the game.')}
+        ${heads ? '' : way('watchEntrances', 'bi-eye', 'Watch points', 'watch', a.watchEntrances, `To the spectator area${a.spectate ? '' : ` (none yet: <code>/game edit ${esc(a.name)} spectate</code>)`}.`)}
+        ${heads ? '' : way('exitPads', 'bi-box-arrow-left', 'Back points', 'back', a.exitPads, 'The way out of spectator areas and the like, to the game hub spawn' + (waves || quick ? '; inside the game, 5 seconds on one leaves it.' : '.'))}
+      </div><p class="pn-hint">After a game everyone goes to the game hub spawn (above; <code>/game spawn set</code>), else back where they came from.</p>`;
       return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
         <div class="pn-rw-head">
           <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
-          <b class="pn-gm-name">${esc(a.name)}</b><span class="np-chip">${esc(GAME_LABELS[a.type] || a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting to start' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
+          <b class="pn-gm-name">${esc(a.title || a.name)}</b>${a.title && a.title !== a.name ? `<span class="pn-hint">${esc(a.name)}</span>` : ''}<span class="np-chip">${esc(GAME_LABELS[a.type] || a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting to start' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
           <span class="pn-rw-actions">
             <button type="button" class="np-btn small" data-gact="reset" title="Clear the best scores"><i class="bi bi-trophy"></i> Reset scores</button>
             <button type="button" class="np-btn small danger" data-gact="delete" title="Remove the arena (what it built stays)"><i class="bi bi-trash"></i></button>
           </span>
         </div>
         <p class="pn-hint">${padHint}</p>
+        ${ways}
         <div class="pn-gm-body"><div class="pn-rw-grid">${allFields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
       </section>`;
     }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze, waves, ghasts, colorfloor, anvils, treasure, fishing, heads).</p>';
@@ -2157,7 +2175,10 @@
     const b = e.target.closest('[data-gact]');
     if (!b) return;
     const a = gm.settings.arenas[+b.closest('[data-arena]').dataset.arena];
-    if (b.dataset.gact === 'headrm') {
+    if (b.dataset.gact === 'ptrm') {
+      a[b.dataset.pk].splice(+b.dataset.pi, 1);
+      gmChanged(true);
+    } else if (b.dataset.gact === 'headrm') {
       a.heads.splice(+b.dataset.h, 1);
       gmChanged(true);
     } else if (b.dataset.gact === 'delete') {

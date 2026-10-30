@@ -71,12 +71,24 @@ public final class Games {
 
 	public static final class Arena {
 		public String id = "";
+		/** One word, for the commands (/game join <name>). */
 		public String name = "";
+		/** What players see (spaces allowed); empty = the name. */
+		public String title = "";
+
+		public String shown() {
+			return title == null || title.isBlank() ? name : title.strip();
+		}
+
 		/** parkour, race, dropper or maze. */
 		public String type = "parkour";
 		public boolean enabled = true;
-		/** The start pad: stepping on it starts a run (and where /game join brings players). */
+		/** The start point: where the game begins (stepping on it starts a run; where /game join and the entrances bring players). */
 		public Pos start;
+		/** Entrances (e.g. in a hub): stepping in takes players to the game; they show its name and top 3 above them. */
+		public List<Pos> entrances = new ArrayList<>();
+		/** Watch points: stepping in takes players to the spectator area (spectate). */
+		public List<Pos> watchEntrances = new ArrayList<>();
 		/** Parkour: blocks the jumps are made of. */
 		public List<String> palette = new ArrayList<>(List.of("minecraft:white_concrete", "minecraft:light_blue_concrete", "minecraft:lime_concrete",
 				"minecraft:yellow_concrete", "minecraft:orange_concrete", "minecraft:pink_concrete", "minecraft:magenta_concrete"));
@@ -98,6 +110,15 @@ public final class Games {
 		public String regenerate = "daily";
 		/** Maze: wall height in blocks. */
 		public int wallHeight = 3;
+		/** Parkour: a reward every this many jumps (0 = none): everyCommands ({jumps}, {player}, {game}). The box (corner1/2) is optional. */
+		public int everyJumps = 0;
+		/**
+		 * Parkour: how fast it gets harder: "easy", "normal", "hard" or "extreme" (levels come quicker and go higher:
+		 * longer gaps, up and down, diagonal jumps, then slabs and thin blocks); only jumps that can be made.
+		 */
+		public String difficulty = "normal";
+		/** Race: commands at each checkpoint ({checkpoint}, {player}, {game}). */
+		public List<String> checkpointCommands = new ArrayList<>();
 		/** Parkour: jumps shown ahead, and the longest gap (blocks) it gets to. */
 		public int ahead = 3;
 		public int maxGap = 4;
@@ -124,7 +145,7 @@ public final class Games {
 		/** Optional: where dead party members wait for the next wave and other parties queue up; its radius. */
 		public Pos spectate;
 		public int spectateRadius = 8;
-		/** Standing on one for 5 seconds leaves the game early. */
+		/** Back points: inside a game, standing on one for 5 seconds leaves it; elsewhere it takes players back where they came from. */
 		public List<Pos> exitPads = new ArrayList<>();
 		public int minParty = 1;
 		public int maxParty = 4;
@@ -221,6 +242,7 @@ public final class Games {
 					ids.add(a.id);
 				}
 				if (a.name == null) a.name = "";
+				if (a.title == null) a.title = "";
 				if (a.type == null || !TYPES.contains(a.type)) a.type = "parkour";
 				if (a.palette == null || a.palette.isEmpty()) a.palette = new Arena().palette;
 				if (a.checkpoints == null) a.checkpoints = new ArrayList<>();
@@ -288,6 +310,13 @@ public final class Games {
 				if (a.heads == null) a.heads = new ArrayList<>();
 				a.heads.removeIf(x -> x == null || x.dim == null);
 				a.rewardEvery = Math.max(0, Math.min(10_000, a.rewardEvery));
+				a.everyJumps = Math.max(0, Math.min(10_000, a.everyJumps));
+				if (a.entrances == null) a.entrances = new ArrayList<>();
+				if (a.watchEntrances == null) a.watchEntrances = new ArrayList<>();
+				a.watchEntrances.removeIf(x -> x == null || x.dim == null);
+				a.entrances.removeIf(x -> x == null || x.dim == null);
+				if (a.difficulty == null || !List.of("easy", "normal", "hard", "extreme").contains(a.difficulty)) a.difficulty = "normal";
+				if (a.checkpointCommands == null) a.checkpointCommands = new ArrayList<>();
 				if (a.everyCommands == null) a.everyCommands = new ArrayList<>();
 			}
 			return this;
@@ -328,6 +357,7 @@ public final class Games {
 		for (Arena a : s.arenas) {
 			if (!a.name.matches("[A-Za-z0-9_-]{1,32}")) return "An arena needs a one-word name (letters, digits, - and _).";
 			if (!names.add(a.name.toLowerCase(Locale.ROOT))) return "Two arenas are called \"" + a.name + "\".";
+			if (a.title.length() > 48) return "The display name of " + a.name + " is up to 48 characters.";
 		}
 		return null;
 	}

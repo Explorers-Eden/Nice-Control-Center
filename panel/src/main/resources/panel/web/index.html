@@ -1205,7 +1205,7 @@
 			<div class="np-tab-panel" data-tab="games" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-controller"></i> Games</h3>
-					<p class="np-card-intro">Mini-games made from ready templates. Build one where you stand in game; players start it by stepping on its start pad.</p>
+					<p class="np-card-intro">Mini-games made from ready templates. Build one where you stand in game, then set its entrances (e.g. in your hub): players step in there and are taken to the game; after it they're back at the game hub spawn.</p>
 					<div class="pn-gm-templates">
 						<div><i class="bi bi-bricks"></i><b>Infinite parkour</b><span>Jumps appear ahead, harder as you go; every player gets their own lane.</span></div>
 						<div><i class="bi bi-flag"></i><b>Race course</b><span>Checkpoints in order, then the finish: running, by boat or elytra.</span></div>
@@ -1221,7 +1221,9 @@
 					</div>
 					<dl class="pn-gm-howto">
 						<dt>Set up</dt><dd><code>/game create &lt;type&gt; &lt;name&gt;</code> where it should be, then follow the hints it gives</dd>
-						<dt>Play</dt><dd><code>/game join &lt;name&gt;</code> or step on the start pad (quick rounds: everyone on it during the join window plays together); <code>/game top &lt;name&gt;</code> shows the best</dd>
+						<dt>Entrances</dt><dd><code>/game edit &lt;name&gt; entrance add</code> where players should step in (particles, the name and top 3 float above it); <code>watch add</code> for a way to the spectator area, <code>back add</code> for the way out of it</dd>
+						<dt>Play</dt><dd>Step into an entrance or <code>/game join &lt;name&gt;</code> (quick rounds: everyone there during the join window plays together); <code>/game top &lt;name&gt;</code> shows the best</dd>
+						<dt>Names</dt><dd>Commands use the one-word name; players see the display name (spaces allowed): <code>/game edit &lt;name&gt; title Sky Run</code> or the field below</dd>
 						<dt>Rewards</dt><dd>"Finishes a game" and "Sets a personal best", with <code>{score}</code> and <code>{game}</code></dd>
 						<dt>Safe inventories</dt><dd>Put the arena in a server claim with game-area options (Claims page); the market, inbox and pets don't work there. Wave fights and quick rounds bring their own kit option.</dd>
 						<dt>Hub spawn</dt><dd id="pn-gm-hub"></dd>

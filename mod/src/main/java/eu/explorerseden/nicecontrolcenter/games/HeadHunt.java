@@ -107,10 +107,10 @@ public final class HeadHunt {
 			if (admin(p) && p.isCreative()) {
 				a.heads.removeIf(h -> h.dim.equals(dim(level)) && (int) h.x == pos.getX() && (int) h.y == pos.getY() && (int) h.z == pos.getZ());
 				GameRuntime.saveSettings();
-				p.sendSystemMessage(Component.literal(a.name + ": head removed (" + a.heads.size() + " left).").withStyle(ChatFormatting.YELLOW));
+				p.sendSystemMessage(Component.literal(a.shown() + ": head removed (" + a.heads.size() + " left).").withStyle(ChatFormatting.YELLOW));
 				return true;
 			}
-			p.sendOverlayMessage(Component.literal("This head is part of the " + a.name + " hunt: right-click it").withStyle(ChatFormatting.GOLD));
+			p.sendOverlayMessage(Component.literal("This head is part of the " + a.shown() + " hunt: right-click it").withStyle(ChatFormatting.GOLD));
 			return false;
 		});
 	}
@@ -126,7 +126,7 @@ public final class HeadHunt {
 	static void progress(ServerPlayer p, Arena a) {
 		int total = a.heads.size();
 		int n = count(a, p.getStringUUID());
-		p.sendSystemMessage(Component.literal(a.name + ": you found " + n + " of " + total + " hidden heads" + (total == 0 ? " (none hidden yet)." : n >= total ? ". All of them!" : ". Right-click the heads to find them.")
+		p.sendSystemMessage(Component.literal(a.shown() + ": you found " + n + " of " + total + " hidden heads" + (total == 0 ? " (none hidden yet)." : n >= total ? ". All of them!" : ". Right-click the heads to find them.")
 				+ (a.rewardEvery > 0 && n < total ? " A reward every " + a.rewardEvery + "." : "")).withStyle(ChatFormatting.GOLD));
 	}
 
@@ -171,12 +171,12 @@ public final class HeadHunt {
 		MinecraftServer server = level.getServer();
 		RewardsControl.fireEvery(server, "headsFound", p, a.name, n);
 		if (a.rewardEvery > 0 && n % a.rewardEvery == 0 && n < total) {
-			p.sendSystemMessage(Component.literal("★ " + n + " heads found in " + a.name + ": reward!").withStyle(ChatFormatting.GOLD));
+			p.sendSystemMessage(Component.literal("★ " + n + " heads found in " + a.shown() + ": reward!").withStyle(ChatFormatting.GOLD));
 			commands(server, a.everyCommands, a, p, n, total);
 			level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
 		}
 		if (n >= total) {
-			String line = a.finishMessage.isBlank() ? "■ You found all " + total + " heads of " + a.name + "!" : a.finishMessage.replace("{player}", p.getGameProfile().name()).replace("{game}", a.name).replace("{score}", String.valueOf(n));
+			String line = a.finishMessage.isBlank() ? "■ You found all " + total + " heads of " + a.shown() + "!" : a.finishMessage.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", String.valueOf(n));
 			p.sendSystemMessage(Component.literal(line).withStyle(ChatFormatting.GOLD));
 			commands(server, a.finishCommands, a, p, n, total);
 			// The every-few-heads reward too, when the last one is also such a head.
@@ -198,7 +198,7 @@ public final class HeadHunt {
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, int found, int total) {
 		for (String line : lines) {
-			String cmd = line.strip().replaceFirst("^/", "").replace("{player}", p.getGameProfile().name()).replace("{game}", a.name)
+			String cmd = line.strip().replaceFirst("^/", "").replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown())
 					.replace("{found}", String.valueOf(found)).replace("{total}", String.valueOf(total)).replace("{score}", String.valueOf(found));
 			if (!cmd.isEmpty()) ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
 		}
@@ -214,7 +214,7 @@ public final class HeadHunt {
 		if (st.isEmpty()) return null;
 		st.setCount(Math.max(1, Math.min(64, count)));
 		CustomData.update(DataComponents.CUSTOM_DATA, st, t -> t.putString(TAG, a.id));
-		st.set(DataComponents.CUSTOM_NAME, Component.literal(a.name + " head (hidden head)").withStyle(ChatFormatting.GOLD));
+		st.set(DataComponents.CUSTOM_NAME, Component.literal(a.shown() + " head (hidden head)").withStyle(ChatFormatting.GOLD));
 		return st;
 	}
 
@@ -229,7 +229,7 @@ public final class HeadHunt {
 		if (a == null || !admin(p) || !isHead(p.level().getBlockState(at))) return;
 		if (add(a, p.level(), at)) {
 			skinned.put(key(p.level(), at), Pets.texture(a.headTexture));
-			p.sendOverlayMessage(Component.literal(a.name + ": head " + a.heads.size() + " hidden").withStyle(ChatFormatting.GREEN));
+			p.sendOverlayMessage(Component.literal(a.shown() + ": head " + a.heads.size() + " hidden").withStyle(ChatFormatting.GREEN));
 		}
 	}
 

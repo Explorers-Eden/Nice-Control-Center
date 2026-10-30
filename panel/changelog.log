@@ -1,3 +1,6 @@
+## 1.50.0
+- Games: each card lists its entrances, watch points and back points (removable here), the start point, a display name field; parkour: difficulty preset, reward every … jumps, its box; race: checkpoint commands; clearer labels for what finish commands mean (mod 1.60.0)
+
 ## 1.48.0
 - Every table: click a column header to sort by it, again for the other way (▲/▼); numbers, sizes and dates sort as such, and the order stays when the table refreshes
 - Claims: "Game mode inside" for game claims (adventure, survival, creative, spectator) (mod 1.58.0)
