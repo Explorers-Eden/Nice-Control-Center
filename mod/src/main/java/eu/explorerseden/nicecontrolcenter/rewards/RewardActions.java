@@ -69,7 +69,7 @@ public final class RewardActions {
 			case "points" -> {
 				// A fixed amount, plus per score for game triggers ("2 + 1 per jump").
 				long n = a.amount + Math.round(a.level * RewardsControl.currentScore());
-				if (n == 0) throw new Refused("no " + eu.explorerseden.nicecontrolcenter.players.PointsStore.settings().name.toLowerCase(Locale.ROOT) + " this time.");
+				if (n == 0) throw new Refused("no " + eu.explorerseden.nicecontrolcenter.players.PointsStore.settings().name + " this time.");
 				long now = eu.explorerseden.nicecontrolcenter.players.PointsStore.add(id, name, n, by);
 				var s = eu.explorerseden.nicecontrolcenter.players.PointsStore.settings();
 				return (n > 0 ? "+" : "") + eu.explorerseden.nicecontrolcenter.Points.amount(s, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")";

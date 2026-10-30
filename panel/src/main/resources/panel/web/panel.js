@@ -2261,10 +2261,10 @@
 
   /** "1 ticket · 5 tickets · 5 T" as players will see it. */
   const ptOne = (s) => (s.singular || '').trim() || (/s$/i.test(s.name.trim()) && s.name.trim().length > 1 ? s.name.trim().slice(0, -1) : s.name.trim());
-  const ptShort = (n) => { const s = pt.settings; return (s.abbreviation || '').trim() ? `${ptNum(n)} ${s.abbreviation.trim()}` : `${ptNum(n)} ${(n === 1 ? ptOne(s) : s.name).toLowerCase()}`; };
+  const ptShort = (n) => { const s = pt.settings; return (s.abbreviation || '').trim() ? `${ptNum(n)} ${s.abbreviation.trim()}` : `${ptNum(n)} ${n === 1 ? ptOne(s) : s.name.trim()}`; };
   function ptExample() {
     const s = pt.settings;
-    $('pn-pt-example').textContent = `Players see: 1 ${ptOne(s).toLowerCase()} · 5 ${s.name.trim().toLowerCase()} · prices and the action bar: ${ptShort(5)}`;
+    $('pn-pt-example').textContent = `Players see: 1 ${ptOne(s)} · 5 ${s.name.trim()} · prices and the action bar: ${ptShort(5)}`;
   }
   $('pn-pt-name').addEventListener('input', (e) => { pt.settings.name = e.target.value; ptExample(); ptChanged(false); });
   $('pn-pt-singular').addEventListener('input', (e) => { pt.settings.singular = e.target.value; ptExample(); ptChanged(false); });

@@ -157,7 +157,7 @@ public final class RewardShops {
 		StringBuilder nbt = new StringBuilder("{Tags:[\"" + TAG + "\",\"" + TAG + "_" + shop.id + "\",\"" + spotTag(shop, at) + "\",\"" + looksTag(shop, at) + "\"]");
 		nbt.append(",Rotation:[").append(at.yaw).append("f,0f],Invulnerable:1b,immovable:1b,NoGravity:1b,Silent:1b,CustomNameVisible:1b");
 		nbt.append(",CustomName:").append(Json.GSON.toJson(shop.shown()));
-		nbt.append(",description:").append(Json.GSON.toJson("Spend your " + PointsStore.settings().name.toLowerCase(Locale.ROOT) + " · right-click"));
+		nbt.append(",description:").append(Json.GSON.toJson("Spend your " + PointsStore.settings().name + " · right-click"));
 		if (texture != null) nbt.append(",profile:{properties:[{name:\"textures\",value:\"").append(texture).append("\"}]}");
 		nbt.append("}");
 		ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:mannequin %.2f %.2f %.2f %s", at.dim, at.x, at.y, at.z, nbt));
@@ -309,7 +309,7 @@ public final class RewardShops {
 		body.add(text("Price " + (e.price == 0 ? "free" : Points.amount(s, e.price)) + " · you have " + Points.amount(s, balance), balance >= e.price ? ChatFormatting.GOLD : ChatFormatting.RED));
 		String why = blocked(p, e);
 		List<ActionButton> buttons = new ArrayList<>();
-		if (why == null && balance >= e.price) buttons.add(button(Component.literal("Buy for " + Points.amount(s, e.price)).withStyle(ChatFormatting.GREEN), "Takes the " + s.name.toLowerCase(Locale.ROOT) + " and gives it to you now", "buy", args("shop", shop.id, "entry", e.id, "price", String.valueOf(e.price))));
+		if (why == null && balance >= e.price) buttons.add(button(Component.literal("Buy for " + Points.amount(s, e.price)).withStyle(ChatFormatting.GREEN), "Takes the " + s.name + " and gives it to you now", "buy", args("shop", shop.id, "entry", e.id, "price", String.valueOf(e.price))));
 		else body.add(text(why != null ? "You can't buy it: " + why + "." : "You need " + Points.amount(s, e.price - balance) + " more.", ChatFormatting.RED));
 		menu(p, shop.shown() + " · " + e.name, body, buttons, button(Component.literal("Back"), "Back to the shop", "home", args("shop", shop.id)));
 	}

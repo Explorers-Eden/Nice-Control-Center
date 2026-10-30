@@ -198,7 +198,7 @@ public final class Points {
 
 	/** "5 tickets", "1 ticket" with the server's own name for them. */
 	public static String amount(Settings s, long n) {
-		return String.format(Locale.ROOT, "%,d", n) + " " + (n == 1 || n == -1 ? one(s) : s.name).toLowerCase(Locale.ROOT);
+		return String.format(Locale.ROOT, "%,d", n) + " " + (n == 1 || n == -1 ? one(s) : s.name);
 	}
 
 	/** "5 T" with the abbreviation (as written), else the same as {@link #amount}. */
