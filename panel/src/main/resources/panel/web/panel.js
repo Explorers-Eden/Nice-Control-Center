@@ -1407,14 +1407,11 @@
   $('pn-settings').addEventListener('input', previewCommand);
   $('pn-settings').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const msg = $('pn-settings-msg');
     try {
       fillSettings(await api('api/settings', readSettings()));
-      msg.className = 'np-form-msg ok';
-      msg.textContent = 'Saved. Applies on the next start.';
+      formMsg('pn-settings-msg', 'Saved. Applies on the next start.', true);
     } catch (err) {
-      msg.className = 'np-form-msg error';
-      msg.textContent = err.message;
+      formMsg('pn-settings-msg', err.message, false);
     }
   });
 
@@ -1609,6 +1606,9 @@
   })();
 
   window.addEventListener('beforeunload', (e) => { if (Dirty.any()) { e.preventDefault(); e.returnValue = ''; } });
+  // The browser never blocks a Save by itself: a saved value off a field's step (2304 MB with steps of 256) made it
+  // refuse silently. The panel checks every value and says what's wrong.
+  document.querySelectorAll('form').forEach((f) => { f.noValidate = true; });
 
   $('pn-user-rows').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-user-act]');
@@ -2132,26 +2132,26 @@
 
   // ── Points and reward shops ─────────────────────────────────────────────
 
-  const pt = { settings: null, balances: { accounts: [], sold: {} }, live: false, skins: {}, actions: [], pets: [], dirty: false };
-  const ptNum = (n) => Number(n || 0).toLocaleString();
+  const po = { settings: null, balances: { accounts: [], sold: {} }, live: false, skins: {}, actions: [], pets: [], dirty: false };
+  const poNum = (n) => Number(n || 0).toLocaleString();
 
   async function loadPoints(force) {
-    if (pt.dirty && pt.settings && !force) { renderPoints(); return; }
+    if (po.dirty && po.settings && !force) { renderPoints(); return; }
     try {
       const d = await api('api/points');
-      pt.settings = d.settings;
-      pt.balances = d.balances || { accounts: [], sold: {} };
-      pt.live = !!d.live;
-      pt.skins = d.skins || {};
-      pt.pointsName = d.settings.name;
-      pt.actions = (d.actions || []).map((t) => (t.id === 'points' ? { ...t, label: d.settings.name } : t));
-      pt.pets = d.pets || [];
-      pt.dirty = false;
+      po.settings = d.settings;
+      po.balances = d.balances || { accounts: [], sold: {} };
+      po.live = !!d.live;
+      po.skins = d.skins || {};
+      po.pointsName = d.settings.name;
+      po.actions = (d.actions || []).map((t) => (t.id === 'points' ? { ...t, label: d.settings.name } : t));
+      po.pets = d.pets || [];
+      po.dirty = false;
       renderPoints();
       Dirty.reset('points');
       Dirty.reset('rewardshops');
     } catch (err) {
-      formMsg('pn-pt-note', err.message, false);
+      formMsg('pn-po-note', err.message, false);
     }
   }
 
@@ -2159,11 +2159,11 @@
   async function refreshBalances() {
     try {
       const d = await api('api/points');
-      pt.balances = d.balances || pt.balances;
-      pt.live = !!d.live;
+      po.balances = d.balances || po.balances;
+      po.live = !!d.live;
       renderPointsTab();
     } catch (err) {
-      formMsg('pn-pt-adjust-msg', err.message, false);
+      formMsg('pn-po-adjust-msg', err.message, false);
     }
   }
 
@@ -2173,29 +2173,29 @@
   }
 
   function renderPointsTab() {
-    const s = pt.settings;
+    const s = po.settings;
     const edit = can('settings.server');
-    $('pn-pt-name').value = s.name;
-    $('pn-pt-singular').value = s.singular || '';
-    $('pn-pt-short').value = s.abbreviation || '';
-    ptExample();
-    $('pn-pt-enabled').checked = s.enabled;
-    ['pn-pt-name', 'pn-pt-singular', 'pn-pt-short', 'pn-pt-enabled', 'pn-pt-give', 'pn-pt-take', 'pn-pt-player', 'pn-pt-amount', 'pn-pt-reason', 'pn-pt-save'].forEach((id) => { $(id).disabled = !edit; });
-    $('pn-pt-live').textContent = pt.live ? '' : 'Server off: balances from the world file.';
-    const q = $('pn-pt-search').value.trim().toLowerCase();
-    const rows = (pt.balances.accounts || []).filter((a) => !q || (a.name || '').toLowerCase().includes(q));
-    $('pn-pt-table').innerHTML = `<thead><tr><th>Player</th><th>${esc(s.name)}</th><th>Earned in all</th><th>Last change</th></tr></thead><tbody>${rows.map((a) => {
+    $('pn-po-name').value = s.name;
+    $('pn-po-singular').value = s.singular || '';
+    $('pn-po-short').value = s.abbreviation || '';
+    poExample();
+    $('pn-po-enabled').checked = s.enabled;
+    ['pn-po-name', 'pn-po-singular', 'pn-po-short', 'pn-po-enabled', 'pn-po-give', 'pn-po-take', 'pn-po-player', 'pn-po-amount', 'pn-po-reason', 'pn-po-save'].forEach((id) => { $(id).disabled = !edit; });
+    $('pn-po-live').textContent = po.live ? '' : 'Server off: balances from the world file.';
+    const q = $('pn-po-search').value.trim().toLowerCase();
+    const rows = (po.balances.accounts || []).filter((a) => !q || (a.name || '').toLowerCase().includes(q));
+    $('pn-po-table').innerHTML = `<thead><tr><th>Player</th><th>${esc(s.name)}</th><th>Earned in all</th><th>Last change</th></tr></thead><tbody>${rows.map((a) => {
       const h = (a.history || [])[0];
-      const last = h ? `<span class="${h.amount > 0 ? 'pn-pt-plus' : 'pn-pt-minus'}">${h.amount > 0 ? '+' : ''}${ptNum(h.amount)}</span> ${esc(h.why || '')} <small class="pn-hint">${esc(new Date(h.time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))}</small>` : '';
-      return `<tr><td>${esc(a.name || a.uuid)}</td><td><b>${ptNum(a.balance)}</b></td><td>${ptNum(a.earned)}</td><td>${last}</td></tr>`;
+      const last = h ? `<span class="${h.amount > 0 ? 'pn-po-plus' : 'pn-po-minus'}">${h.amount > 0 ? '+' : ''}${poNum(h.amount)}</span> ${esc(h.why || '')} <small class="pn-hint">${esc(new Date(h.time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }))}</small>` : '';
+      return `<tr><td>${esc(a.name || a.uuid)}</td><td><b>${poNum(a.balance)}</b></td><td>${poNum(a.earned)}</td><td>${last}</td></tr>`;
     }).join('') || `<tr><td colspan="4" class="np-empty">${q ? 'Nobody matches.' : 'Nobody has any yet.'}</td></tr>`}</tbody>`;
   }
 
   function renderShops() {
     const edit = can('settings.server');
-    const s = pt.settings;
+    const s = po.settings;
     $('pn-ps-list').innerHTML = s.shops.map((shop, si) => {
-      const face = pt.skins[shop.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(pt.skins[shop.id])}" alt="" width="32" height="32">` : '';
+      const face = po.skins[shop.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(po.skins[shop.id])}" alt="" width="32" height="32">` : '';
       const field = (k, label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
       const spots = shop.npcs.length
         ? `<ul class="pn-gm-heads">${shop.npcs.map((n, ni) => `<li><span>${esc(dimShort(n.dim))} · ${Math.round(n.x)}, ${Math.round(n.y)}, ${Math.round(n.z)}</span><button type="button" class="np-btn small danger" data-sact="npcrm" data-n="${ni}" title="Take this NPC away"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
@@ -2215,7 +2215,7 @@
           <div class="pn-field pn-field-wide"><span>NPCs</span>${spots}</div>
         </div>
         <h4 class="pn-ps-sub"><i class="bi bi-gift"></i> Rewards</h4>
-        ${shop.entries.map((e, ei) => ptEntry(shop, e, ei)).join('') || '<p class="pn-hint">No rewards yet.</p>'}
+        ${shop.entries.map((e, ei) => poEntry(shop, e, ei)).join('') || '<p class="pn-hint">No rewards yet.</p>'}
         <button type="button" class="np-btn small" data-sact="addentry"><i class="bi bi-plus-lg"></i> Add a reward</button>
       </section>`;
     }).join('') || '<p class="np-empty">No reward shops yet. Stand where the NPC should be in game and type <code>/points shop create MyShop</code>, or make one here and place its NPCs later.</p>';
@@ -2224,18 +2224,18 @@
     $('pn-ps-save').disabled = !edit;
   }
 
-  function ptEntry(shop, e, ei) {
-    const sold = (pt.balances.sold || {})[e.id] || 0;
-    const icon = pt.skins[e.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(pt.skins[e.id])}" alt="" width="24" height="24">` : '<i class="bi bi-gift"></i>';
+  function poEntry(shop, e, ei) {
+    const sold = (po.balances.sold || {})[e.id] || 0;
+    const icon = po.skins[e.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(po.skins[e.id])}" alt="" width="24" height="24">` : '<i class="bi bi-gift"></i>';
     const field = (k, label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
     const num = (k, min, max) => `<input type="number" data-e="${k}" value="${e[k]}" min="${min}" max="${max}">`;
     const items = e.items.length
       ? `<ul class="pn-gm-heads">${e.items.map((st, ii) => `<li><span><input type="number" class="pn-ps-count" data-ik="${ii}" value="${st.count}" min="1" max="6400"> × ${esc(st.item.name)}</span><button type="button" class="np-btn small danger" data-sact="itemrm" data-i="${ii}" title="Remove this item"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
       : `<p class="pn-hint">None. Items come from the hand in game: <code>/points shop item ${esc(shop.name)} &lt;price&gt; &lt;name&gt;</code> makes a reward with what you hold.</p>`;
-    const actions = (e.actions || []).map((a, ai) => rwActionRow(a, 0, ai, pt, 'data-entry-action="1"')).join('');
-    const add = `<select data-addentryaction="1"><option value="">+ Also give…</option>${pt.actions.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join('')}</select>`;
+    const actions = (e.actions || []).map((a, ai) => rwActionRow(a, 0, ai, po, 'data-entry-action="1"')).join('');
+    const add = `<select data-addentryaction="1"><option value="">+ Also give…</option>${po.actions.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join('')}</select>`;
     return `<div class="pn-ps-entry" data-entry="${ei}">
-      <div class="pn-rw-head"><span class="pn-rw-give-icon">${icon}</span><b>${esc(e.name || 'New reward')}</b><span class="np-chip gold">${esc(ptShort(e.price))}</span>${sold ? `<span class="np-chip">bought ${ptNum(sold)}×</span>` : ''}
+      <div class="pn-rw-head"><span class="pn-rw-give-icon">${icon}</span><b>${esc(e.name || 'New reward')}</b><span class="np-chip gold">${esc(poShort(e.price))}</span>${sold ? `<span class="np-chip">bought ${poNum(sold)}×</span>` : ''}
         <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-sact="entryrm" title="Remove this reward"><i class="bi bi-x-lg"></i></button></span></div>
       <div class="pn-rw-grid">
         ${field('name', 'Name', `<input type="text" data-e="name" value="${esc(e.name)}" maxlength="64">`)}
@@ -2252,50 +2252,50 @@
     </div>`;
   }
 
-  function ptChanged(rerender) {
-    pt.dirty = true;
-    formMsg('pn-pt-msg', 'Not saved yet.', true);
+  function poChanged(rerender) {
+    po.dirty = true;
+    formMsg('pn-po-msg', 'Not saved yet.', true);
     formMsg('pn-ps-msg', 'Not saved yet.', true);
     if (rerender) renderPoints();
   }
 
   /** "1 ticket · 5 tickets · 5 T" as players will see it. */
-  const ptOne = (s) => (s.singular || '').trim() || (/s$/i.test(s.name.trim()) && s.name.trim().length > 1 ? s.name.trim().slice(0, -1) : s.name.trim());
-  const ptShort = (n) => { const s = pt.settings; return (s.abbreviation || '').trim() ? `${ptNum(n)} ${s.abbreviation.trim()}` : `${ptNum(n)} ${n === 1 ? ptOne(s) : s.name.trim()}`; };
-  function ptExample() {
-    const s = pt.settings;
-    $('pn-pt-example').textContent = `Players see: 1 ${ptOne(s)} · 5 ${s.name.trim()} · prices and the action bar: ${ptShort(5)}`;
+  const poOne = (s) => (s.singular || '').trim() || (/s$/i.test(s.name.trim()) && s.name.trim().length > 1 ? s.name.trim().slice(0, -1) : s.name.trim());
+  const poShort = (n) => { const s = po.settings; return (s.abbreviation || '').trim() ? `${poNum(n)} ${s.abbreviation.trim()}` : `${poNum(n)} ${n === 1 ? poOne(s) : s.name.trim()}`; };
+  function poExample() {
+    const s = po.settings;
+    $('pn-po-example').textContent = `Players see: 1 ${poOne(s)} · 5 ${s.name.trim()} · prices and the action bar: ${poShort(5)}`;
   }
-  $('pn-pt-name').addEventListener('input', (e) => { pt.settings.name = e.target.value; ptExample(); ptChanged(false); });
-  $('pn-pt-singular').addEventListener('input', (e) => { pt.settings.singular = e.target.value; ptExample(); ptChanged(false); });
-  $('pn-pt-short').addEventListener('input', (e) => { pt.settings.abbreviation = e.target.value; ptExample(); ptChanged(false); });
-  $('pn-pt-enabled').addEventListener('change', (e) => { pt.settings.enabled = e.target.checked; ptChanged(false); });
-  $('pn-pt-search').addEventListener('input', renderPointsTab);
+  $('pn-po-name').addEventListener('input', (e) => { po.settings.name = e.target.value; poExample(); poChanged(false); });
+  $('pn-po-singular').addEventListener('input', (e) => { po.settings.singular = e.target.value; poExample(); poChanged(false); });
+  $('pn-po-short').addEventListener('input', (e) => { po.settings.abbreviation = e.target.value; poExample(); poChanged(false); });
+  $('pn-po-enabled').addEventListener('change', (e) => { po.settings.enabled = e.target.checked; poChanged(false); });
+  $('pn-po-search').addEventListener('input', renderPointsTab);
 
-  async function ptAdjust(sign) {
-    const player = $('pn-pt-player').value.trim();
-    const amount = Math.floor(Number($('pn-pt-amount').value) || 0);
-    if (!player || amount <= 0) { formMsg('pn-pt-adjust-msg', 'Who, and how many?', false); return; }
+  async function poAdjust(sign) {
+    const player = $('pn-po-player').value.trim();
+    const amount = Math.floor(Number($('pn-po-amount').value) || 0);
+    if (!player || amount <= 0) { formMsg('pn-po-adjust-msg', 'Who, and how many?', false); return; }
     try {
-      const res = await api('api/points/adjust', { player, amount: sign * amount, reason: $('pn-pt-reason').value.trim() });
-      formMsg('pn-pt-adjust-msg', `${res.name}: now ${ptNum(res.balance)}.`, true);
+      const res = await api('api/points/adjust', { player, amount: sign * amount, reason: $('pn-po-reason').value.trim() });
+      formMsg('pn-po-adjust-msg', `${res.name}: now ${poNum(res.balance)}.`, true);
       refreshBalances();
     } catch (err) {
-      formMsg('pn-pt-adjust-msg', err.message, false);
+      formMsg('pn-po-adjust-msg', err.message, false);
     }
   }
-  $('pn-pt-give').addEventListener('click', () => ptAdjust(1));
-  $('pn-pt-take').addEventListener('click', () => ptAdjust(-1));
+  $('pn-po-give').addEventListener('click', () => poAdjust(1));
+  $('pn-po-take').addEventListener('click', () => poAdjust(-1));
 
   $('pn-ps-add').addEventListener('click', () => {
     const name = (prompt('One-word name for the new shop (used in /points shop … commands):') || '').trim();
     if (!name) return;
-    pt.settings.shops.push({ id: '', name, title: '', texture: '', greeting: '', lookAtPlayers: true, npcs: [], entries: [] });
-    ptChanged(true);
+    po.settings.shops.push({ id: '', name, title: '', texture: '', greeting: '', lookAtPlayers: true, npcs: [], entries: [] });
+    poChanged(true);
   });
 
   /** An entry's "other rewards" rows: same fields as in Rewards rules. */
-  function ptEntryAction(e, entry) {
+  function poEntryAction(e, entry) {
     const el = e.target.closest('[data-ak]');
     if (!el || !el.closest('[data-entry-action]')) return false;
     const a = entry.actions[+el.dataset.a];
@@ -2303,7 +2303,7 @@
     if (e.type === 'click') {
       if (k === 'remove') {
         entry.actions.splice(+el.dataset.a, 1);
-        ptChanged(true);
+        poChanged(true);
       }
       return true;
     }
@@ -2313,27 +2313,27 @@
       a.seconds = Math.round(n * RW_UNITS.find(([u]) => u === row.querySelector('[data-ak="unit"]').value)[1]);
     } else if (k === 'target') a.target = el.value;
     else a[k] = Number(el.value) || 0;
-    ptChanged(false);
+    poChanged(false);
     return true;
   }
 
-  function ptInput(e) {
+  function poInput(e) {
     const card = e.target.closest('[data-shop]');
     if (!card) return;
-    const shop = pt.settings.shops[+card.dataset.shop];
+    const shop = po.settings.shops[+card.dataset.shop];
     const box = e.target.closest('[data-entry]');
     const entry = box ? shop.entries[+box.dataset.entry] : null;
     const t = e.target;
     if (entry && t.dataset.addentryaction !== undefined) {
       if (e.type !== 'change' || !t.value) return;
-      entry.actions.push({ type: t.value, amount: 0, level: 0, seconds: 0, target: t.value === 'pet' ? (pt.pets[0] || '') : '', ...(RW_DEFAULT[t.value] || {}) });
-      ptChanged(true);
+      entry.actions.push({ type: t.value, amount: 0, level: 0, seconds: 0, target: t.value === 'pet' ? (po.pets[0] || '') : '', ...(RW_DEFAULT[t.value] || {}) });
+      poChanged(true);
       return;
     }
-    if (entry && ptEntryAction(e, entry)) return;
+    if (entry && poEntryAction(e, entry)) return;
     if (entry && t.dataset.ik !== undefined) {
       entry.items[+t.dataset.ik].count = Math.max(1, Math.floor(Number(t.value) || 1));
-      ptChanged(false);
+      poChanged(false);
       return;
     }
     if (entry && t.dataset.e) {
@@ -2341,29 +2341,29 @@
       if (t.type === 'number') entry[k] = Number(t.value) || 0;
       else if (k === 'commands') entry[k] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
       else entry[k] = t.value;
-      ptChanged(false);
+      poChanged(false);
       return;
     }
     if (t.dataset.s) {
       shop[t.dataset.s] = t.dataset.bool ? t.value === 'true' : t.value;
-      ptChanged(false);
+      poChanged(false);
     }
   }
-  $('pn-ps-list').addEventListener('input', (e) => { if (e.target.dataset.addentryaction === undefined) ptInput(e); });
-  $('pn-ps-list').addEventListener('change', (e) => { if (e.target.dataset.addentryaction !== undefined || e.target.tagName === 'SELECT') ptInput(e); });
+  $('pn-ps-list').addEventListener('input', (e) => { if (e.target.dataset.addentryaction === undefined) poInput(e); });
+  $('pn-ps-list').addEventListener('change', (e) => { if (e.target.dataset.addentryaction !== undefined || e.target.tagName === 'SELECT') poInput(e); });
   $('pn-ps-list').addEventListener('click', (e) => {
     const card = e.target.closest('[data-shop]');
     if (!card) return;
-    const shop = pt.settings.shops[+card.dataset.shop];
+    const shop = po.settings.shops[+card.dataset.shop];
     const box = e.target.closest('[data-entry]');
     const entry = box ? shop.entries[+box.dataset.entry] : null;
-    if (entry && e.target.closest('[data-ak]') && ptEntryAction(e, entry)) return;
+    if (entry && e.target.closest('[data-ak]') && poEntryAction(e, entry)) return;
     const b = e.target.closest('[data-sact]');
     if (!b) return;
     const act = b.dataset.sact;
     if (act === 'delete') {
       if (!confirm(`Remove the shop ${shop.name} and its NPCs? What players bought stays theirs.`)) return;
-      pt.settings.shops = pt.settings.shops.filter((x) => x !== shop);
+      po.settings.shops = po.settings.shops.filter((x) => x !== shop);
     } else if (act === 'npcrm') shop.npcs.splice(+b.dataset.n, 1);
     else if (act === 'addentry') shop.entries.push({ id: '', name: 'New reward', description: '', icon: 'minecraft:chest', iconTexture: '', price: 10, perPlayer: 0, stock: 0, items: [], commands: [], actions: [] });
     else if (act === 'entryrm') {
@@ -2371,21 +2371,21 @@
       shop.entries = shop.entries.filter((x) => x !== entry);
     } else if (act === 'itemrm') entry.items.splice(+b.dataset.i, 1);
     else return;
-    ptChanged(true);
+    poChanged(true);
   });
 
-  async function ptSave(msgId) {
+  async function poSave(msgId) {
     try {
-      await api('api/points', pt.settings);
-      pt.dirty = false;
+      await api('api/points', po.settings);
+      po.dirty = false;
       formMsg(msgId, serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
       loadPoints(true);
     } catch (err) {
       formMsg(msgId, err.message, false);
     }
   }
-  $('pn-pt-save').addEventListener('click', () => ptSave('pn-pt-msg'));
-  $('pn-ps-save').addEventListener('click', () => ptSave('pn-ps-msg'));
+  $('pn-po-save').addEventListener('click', () => poSave('pn-po-msg'));
+  $('pn-ps-save').addEventListener('click', () => poSave('pn-ps-msg'));
 
   // ── Dungeons ───────────────────────────────────────────────────────────
 
@@ -3943,10 +3943,10 @@
     if (!confirm('Delete the old log files listed above now?')) return;
     try {
       const res = await api('api/cleanup/run', {});
-      formMsg('pn-cleanup-msg', res.result + '.', true);
+      formMsg('pn-cleanup-run-msg', res.result + '.', true);
       loadCleanup();
     } catch (err) {
-      formMsg('pn-cleanup-msg', err.message, false);
+      formMsg('pn-cleanup-run-msg', err.message, false);
     }
   });
 
@@ -4353,9 +4353,9 @@
   $('pn-map-rerender').addEventListener('click', async () => {
     try {
       await api('api/map/rerender', {});
-      formMsg('pn-map-msg', 'Every region is drawn again over the next minutes.', true);
+      formMsg('pn-map-rerender-msg', 'Every region is drawn again over the next minutes.', true);
     } catch (err) {
-      formMsg('pn-map-msg', err.message, false);
+      formMsg('pn-map-rerender-msg', err.message, false);
     }
   });
 
@@ -7668,8 +7668,8 @@
   Dirty.track('settings', $('pn-settings'), { reload: loadSettings });
   // Pages that keep their state in script: the same floating Save/Cancel bar, their state compared as a whole.
   const tabPanel = (t) => document.querySelector(`.np-tab-panel[data-tab="${t}"]`);
-  Dirty.track('points', tabPanel('points'), { saveButtons: [$('pn-pt-save')], reload: () => { pt.dirty = false; loadPoints(true); }, extra: () => pt.settings });
-  Dirty.track('rewardshops', tabPanel('rewardshops'), { saveButtons: [$('pn-ps-save')], reload: () => { pt.dirty = false; loadPoints(true); }, extra: () => pt.settings });
+  Dirty.track('points', tabPanel('points'), { saveButtons: [$('pn-po-save')], reload: () => { po.dirty = false; loadPoints(true); }, extra: () => po.settings });
+  Dirty.track('rewardshops', tabPanel('rewardshops'), { saveButtons: [$('pn-ps-save')], reload: () => { po.dirty = false; loadPoints(true); }, extra: () => po.settings });
   Dirty.track('games', tabPanel('games'), { saveButtons: [$('pn-gm-save')], reload: () => { gm.dirty = false; loadGames(); }, extra: () => gm.settings });
   Dirty.track('dungeons', tabPanel('dungeons'), { saveButtons: [$('pn-dg-save')], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings });
   Dirty.track('rewards', tabPanel('rewards'), { saveButtons: [$('pn-rw-save')], reload: () => { rw.dirty = false; loadRewards(); }, extra: () => rw.settings });

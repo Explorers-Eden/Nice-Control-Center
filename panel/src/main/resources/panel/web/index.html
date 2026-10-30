@@ -312,10 +312,10 @@
 						<label class="np-check"><input type="checkbox" id="pn-cleanup-daily"> Run daily</label>
 					</div>
 					<p class="np-form-msg" id="pn-cleanup-preview"></p>
-					<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-cleanup-save"><i class="bi bi-check2"></i> Save</button></div>
+					<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-cleanup-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-cleanup-msg"></span></div>
 					<div class="np-form-actions">
 						<button type="button" class="np-btn" id="pn-cleanup-run"><i class="bi bi-trash3"></i> Clean up now</button>
-						<span class="np-form-msg" id="pn-cleanup-msg"></span>
+						<span class="np-form-msg" id="pn-cleanup-run-msg"></span>
 					</div>
 				</section>
 			</div>
@@ -1281,35 +1281,35 @@
 						<dt>Players</dt><dd><code>/points</code> shows their balance and what they got it for, <code>/points top</code> the most; the website profile shows it too</dd>
 					</dl>
 					<div class="pn-rw-grid">
-						<label class="pn-field"><span>What they're called (shown everywhere: game, panel, website)</span><input type="text" id="pn-pt-name" maxlength="32" placeholder="Points"></label>
-						<label class="pn-field"><span>One of them</span><input type="text" id="pn-pt-singular" maxlength="32" placeholder="from the name"></label>
-						<label class="pn-field"><span>Abbreviation (prices, action bar)</span><input type="text" id="pn-pt-short" maxlength="8" placeholder="e.g. pts"></label>
-						<p class="pn-hint pn-field-wide" id="pn-pt-example"></p>
+						<label class="pn-field"><span>What they're called (shown everywhere: game, panel, website)</span><input type="text" id="pn-po-name" maxlength="32" placeholder="Points"></label>
+						<label class="pn-field"><span>One of them</span><input type="text" id="pn-po-singular" maxlength="32" placeholder="from the name"></label>
+						<label class="pn-field"><span>Abbreviation (prices, action bar)</span><input type="text" id="pn-po-short" maxlength="8" placeholder="e.g. pts"></label>
+						<p class="pn-hint pn-field-wide" id="pn-po-example"></p>
 					</div>
 					<div class="np-filters">
-						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-pt-enabled"><span></span></span> Points and shops on</label>
-						<span class="np-form-msg" id="pn-pt-note"></span>
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-po-enabled"><span></span></span> Points and shops on</label>
+						<span class="np-form-msg" id="pn-po-note"></span>
 					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-plus-slash-minus"></i> Give or take</h3>
 					<div class="pn-rw-grid">
-						<label class="pn-field"><span>Player</span><input type="text" id="pn-pt-player" placeholder="name" autocomplete="off"></label>
-						<label class="pn-field"><span>How many</span><input type="number" id="pn-pt-amount" min="1" value="10"></label>
-						<label class="pn-field pn-field-wide"><span>Reason (shown to them)</span><input type="text" id="pn-pt-reason" maxlength="80" placeholder="e.g. won the build contest"></label>
+						<label class="pn-field"><span>Player</span><input type="text" id="pn-po-player" placeholder="name" autocomplete="off"></label>
+						<label class="pn-field"><span>How many</span><input type="number" id="pn-po-amount" min="1" value="10"></label>
+						<label class="pn-field pn-field-wide"><span>Reason (shown to them)</span><input type="text" id="pn-po-reason" maxlength="80" placeholder="e.g. won the build contest"></label>
 					</div>
 					<div class="np-filters">
-						<button type="button" class="np-btn primary" id="pn-pt-give"><i class="bi bi-plus-lg"></i> Give</button>
-						<button type="button" class="np-btn" id="pn-pt-take"><i class="bi bi-dash-lg"></i> Take</button>
-						<span class="np-form-msg" id="pn-pt-adjust-msg"></span>
+						<button type="button" class="np-btn primary" id="pn-po-give"><i class="bi bi-plus-lg"></i> Give</button>
+						<button type="button" class="np-btn" id="pn-po-take"><i class="bi bi-dash-lg"></i> Take</button>
+						<span class="np-form-msg" id="pn-po-adjust-msg"></span>
 					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-list-ol"></i> Balances</h3>
-					<div class="np-filters"><input type="search" id="pn-pt-search" class="pn-pt-search" placeholder="Search players" aria-label="Search players"><span class="pn-hint" id="pn-pt-live"></span></div>
-					<div class="np-table-wrap"><table class="np-table" id="pn-pt-table"></table></div>
+					<div class="np-filters"><input type="search" id="pn-po-search" class="pn-po-search" placeholder="Search players" aria-label="Search players"><span class="pn-hint" id="pn-po-live"></span></div>
+					<div class="np-table-wrap"><table class="np-table" id="pn-po-table"></table></div>
 				</section>
-				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-pt-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-pt-msg"></span></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-po-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-po-msg"></span></div>
 			</div>
 
 			<div class="np-tab-panel" data-tab="rewardshops" hidden>
@@ -1615,10 +1615,10 @@
 							<label class="np-form-row">Waypoint hubs<select name="hubs"><option value="public">Public ones</option><option value="all">All</option><option value="none">None</option></select></label>
 						</div>
 						<div class="pn-field">Dimensions on the map<div class="pn-map-dims" id="pn-map-dims"></div></div>
-						<div class="pn-sticky-save"><button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button></div>
+						<div class="pn-sticky-save"><button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-map-msg"></span></div>
 						<div class="np-form-actions">
 							<button type="button" class="np-btn" id="pn-map-rerender"><i class="bi bi-arrow-clockwise"></i> Draw everything again</button>
-							<span class="np-form-msg" id="pn-map-msg"></span>
+							<span class="np-form-msg" id="pn-map-rerender-msg"></span>
 						</div>
 					</form>
 				</section>

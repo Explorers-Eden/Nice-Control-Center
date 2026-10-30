@@ -1,3 +1,9 @@
+## 1.47.2
+- Fix: Games → Points and Reward shops couldn't save (the Pets page had a function of the same name, which took over the Save button; three Points elements also shared ids with the Pets page)
+- Fix: Settings → Java couldn't save when the saved memory wasn't a multiple of 256 counted from 128 (e.g. 2304 MB): the browser blocked it without saying why. The browser no longer blocks any page's Save; the panel checks the values and says what's wrong
+- Logs clean-up and Map: "Saved." now shows in the floating save bar, which goes away after saving (it stayed before)
+- Checked Save on every page with a save bar (27 forms): each change is saved and the bar clears
+
 ## 1.47.1
 - Games → Points: the example keeps the name's capitals (mod 1.57.1)
 
