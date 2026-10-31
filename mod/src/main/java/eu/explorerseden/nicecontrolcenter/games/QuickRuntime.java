@@ -440,7 +440,7 @@ public final class QuickRuntime {
 				return;
 			}
 			long left = r.startsAt - now;
-			bar(server, r, Component.literal(a.shown() + " starts in " + (left / 1000 + 1) + " s · " + r.players.size() + "/" + a.maxPlayers + " players · step on the pad to join"),
+			bar(server, r, Component.literal(a.shown() + " · starts in " + (left / 1000 + 1) + " s · " + r.players.size() + "/" + a.maxPlayers),
 					a.joinSeconds == 0 ? 1f : left / (a.joinSeconds * 1000f), BossEvent.BossBarColor.YELLOW);
 			if (left <= 0) start(server, r);
 			return;
@@ -524,10 +524,9 @@ public final class QuickRuntime {
 		UUID lead = null;
 		for (ServerPlayer p : alive) if (lead == null || r.score.getOrDefault(p.getUUID(), 0L) > r.score.getOrDefault(lead, 0L)) lead = p.getUUID();
 		String time = a.timeLimit > 0 ? GameRuntime.clock(Math.max(0, a.timeLimit * 1000L - r.elapsed())).replaceAll("\\.\\d$", "") + " left" : GameRuntime.clock(r.elapsed()).replaceAll("\\.\\d$", "");
-		String extra = a.type.equals("colorfloor") ? " · " + String.format(Locale.ROOT, "%.1f", r.seconds) + " s a colour" : "";
 		float progress = a.timeLimit > 0 ? 1f - r.elapsed() / (a.timeLimit * 1000f) : 1f;
 		if (!a.type.equals("colorfloor") || r.called < 0) {
-			bar(server, r, Component.literal(a.shown() + " · " + time + " · " + alive.size() + (alive.size() == 1 ? " player" : " players") + extra), progress, BossEvent.BossBarColor.BLUE);
+			bar(server, r, Component.literal(time + " · " + alive.size() + (alive.size() == 1 ? " player" : " players")), progress, BossEvent.BossBarColor.BLUE);
 		}
 		for (ServerPlayer p : alive) {
 			long mine = r.score.getOrDefault(p.getUUID(), 0L);
@@ -694,7 +693,7 @@ public final class QuickRuntime {
 			level.playSound(null, platform(a, 4), SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 1f, 1f);
 		}
 		long left = r.callAt - now;
-		bar(server, r, Component.empty().append(colourName(a, r.called)).append(Component.literal(" vanishes in " + String.format(Locale.ROOT, "%.1f", Math.max(0, left) / 1000.0) + " s").withStyle(ChatFormatting.WHITE)),
+		bar(server, r, Component.empty().append(colourName(a, r.called)).append(Component.literal(" · " + String.format(Locale.ROOT, "%.1f", Math.max(0, left) / 1000.0) + " s").withStyle(ChatFormatting.WHITE)),
 				Math.max(0f, left / (float) (r.seconds * 1000)), BossEvent.BossBarColor.RED);
 		if (left > 0) {
 			if (left < 1500 && server.getTickCount() % 6 == 0) level.playSound(null, platform(a, 4), SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.PLAYERS, 0.8f, 1.6f);

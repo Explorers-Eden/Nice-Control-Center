@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.69.1
+- Games: shorter boss bars: "Wave 3/10 in 5 s", "Wave 3/10 · 12 mobs", "Sky Run · starts in 8 s · 3/8", "1:23 left · 4 players", "Red Wool · 3.2 s"
+
 ## 1.69.0
 - Game claims: "Anyone may fight the mobs inside" (on by default): animals, villagers and named mobs can be fought there too, not only plain monsters. Mobs a game or dungeon spawned can always be fought anywhere (a named boss was protected by claims before)
 - Game claims (and wave fights, quick rounds, dungeons): health, hunger and saturation come back to what they were on entering when players leave

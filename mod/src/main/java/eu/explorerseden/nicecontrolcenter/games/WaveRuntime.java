@@ -496,7 +496,7 @@ public final class WaveRuntime {
 		Spectating.follow(server, g.watching.keySet(), alive);
 		if (g.state == State.BREAK) {
 			long left = g.nextAt - now;
-			bar(server, g, Component.literal(g.arena.shown() + " · wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
+			bar(server, g, Component.literal("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
 			if (left <= 0) beginWave(server, g, level);
 			return;
 		}
@@ -536,7 +536,7 @@ public final class WaveRuntime {
 		}
 		// (Just summoned ones count too: they're not in the list taken above.)
 		int left = mobs.size() + spawned + g.toSpawn.size();
-		bar(server, g, Component.literal(g.arena.shown() + " · wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " · " + left + (left == 1 ? " mob left" : " mobs left")),
+		bar(server, g, Component.literal("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " · " + left + (left == 1 ? " mob" : " mobs")),
 				g.waveSize == 0 ? 0 : Math.min(1f, left / (float) g.waveSize), BossEvent.BossBarColor.RED);
 		if (left == 0) waveCleared(server, g, level);
 	}
