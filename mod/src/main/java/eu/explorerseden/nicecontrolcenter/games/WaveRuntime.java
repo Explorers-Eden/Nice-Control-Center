@@ -747,6 +747,7 @@ public final class WaveRuntime {
 			if (finished && g.cleared > 0) {
 				commands(server, a.finishCommands, a, p, score);
 				RewardsControl.fireGame(server, "gameFinished", p, a.name, g.cleared, false);
+				GameRuntime.points(p, a, g.cleared, false);
 				if (record) RewardsControl.fireGame(server, "gameRecord", p, a.name, g.cleared, false);
 			}
 			GameType mode = g.watching.remove(id);
@@ -810,7 +811,7 @@ public final class WaveRuntime {
 	}
 
 	private static String fill(String text, Arena a, ServerPlayer p, String score) {
-		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
+		return Games.math(text, Map.of("score", score, "wave", score)).replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {

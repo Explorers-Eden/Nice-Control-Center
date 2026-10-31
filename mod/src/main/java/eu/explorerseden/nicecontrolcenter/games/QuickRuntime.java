@@ -911,6 +911,7 @@ public final class QuickRuntime {
 		if (!a.finishMessage.isBlank()) p.sendSystemMessage(Component.literal(fill(a.finishMessage, a, p, String.valueOf(score))).withStyle(ChatFormatting.YELLOW));
 		commands(server, a.finishCommands, a, p, String.valueOf(score));
 		RewardsControl.fireGame(server, "gameFinished", p, a.name, score, false);
+		GameRuntime.points(p, a, score, false);
 		if (record) RewardsControl.fireGame(server, "gameRecord", p, a.name, score, false);
 	}
 
@@ -1107,7 +1108,7 @@ public final class QuickRuntime {
 	}
 
 	private static String fill(String text, Arena a, ServerPlayer p, String score) {
-		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
+		return Games.math(text, Map.of("score", score)).replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {

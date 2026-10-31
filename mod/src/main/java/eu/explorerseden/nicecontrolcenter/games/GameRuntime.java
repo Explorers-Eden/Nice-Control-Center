@@ -320,6 +320,7 @@ public final class GameRuntime {
 			}
 			if (finished) {
 				RewardsControl.fireGame(server, "gameFinished", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));
+				points(p, s.arena, score, !Games.higherIsBetter(s.arena.type));
 				if (record) RewardsControl.fireGame(server, "gameRecord", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));
 			}
 		}
@@ -531,7 +532,7 @@ public final class GameRuntime {
 			p.sendOverlayMessage(Component.literal("★ " + s.progress + " jumps!").withStyle(ChatFormatting.GOLD));
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.4f);
 			for (String line : a.everyCommands) {
-				String cmd = fill(line.strip().replaceFirst("^/", ""), a, p, jumps).replace("{jumps}", jumps);
+				String cmd = fill(Games.math(line.strip().replaceFirst("^/", ""), Map.of("jumps", jumps)), a, p, jumps).replace("{jumps}", jumps);
 				if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
 			}
 		}
@@ -558,7 +559,7 @@ public final class GameRuntime {
 				// The arena's commands at each checkpoint ({checkpoint}).
 				String cp = String.valueOf(s.progress);
 				for (String line : s.arena.checkpointCommands) {
-					String cmd = fill(line.strip().replaceFirst("^/", ""), s.arena, p, cp).replace("{checkpoint}", cp);
+					String cmd = fill(Games.math(line.strip().replaceFirst("^/", ""), Map.of("checkpoint", cp)), s.arena, p, cp).replace("{checkpoint}", cp);
 					if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
 				}
 			}
@@ -865,7 +866,7 @@ public final class GameRuntime {
 
 	/** {player}, {game}, {score} in an arena's own lines and commands. */
 	private static String fill(String text, Arena a, ServerPlayer p, String score) {
-		return text.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
+		return Games.math(text, Map.of("score", score)).replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown()).replace("{score}", score);
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, String score) {
@@ -1069,6 +1070,16 @@ public final class GameRuntime {
 	static void leaveRun(MinecraftServer server, ServerPlayer p) {
 		Session s = sessions.get(p.getUUID());
 		if (s != null) end(server, s, "You left the game.", false);
+	}
+
+	/** The game's own points when a score counts: the fixed amount, plus so many per score (scores, not times). */
+	static void points(ServerPlayer p, Arena a, long score, boolean timed) {
+		long n = a.pointsFixed + (timed ? 0 : Math.round(a.pointsPerScore * score));
+		if (n <= 0 || !eu.explorerseden.nicecontrolcenter.players.PointsStore.settings().enabled) return;
+		long now = eu.explorerseden.nicecontrolcenter.players.PointsStore.add(p.getStringUUID(), p.getGameProfile().name(), n,
+				a.shown() + ": " + Games.scoreText(a.type, score, GameRuntime::clock));
+		var ps = eu.explorerseden.nicecontrolcenter.players.PointsStore.settings();
+		p.sendSystemMessage(Component.literal("+" + eu.explorerseden.nicecontrolcenter.Points.amount(ps, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
 	}
 
 	/** In a parkour, race, dropper or maze run. */

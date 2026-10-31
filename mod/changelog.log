@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.63.0
+- Games: points per game (panel): a fixed amount when a score counts, plus so many per score (per jump, wave, ghast, point, head…); race, dropper and maze give the fixed amount for finishing; head hunts give per head and the fixed amount for finding all
+- Commands in games, dungeons and Rewards rules can do sums: {score*2}, {score/10}, {jumps*3}, {wave+5}, {found*10}, {checkpoint*2}, dungeons {seconds} and {deaths} (whole numbers, rounded), e.g. points give {player} {score*2}
+
 ## 1.62.1
 - Games: creating a wave fight or quick round sets its spawn (where players appear) where you stand, instead of a separate start point; /game edit <name> spawn moves both. Games made before without a spawn take that spot as their spawn
 

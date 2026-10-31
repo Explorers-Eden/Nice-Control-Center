@@ -1,3 +1,6 @@
+## 1.53.0
+- Games: points fields on every game card (when the score counts, + per score) and a note on sums in commands (mod 1.63.0)
+
 ## 1.52.1
 - Games: wave fight and quick round cards show the spawn (where players appear) instead of a start point (mod 1.62.1)
 

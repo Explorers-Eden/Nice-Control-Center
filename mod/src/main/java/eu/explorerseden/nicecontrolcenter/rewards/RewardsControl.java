@@ -379,6 +379,11 @@ public final class RewardsControl {
 
 	/** {player} {uuid} {x} {y} {z} {dimension} {value} {day} {time} {date} {online} (and {rewards} in rule messages). */
 	public static String fill(MinecraftServer server, String text, ServerPlayer p, String value) {
+		// Sums first ({score*2}): the game's values by name, and {value}.
+		Map<String, String> nums = new java.util.HashMap<>();
+		for (Map.Entry<String, String> e : extra.get().entrySet()) nums.put(e.getKey().replaceAll("[{}]", ""), e.getValue());
+		if (value != null) nums.put("value", value);
+		text = eu.explorerseden.nicecontrolcenter.Games.math(text, nums);
 		for (Map.Entry<String, String> e : extra.get().entrySet()) text = text.replace(e.getKey(), e.getValue());
 		long clock = server.overworld().getOverworldClockTime();
 		WorldClock.Clock wc = WorldClock.current();

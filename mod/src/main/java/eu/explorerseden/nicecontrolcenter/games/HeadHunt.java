@@ -170,6 +170,8 @@ public final class HeadHunt {
 		GameRuntime.setBest(a, p, n);
 		MinecraftServer server = level.getServer();
 		RewardsControl.fireEvery(server, "headsFound", p, a.name, n);
+		// The hunt's own points: so many per head (the fixed amount comes with the last one).
+		if (a.pointsPerScore > 0) GameRuntime.points(p, perHead(a), 1, false);
 		if (a.rewardEvery > 0 && n % a.rewardEvery == 0 && n < total) {
 			p.sendSystemMessage(Component.literal("★ " + n + " heads found in " + a.shown() + ": reward!").withStyle(ChatFormatting.GOLD));
 			commands(server, a.everyCommands, a, p, n, total);
@@ -182,9 +184,27 @@ public final class HeadHunt {
 			// The every-few-heads reward too, when the last one is also such a head.
 			if (a.rewardEvery > 0 && n % a.rewardEvery == 0) commands(server, a.everyCommands, a, p, n, total);
 			RewardsControl.fireGame(server, "gameFinished", p, a.name, n, false);
+			if (a.pointsFixed > 0) GameRuntime.points(p, allFound(a), n, true);
 			level.playSound(null, pos, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 1f, 1f);
 			NiceControlCenter.LOGGER.info("Games: {} found all {} heads of {}", p.getGameProfile().name(), total, a.name);
 		}
+	}
+
+	/** The hunt with only its per-head points (fixed ones come for finding them all). */
+	private static Arena perHead(Arena a) {
+		Arena x = new Arena();
+		x.name = a.name;
+		x.title = a.title;
+		x.type = a.type;
+		x.pointsPerScore = a.pointsPerScore;
+		return x;
+	}
+
+	private static Arena allFound(Arena a) {
+		Arena x = perHead(a);
+		x.pointsPerScore = 0;
+		x.pointsFixed = a.pointsFixed;
+		return x;
 	}
 
 	/** Heads they found that are still part of the hunt. */
@@ -198,7 +218,8 @@ public final class HeadHunt {
 
 	private static void commands(MinecraftServer server, List<String> lines, Arena a, ServerPlayer p, int found, int total) {
 		for (String line : lines) {
-			String cmd = line.strip().replaceFirst("^/", "").replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown())
+			String cmd = Games.math(line.strip().replaceFirst("^/", ""), Map.of("found", String.valueOf(found), "total", String.valueOf(total), "score", String.valueOf(found)))
+					.replace("{player}", p.getGameProfile().name()).replace("{game}", a.shown())
 					.replace("{found}", String.valueOf(found)).replace("{total}", String.valueOf(total)).replace("{score}", String.valueOf(found));
 			if (!cmd.isEmpty()) ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
 		}

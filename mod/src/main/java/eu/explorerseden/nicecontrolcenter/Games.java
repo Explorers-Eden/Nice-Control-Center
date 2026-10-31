@@ -86,6 +86,10 @@ public final class Games {
 			return title == null || title.isBlank() ? name : title.strip();
 		}
 
+		/** Points (reward points) when a score counts: this many, plus so many per score (not for timed games). */
+		public int pointsFixed = 0;
+		public double pointsPerScore = 0;
+
 		/** The game's colour ("#ffc83d"): its entrance title and particles, watch point, start title; empty = gold. */
 		public String color = "";
 
@@ -265,6 +269,8 @@ public final class Games {
 					a.spawn = new Pos(a.start.dim, a.start.x, a.start.y, a.start.z, a.start.yaw);
 				}
 				if (a.color == null || !a.color.matches("#?[0-9a-fA-F]{6}")) a.color = "";
+				a.pointsFixed = Math.max(0, Math.min(1_000_000, a.pointsFixed));
+				a.pointsPerScore = Math.max(0, Math.min(10_000, a.pointsPerScore));
 				if (a.type == null || !TYPES.contains(a.type)) a.type = "parkour";
 				if (a.palette == null || a.palette.isEmpty()) a.palette = new Arena().palette;
 				if (a.checkpoints == null) a.checkpoints = new ArrayList<>();
@@ -370,6 +376,41 @@ public final class Games {
 			case "heads" -> score + (score == 1 ? " head" : " heads");
 			default -> clock.apply(score);
 		};
+	}
+
+	private static final java.util.regex.Pattern MATH = java.util.regex.Pattern.compile("\\{(\\w+)\\s*([*/+-])\\s*(\\d+(?:\\.\\d+)?)\\}");
+
+	/**
+	 * Sums in commands: {score*2}, {score/10}, {jumps+5}, {wave-1} with the value of that name (whole numbers,
+	 * rounded); names that aren't known, or aren't numbers, stay as written.
+	 */
+	public static String math(String text, Map<String, String> values) {
+		if (text == null || text.indexOf('{') < 0) return text;
+		java.util.regex.Matcher m = MATH.matcher(text);
+		StringBuilder out = new StringBuilder();
+		while (m.find()) {
+			String v = values.get(m.group(1));
+			double n;
+			try {
+				n = v == null ? Double.NaN : Double.parseDouble(v.replace(",", ""));
+			} catch (NumberFormatException e) {
+				n = Double.NaN;
+			}
+			if (Double.isNaN(n)) {
+				m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(m.group()));
+				continue;
+			}
+			double by = Double.parseDouble(m.group(3));
+			double r = switch (m.group(2)) {
+				case "*" -> n * by;
+				case "/" -> by == 0 ? n : n / by;
+				case "+" -> n + by;
+				default -> n - by;
+			};
+			m.appendReplacement(out, String.valueOf(Math.round(r)));
+		}
+		m.appendTail(out);
+		return out.toString();
 	}
 
 	public static String validate(Settings s) {

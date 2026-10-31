@@ -2011,7 +2011,8 @@
         heads: gmHeadFields(a, field, num, lines),
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
       const allFields = field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
-        + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`) + fields + own;
+        + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
+        + gmPoints(a, field) + fields + own;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
       const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
         : waves || quick
@@ -2079,6 +2080,16 @@
       + `<label class="pn-field pn-field-wide"><span>Commands after each cleared wave ({wave}, {player}, {game}): wave rewards</span><textarea data-g="waveCommands" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a.waveCommands || []).join('\n'))}</textarea></label>`
       + text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line')
       + '<p class="pn-hint pn-field-wide">Clearing the game runs the finish message and commands below (and the Rewards triggers "Finishes a game" / "Clears a wave in a wave arena").</p>';
+  }
+
+  /** The game's own reward points (Games → Points), and the sums commands can do. */
+  function gmPoints(a, field) {
+    const timed = ['race', 'dropper', 'maze'].includes(a.type);
+    const heads = a.type === 'heads';
+    const num = (k, step) => `<input type="number" data-g="${k}" value="${a[k] || 0}" min="0" step="${step}">`;
+    return field('pointsFixed', heads ? 'Points for finding them all' : timed ? 'Points for finishing' : 'Points when their score counts', num('pointsFixed', 1))
+      + (timed ? '' : field('pointsPerScore', heads ? '+ points per head found' : `+ points per ${gmWord[a.type] ? gmWord[a.type][0] : 'point'} (e.g. 0.5)`, num('pointsPerScore', 0.1)))
+      + '<p class="pn-hint pn-field-wide">Commands can do sums too: <code>{score*2}</code>, <code>{score/10}</code>, <code>{jumps*3}</code>, <code>{wave+5}</code> (whole numbers), e.g. <code>points give {player} {score*2}</code>.</p>';
   }
 
   /** A quick round's own fields (ghasts, colour floor, anvils, treasure, fishing), and what's still to set up in game. */

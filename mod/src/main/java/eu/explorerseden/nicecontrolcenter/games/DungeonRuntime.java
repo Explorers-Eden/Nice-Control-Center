@@ -1167,6 +1167,7 @@ public final class DungeonRuntime {
 
 	private static String fill(String text, Run r, ServerPlayer p) {
 		String party = String.join(", ", r.names.values());
+		text = Games.math(text, Map.of("seconds", String.valueOf(r.millis() / 1000), "deaths", String.valueOf(r.deaths))).replace("{seconds}", String.valueOf(r.millis() / 1000));
 		return text.replace("{dungeon}", r.dungeon.name).replace("{party}", party).replace("{time}", GameRuntime.clock(r.millis()))
 				.replace("{deaths}", String.valueOf(r.deaths)).replace("{player}", p == null ? party : p.getGameProfile().name());
 	}

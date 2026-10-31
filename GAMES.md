@@ -20,7 +20,10 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 8. **Start point / spawn**: where `create` was typed. Wave fights and quick rounds: that's the spawn, where players
    appear (`/game edit <name> spawn` moves it). Parkour, race, dropper, maze: the start point
    (`/game edit <name> start`).
-9. **Rewards**: each game has commands (`{player}`, `{score}`, `{game}`). In **Rewards**, rules on
+9. **Points** for a game: on its card, "Points when their score counts" (fixed) and "+ points per …" (per
+   score; timed games only get the fixed amount). Commands can do sums: `{score*2}`, `{score/10}`, `{jumps*3}`,
+   `{wave+5}`, e.g. `points give {player} {score*2}`.
+   **Rewards**: each game has commands (`{player}`, `{score}`, `{game}`). In **Rewards**, rules on
    "Finishes a game" / "Sets a personal best" (and the per-game triggers below) can give anything, including
    **Points** for the reward shops.
 10. **Box** (`/game edit <name> corner1` and `corner2`, standing there or looking at the block; height included):
