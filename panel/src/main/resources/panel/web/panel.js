@@ -6637,7 +6637,8 @@
     if (!server) return;
     const a = c.admin || {};
     $('pn-cl-admin').querySelectorAll('[data-admin]').forEach((el) => { el.checked = !!a[el.dataset.admin]; el.disabled = !can('claims.manage'); });
-    $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering.` : 'No kit: be in game with the items in your inventory, then:';
+    const noSlots = (c.kitItems || []).some((it) => it.slot < 0);
+    $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering${noSlots ? '. Set before kits kept their slots: set it again to have every item land where it was' : ', each in its own slot (when that slot is free)'}.` : 'No kit: be in game with the items in your inventory, then:';
     $('pn-cl-kit-clear').hidden = !a.kit;
     $('pn-cl-kit-grid').hidden = !(c.kitItems && c.kitItems.length);
     $('pn-cl-kit-grid').innerHTML = c.kitItems && c.kitItems.length ? kitGrid(c.kitItems) : '';
