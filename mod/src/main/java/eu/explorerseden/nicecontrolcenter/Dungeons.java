@@ -117,6 +117,8 @@ public final class Dungeons {
 		public boolean outSpectate = true;
 		/** Minutes; 0 = no limit. */
 		public int timeLimit;
+		/** Peaceful and neutral mobs in the dungeon (cows, villagers, iron golems, llamas, bees…) attack players too. */
+		public boolean peacefulFight = true;
 		/**
 		 * "kit": their own things are put aside on entering and come back after (the kit is handed out instead);
 		 * "own": they bring their own gear, and what they carry comes back after a death inside.

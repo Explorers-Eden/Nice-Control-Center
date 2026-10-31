@@ -166,6 +166,8 @@ public final class Games {
 		public String boss = "ravager";
 		/** % more health and damage per wave after the first. */
 		public int toughness = 10;
+		/** Peaceful and neutral mobs (cows, villagers, iron golems, llamas, bees…) attack players too (waves, colour floor). */
+		public boolean peacefulFight = true;
 		/** Mobs alive at once (the rest come as these fall). */
 		public int maxAlive = 20;
 		/** Hand-written waves replacing the generated ones: "5" → "husk x6, skeleton x2". */

@@ -2068,6 +2068,7 @@
       + field('firstWave', 'Mobs in wave 1', num('firstWave', 1, 200)) + field('perWave', 'More each wave', num('perWave', 0, 100))
       + field('perPlayer', '% more per extra player', num('perPlayer', 0, 500)) + field('maxAlive', 'Mobs alive at once', num('maxAlive', 1, 200))
       + field('toughness', '% more health and damage per wave', num('toughness', 0, 500))
+      + field('peacefulFight', 'Peaceful and neutral mobs', `<select data-g="peacefulFight" data-bool="1"><option value="true" ${a.peacefulFight !== false ? 'selected' : ''}>attack players too</option><option value="false" ${a.peacefulFight === false ? 'selected' : ''}>stay as they are</option></select>`)
       + field('bossEvery', 'A boss every … waves (0 = never)', num('bossEvery', 0, 1000)) + text('boss', 'Boss', 'ravager {CustomName:…}')
       + `<label class="pn-field pn-field-wide"><span>Hand-written waves (replace the generated ones), one per line: <code>5: husk x6, skeleton x2</code></span><textarea data-g="waveLines" rows="3" spellcheck="false" placeholder="10: wither_skeleton x4, blaze x2">${esc(overrides)}</textarea></label>`
       + field('gear', 'Gear', sel('gear', [['kit', 'kit (their things are kept safe)'], ['own', 'their own']]))
@@ -2106,6 +2107,7 @@
         + field('roundSeconds', 'Seconds before a colour vanishes', num('roundSeconds', 1, 60, 0.1)) + field('speedUp', 'Faster after each refill (s)', num('speedUp', 0, 30, 0.1))
         + field('minRoundSeconds', 'Fastest (s)', num('minRoundSeconds', 1, 60, 0.1)) + field('refillEvery', 'Colours before the grid refills', num('refillEvery', 1, 8))
         + field('mobsEvery', 'A mob every … colours (0 = none)', num('mobsEvery', 0, 100)) + field('maxAlive', 'Mobs at most', num('maxAlive', 1, 200))
+        + field('peacefulFight', 'Peaceful and neutral mobs', `<select data-g="peacefulFight" data-bool="1"><option value="true" ${a.peacefulFight !== false ? 'selected' : ''}>attack players too</option><option value="false" ${a.peacefulFight === false ? 'selected' : ''}>stay as they are</option></select>`)
         + pool('Mobs (one per line, e.g. <code>zombie</code>)'),
       anvils: field('anvilRate', 'Anvils a second at the start', num('anvilRate', 0.1, 50, 0.1)) + field('anvilGrowth', '% more every 10 seconds', num('anvilGrowth', 0, 500)),
       treasure: `<label class="pn-field pn-field-wide"><span>Treasure (one per line: <code>item=points</code>; the more it's worth, the rarer)</span><textarea data-g="treasureItems" data-lines="1" rows="3" spellcheck="false" placeholder="minecraft:diamond=5">${esc((a.treasureItems || []).join('\n'))}</textarea></label>`
@@ -2541,6 +2543,7 @@
           ${field('Lives (deaths before out)', num('lives', 0, 99))}
           ${field('Out players', `<select data-d="outSpectate">${opt(true, d.outSpectate, 'watch their party')}${opt(false, d.outSpectate, 'go back at once')}</select>`)}
           ${field('Time limit (minutes, 0 = none)', num('timeLimit', 0, 600))}
+          ${field('Peaceful and neutral mobs', `<select data-d="peacefulFight">${opt(true, d.peacefulFight !== false, 'attack players too')}${opt(false, d.peacefulFight !== false, 'stay as they are')}</select>`)}
           ${field('Cleared by', `<select data-d="clearOn">${opt('exit', d.clearOn, 'reaching an exit')}${opt('boss', d.clearOn, 'beating every boss')}</select>`)}
           ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
           ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}

@@ -599,6 +599,11 @@ public final class DungeonRuntime {
 		}
 		watchers(server, r);
 		if (r.bosses > 0 && t % 10 == 0) bosses(server, level, r);
+		// Peaceful and neutral mobs in the copy fight too.
+		if (r.dungeon.peacefulFight && t % 20 == 0) {
+			AABB box = new AABB(r.min.getX(), r.min.getY(), r.min.getZ(), r.max.getX() + 1, r.max.getY() + 1, r.max.getZ() + 1);
+			for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box, e -> e.isAlive())) Aggro.make(m, 3f);
+		}
 		if (r.state != State.RUNNING) return;
 		if (r.dungeon.timeLimit > 0 && r.millis() > r.dungeon.timeLimit * 60_000L) {
 			fail(server, r, "Time's up.");

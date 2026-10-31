@@ -497,7 +497,16 @@ public final class QuickRuntime {
 		}
 		switch (a.type) {
 			case "ghasts" -> ghasts(server, level, r, alive);
-			case "colorfloor" -> colorFloor(server, level, r, alive);
+			case "colorfloor" -> {
+				colorFloor(server, level, r, alive);
+				if (a.peacefulFight && server.getTickCount() % 20 == 0) {
+					for (LivingEntity m : level.getEntitiesOfClass(LivingEntity.class, box(a).inflate(8), e -> e.isAlive() && e.entityTags().contains(r.tag()))) {
+						if (!(m instanceof net.minecraft.world.entity.Mob mob)) continue;
+						Aggro.make(mob, 3f);
+						if (mob.getTarget() == null && !alive.isEmpty()) mob.setTarget(alive.get(0));
+					}
+				}
+			}
 			case "anvils" -> anvils(level, r, alive);
 			case "treasure" -> treasure(level, r, alive);
 			default -> {

@@ -504,6 +504,8 @@ public final class WaveRuntime {
 		List<LivingEntity> mobs = mobs(level, g);
 		for (LivingEntity m : mobs) {
 			if (!m.entityTags().contains(SCALED)) toughen(g, m);
+			// Peaceful and neutral mobs fight too (3 damage, tougher each wave like the rest).
+			if (g.arena.peacefulFight && m instanceof Mob mob) Aggro.make(mob, 3f * (1 + g.arena.toughness / 100f * (g.wave - 1)));
 		}
 		// A few at a time, up to the cap of mobs alive at once.
 		int room = g.arena.maxAlive - mobs.size();

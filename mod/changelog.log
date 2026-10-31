@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.61.0
+- Wave fights, dungeons and colour floor: peaceful and neutral mobs attack players too (a switch per arena and per dungeon, on by default). Neutral ones (iron golems, llamas, bees, wolves, polar bears, pandas, endermen…) are hostile right away and stay angry; mobs that shoot already (llamas, snow golems) shoot; fliers and water mobs without an attack (parrots, bats, allays, fish, squid) spit from a distance; everything else charges in, with its own bite or swing when it has one (else 1.5 hearts, tougher each wave)
+
 ## 1.60.0
 - Games: entrances, watch points and back points, placed anywhere (e.g. in the hub) with /game edit <name> entrance|watch|back add|remove|clear. Each has particles and a floating label: entrances show the game's name, what it is, who's playing and the top 3, and stepping in for a second takes players to the game (solo games start the run, wave games bring the party to the start point, quick rounds join the next round); watch points take players to the spectator area; back points are the way out of spectator areas (inside a wave game or quick round, 5 seconds on one leaves it, as before). Spectator areas, dungeon pads and dungeon waiting areas get labels too
 - Games: after a game players go to the game hub spawn (/game spawn set), else back where they came from; the start point (formerly start pad) is just where a game begins
