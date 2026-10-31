@@ -9,6 +9,7 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 2. **Create the game** where it should be: `/game create <type> <name>`. It answers with the next steps.
 3. **Display name** (spaces allowed): `/game edit <name> title Sky Run Deluxe`, or the field on the game's card.
    Commands keep using the one-word name.
+   **Colour**: the picker on the game's card (entrance title and particles, watch point, start title).
 4. **Entrances** (where players get in, e.g. in the hub): `/game edit <name> entrance add` where you stand.
    Particles, the name and the top 3 float above it; stepping in for a second takes players to the game.
 5. **Watch points** (to the spectator area): `/game edit <name> spectate [radius]` in the area, then

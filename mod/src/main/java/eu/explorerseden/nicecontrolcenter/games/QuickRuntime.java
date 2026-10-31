@@ -389,7 +389,7 @@ public final class QuickRuntime {
 			p.teleportTo(level, spawn.x + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), spawn.y, spawn.z + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), Set.of(), spawn.yaw, 0, true);
 			p.resetFallDistance();
 			GameClaims.gameMode(p, false);
-			p.connection.send(new ClientboundSetTitleTextPacket(Component.literal(a.shown()).withStyle(ChatFormatting.GOLD)));
+			p.connection.send(new ClientboundSetTitleTextPacket(Component.literal(a.shown()).withStyle(st -> st.withColor(a.rgb()))));
 			p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(goal(a)).withStyle(ChatFormatting.GRAY)));
 			p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");

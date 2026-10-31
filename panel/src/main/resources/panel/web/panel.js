@@ -2010,7 +2010,8 @@
         waves: gmWaveFields(a, field, num, text, lines),
         heads: gmHeadFields(a, field, num, lines),
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
-      const allFields = field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`) + fields + own;
+      const allFields = field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
+        + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`) + fields + own;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
       const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
         : `<i class="bi bi-geo-alt"></i> Start point (where the game begins): ${esc(where)}${waves ? ' · the party leader stands on it to start' : quick ? ` · everyone on it within ${a.joinSeconds} s plays the same round` : ''}. Move it with <code>/game edit ${esc(a.name)} start</code>.`;
@@ -2026,7 +2027,7 @@
       return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
         <div class="pn-rw-head">
           <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
-          <span class="pn-rw-give-icon"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
+          <span class="pn-rw-give-icon" style="color:${esc(a.color || '#ffc83d')}"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
           <b class="pn-gm-name">${esc(a.title || a.name)}</b>${a.title && a.title !== a.name ? `<span class="pn-hint">${esc(a.name)}</span>` : ''}<span class="np-chip">${esc(GAME_LABELS[a.type] || a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting to start' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
           <span class="pn-rw-actions">
             <button type="button" class="np-btn small" data-gact="reset" title="Clear the best scores"><i class="bi bi-trophy"></i> Reset scores</button>

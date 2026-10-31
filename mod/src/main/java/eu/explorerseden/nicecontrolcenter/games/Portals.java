@@ -211,8 +211,9 @@ public final class Portals {
 		double turn = server.getTickCount() / 20.0 * 0.5;
 		for (Arena a : GameRuntime.settings().arenas) {
 			if (!a.enabled) continue;
-			for (Games.Pos e : a.entrances) ring(server, e, new DustParticleOptions(0xFFC83D, 1.3f), turn, true);
-			for (Games.Pos w : a.watchEntrances) ring(server, w, new DustParticleOptions(0x5EC8FF, 1.3f), turn, true);
+			// The game's own colour (gold without one); watch points a lighter shade of it.
+			for (Games.Pos e : a.entrances) ring(server, e, new DustParticleOptions(a.rgb(), 1.3f), turn, true);
+			for (Games.Pos w : a.watchEntrances) ring(server, w, new DustParticleOptions(lighter(a.rgb()), 1.3f), turn, true);
 			for (Games.Pos b : a.exitPads) ring(server, b, new DustParticleOptions(0xFF5A5A, 1.1f), turn, false);
 		}
 	}
@@ -280,7 +281,7 @@ public final class Portals {
 
 	/** The game's name, what it is, who plays now, and the best three. */
 	private static Component enterText(Arena a) {
-		MutableComponent t = Component.literal(a.shown()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
+		MutableComponent t = Component.literal(a.shown()).withStyle(st -> st.withColor(a.rgb()).withBold(true));
 		String sub = typeName(a.type) + (a.type.equals("heads") ? " · " + a.heads.size() + " hidden" : " · step in");
 		Map<String, Object> live = Games.quick(a.type) ? QuickRuntime.live(a.id) : a.type.equals("waves") ? WaveRuntime.live(a.id) : Map.of();
 		Object playing = live.get("playing");
@@ -302,7 +303,7 @@ public final class Portals {
 		Map<String, Object> live = Games.quick(a.type) ? QuickRuntime.live(a.id) : a.type.equals("waves") ? WaveRuntime.live(a.id) : Map.of();
 		Object playing = live.get("playing");
 		String now = playing instanceof Number n && n.longValue() > 0 ? n + " playing now" : "nobody playing right now";
-		return Component.literal("Watch " + a.shown()).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)
+		return Component.literal("Watch " + a.shown()).withStyle(st -> st.withColor(lighter(a.rgb())).withBold(true))
 				.append(Component.literal("\n" + now).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
 	}
 
@@ -344,6 +345,12 @@ public final class Portals {
 			TextDisplayAccessor acc = (TextDisplayAccessor) d;
 			if (!l.text().equals(acc.nicecontrolcenter$getText())) acc.nicecontrolcenter$setText(l.text());
 		}
+	}
+
+	/** Halfway to white. */
+	private static int lighter(int rgb) {
+		int r = (rgb >> 16) & 0xFF, g = (rgb >> 8) & 0xFF, b = rgb & 0xFF;
+		return ((r + 255) / 2 << 16) | ((g + 255) / 2 << 8) | (b + 255) / 2;
 	}
 
 	private static String dim(ServerPlayer p) {

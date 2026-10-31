@@ -80,6 +80,15 @@ public final class Games {
 			return title == null || title.isBlank() ? name : title.strip();
 		}
 
+		/** The game's colour ("#ffc83d"): its entrance title and particles, watch point, start title; empty = gold. */
+		public String color = "";
+
+		/** The colour as RGB (gold when none or unreadable). */
+		public int rgb() {
+			if (color != null && color.matches("#?[0-9a-fA-F]{6}")) return Integer.parseInt(color.replace("#", ""), 16);
+			return 0xFFC83D;
+		}
+
 		/** parkour, race, dropper or maze. */
 		public String type = "parkour";
 		public boolean enabled = true;
@@ -245,6 +254,7 @@ public final class Games {
 				}
 				if (a.name == null) a.name = "";
 				if (a.title == null) a.title = "";
+				if (a.color == null || !a.color.matches("#?[0-9a-fA-F]{6}")) a.color = "";
 				if (a.type == null || !TYPES.contains(a.type)) a.type = "parkour";
 				if (a.palette == null || a.palette.isEmpty()) a.palette = new Arena().palette;
 				if (a.checkpoints == null) a.checkpoints = new ArrayList<>();

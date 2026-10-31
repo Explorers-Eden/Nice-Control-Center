@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.62.0
+- Games: a colour per game (panel): the entrance's title and particles, the watch point (a lighter shade), the title when a quick round starts and the action bar during parkour, race, dropper and maze runs; gold without one
+
 ## 1.61.0
 - Wave fights, dungeons and colour floor: peaceful and neutral mobs attack players too (a switch per arena and per dungeon, on by default). Neutral ones (iron golems, llamas, bees, wolves, polar bears, pandas, endermen…) are hostile right away and stay angry; mobs that shoot already (llamas, snow golems) shoot; fliers and water mobs without an attack (parrots, bats, allays, fish, squid) spit from a distance; everything else charges in, with its own bite or swing when it has one (else 1.5 hearts, tougher each wave)
 

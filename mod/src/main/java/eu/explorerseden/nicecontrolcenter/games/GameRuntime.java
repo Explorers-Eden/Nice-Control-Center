@@ -233,7 +233,7 @@ public final class GameRuntime {
 			case "dropper" -> clock(s.millis()) + (s.progress > 0 ? " · try " + (s.progress + 1) : "") + best(s, " · best ");
 			default -> clock(s.millis()) + best(s, " · best ");
 		};
-		p.sendOverlayMessage(Component.literal(s.arena.shown() + " · " + line).withStyle(ChatFormatting.AQUA));
+		p.sendOverlayMessage(Component.literal(s.arena.shown() + " · " + line).withStyle(st -> st.withColor(s.arena.rgb())));
 	}
 
 	private static String best(Session s, String lead) {
