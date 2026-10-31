@@ -269,6 +269,11 @@ public final class Games {
 				}
 				if (a.name == null) a.name = "";
 				if (a.title == null) a.title = "";
+				// Colour floor: players gather on the middle platform (not where it was made).
+				if (a.type.equals("colorfloor") && a.corner != null) {
+					int step = Math.max(1, a.platformSize) + Math.max(0, a.platformGap);
+					a.start = new Pos(a.corner.dim, a.corner.x + step + a.platformSize / 2.0, a.corner.y + 1, a.corner.z + step + a.platformSize / 2.0, 0);
+				}
 				// Wave fights and quick rounds made before the spawn was set on creating: the spot they were made on.
 				if (a.spawn == null && a.start != null && (a.type.equals("waves") || quick(a.type) && !a.type.equals("colorfloor"))) {
 					a.spawn = new Pos(a.start.dim, a.start.x, a.start.y, a.start.z, a.start.yaw);

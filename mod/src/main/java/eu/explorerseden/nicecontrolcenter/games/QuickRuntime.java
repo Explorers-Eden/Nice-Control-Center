@@ -1092,13 +1092,12 @@ public final class QuickRuntime {
 		}
 	}
 
-	/** Start pads of quick rounds sparkle gold when someone's close; exit pads red while a round is on. */
+	/** Exit pads of quick rounds sparkle red while a round is on (the way in is the game's entrances). */
 	private static void particles(MinecraftServer server) {
 		double turn = server.getTickCount() / 20.0 * 0.4;
 		for (Arena a : GameRuntime.settings().arenas) {
 			if (!a.enabled || !Games.quick(a.type)) continue;
-			if (a.start != null) ring(server, a.start, new DustParticleOptions(0xFFC83D, 1.2f), turn);
-			if (rounds.containsKey(a.id)) for (Games.Pos pad : a.exitPads) ring(server, pad, new DustParticleOptions(0xFF4A4A, 1.2f), turn);
+if (rounds.containsKey(a.id)) for (Games.Pos pad : a.exitPads) ring(server, pad, new DustParticleOptions(0xFF4A4A, 1.2f), turn);
 		}
 	}
 

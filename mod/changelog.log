@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.66.1
+- Quick rounds: no gold ring on the start point any more (it looked like a second entrance; the entrances are the way in)
+- Colour floor: players gather on the middle platform, not where /game create was typed (also for colour floors made before)
+
 ## 1.66.0
 - Mazes: up to 256 cells per side (513 × 513 blocks); built a couple of thousand columns per tick, so a big maze appears over a few seconds without freezing the server (no runs while it's built)
 - Mazes: several wall and floor blocks, mixed at random; a light level for the paths (0 = dark, up to 15: an invisible light in every cell)

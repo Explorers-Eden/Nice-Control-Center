@@ -906,6 +906,8 @@ public final class GameRuntime {
 							if (!a.type.equals("colorfloor")) return "Only colour floors have a grid.";
 							Games.Pos at = pos(p);
 							a.corner = new Games.Pos(at.dim, Math.floor(at.x), at.y - 1, Math.floor(at.z), 0);
+							// Players gather on the middle platform.
+							settings.fill();
 							QuickRuntime.previewGrid((ServerLevel) p.level(), a);
 							int span = a.platformSize * 3 + a.platformGap * 2;
 							return "Grid built here: " + span + " × " + span + " blocks (+X and +Z, at the block under your feet). Keep the space below open: falling = out.";
