@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.68.0
+- Dashboard (and the panel's Players page): a player's inventory is shown like the game's (armour and off hand, three rows, hotbar), the ender chest as its three rows, grave contents in rows of nine; with item pictures inside the panel and the game-like tooltips
+
 ## 1.67.1
 - Games: entrance labels show the name, then an optional line of your own (panel), then the top 3; the line with the game type and "step in" is gone
 

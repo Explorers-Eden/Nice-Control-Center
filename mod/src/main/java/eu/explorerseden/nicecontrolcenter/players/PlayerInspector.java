@@ -203,10 +203,11 @@ public final class PlayerInspector {
 		}
 		p.put("inventory", items);
 		List<Map<String, Object>> armor = new ArrayList<>();
+		// Inventory slot numbers like the game's: feet 36 … head 39, off hand 40 (the dashboard draws them in place).
 		for (EquipmentSlot slot : ARMOR) {
-			addItem(armor, player.getItemBySlot(slot), null);
+			addItem(armor, player.getItemBySlot(slot), 39 - java.util.List.of(ARMOR).indexOf(slot));
 		}
-		addItem(armor, player.getItemBySlot(EquipmentSlot.OFFHAND), null);
+		addItem(armor, player.getItemBySlot(EquipmentSlot.OFFHAND), 40);
 		p.put("equipment", armor);
 		List<Map<String, Object>> ender = new ArrayList<>();
 		for (int slot = 0; slot < player.getEnderChestInventory().getContainerSize(); slot++) {
@@ -390,8 +391,10 @@ public final class PlayerInspector {
 		p.put("inventory", items(data.getListOrEmpty("Inventory"), ops));
 		CompoundTag equipment = data.getCompoundOrEmpty("equipment");
 		List<Map<String, Object>> armor = new ArrayList<>();
-		for (String slot : List.of("head", "chest", "legs", "feet", "offhand")) {
-			equipment.getCompound(slot).ifPresent(tag -> addItem(armor, parse(tag, ops), null));
+		List<String> gear = List.of("head", "chest", "legs", "feet", "offhand");
+		for (String slot : gear) {
+			int n = slot.equals("offhand") ? 40 : 39 - gear.indexOf(slot);
+			equipment.getCompound(slot).ifPresent(tag -> addItem(armor, parse(tag, ops), n));
 		}
 		p.put("equipment", armor);
 		p.put("enderChest", items(data.getListOrEmpty("EnderItems"), ops));

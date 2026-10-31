@@ -1,3 +1,7 @@
+## 1.57.0
+- Item pictures: shields show as a shield (were dark oak planks); pictures by item id for the Players page's inventories (mod 1.68.0)
+- Claims: kit items have tooltips like the game's (name, enchantments, id), shown right away
+
 ## 1.56.2
 - Claims: a kit set before kits kept their slots says so (set it again to have items land where they were)
 

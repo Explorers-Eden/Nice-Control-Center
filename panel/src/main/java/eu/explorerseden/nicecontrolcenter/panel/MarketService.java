@@ -525,6 +525,18 @@ final class MarketService {
 			json(ctx, Map.of("ok", true));
 		}));
 		// Icons: public, for the info page.
+		// By item id (the dashboard's inventories, which have no stack data): "minecraft:diamond_sword".
+		routes.get("/info/itemicon/{id}", ctx -> {
+			String id = ctx.pathParam("id").replaceFirst("\\.png$", "");
+			if (!id.contains(":")) id = "minecraft:" + id;
+			String hash = id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") ? icons.iconFor("{\"id\":\"" + id + "\"}") : null;
+			Path f = hash == null ? null : icons.icon(hash);
+			if (f == null) {
+				ctx.status(HttpStatus.NOT_FOUND);
+				return;
+			}
+			ctx.contentType("image/png").header("Cache-Control", "public, max-age=86400").result(Files.readAllBytes(f));
+		});
 		routes.get("/info/items/{hash}", ctx -> {
 			String name = ctx.pathParam("hash").replaceFirst("\\.png$", "");
 			Path f = icons.icon(name);

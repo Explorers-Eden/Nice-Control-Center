@@ -42,8 +42,8 @@ import java.util.zip.ZipFile;
 final class ItemIcons {
 	private static final String MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 	private static final int SIZE = 64;
-	/** 2: shulker boxes, chests, banners and other items the game draws with code. 3: block models drawn box by box (anvils, stairs, slabs…). */
-	private static final int RENDERER = 4;
+	/** 2: shulker boxes, chests, banners and other items the game draws with code. 3: block models drawn box by box (anvils, stairs, slabs…). 5: shields. */
+	private static final int RENDERER = 5;
 
 	private final Path assetsDir;
 	private final Path iconsDir;
@@ -314,6 +314,16 @@ final class ItemIcons {
 			Integer rgb = DYES.get(special.get("color").getAsString());
 			if (rgb != null) return banner(rgb);
 		}
+		if (type.equals("shield")) {
+			// The plate's front face (12 × 22 at 1,1 of the entity texture), upright and centred like the game's icon.
+			// The plain wooden shield (entity/shield/base is the white one under banner patterns).
+			BufferedImage skin = texture("minecraft:entity/shield/shield_base_nopattern");
+			if (skin == null) skin = texture("minecraft:entity/shield_base_nopattern");
+			if (skin != null && skin.getWidth() >= 64) {
+				int k = skin.getWidth() / 64;
+				return shield(skin.getSubimage(k, k, 12 * k, 22 * k));
+			}
+		}
 		// The particle texture of the base model (and its parents).
 		String current = base;
 		for (int depth = 0; current != null && depth < 16; depth++) {
@@ -420,6 +430,18 @@ final class ItemIcons {
 			Map.entry("light_blue", 0x3AB3DA), Map.entry("yellow", 0xFED83D), Map.entry("lime", 0x80C71F), Map.entry("pink", 0xF38BAA), Map.entry("gray", 0x474F52),
 			Map.entry("light_gray", 0x9D9D97), Map.entry("cyan", 0x169C9C), Map.entry("purple", 0x8932B8), Map.entry("blue", 0x3C44AA), Map.entry("brown", 0x835432),
 			Map.entry("green", 0x5E7C16), Map.entry("red", 0xB02E26), Map.entry("black", 0x1D1D21));
+
+	/** A shield's face, scaled to the icon's height and centred (pixels kept sharp). */
+	private static BufferedImage shield(BufferedImage face) {
+		BufferedImage out = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = out.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+		int h = SIZE - SIZE / 16;
+		int w = Math.round(h * face.getWidth() / (float) face.getHeight());
+		g.drawImage(face, (SIZE - w) / 2, (SIZE - h) / 2, w, h, null);
+		g.dispose();
+		return out;
+	}
 
 	/** A banner: the cloth in its colour hanging from a wooden bar. */
 	private static BufferedImage banner(int rgb) {

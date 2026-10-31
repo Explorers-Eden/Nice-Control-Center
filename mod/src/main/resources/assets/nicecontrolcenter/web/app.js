@@ -1844,6 +1844,36 @@
     document.addEventListener('scroll', () => { current = null; box.hidden = true; }, true);
   }
 
+  /** Item pictures come from the panel (by item id) when the dashboard runs inside it; else the old icons. */
+  const ITEM_PICS = location.pathname.includes('/dashboard/') ? '../info/itemicon/' : null;
+
+  /** One inventory slot: picture (or icon), count, the game-like tooltip. */
+  function invSlot(item, hint) {
+    if (!item) return `<span class="np-inv-slot${hint ? ' np-inv-' + hint : ''}"></span>`;
+    const tip = JSON.stringify({ n: (item.rich || item.name) + (item.count > 1 ? `§r §7×${item.count}` : ''), id: item.id, e: item.enchantments, l: item.lore || [] });
+    const fallback = `<i class="bi ${item.head ? 'bi-person-bounding-box' : item.enchantments.length ? 'bi-stars' : 'bi-box-seam'}"></i>`;
+    const pic = ITEM_PICS ? `<img src="${ITEM_PICS}${encodeURIComponent(item.id)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'bi bi-box-seam'}))">` : fallback;
+    return `<span class="np-inv-slot filled${item.enchantments.length ? ' ench' : ''}" data-tip="${esc(tip)}">${pic}${item.count > 1 ? `<small>${item.count}</small>` : ''}</span>`;
+  }
+
+  /** The player's inventory like the game's: armour and off hand, three rows, the hotbar. */
+  function invGrid(equipment, inventory) {
+    const at = new Map();
+    for (const it of [...(equipment || []), ...(inventory || [])]) if (it.slot != null && !at.has(it.slot)) at.set(it.slot, it);
+    const row = (from) => `<div class="np-inv-row">${Array.from({ length: 9 }, (_, i) => invSlot(at.get(from + i))).join('')}</div>`;
+    return `<div class="np-inv"><div class="np-inv-row np-inv-gear">${invSlot(at.get(39), 'head')}${invSlot(at.get(38), 'chest')}${invSlot(at.get(37), 'legs')}${invSlot(at.get(36), 'feet')}<span class="np-inv-gap"></span>${invSlot(at.get(40), 'offhand')}</div>`
+      + row(9) + row(18) + row(27) + `<div class="np-inv-hotbar">${row(0)}</div></div>`;
+  }
+
+  /** A box of rows of nine (ender chest: by slot; grave: in order). */
+  function boxGrid(items, rows, bySlot) {
+    const list = items || [];
+    const at = new Map();
+    list.forEach((it, i) => at.set(bySlot && it.slot != null ? it.slot : i, it));
+    const n = Math.max(rows, Math.ceil(Math.max(...at.keys(), -1) / 9 + 0.001));
+    return `<div class="np-inv">${Array.from({ length: n }, (_, r) => `<div class="np-inv-row">${Array.from({ length: 9 }, (_, i) => invSlot(at.get(r * 9 + i))).join('')}</div>`).join('')}</div>`;
+  }
+
   function itemSection(title, items, note) {
     if (!items || !items.length) return '';
     const sorted = [...items].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
@@ -1897,8 +1927,9 @@
     ].join('');
     const waypoints = p.waypoints && p.waypoints.length ? `<h4 class="np-subhead">Waypoints</h4><div class="np-loc-grid">${p.waypoints.map((w) =>
       locTile(p, w.access === 'public' ? 'bi-signpost-2' : 'bi-lock', w.name, w, esc(w.access))).join('')}</div>` : '';
-    const items = itemSection('Equipment', p.equipment) + itemSection('Inventory', p.inventory, p.online ? 'live' : 'when last saved')
-      + itemSection('Ender chest', p.enderChest) + (p.grave ? itemSection('Grave contents', p.grave.contents) : '');
+    const items = `<h4 class="np-subhead">Inventory <small>${p.online ? 'live' : 'when last saved'}</small></h4>${invGrid(p.equipment, p.inventory)}`
+      + `<h4 class="np-subhead">Ender chest</h4>${boxGrid(p.enderChest, 3, true)}`
+      + (p.grave && p.grave.contents && p.grave.contents.length ? `<h4 class="np-subhead">Grave contents</h4>${boxGrid(p.grave.contents, 1, false)}` : '');
     const claims = claimsSection(p, d);
     const market = marketSection(p, d);
     const pets = petsSection(p, d);

@@ -6669,14 +6669,43 @@
     const cell = (s, hint) => {
       const it = at.get(s);
       if (!it) return `<span class="pn-kit-slot${hint ? ' pn-kit-' + hint : ''}"></span>`;
-      const tip = [it.name, ...(it.enchantments || [])].join('\n') + (it.count > 1 ? `\n× ${it.count}` : '');
+      const tip = JSON.stringify({ n: it.name + (it.count > 1 ? ` ×${it.count}` : ''), e: it.enchantments || [], id: it.id });
       const pic = it.icon ? `<img src="info/items/${esc(it.icon)}" alt="" width="32" height="32">` : `<b>${esc(it.name.slice(0, 3))}</b>`;
-      return `<span class="pn-kit-slot filled${(it.enchantments || []).length ? ' ench' : ''}" title="${esc(tip)}">${pic}${it.count > 1 ? `<small>${it.count}</small>` : ''}</span>`;
+      return `<span class="pn-kit-slot filled${(it.enchantments || []).length ? ' ench' : ''}" data-itemtip="${esc(tip)}">${pic}${it.count > 1 ? `<small>${it.count}</small>` : ''}</span>`;
     };
     const row = (from, to) => `<div class="pn-kit-row">${Array.from({ length: to - from }, (_, i) => cell(from + i)).join('')}</div>`;
     return `<div class="pn-kit-row pn-kit-gear">${cell(39, 'head')}${cell(38, 'chest')}${cell(37, 'legs')}${cell(36, 'feet')}<span class="pn-kit-gap"></span>${cell(40, 'offhand')}</div>`
       + row(9, 18) + row(18, 27) + row(27, 36) + `<div class="pn-kit-hotbar">${row(0, 9)}</div>`;
   }
+
+  // Item tooltips like the game's (name, enchantments, id), right away and following the cursor.
+  (() => {
+    const box = document.createElement('div');
+    box.className = 'pn-itemtip';
+    box.hidden = true;
+    document.body.appendChild(box);
+    let cur = null;
+    const move = (e) => {
+      const el = e.target.closest && e.target.closest('[data-itemtip]');
+      if (!el) { cur = null; box.hidden = true; return; }
+      if (el.dataset.itemtip !== cur) {
+        cur = el.dataset.itemtip;
+        let t;
+        try { t = JSON.parse(cur); } catch (err) { t = { n: cur, e: [] }; }
+        box.innerHTML = `<b>${esc(t.n)}</b>${(t.e || []).map((l) => `<span class="ench">${esc(l)}</span>`).join('')}${t.id ? `<span class="id">${esc(t.id)}</span>` : ''}`;
+        box.hidden = false;
+      }
+      const pad = 14;
+      let x = e.clientX + pad, y = e.clientY + pad;
+      if (x + box.offsetWidth > innerWidth - 4) x = Math.max(4, e.clientX - pad - box.offsetWidth);
+      if (y + box.offsetHeight > innerHeight - 4) y = Math.max(4, e.clientY - pad - box.offsetHeight);
+      box.style.left = x + 'px';
+      box.style.top = y + 'px';
+    };
+    document.addEventListener('mouseover', move);
+    document.addEventListener('mousemove', (e) => { if (cur) move(e); });
+    document.addEventListener('scroll', () => { cur = null; box.hidden = true; }, true);
+  })();
 
   async function clAdminSend(body, done) {
     try {
