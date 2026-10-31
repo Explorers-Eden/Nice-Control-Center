@@ -49,6 +49,12 @@ public final class Games {
 			this.z = z;
 			this.yaw = yaw;
 		}
+
+		/** Squared distance to another spot (same dimension assumed). */
+		public double distanceSq(Pos o) {
+			double dx = x - o.x, dy = y - o.y, dz = z - o.z;
+			return dx * dx + dy * dy + dz * dz;
+		}
 	}
 
 	/** A sphere to pass through (race checkpoints, finish areas). */
@@ -254,6 +260,10 @@ public final class Games {
 				}
 				if (a.name == null) a.name = "";
 				if (a.title == null) a.title = "";
+				// Wave fights and quick rounds made before the spawn was set on creating: the spot they were made on.
+				if (a.spawn == null && a.start != null && (a.type.equals("waves") || quick(a.type) && !a.type.equals("colorfloor"))) {
+					a.spawn = new Pos(a.start.dim, a.start.x, a.start.y, a.start.z, a.start.yaw);
+				}
 				if (a.color == null || !a.color.matches("#?[0-9a-fA-F]{6}")) a.color = "";
 				if (a.type == null || !TYPES.contains(a.type)) a.type = "parkour";
 				if (a.palette == null || a.palette.isEmpty()) a.palette = new Arena().palette;

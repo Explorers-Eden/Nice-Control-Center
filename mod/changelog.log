@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.62.1
+- Games: creating a wave fight or quick round sets its spawn (where players appear) where you stand, instead of a separate start point; /game edit <name> spawn moves both. Games made before without a spawn take that spot as their spawn
+
 ## 1.62.0
 - Games: a colour per game (panel): the entrance's title and particles, the watch point (a lighter shade), the title when a quick round starts and the action bar during parkour, race, dropper and maze runs; gold without one
 

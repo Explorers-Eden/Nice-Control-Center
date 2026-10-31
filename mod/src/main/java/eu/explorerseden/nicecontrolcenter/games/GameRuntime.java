@@ -749,7 +749,10 @@ public final class GameRuntime {
 				.then(Commands.literal("edit").requires(admin).then(arenaArg.get()
 						// Wave arenas: where players appear, the fight box, mob spawns, spectator area, exit pads, kit.
 						.then(Commands.literal("spawn").executes(ctx -> edit(ctx, (a, p) -> {
+							// The start point (where the round gathers) moves along when it was on the spawn (or the game has none apart).
+							boolean together = a.start == null || a.spawn == null || a.start.dim.equals(a.spawn.dim) && a.start.distanceSq(a.spawn) < 4;
 							a.spawn = pos(p);
+							if (together && (a.type.equals("waves") || Games.quick(a.type))) a.start = pos(p);
 							return "Players appear here (and come back here after dying).";
 						})))
 						.then(Commands.literal("corner1").executes(ctx -> corner(ctx, true))
@@ -918,13 +921,13 @@ public final class GameRuntime {
 		String next = switch (type) {
 			case "parkour" -> "This spot is the start point; lanes go off along +X every " + a.laneSpacing + " blocks, so keep that space free. Or keep it in a box: /game edit " + name + " corner1 / corner2 (lanes share it, 9 blocks wide each).";
 			case "race" -> "This spot is the start. Add checkpoints in order with /game edit " + name + " checkpoint add <radius>, then /game edit " + name + " finish <radius>.";
-			case "waves" -> "This spot is the start point (a party leader stands on it). Then: /game edit " + name + " spawn (where players appear), corner1 / corner2 [x y z] (the fight box, height included),"
-					+ " mobspawn add (where mobs come from; several), optionally spectate [radius] and exitpad add, and kit. Waves and rewards are set in the panel (Games).";
+			case "waves" -> "Players appear here (the spawn; the party leader stands here to start). Then: corner1 / corner2 [x y z] (the fight box, height included),"
+					+ " mobspawn add (where mobs come from; several), optionally spectate [radius] and back add, and kit. Waves and rewards are set in the panel (Games).";
 			case "dropper" -> "This spot is the start point. Stand where players drop from: /game edit " + name + " top; then in the water at the bottom: /game edit " + name + " finish <radius>.";
-			case "ghasts" -> "This spot is the start point (everyone on it within " + a.joinSeconds + " s plays). Then: /game edit " + name + " spawn, corner1 / corner2 (the play box, height included),"
+			case "ghasts" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the play box, height included),"
 					+ " mobspawn add (where ghasts appear, up high; several). Try it with /game try " + name + ".";
-			case "colorfloor" -> "This spot is the start point. Stand where the grid's corner goes and type /game edit " + name + " grid (it builds 3×3 platforms toward +X and +Z). Colours, speed and mobs are set in the panel.";
-			case "anvils", "treasure", "fishing" -> "This spot is the start point. Then: /game edit " + name + " spawn and corner1 / corner2 (the play box, height included"
+			case "colorfloor" -> "Stand where the grid's corner goes and type /game edit " + name + " grid (it builds 3×3 platforms toward +X and +Z; players appear on the middle one). Colours, speed and mobs are set in the panel.";
+			case "anvils", "treasure", "fishing" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the play box, height included"
 					+ (type.equals("anvils") ? "; anvils fall from its top" : type.equals("fishing") ? "; put water in it" : "; treasure appears on its floor") + "). Try it with /game try " + name + ".";
 			case "heads" -> "Set the heads' skin: /game edit " + name + " texture <url or value>, then /game edit " + name + " headitem gives you heads to hide (placing one adds it)."
 					+ " Rewards every few heads are set in the panel.";
@@ -950,6 +953,8 @@ public final class GameRuntime {
 			default -> {
 			}
 		}
+		// Wave fights and quick rounds: players appear where it was made; they gather there for the round too.
+		if (type.equals("waves") || Games.quick(type) && !type.equals("colorfloor")) a.spawn = pos(p);
 		if (type.equals("maze")) {
 			a.corner = pos(p);
 			a.start = new Games.Pos(a.corner.dim, a.corner.x - 2, a.corner.y, a.corner.z - 2, 0);

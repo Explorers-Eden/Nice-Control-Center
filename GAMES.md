@@ -17,7 +17,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 6. **Back points** (the way out of the spectator area): `/game edit <name> back add`.
 7. Points take `remove` (the nearest within 5 blocks) and `clear`, e.g. `/game edit <name> entrance remove`.
    The panel lists them all and can take them away too.
-8. **Start point**: where the game begins (set by `create`; move it with `/game edit <name> start`).
+8. **Start point / spawn**: where `create` was typed. Wave fights and quick rounds: that's the spawn, where players
+   appear (`/game edit <name> spawn` moves it). Parkour, race, dropper, maze: the start point
+   (`/game edit <name> start`).
 9. **Rewards**: each game has commands (`{player}`, `{score}`, `{game}`). In **Rewards**, rules on
    "Finishes a game" / "Sets a personal best" (and the per-game triggers below) can give anything, including
    **Points** for the reward shops.
@@ -49,7 +51,7 @@ game-area options, including the game mode inside).
 
 ## Wave fight (`waves`)
 A party of 1–4 (`/party invite <player>`) fights waves of mobs.
-- `/game edit <name> spawn` (where players appear), `corner1` / `corner2` (the fight box),
+- Create it where players should appear (the spawn; move it with `/game edit <name> spawn`), then `corner1` / `corner2` (the fight box),
   `mobspawn add` (several), optional `spectate [radius]`, `back add` (exit pads inside: 5 s on one leaves),
   `kit` (what you carry becomes the kit).
 - Panel: waves to clear (0 = endless), mob pool, wave sizes, boss, toughness, hand-written waves, team lives,
@@ -60,18 +62,18 @@ Everyone who steps in during the join window (10 s) plays the same round, each f
 a deadly hit knocks them out. A spectator area also queues players for the next round.
 
 **Ghast deflect** (`ghasts`): hit the fireballs back with snowballs.
-- `spawn`, `corner1` / `corner2`, `mobspawn add` up high (several).
+- Created where players appear (the spawn). `corner1` / `corner2`, `mobspawn add` up high (several).
 
 **Colour floor** (`colorfloor`): a 3×3 grid of coloured platforms; the called colour vanishes.
 - Stand at the grid's corner: `/game edit <name> grid`. Panel: colours, platform size and gap, speed,
   refills, mobs (peaceful ones attack too unless switched off).
 
-**Anvil rain** (`anvils`): dodge anvils falling from the box's top. `spawn`, `corner1` / `corner2`.
+**Anvil rain** (`anvils`): dodge anvils falling from the box's top. Created at the spawn; `corner1` / `corner2`.
 
-**Treasure grab** (`treasure`): glowing items appear on the box's floor. `spawn`, `corner1` / `corner2`;
+**Treasure grab** (`treasure`): glowing items appear on the box's floor. Created at the spawn; `corner1` / `corner2`;
 panel: items and their points (`minecraft:diamond=5`).
 
-**Fishing frenzy** (`fishing`): catches score points. `spawn`, `corner1` / `corner2` with water inside;
+**Fishing frenzy** (`fishing`): catches score points. Created at the spawn; `corner1` / `corner2` with water inside;
 panel: points per catch.
 
 ## Head hunt (`heads`)
