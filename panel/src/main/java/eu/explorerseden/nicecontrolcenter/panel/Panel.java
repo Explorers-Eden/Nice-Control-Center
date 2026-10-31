@@ -138,6 +138,7 @@ public final class Panel {
 		// The player market, with item icons drawn from the game's textures and the server's resource pack.
 		ItemIcons icons = new ItemIcons(dataDir, serverDir, () -> versions.installed().mc());
 		MarketService market = new MarketService(serverDir, dataDir, db, server, dashboard, audit, icons);
+		claims.useIcons(icons);
 		// Discord DMs to linked players about their own things (sales, mailbox, claims expiring, admin messages).
 		PlayerNotices notices = new PlayerNotices(dataDir, discord, dashboard, claims, market, server);
 		dashboard.useNotices(notices);

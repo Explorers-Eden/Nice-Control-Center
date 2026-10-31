@@ -274,14 +274,7 @@ public final class GameClaims {
 			p.setExperiencePoints(0);
 			p.removeAllEffects();
 		}
-		if (o.kit != null) {
-			for (String json : o.kit) {
-				ItemStack st = decode(p, json);
-				if (st.isEmpty()) continue;
-				mark(st, c.id, "kit");
-				if (!p.getInventory().add(st)) p.level().addFreshEntity(new ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
-			}
-		}
+		if (o.kit != null) for (String json : o.kit) handOut(p, json, c.id);
 		p.inventoryMenu.broadcastChanges();
 		p.sendOverlayMessage(Component.literal(c.displayName() + (o.inventory ? ": your things are kept safe until you leave" : "")).withStyle(ChatFormatting.AQUA));
 	}
@@ -590,12 +583,7 @@ public final class GameClaims {
 	/** Hands out kit items (they vanish when the player leaves or dies). */
 	public static void giveKit(ServerPlayer p, List<String> kit, String key) {
 		if (kit == null) return;
-		for (String json : kit) {
-			ItemStack st = decode(p, json);
-			if (st.isEmpty()) continue;
-			mark(st, key, "kit");
-			if (!p.getInventory().add(st)) p.level().addFreshEntity(new ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
-		}
+		for (String json : kit) handOut(p, json, key);
 		p.inventoryMenu.broadcastChanges();
 	}
 
@@ -644,9 +632,26 @@ public final class GameClaims {
 		var inv = admin.getInventory();
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack st = inv.getItem(i);
-			if (!st.isEmpty()) kit.add(encode(admin, unmark(st.copy())));
+			if (!st.isEmpty()) kit.add(encodeSlot(admin, unmark(st.copy()), i));
 		}
 		return kit;
+	}
+
+	/**
+	 * One kit item into the player's inventory: in the slot it had in the kit (hotbar, armour, off hand…) when that's
+	 * free, else anywhere, else at their feet. Older kits without slots go anywhere.
+	 */
+	private static void handOut(ServerPlayer p, String json, String key) {
+		ItemStack st = decode(p, json);
+		if (st.isEmpty()) return;
+		mark(st, key, "kit");
+		int slot = slotOf(json);
+		var inv = p.getInventory();
+		if (slot >= 0 && slot < inv.getContainerSize() && inv.getItem(slot).isEmpty()) {
+			inv.setItem(slot, st);
+			return;
+		}
+		if (!inv.add(st)) p.level().addFreshEntity(new ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
 	}
 
 	// ---------------------------------------------------------------- pickups
@@ -755,7 +760,7 @@ public final class GameClaims {
 		var inv = admin.getInventory();
 		for (int i = 0; i < inv.getContainerSize(); i++) {
 			ItemStack st = inv.getItem(i);
-			if (!st.isEmpty()) kit.add(encode(admin, unmark(st.copy())));
+			if (!st.isEmpty()) kit.add(encodeSlot(admin, unmark(st.copy()), i));
 		}
 		if (c.admin == null) c.admin = new Claims.AdminOptions();
 		c.admin.kit = kit;
@@ -769,9 +774,29 @@ public final class GameClaims {
 		return ItemStack.CODEC.encodeStart(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), st).getOrThrow().toString();
 	}
 
+	/** A kit item: the stack, plus the inventory slot it was in ("slot"). */
+	private static String encodeSlot(ServerPlayer p, ItemStack st, int slot) {
+		com.google.gson.JsonObject o = ItemStack.CODEC.encodeStart(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), st).getOrThrow().getAsJsonObject();
+		o.addProperty("slot", slot);
+		return o.toString();
+	}
+
+	/** The kit item's slot, or -1 (older kits, other items). */
+	private static int slotOf(String json) {
+		try {
+			var o = JsonParser.parseString(json).getAsJsonObject();
+			return o.has("slot") ? o.get("slot").getAsInt() : -1;
+		} catch (RuntimeException e) {
+			return -1;
+		}
+	}
+
 	private static ItemStack decode(ServerPlayer p, String json) {
 		try {
-			return ItemStack.CODEC.parse(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), JsonParser.parseString(json)).getOrThrow();
+			var tree = JsonParser.parseString(json);
+			// The kit's slot isn't part of the stack.
+			if (tree.isJsonObject() && tree.getAsJsonObject().has("slot")) tree.getAsJsonObject().remove("slot");
+			return ItemStack.CODEC.parse(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), tree).getOrThrow();
 		} catch (RuntimeException e) {
 			NiceControlCenter.LOGGER.warn("Claims: a game-claim item can't be read: {}", e.getMessage());
 			return ItemStack.EMPTY;

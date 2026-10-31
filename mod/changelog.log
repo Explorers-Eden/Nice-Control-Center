@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.67.0
+- Kits (game claims, wave fights, quick rounds, dungeons) remember each item's slot: players get them where they were when the kit was set (hotbar, armour, off hand), as long as that slot is free; kits set before keep handing out in order
+
 ## 1.66.1
 - Quick rounds: no gold ring on the start point any more (it looked like a second entrance; the entrances are the way in)
 - Colour floor: players gather on the middle platform, not where /game create was typed (also for colour floors made before)

@@ -6638,6 +6638,8 @@
     $('pn-cl-admin').querySelectorAll('[data-admin]').forEach((el) => { el.checked = !!a[el.dataset.admin]; el.disabled = !can('claims.manage'); });
     $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering.` : 'No kit: be in game with the items in your inventory, then:';
     $('pn-cl-kit-clear').hidden = !a.kit;
+    $('pn-cl-kit-grid').hidden = !(c.kitItems && c.kitItems.length);
+    $('pn-cl-kit-grid').innerHTML = c.kitItems && c.kitItems.length ? kitGrid(c.kitItems) : '';
     $('pn-cl-gamemode').value = a.gameMode || '';
     $('pn-cl-gamemode').disabled = !can('claims.manage');
     $('pn-cl-deaths').value = a.deaths || 0;
@@ -6647,6 +6649,31 @@
       : 'Respawn point: where they entered. Set one in game with /claim admin respawn set while standing there.';
     $('pn-cl-respawn-clear').hidden = !a.respawn;
     if (!$('pn-cl-kit-from').value && me) $('pn-cl-kit-from').value = me.user;
+  }
+
+  /**
+   * A kit drawn like the game's inventory: armour (head to feet) and off hand on top, the three inventory rows, then
+   * the hotbar. Items without a slot (older kits) fill free slots the way the game does, hotbar first.
+   */
+  function kitGrid(items) {
+    const at = new Map();
+    for (const it of items) if (it.slot >= 0 && it.slot <= 40 && !at.has(it.slot)) at.set(it.slot, it);
+    const order = [...Array(36).keys()];
+    for (const it of items) {
+      if (it.slot >= 0 && at.get(it.slot) === it) continue;
+      const free = order.find((s) => !at.has(s));
+      if (free !== undefined) at.set(free, it);
+    }
+    const cell = (s, hint) => {
+      const it = at.get(s);
+      if (!it) return `<span class="pn-kit-slot${hint ? ' pn-kit-' + hint : ''}"></span>`;
+      const tip = [it.name, ...(it.enchantments || [])].join('\n') + (it.count > 1 ? `\n× ${it.count}` : '');
+      const pic = it.icon ? `<img src="info/items/${esc(it.icon)}" alt="" width="32" height="32">` : `<b>${esc(it.name.slice(0, 3))}</b>`;
+      return `<span class="pn-kit-slot filled${(it.enchantments || []).length ? ' ench' : ''}" title="${esc(tip)}">${pic}${it.count > 1 ? `<small>${it.count}</small>` : ''}</span>`;
+    };
+    const row = (from, to) => `<div class="pn-kit-row">${Array.from({ length: to - from }, (_, i) => cell(from + i)).join('')}</div>`;
+    return `<div class="pn-kit-row pn-kit-gear">${cell(39, 'head')}${cell(38, 'chest')}${cell(37, 'legs')}${cell(36, 'feet')}<span class="pn-kit-gap"></span>${cell(40, 'offhand')}</div>`
+      + row(9, 18) + row(18, 27) + row(27, 36) + `<div class="pn-kit-hotbar">${row(0, 9)}</div>`;
   }
 
   async function clAdminSend(body, done) {

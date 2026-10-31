@@ -1,3 +1,6 @@
+## 1.56.0
+- Claims: a game claim's kit is shown like the game's inventory (armour and off hand, three rows, hotbar) with item pictures, counts and enchantments on hover (mod 1.67.0)
+
 ## 1.55.0
 - Games: rename a game's one-word name on its card (Rewards rules that named it follow); maze size up to 256, light level, block fields take #tags and lists; claim border blocks take tags and lists too (mod 1.66.0)
 

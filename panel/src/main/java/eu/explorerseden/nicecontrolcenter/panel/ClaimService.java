@@ -62,6 +62,57 @@ final class ClaimService {
 	private volatile String syncProblem;
 	private volatile long fileModified = -1;
 
+	/** Item pictures (for the game-area kit). */
+	private volatile ItemIcons icons;
+
+	void useIcons(ItemIcons icons) {
+		this.icons = icons;
+	}
+
+	/** A kit as the panel shows it: per item its slot (or -1), id, name, count, enchantments and picture. */
+	private List<Map<String, Object>> kitItems(List<String> kit) {
+		List<Map<String, Object>> out = new ArrayList<>();
+		ItemIcons ic = icons;
+		for (String json : kit) {
+			try {
+				com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+				Map<String, Object> m = new LinkedHashMap<>();
+				m.put("slot", o.has("slot") ? o.get("slot").getAsInt() : -1);
+				String id = o.has("id") ? o.get("id").getAsString() : "minecraft:air";
+				m.put("id", id);
+				m.put("count", o.has("count") ? o.get("count").getAsInt() : 1);
+				com.google.gson.JsonObject comp = o.has("components") && o.get("components").isJsonObject() ? o.getAsJsonObject("components") : new com.google.gson.JsonObject();
+				String name = null;
+				var cn = comp.get("minecraft:custom_name");
+				if (cn != null) name = cn.isJsonPrimitive() ? cn.getAsString() : cn.isJsonObject() && cn.getAsJsonObject().has("text") ? cn.getAsJsonObject().get("text").getAsString() : null;
+				if (name == null || name.isBlank()) {
+					String path = id.substring(id.indexOf(':') + 1).replace('_', ' ');
+					name = path.isEmpty() ? id : Character.toUpperCase(path.charAt(0)) + path.substring(1);
+				}
+				m.put("name", name);
+				List<String> ench = new ArrayList<>();
+				for (String k : List.of("minecraft:enchantments", "minecraft:stored_enchantments")) {
+					var e = comp.get(k);
+					if (e == null || !e.isJsonObject()) continue;
+					com.google.gson.JsonObject levels = e.getAsJsonObject().has("levels") && e.getAsJsonObject().get("levels").isJsonObject() ? e.getAsJsonObject().getAsJsonObject("levels") : e.getAsJsonObject();
+					for (var en : levels.entrySet()) {
+						if (!en.getValue().isJsonPrimitive()) continue;
+						String n = en.getKey().substring(en.getKey().indexOf(':') + 1).replace('_', ' ');
+						ench.add(Character.toUpperCase(n.charAt(0)) + n.substring(1) + " " + en.getValue().getAsInt());
+					}
+				}
+				m.put("enchantments", ench);
+				com.google.gson.JsonObject stack = o.deepCopy();
+				stack.remove("slot");
+				m.put("icon", ic == null ? null : ic.iconFor(stack.toString()));
+				out.add(m);
+			} catch (RuntimeException e) {
+				// Unreadable entry: left out of the view (the game still has it).
+			}
+		}
+		return out;
+	}
+
 	ClaimService(Path serverDir, Db db, Supervisor server, DashboardProxy dashboard, Audit audit, MapService map) {
 		this.map = map;
 		this.serverDir = serverDir;
@@ -396,6 +447,7 @@ final class ClaimService {
 				m.put("expires", all.expiresAt(c, s));
 				m.put("keepUntil", c.keepUntil);
 				// Game-claim options (server claims and their subclaims); the kit as a count only.
+				if (c.admin != null && c.admin.kit != null && !c.admin.kit.isEmpty()) m.put("kitItems", kitItems(c.admin.kit));
 				if (c.admin != null) m.put("admin", Map.of("inventory", c.admin.inventory, "removePickups", c.admin.removePickups,
 						"dropPickupsOnDeath", c.admin.dropPickupsOnDeath, "keepKitOnDeath", c.admin.keepKitOnDeath, "noHomes", c.admin.noHomes, "gameMode", c.admin.gameMode == null ? "" : c.admin.gameMode,
 						"kit", c.admin.kit == null ? 0 : c.admin.kit.size(), "deaths", c.admin.deaths,
