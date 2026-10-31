@@ -7,7 +7,8 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 
 1. **Game hub spawn**: stand in your hub, `/game spawn set`. After any game, players land here.
 2. **Create the game** where it should be: `/game create <type> <name>`. It answers with the next steps.
-3. **Display name** (spaces allowed): `/game edit <name> title Sky Run Deluxe`, or the field on the game's card.
+3. **Name**: the one-word name can be changed on the game's card (reward rules follow).
+   **Display name** (spaces allowed): `/game edit <name> title Sky Run Deluxe`, or the field on the game's card.
    Commands keep using the one-word name.
    **Colour**: the picker on the game's card (entrance title and particles, watch point, start title).
 4. **Entrances** (where players get in, e.g. in the hub): `/game edit <name> entrance add` where you stand.
@@ -31,6 +32,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
     the play area where a game uses one.
 11. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
 
+Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,
+tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
+
 Protect a build with a server claim when nobody is playing. Wave fights, quick rounds and dungeons put inventories
 aside themselves; parkour, race, dropper and maze don't, so give them a game claim if you want that (Claims page:
 game-area options, including the game mode inside).
@@ -51,7 +55,8 @@ game-area options, including the game mode inside).
 - `/game edit <name> top` where they drop from, `/game edit <name> finish <radius>` in the water.
 
 **Maze** (`maze`): generated, rebuilt daily or after each run.
-- Created at its corner; `/game edit <name> size <cells>` then `/game edit <name> build`. Panel: blocks, height.
+- Created at its corner; `/game edit <name> size <cells>` (4–256) then `/game edit <name> build` (big ones take a
+  few seconds). Panel: wall and floor blocks, height, light level of the paths.
 
 ## Wave fight (`waves`)
 A party of 1–4 (`/party invite <player>`) fights waves of mobs.

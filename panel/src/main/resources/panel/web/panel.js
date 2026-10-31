@@ -1987,7 +1987,7 @@
           : quick ? 'Commands for each player whose score counts ({score}): round rewards'
           : a.type === 'parkour' ? 'Commands when a run ends (they fell; {score} = jumps made, only with at least one)' : 'Commands when they finish ({score} = their time)');
       const fields = {
-        parkour: field('palette', 'Blocks (ids, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
+        parkour: field('palette', 'Blocks (ids or #tags, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
           + `<p class="pn-hint pn-field-wide"><i class="bi bi-bounding-box"></i> ${a.areaMin && a.areaMax
             ? `Kept in a box ${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}: lanes share it (9 blocks wide each) and the jumps turn at its walls.`
             : `No box: lanes go off along +X from the start pad, jumps along +Z without end. Keep it in a box with <code>/game edit ${esc(a.name)} corner1</code> + <code>corner2</code>.`}</p>`
@@ -2002,15 +2002,18 @@
           + lines('checkpointCommands', 'Commands at each checkpoint ({checkpoint}, {player}, {game})')
           + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
         dropper: field('maxTries', 'Tries (0 = as many as it takes)', num('maxTries', 0, 999)) + `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
-        maze: field('size', 'Cells per side', num('size', 4, 40)) + field('wall', 'Wall block', `<input type="text" data-g="wall" value="${esc(a.wall)}">`)
-          + field('floor', 'Floor block', `<input type="text" data-g="floor" value="${esc(a.floor)}">`)
+        maze: field('size', `Cells per side (4–256; ${a.size * 2 + 1} × ${a.size * 2 + 1} blocks)`, num('size', 4, 256))
+          + field('wall', 'Wall blocks (ids or #tags, comma-separated: mixed at random; twice = twice as often)', `<input type="text" data-g="wall" value="${esc(a.wall)}" placeholder="minecraft:stone_bricks, minecraft:mossy_stone_bricks">`)
+          + field('floor', 'Floor blocks (ids or #tags, comma-separated)', `<input type="text" data-g="floor" value="${esc(a.floor)}" placeholder="minecraft:smooth_stone">`)
           + field('wallHeight', 'Wall height', num('wallHeight', 1, 8))
+          + field('mazeLight', 'Light level of the paths (0 = dark, up to 15)', num('mazeLight', 0, 15))
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
-          + `<p class="pn-hint">After changing the size or blocks: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
+          + `<p class="pn-hint">After changing the size, blocks or light: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
         waves: gmWaveFields(a, field, num, text, lines),
         heads: gmHeadFields(a, field, num, lines),
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
-      const allFields = field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
+      const allFields = field('name', 'Name (one word, for the commands; reward rules follow a rename)', `<input type="text" data-g="name" value="${esc(a.name)}" maxlength="32" pattern="[A-Za-z0-9_-]+">`)
+        + field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
         + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
         + gmPoints(a, field) + fields + own;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
@@ -2124,7 +2127,7 @@
     const pool = (label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="pool" data-lines="1" rows="2" spellcheck="false" placeholder="zombie">${esc((a.pool || []).join('\n'))}</textarea></label>`;
     const own = {
       ghasts: pool('Ghasts (one per line; <code>{ExplosionPower:0}</code> keeps the arena whole)') + field('maxAlive', 'Ghasts at once', num('maxAlive', 1, 200)),
-      colorfloor: field('colors', 'Colours (block ids, comma-separated)', `<input type="text" data-g="colors" value="${esc((a.colors || []).join(', '))}">`)
+      colorfloor: field('colors', 'Colours (block ids or #tags like #minecraft:wool, comma-separated; more than 9: nine at random)', `<input type="text" data-g="colors" value="${esc((a.colors || []).join(', '))}">`)
         + field('platformSize', 'Platform size (blocks)', num('platformSize', 1, 16)) + field('platformGap', 'Gap between platforms', num('platformGap', 0, 16))
         + field('roundSeconds', 'Seconds before a colour vanishes', num('roundSeconds', 1, 60, 0.1)) + field('speedUp', 'Faster after each refill (s)', num('speedUp', 0, 30, 0.1))
         + field('minRoundSeconds', 'Fastest (s)', num('minRoundSeconds', 1, 60, 0.1)) + field('refillEvery', 'Colours before the grid refills', num('refillEvery', 1, 8))

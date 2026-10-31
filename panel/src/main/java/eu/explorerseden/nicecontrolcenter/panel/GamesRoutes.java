@@ -112,7 +112,27 @@ final class GamesRoutes {
 				for (Games.Pos h : a.heads) kept.add(h.dim + "|" + (int) Math.floor(h.x) + "|" + (int) Math.floor(h.y) + "|" + (int) Math.floor(h.z));
 				a.heads = new java.util.ArrayList<>(was.heads.stream().filter(h -> kept.contains(h.dim + "|" + (int) Math.floor(h.x) + "|" + (int) Math.floor(h.y) + "|" + (int) Math.floor(h.z))).toList());
 			}
+			// Renamed games: Rewards rules that named the old name follow.
+			Map<String, String> renamed = new LinkedHashMap<>();
+			for (Games.Arena a : next.arenas) {
+				Games.Arena was = now.arenas.stream().filter(x -> x.id.equals(a.id)).findFirst().orElse(null);
+				if (was != null && !was.name.equals(a.name)) renamed.put(was.name.toLowerCase(java.util.Locale.ROOT), a.name);
+			}
 			Games.write(file(), next);
+			if (!renamed.isEmpty()) {
+				Path rf = serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Rewards.FILE);
+				eu.explorerseden.nicecontrolcenter.Rewards.Settings rs = eu.explorerseden.nicecontrolcenter.Rewards.read(rf);
+				int moved = 0;
+				for (eu.explorerseden.nicecontrolcenter.Rewards.Rule r : rs.rules) {
+					String to = r.value == null ? null : renamed.get(r.value.strip().toLowerCase(java.util.Locale.ROOT));
+					if (to != null && java.util.List.of("gameFinished", "gameRecord", "waveCleared", "headsFound", "parkourJumps").contains(r.trigger)) {
+						r.value = to;
+						moved++;
+					}
+				}
+				if (moved > 0) eu.explorerseden.nicecontrolcenter.Rewards.write(rf, rs);
+				audit.log(me.name(), "games.rename", String.join(", ", renamed.entrySet().stream().map(e -> e.getKey() + " → " + e.getValue()).toList()) + (moved > 0 ? " (" + moved + " reward rules follow)" : ""), clientIp(ctx));
+			}
 			audit.log(me.name(), "games.settings", next.arenas.size() + " arenas", clientIp(ctx));
 			json(ctx, Map.of("ok", true));
 		}));

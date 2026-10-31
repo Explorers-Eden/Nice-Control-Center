@@ -121,7 +121,7 @@ public final class Games {
 		public Point finish;
 		/** Dropper: where players drop from. */
 		public Pos top;
-		/** Maze: the corner it's built from, cells per side, the blocks, and when it's made new ("run" or "daily"). */
+		/** Maze: the corner it's built from, cells per side (4–256), the blocks (comma-separated: mixed at random), and when it's made new ("run" or "daily"). */
 		public Pos corner;
 		public int size = 12;
 		public String wall = "minecraft:stone_bricks";
@@ -129,6 +129,8 @@ public final class Games {
 		public String regenerate = "daily";
 		/** Maze: wall height in blocks. */
 		public int wallHeight = 3;
+		/** Maze: how light its paths are (0 = dark: no lights, up to 15). */
+		public int mazeLight = 0;
 		/** Parkour: a reward every this many jumps (0 = none): everyCommands ({jumps}, {player}, {game}). The box (corner1/2) is optional. */
 		public int everyJumps = 0;
 		/**
@@ -283,8 +285,9 @@ public final class Games {
 				if (a.regenerate == null || !List.of("run", "daily").contains(a.regenerate)) a.regenerate = "daily";
 				a.lanes = Math.max(1, Math.min(32, a.lanes));
 				a.laneSpacing = Math.max(16, Math.min(256, a.laneSpacing));
-				a.size = Math.max(4, Math.min(40, a.size));
+				a.size = Math.max(4, Math.min(256, a.size));
 				a.wallHeight = Math.max(1, Math.min(8, a.wallHeight));
+				a.mazeLight = Math.max(0, Math.min(15, a.mazeLight));
 				a.ahead = Math.max(1, Math.min(8, a.ahead));
 				a.maxGap = Math.max(2, Math.min(5, a.maxGap));
 				a.timeLimit = Math.max(0, Math.min(3600, a.timeLimit));

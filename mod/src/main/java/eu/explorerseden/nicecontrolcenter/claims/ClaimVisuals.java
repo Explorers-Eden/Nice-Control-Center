@@ -140,7 +140,7 @@ public final class ClaimVisuals {
 			claims = ClaimStore.near(v.dim, player.getBlockX(), player.getBlockZ(), range);
 		}
 		for (Claim c : claims) addClaim(level, player, c, s, range, want);
-		BlockState sel = state(s.visualSelection, 0xFFFFFF);
+		List<BlockState> sel = state(s.visualSelection, 0xFFFFFF);
 		for (int[] m : ClaimTool.markers(player)) put(level, player, m[0], m[1], sel, range, want);
 		// Back to real blocks where nothing is wanted any more.
 		List<Long> gone = v.shown.keySet().stream().filter(k -> !want.containsKey(k)).toList();
@@ -154,8 +154,8 @@ public final class ClaimVisuals {
 	}
 
 	private static void addClaim(ServerLevel level, ServerPlayer player, Claim c, Claims.Settings s, int range, Map<Long, BlockState> want) {
-		BlockState corner = state(c.isSub() ? s.visualSubCorner : s.visualCorner, c.color);
-		BlockState edge = state(c.isSub() ? s.visualSubEdge : s.visualEdge, c.color);
+		List<BlockState> corner = state(c.isSub() ? s.visualSubCorner : s.visualCorner, c.color);
+		List<BlockState> edge = state(c.isSub() ? s.visualSubEdge : s.visualEdge, c.color);
 		int step = s.visualSpacing;
 		// Edges first, so corners win where they meet.
 		for (int x = c.minX + step; x < c.maxX - 1; x += step) {
@@ -174,7 +174,9 @@ public final class ClaimVisuals {
 		}
 	}
 
-	private static void put(ServerLevel level, ServerPlayer player, int x, int z, BlockState state, int range, Map<Long, BlockState> want) {
+	/** A marker: one of the blocks, always the same for that spot (lists and tags mix along the border). */
+	private static void put(ServerLevel level, ServerPlayer player, int x, int z, List<BlockState> states, int range, Map<Long, BlockState> want) {
+		BlockState state = states.get(Math.floorMod(x * 31 + z * 17, states.size()));
 		if (want.size() >= MAX_BLOCKS) return;
 		double dx = x + 0.5 - player.getX();
 		double dz = z + 0.5 - player.getZ();
@@ -211,13 +213,10 @@ public final class ClaimVisuals {
 		}
 	}
 
-	/** A block id from the settings, or the concrete closest to {@code rgb} for "claim_color". */
-	private static BlockState state(String id, int rgb) {
-		if (Claims.CLAIM_COLOR.equals(id)) return nearestConcrete(rgb).defaultBlockState();
-		Identifier key = Identifier.tryParse(id);
-		Block block = key == null ? null : BuiltInRegistries.BLOCK.getValue(key);
-		if (block == null || block == Blocks.AIR) return nearestConcrete(rgb).defaultBlockState();
-		return block.defaultBlockState();
+	/** Blocks from the settings (ids and #tags, comma-separated), or the concrete closest to {@code rgb} for "claim_color". */
+	private static List<BlockState> state(String id, int rgb) {
+		if (Claims.CLAIM_COLOR.equals(id)) return List.of(nearestConcrete(rgb).defaultBlockState());
+		return eu.explorerseden.nicecontrolcenter.core.BlockLists.of(id, nearestConcrete(rgb)).stream().map(Block::defaultBlockState).toList();
 	}
 
 	private static Block nearestConcrete(int rgb) {

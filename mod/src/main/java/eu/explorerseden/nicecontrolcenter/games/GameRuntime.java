@@ -154,6 +154,7 @@ public final class GameRuntime {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % 100 == 0) reload();
 			if (server.getTickCount() % 2 == 0) tick(server);
+			stepMazes();
 			if (server.getTickCount() % 1200 == 0) dailyMazes(server);
 		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
@@ -271,6 +272,7 @@ public final class GameRuntime {
 			}
 			case "maze" -> {
 				if (a.corner == null) return "This maze has no corner yet.";
+				if (mazeBuilding(a)) return "The maze is being built; try again in a few seconds.";
 				sessions.put(p.getUUID(), s);
 				p.teleportTo(level, a.corner.x + 1.5, a.corner.y + 1, a.corner.z + 1.5, Set.of(), 0, 0, true);
 			}
@@ -412,7 +414,10 @@ public final class GameRuntime {
 		return switch (kind) {
 			case 1 -> Blocks.SMOOTH_STONE_SLAB.defaultBlockState();
 			case 2 -> (random.nextBoolean() ? Blocks.GLASS_PANE : Blocks.IRON_BARS).defaultBlockState();
-			default -> block(a.palette.get(random.nextInt(a.palette.size()))).defaultBlockState();
+			default -> {
+				List<Block> palette = eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.palette, Blocks.STONE);
+				yield palette.get(random.nextInt(palette.size())).defaultBlockState();
+			}
 		};
 	}
 
@@ -625,18 +630,76 @@ public final class GameRuntime {
 			open[to[0] * 2 + 1][to[1] * 2 + 1] = true;
 			stack.push(to);
 		}
-		BlockState wall = block(a.wall).defaultBlockState();
-		BlockState floor = block(a.floor).defaultBlockState();
-		for (int x = 0; x < w; x++) {
-			for (int z = 0; z < w; z++) {
-				level.setBlock(o.offset(x, 0, z), floor, 2);
+		// Placed over the next ticks (a big maze is millions of blocks): see stepMazes.
+		mazeBuilds.put(a.id, new MazeBuild(level, o, w, open, blocks(a.wall), blocks(a.floor), a.wallHeight, a.mazeLight));
+		mazeDay.put(a.id, System.currentTimeMillis() / 86_400_000L);
+	}
+
+	/** A maze being placed, column by column. */
+	private static final class MazeBuild {
+		final ServerLevel level;
+		final BlockPos origin;
+		final int width;
+		final boolean[][] open;
+		final List<BlockState> walls;
+		final List<BlockState> floors;
+		final int height;
+		/** Light level of the paths (0 = none): an invisible light block at head height in every cell. */
+		final int light;
+		int next;
+
+		MazeBuild(ServerLevel level, BlockPos origin, int width, boolean[][] open, List<BlockState> walls, List<BlockState> floors, int height, int light) {
+			this.level = level;
+			this.origin = origin;
+			this.width = width;
+			this.open = open;
+			this.walls = walls;
+			this.floors = floors;
+			this.height = height;
+			this.light = light;
+		}
+	}
+
+	/** Arena id → its maze being placed. */
+	private static final Map<String, MazeBuild> mazeBuilds = new LinkedHashMap<>();
+	/** Columns placed per tick (each up to 9 blocks), shared by the mazes being built. */
+	private static final int MAZE_COLUMNS_PER_TICK = 2048;
+
+	/** True while the maze is still being placed (no runs then). */
+	static boolean mazeBuilding(Arena a) {
+		return mazeBuilds.containsKey(a.id);
+	}
+
+	/** Every tick: the next columns of the mazes being built; the goal glows once it's done. */
+	private static void stepMazes() {
+		if (mazeBuilds.isEmpty()) return;
+		int budget = MAZE_COLUMNS_PER_TICK;
+		for (var it = mazeBuilds.entrySet().iterator(); it.hasNext() && budget > 0;) {
+			MazeBuild b = it.next().getValue();
+			int total = b.width * b.width;
+			while (b.next < total && budget-- > 0) {
+				int x = b.next / b.width, z = b.next % b.width;
+				b.next++;
+				b.level.setBlock(b.origin.offset(x, 0, z), b.floors.get(random.nextInt(b.floors.size())), 2);
 				// Up to 8 high: a lower wall height clears what a taller one left.
-				for (int y = 1; y <= 8; y++) level.setBlock(o.offset(x, y, z), open[x][z] || y > a.wallHeight ? Blocks.AIR.defaultBlockState() : wall, 2);
+				for (int y = 1; y <= 8; y++) {
+					b.level.setBlock(b.origin.offset(x, y, z), b.open[x][z] || y > b.height ? Blocks.AIR.defaultBlockState() : b.walls.get(random.nextInt(b.walls.size())), 2);
+				}
+				// Lit paths: a light in each cell (cells sit at odd spots), at head height but under a low ceiling.
+				if (b.light > 0 && b.open[x][z] && x % 2 == 1 && z % 2 == 1) {
+					b.level.setBlock(b.origin.offset(x, Math.min(2, b.height), z), Blocks.LIGHT.defaultBlockState().setValue(net.minecraft.world.level.block.LightBlock.LEVEL, b.light), 2);
+				}
+			}
+			if (b.next >= total) {
+				b.level.setBlock(b.origin.offset(b.width - 2, 0, b.width - 2), Blocks.SEA_LANTERN.defaultBlockState(), 2);
+				it.remove();
 			}
 		}
-		// The goal glows.
-		level.setBlock(o.offset(w - 2, 0, w - 2), Blocks.SEA_LANTERN.defaultBlockState(), 2);
-		mazeDay.put(a.id, System.currentTimeMillis() / 86_400_000L);
+	}
+
+	/** "minecraft:stone_bricks, #minecraft:wool": mixed at random (tags spread out; listed twice = twice as often). */
+	private static List<BlockState> blocks(String list) {
+		return eu.explorerseden.nicecontrolcenter.core.BlockLists.of(list, Blocks.STONE).stream().map(Block::defaultBlockState).toList();
 	}
 
 	private static void dailyMazes(MinecraftServer server) {
@@ -824,7 +887,7 @@ public final class GameRuntime {
 									a.checkpoints.clear();
 									return "Checkpoints cleared.";
 								}))))
-						.then(Commands.literal("size").then(Commands.argument("cells", IntegerArgumentType.integer(4, 40)).executes(ctx -> edit(ctx, (a, p) -> {
+						.then(Commands.literal("size").then(Commands.argument("cells", IntegerArgumentType.integer(4, 256)).executes(ctx -> edit(ctx, (a, p) -> {
 							a.size = IntegerArgumentType.getInteger(ctx, "cells");
 							return "Size " + a.size + ": /game edit " + a.name + " build makes it.";
 						}))))
@@ -835,7 +898,8 @@ public final class GameRuntime {
 							}
 							if (!a.type.equals("maze") || a.corner == null) return "Only mazes and colour floors are built.";
 							buildMaze((ServerLevel) p.level(), a);
-							return "Maze built.";
+							int w = a.size * 2 + 1;
+								return "Building the maze (" + w + " × " + w + " blocks)" + (w * w > 2048 * 20 ? ": it takes about " + Math.max(1, w * w / 2048 / 20) + " s." : ".");
 						})))
 						// Colour floor: the grid's corner at their feet (platforms go +X and +Z, the floor at this height).
 						.then(Commands.literal("grid").executes(ctx -> edit(ctx, (a, p) -> {

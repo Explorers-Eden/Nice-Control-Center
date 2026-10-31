@@ -125,8 +125,13 @@ public final class Claims {
 		return t.contains(":") ? t : "minecraft:" + t;
 	}
 
+	/** A border block setting: claim_color, a block id, or a list of ids and #tags. */
 	private static String visualId(String text, String fallback) {
 		if (text != null && text.strip().equalsIgnoreCase(CLAIM_COLOR)) return CLAIM_COLOR;
+		if (text != null && (text.contains(",") || text.contains("#"))) {
+			String list = String.join(", ", java.util.Arrays.stream(text.split(",")).map(x -> x.strip().toLowerCase(java.util.Locale.ROOT)).filter(x -> !x.isEmpty()).toList());
+			return list.isEmpty() ? fallback : list;
+		}
 		return itemId(text, fallback);
 	}
 
@@ -164,7 +169,7 @@ public final class Claims {
 		if (s.visualSpacing < 2 || s.visualSpacing > 100) return "Border markers are every 2 to 100 blocks.";
 		if (s.visualRange < 16 || s.visualRange > 256) return "Borders show within 16 to 256 blocks.";
 		for (String v : new String[] { s.visualCorner, s.visualEdge, s.visualSubCorner, s.visualSubEdge, s.visualSelection }) {
-			if (!v.equals(CLAIM_COLOR) && !v.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + v + "\" isn't a block id (or claim_color).";
+			if (!v.equals(CLAIM_COLOR) && !v.matches("#?[a-z0-9_.-]+:[a-z0-9_./-]+(\\s*,\\s*#?[a-z0-9_.-]+:[a-z0-9_./-]+)*")) return "\"" + v + "\" isn't a block id, tag or list of them (or claim_color).";
 		}
 		if (s.inactiveDays < 0 || s.inactiveDays > 3650) return "Inactive days are 0 (never) to 3650.";
 		for (String d : s.dimensions) if (!d.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return "\"" + d + "\" isn't a dimension id.";

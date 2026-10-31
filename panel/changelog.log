@@ -1,3 +1,6 @@
+## 1.55.0
+- Games: rename a game's one-word name on its card (Rewards rules that named it follow); maze size up to 256, light level, block fields take #tags and lists; claim border blocks take tags and lists too (mod 1.66.0)
+
 ## 1.54.0
 - Games: the setup list shows a spectator area's box (or its radius with how to make it a box) (mod 1.64.0)
 

@@ -617,6 +617,11 @@ public final class QuickRuntime {
 
 	// ---------------------------------------------------------------- colour floor
 
+	/** The colours: block ids and tags (a tag gives a colour per block in it). */
+	private static List<Block> colours(Arena a) {
+		return eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.colors, Blocks.STONE);
+	}
+
 	/** Platform i (0–8, row by row) from the grid's corner. */
 	private static BlockPos platform(Arena a, int i) {
 		int step = a.platformSize + a.platformGap;
@@ -627,18 +632,24 @@ public final class QuickRuntime {
 	static void buildGrid(ServerLevel level, Round r) {
 		Arena a = r.arena;
 		List<Integer> order = new ArrayList<>();
-		for (int i = 0; i < 9; i++) order.add(i % a.colors.size());
+		List<Block> colours = colours(a);
+		// More colours than platforms (a tag like #minecraft:wool): nine different ones at random each time.
+		List<Integer> pick = new ArrayList<>();
+		for (int i = 0; i < colours.size(); i++) pick.add(i);
+		Collections.shuffle(pick, random);
+		for (int i = 0; i < 9; i++) order.add(colours.size() > 9 ? pick.get(i) : i % colours.size());
 		Collections.shuffle(order, random);
 		for (int i = 0; i < 9; i++) {
 			r.platform[i] = order.get(i);
 			r.gone[i] = false;
-			fillPlatform(level, a, i, block(a.colors.get(r.platform[i])));
+			fillPlatform(level, a, i, colours.get(r.platform[i]));
 		}
 	}
 
 	/** Builds the grid for the admin to look at (/game edit … build), in the first colours. */
 	static void previewGrid(ServerLevel level, Arena a) {
-		for (int i = 0; i < 9; i++) fillPlatform(level, a, i, block(a.colors.get(i % a.colors.size())));
+		List<Block> colours = colours(a);
+		for (int i = 0; i < 9; i++) fillPlatform(level, a, i, colours.get(i % colours.size()));
 	}
 
 	private static void fillPlatform(ServerLevel level, Arena a, int i, Block block) {
@@ -715,7 +726,8 @@ public final class QuickRuntime {
 
 	/** The colour's block name in its own colour ("Orange Wool"). */
 	private static Component colourName(Arena a, int colour) {
-		Block b = block(a.colors.get(Math.max(0, Math.min(a.colors.size() - 1, colour))));
+		List<Block> colours = colours(a);
+		Block b = colours.get(Math.max(0, Math.min(colours.size() - 1, colour)));
 		MutableComponent name = b.getName().copy();
 		return name.withStyle(st -> st.withColor(TextColor.fromRgb(b.defaultMapColor().col)).withBold(true));
 	}

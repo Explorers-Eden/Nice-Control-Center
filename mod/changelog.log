@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.66.0
+- Mazes: up to 256 cells per side (513 × 513 blocks); built a couple of thousand columns per tick, so a big maze appears over a few seconds without freezing the server (no runs while it's built)
+- Mazes: several wall and floor blocks, mixed at random; a light level for the paths (0 = dark, up to 15: an invisible light in every cell)
+- Block settings take block tags and lists everywhere: parkour blocks, maze walls and floors, colour floor colours (a tag gives a colour per block; more than nine: nine at random each time), claim border markers (mixed along the border), e.g. minecraft:stone_bricks, #minecraft:wool
+
 ## 1.65.0
 - Games and dungeons: Nice Mob Manager leaves their mobs alone: every mob a game or dungeon spawns, every entity saved with a dungeon or room (tagged as it's placed), and everything else in the dungeon dimension carries mob_manager.settings.exclude
 - Games and dungeons: mobs with data-driven variants (cows, pigs, chickens, cats, wolves, frogs, zombie nautiluses) get a random look and sound from everything the server has, packs like Nice Mob Variants included, never an "ender" one; a mob line that sets its own variant or sound keeps it (before, game mobs always got the default look)
