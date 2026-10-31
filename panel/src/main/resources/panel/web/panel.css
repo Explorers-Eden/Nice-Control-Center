@@ -1145,3 +1145,10 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-itemtip b { font-weight: 600; }
 .pn-itemtip .ench { color: #a8a8a8; }
 .pn-itemtip .id { color: #545454; font-size: var(--fs-xs); }
+
+/* Game cards: closed by default, the header opens them. */
+.pn-gm-toggle { cursor: pointer; user-select: none; }
+.pn-gm-chevron { transition: transform .15s ease; opacity: .6; }
+.pn-gm-card:not(.collapsed) .pn-gm-chevron { transform: rotate(90deg); }
+.pn-gm-card.collapsed > :not(.pn-rw-head) { display: none; }
+.pn-gm-card.collapsed { padding-bottom: 10px; }

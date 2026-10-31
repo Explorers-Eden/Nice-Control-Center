@@ -1930,6 +1930,9 @@
   // ── Games ──────────────────────────────────────────────────────────────
 
   const gm = { settings: null, live: null, scores: null, headSkins: {}, dirty: false };
+  /** Game cards start closed; the open ones are remembered (also across reloads). */
+  const gmOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('pn-gm-open') || '[]'); } catch (e) { return []; } })());
+  const gmKeepOpen = () => { try { localStorage.setItem('pn-gm-open', JSON.stringify([...gmOpen])); } catch (e) { /* private window */ } };
   const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded',
     ghasts: 'bi-fire', colorfloor: 'bi-grid-3x3-gap', anvils: 'bi-cloud-hail', treasure: 'bi-gem', fishing: 'bi-water', heads: 'bi-person-bounding-box' };
   const GAME_LABELS = { waves: 'wave fight', ghasts: 'ghast deflect', colorfloor: 'colour floor', anvils: 'anvil rain', treasure: 'treasure grab', fishing: 'fishing frenzy', heads: 'head hunt' };
@@ -2031,8 +2034,9 @@
         ${heads ? '' : way('watchEntrances', 'bi-eye', 'Watch points', 'watch', a.watchEntrances, `To the spectator area${a.spectate ? '' : ` (none yet: <code>/game edit ${esc(a.name)} spectate</code>)`}.`)}
         ${heads ? '' : way('exitPads', 'bi-box-arrow-left', 'Back points', 'back', a.exitPads, 'The way out of spectator areas and the like, to the game hub spawn' + (waves || quick ? '; inside the game, 5 seconds on one leaves it.' : '.'))}
       </div><p class="pn-hint">After a game everyone goes to the game hub spawn (above; <code>/game spawn set</code>), else back where they came from.</p>`;
-      return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}" data-arena="${i}">
-        <div class="pn-rw-head">
+      return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}${gmOpen.has(a.id || a.name) ? '' : ' collapsed'}" data-arena="${i}">
+        <div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
           <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon" style="color:${esc(a.color || '#ffc83d')}"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
           <b class="pn-gm-name">${esc(a.title || a.name)}</b>${a.title && a.title !== a.name ? `<span class="pn-hint">${esc(a.name)}</span>` : ''}<span class="np-chip">${esc(GAME_LABELS[a.type] || a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting to start' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
@@ -2200,6 +2204,16 @@
     gmChanged(k === 'gear');
   });
   $('pn-gm-list').addEventListener('click', async (e) => {
+    // The card's header opens and closes it (not its switch or buttons).
+    const head = e.target.closest('.pn-gm-toggle');
+    if (head && !e.target.closest('input, button, label, select, a')) {
+      const card = head.closest('[data-arena]');
+      const a = gm.settings.arenas[+card.dataset.arena];
+      const key = a.id || a.name;
+      if (card.classList.toggle('collapsed')) gmOpen.delete(key); else gmOpen.add(key);
+      gmKeepOpen();
+      return;
+    }
     const b = e.target.closest('[data-gact]');
     if (!b) return;
     const a = gm.settings.arenas[+b.closest('[data-arena]').dataset.arena];
