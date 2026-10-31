@@ -225,6 +225,15 @@ public final class DungeonTemplates {
 	/** Places a room turned around its own corner: pos is where the room's (0, 0, 0) lands (server thread). */
 	static void pasteRoom(ServerLevel level, BlockPos pos, Rotation rotation, StructureTemplate t, RandomSource random) {
 		t.placeInWorld(level, pos, pos, new StructurePlaceSettings().setRotation(rotation).setIgnoreEntities(false), random, FLAGS);
+		excludeIn(level, pos, t, true);
+	}
+
+	/** Mobs saved with a piece or room: Nice Mob Manager leaves them alone (tagged at once, before it sees them). */
+	private static void excludeIn(ServerLevel level, BlockPos at, StructureTemplate t, boolean turned) {
+		var size = t.getSize();
+		int w = turned ? Math.max(size.getX(), size.getZ()) : size.getX(), d = turned ? w : size.getZ();
+		net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(at.getX() - w, at.getY() - 1, at.getZ() - d, at.getX() + w + 1, at.getY() + size.getY() + 1, at.getZ() + d + 1);
+		for (Entity e : level.getEntitiesOfClass(Entity.class, box, e -> !(e instanceof Player))) e.addTag(MobLines.NMM_EXCLUDE);
 	}
 
 	/** Runs a job on the files worker. */
@@ -277,6 +286,7 @@ public final class DungeonTemplates {
 	static void paste(ServerLevel level, BlockPos origin, Piece p, RandomSource random) {
 		BlockPos at = origin.offset(p.dx(), 0, p.dz());
 		p.template().placeInWorld(level, at, at, new StructurePlaceSettings().setIgnoreEntities(false), random, FLAGS);
+		excludeIn(level, at, p.template(), false);
 	}
 
 	/** Sets one piece of a box to air and removes its entities, players aside (server thread). */

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.65.0
+- Games and dungeons: Nice Mob Manager leaves their mobs alone: every mob a game or dungeon spawns, every entity saved with a dungeon or room (tagged as it's placed), and everything else in the dungeon dimension carries mob_manager.settings.exclude
+- Games and dungeons: mobs with data-driven variants (cows, pigs, chickens, cats, wolves, frogs, zombie nautiluses) get a random look and sound from everything the server has, packs like Nice Mob Variants included, never an "ender" one; a mob line that sets its own variant or sound keeps it (before, game mobs always got the default look)
+
 ## 1.64.1
 - Claims: /claim admin bypass also skips game areas: no inventory put aside, no kit, no game mode switch, no death limits, market/inbox/pets work. Turning it on inside one gives your things back as if you'd left
 
