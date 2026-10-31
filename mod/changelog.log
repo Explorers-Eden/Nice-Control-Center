@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.69.0
+- Game claims: "Anyone may fight the mobs inside" (on by default): animals, villagers and named mobs can be fought there too, not only plain monsters. Mobs a game or dungeon spawned can always be fought anywhere (a named boss was protected by claims before)
+- Game claims (and wave fights, quick rounds, dungeons): health, hunger and saturation come back to what they were on entering when players leave
+
 ## 1.68.0
 - Dashboard (and the panel's Players page): a player's inventory is shown like the game's (armour and off hand, three rows, hotbar), the ender chest as its three rows, grave contents in rows of nine; with item pictures inside the panel and the game-like tooltips
 

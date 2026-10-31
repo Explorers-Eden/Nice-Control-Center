@@ -78,7 +78,14 @@ public final class GameClaims {
 		float xpProgress;
 		int xpTotal;
 		List<String> effects = new ArrayList<>();
+		/** Health, hunger and saturation on entering (-1: not noted, older files). */
+		float health = -1;
+		int food = -1;
+		float saturation = -1;
 	}
+
+	/** Health, hunger and saturation on entering a game claim without "inventory aside" (the stash keeps them otherwise). */
+	private static final Map<UUID, float[]> vitals = new HashMap<>();
 
 	private static final Map<String, Stash> stashes = new HashMap<>();
 	/** The game claim each online player is in right now (null outside). */
@@ -253,6 +260,8 @@ public final class GameClaims {
 		Claims.AdminOptions o = c.admin;
 		deathCount.remove(p.getUUID());
 		entryPoint.put(p.getUUID(), new double[] { p.getX(), p.getY(), p.getZ(), p.getYRot() });
+		// Health and hunger as they come in: given back on leaving (a fight inside doesn't follow them out).
+		vitals.put(p.getUUID(), new float[] { p.getHealth(), p.getFoodData().getFoodLevel(), p.getFoodData().getSaturationLevel() });
 		if (o.inventory) {
 			Stash s = new Stash();
 			s.claim = c.id;
@@ -264,6 +273,9 @@ public final class GameClaims {
 			s.xpLevel = p.experienceLevel;
 			s.xpProgress = p.experienceProgress;
 			s.xpTotal = p.totalExperience;
+			s.health = p.getHealth();
+			s.food = p.getFoodData().getFoodLevel();
+			s.saturation = p.getFoodData().getSaturationLevel();
 			for (MobEffectInstance e : p.getActiveEffects()) {
 				MobEffectInstance.CODEC.encodeStart(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), e).result().ifPresent(j -> s.effects.add(j.toString()));
 			}
@@ -317,8 +329,16 @@ public final class GameClaims {
 			for (String json : s.effects) {
 				MobEffectInstance.CODEC.parse(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), JsonParser.parseString(json)).result().ifPresent(p::addEffect);
 			}
+			if (s.health > 0) vitals.put(p.getUUID(), new float[] { s.health, s.food, s.saturation });
 			stashes.remove(p.getStringUUID());
 			save();
+		}
+		// Health and hunger back to what they were on entering.
+		float[] v = vitals.remove(p.getUUID());
+		if (v != null && p.isAlive()) {
+			p.setHealth(Math.min(p.getMaxHealth(), Math.max(1, v[0])));
+			p.getFoodData().setFoodLevel(Math.round(v[1]));
+			p.getFoodData().setSaturation(v[2]);
 		}
 		inbox(p, toInbox);
 		p.inventoryMenu.broadcastChanges();

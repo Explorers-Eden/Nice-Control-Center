@@ -370,6 +370,8 @@ public final class Claims {
 		public double[] respawn;
 		/** No homes (Nice Actions), beds or anchors set a spawn inside, and the Nice Actions back teleport can't lead here. */
 		public boolean noHomes = false;
+		/** Anyone may fight the mobs inside (animals, villagers and named mobs too, not only plain monsters). */
+		public boolean fightMobs = true;
 		/**
 		 * The game mode survival players play in here: "" = adventure (the default for game areas), or adventure,
 		 * survival (left as it is), creative, spectator. Set alone, it makes the claim a game area too.
@@ -395,7 +397,7 @@ public final class Claims {
 
 		/** Worth keeping (else the options are dropped). */
 		public boolean anySet() {
-			return active() || dropPickupsOnDeath || keepKitOnDeath || respawn != null;
+			return active() || dropPickupsOnDeath || keepKitOnDeath || respawn != null || !fightMobs;
 		}
 
 		public boolean blocksHomes() {
@@ -922,7 +924,7 @@ public final class Claims {
 			case "admin" -> {
 				// Game-claim options (admins only; the panel and /claim admin).
 				if (c.admin == null) c.admin = new AdminOptions();
-				for (String k : List.of("inventory", "removePickups", "dropPickupsOnDeath", "keepKitOnDeath", "noHomes")) {
+				for (String k : List.of("inventory", "removePickups", "dropPickupsOnDeath", "keepKitOnDeath", "noHomes", "fightMobs")) {
 					var v = a.get(k);
 					if (v == null || !v.isJsonPrimitive()) continue;
 					boolean on = v.getAsBoolean();
@@ -931,6 +933,7 @@ public final class Claims {
 						case "removePickups" -> c.admin.removePickups = on;
 						case "dropPickupsOnDeath" -> c.admin.dropPickupsOnDeath = on;
 						case "keepKitOnDeath" -> c.admin.keepKitOnDeath = on;
+						case "fightMobs" -> c.admin.fightMobs = on;
 						default -> c.admin.noHomes = on;
 					}
 				}

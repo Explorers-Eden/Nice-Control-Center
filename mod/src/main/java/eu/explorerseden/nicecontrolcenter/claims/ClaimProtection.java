@@ -218,6 +218,13 @@ public final class ClaimProtection {
 			return false;
 		}
 		if (victim instanceof Enemy && !victim.hasCustomName()) return true;
+		if (!(victim instanceof ArmorStand)) {
+			// Mobs a game or dungeon spawned are there to be fought (named bosses too).
+			if (victim.entityTags().contains(eu.explorerseden.nicecontrolcenter.games.MobLines.NMM_EXCLUDE)) return true;
+			// Game claims let anyone fight the mobs inside, unless switched off.
+			Claim game = GameClaims.gameClaimAt(level, victim.blockPosition());
+			if (game != null && game.admin.fightMobs) return true;
+		}
 		return allowed(attacker, level, victim.blockPosition(), victim instanceof ArmorStand ? Role.BUILD : Role.CONTAINERS);
 	}
 
