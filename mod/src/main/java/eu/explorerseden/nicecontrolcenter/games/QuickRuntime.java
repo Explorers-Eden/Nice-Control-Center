@@ -1041,9 +1041,7 @@ public final class QuickRuntime {
 	}
 
 	private static boolean inSpectate(Arena a, ServerPlayer p, double slack) {
-		Games.Pos s = a.spectate;
-		double r = a.spectateRadius + slack;
-		return s != null && dim(p).equals(s.dim) && p.distanceToSqr(s.x, s.y, s.z) <= r * r;
+		return a.spectate != null && Games.inSpectate(a, dim(p), p.getX(), p.getY(), p.getZ(), slack);
 	}
 
 	/** To the spectator area (false when its dimension is gone). */

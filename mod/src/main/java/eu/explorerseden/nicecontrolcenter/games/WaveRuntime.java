@@ -395,9 +395,9 @@ public final class WaveRuntime {
 
 	/** Still waiting for the arena: in the spectator area, or near the pad when there's none. */
 	private static boolean waiting(Arena a, ServerPlayer p) {
-		Games.Pos at = a.spectate != null ? a.spectate : a.start;
-		double r = a.spectate != null ? a.spectateRadius + 4 : 24;
-		return at != null && dim(p).equals(at.dim) && p.distanceToSqr(at.x, at.y, at.z) <= r * r;
+		if (a.spectate != null) return Games.inSpectate(a, dim(p), p.getX(), p.getY(), p.getZ(), 4);
+		Games.Pos at = a.start;
+		return at != null && dim(p).equals(at.dim) && p.distanceToSqr(at.x, at.y, at.z) <= 24 * 24;
 	}
 
 	// ---------------------------------------------------------------- start
@@ -488,7 +488,7 @@ public final class WaveRuntime {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p == null || !p.isAlive() || g.watching.containsKey(id) || g.arena.spectate == null) continue;
 			Games.Pos s = g.arena.spectate;
-			if (!dim(p).equals(s.dim) || p.distanceToSqr(s.x, s.y, s.z) > (g.arena.spectateRadius + 1.0) * (g.arena.spectateRadius + 1.0)) {
+			if (!Games.inSpectate(g.arena, dim(p), p.getX(), p.getY(), p.getZ(), 1)) {
 				ServerLevel sl = GameRuntime.levelOf(server, s.dim);
 				if (sl != null) p.teleportTo(sl, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);
 			}

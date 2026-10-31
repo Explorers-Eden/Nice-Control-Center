@@ -778,8 +778,15 @@ public final class GameRuntime {
 									a.spectateRadius = IntegerArgumentType.getInteger(ctx, "radius");
 									return "Spectator area here (radius " + a.spectateRadius + "): " + spectateUse(a) + ".";
 								})))
+								// Or a box: two corners (looked at, given, or at their feet), height included.
+								.then(Commands.literal("corner1").executes(ctx -> spectateCorner(ctx, true))
+										.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(ctx -> spectateCorner(ctx, true))))
+								.then(Commands.literal("corner2").executes(ctx -> spectateCorner(ctx, false))
+										.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(ctx -> spectateCorner(ctx, false))))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
 									a.spectate = null;
+									a.spectateMin = null;
+									a.spectateMax = null;
 									return Games.quick(a.type) ? "No spectator area: players who step on the pad during a round try again after it, players who are out go back to the pad."
 										: "No spectator area: the dead watch a teammate, queued parties wait at the pad.";
 								}))))
@@ -905,6 +912,28 @@ public final class GameRuntime {
 		Corners.show(p, at, o);
 		String msg = "Corner " + (first ? 1 : 2) + " at " + at.toShortString() + (o == null ? ". Now the opposite corner (height included): /game edit " + a.name + (first ? " corner2" : " corner1") + " [x y z] or look at it."
 				: ". Box " + Corners.size(at, o) + ".");
+		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
+		return 1;
+	}
+
+	/** A spectator area corner; without a spectate point yet, it gets one in the middle of the box (on its floor). */
+	private static int spectateCorner(CommandContext<CommandSourceStack> ctx, boolean first) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		Arena a = arena(ctx);
+		if (a == null) return fail(ctx, "There's no such game.");
+		BlockPos at = Corners.pick(ctx, p);
+		Games.Pos pos = new Games.Pos(dim(p), at.getX(), at.getY(), at.getZ(), 0);
+		if (first) a.spectateMin = pos;
+		else a.spectateMax = pos;
+		Games.Pos other = first ? a.spectateMax : a.spectateMin;
+		BlockPos o = other == null || !other.dim.equals(pos.dim) ? null : BlockPos.containing(other.x, other.y, other.z);
+		if (o != null && (a.spectate == null || !Games.inSpectate(a, a.spectate.dim, a.spectate.x, a.spectate.y, a.spectate.z, 0))) {
+			a.spectate = new Games.Pos(pos.dim, (at.getX() + o.getX()) / 2.0 + 0.5, Math.min(at.getY(), o.getY()) + 1, (at.getZ() + o.getZ()) / 2.0 + 0.5, 0);
+		}
+		saveSettings();
+		Corners.show(p, at, o);
+		String msg = "Spectator area corner " + (first ? 1 : 2) + " at " + at.toShortString() + (o == null ? ". Now the opposite corner (height included): /game edit " + a.name + " spectate " + (first ? "corner2" : "corner1") + " [x y z] or look at it."
+				: ". Spectator area " + Corners.size(at, o) + "; players are put at " + Math.round(a.spectate.x) + " " + Math.round(a.spectate.y) + " " + Math.round(a.spectate.z) + " (/game edit " + a.name + " spectate moves that spot).");
 		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
 		return 1;
 	}

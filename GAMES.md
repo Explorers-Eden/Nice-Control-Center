@@ -12,8 +12,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
    **Colour**: the picker on the game's card (entrance title and particles, watch point, start title).
 4. **Entrances** (where players get in, e.g. in the hub): `/game edit <name> entrance add` where you stand.
    Particles, the name and the top 3 float above it; stepping in for a second takes players to the game.
-5. **Watch points** (to the spectator area): `/game edit <name> spectate [radius]` in the area, then
-   `/game edit <name> watch add` in the hub.
+5. **Watch points** (to the spectator area): `/game edit <name> spectate [radius]` where players are put, or a box:
+   `/game edit <name> spectate corner1` and `spectate corner2` (players may move anywhere inside it); then
+   `/game edit <name> watch add` in the hub. `spectate clear` removes the area.
 6. **Back points** (the way out of the spectator area): `/game edit <name> back add`.
 7. Points take `remove` (the nearest within 5 blocks) and `clear`, e.g. `/game edit <name> entrance remove`.
    The panel lists them all and can take them away too.

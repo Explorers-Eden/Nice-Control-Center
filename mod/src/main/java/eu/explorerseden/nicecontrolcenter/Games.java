@@ -164,6 +164,9 @@ public final class Games {
 		/** Optional: where dead party members wait for the next wave and other parties queue up; its radius. */
 		public Pos spectate;
 		public int spectateRadius = 8;
+		/** Optional: the spectator area as a box (two corners, height included) instead of the radius. */
+		public Pos spectateMin;
+		public Pos spectateMax;
 		/** Back points: inside a game, standing on one for 5 seconds leaves it; elsewhere it takes players back where they came from. */
 		public List<Pos> exitPads = new ArrayList<>();
 		public int minParty = 1;
@@ -411,6 +414,19 @@ public final class Games {
 		}
 		m.appendTail(out);
 		return out.toString();
+	}
+
+	/** In the arena's spectator area: its box when both corners are set, else within the radius of its point (plus slack). */
+	public static boolean inSpectate(Arena a, String dim, double x, double y, double z, double slack) {
+		if (a.spectateMin != null && a.spectateMax != null && a.spectateMin.dim.equals(a.spectateMax.dim)) {
+			if (!dim.equals(a.spectateMin.dim)) return false;
+			return x >= Math.min(a.spectateMin.x, a.spectateMax.x) - slack && x <= Math.max(a.spectateMin.x, a.spectateMax.x) + 1 + slack
+					&& y >= Math.min(a.spectateMin.y, a.spectateMax.y) - slack && y <= Math.max(a.spectateMin.y, a.spectateMax.y) + 1 + slack
+					&& z >= Math.min(a.spectateMin.z, a.spectateMax.z) - slack && z <= Math.max(a.spectateMin.z, a.spectateMax.z) + 1 + slack;
+		}
+		Pos s = a.spectate;
+		double r = a.spectateRadius + slack;
+		return s != null && dim.equals(s.dim) && (x - s.x) * (x - s.x) + (y - s.y) * (y - s.y) + (z - s.z) * (z - s.z) <= r * r;
 	}
 
 	public static String validate(Settings s) {

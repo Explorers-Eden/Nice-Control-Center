@@ -100,6 +100,8 @@ final class GamesRoutes {
 				a.mobSpawns = was.mobSpawns;
 				a.spectate = was.spectate;
 				a.spectateRadius = was.spectateRadius;
+				a.spectateMin = was.spectateMin;
+				a.spectateMax = was.spectateMax;
 				// Placed in game; the page can only take some away.
 				a.exitPads = kept(was.exitPads, a.exitPads);
 				a.entrances = kept(was.entrances, a.entrances);

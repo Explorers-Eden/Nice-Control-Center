@@ -2057,7 +2057,7 @@
       ok(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
       ok(!!box, box ? `Fight box ${box} (${p(a.areaMin)} → ${p(a.areaMax)})` : 'Fight box (two corners, height included):', box ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
       ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Mob spawns:', `/game edit ${n} mobspawn add`),
-      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, radius ${a.spectateRadius}` : 'Spectator area (optional; without it the dead watch a teammate):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}` : 'Spectator area (optional; without it the dead watch a teammate):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
       ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit`),
     ].join('')}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (wave 1 with nobody in it).</p>`;
@@ -2080,6 +2080,14 @@
       + `<label class="pn-field pn-field-wide"><span>Commands after each cleared wave ({wave}, {player}, {game}): wave rewards</span><textarea data-g="waveCommands" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a.waveCommands || []).join('\n'))}</textarea></label>`
       + text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line')
       + '<p class="pn-hint pn-field-wide">Clearing the game runs the finish message and commands below (and the Rewards triggers "Finishes a game" / "Clears a wave in a wave arena").</p>';
+  }
+
+  /** The spectator area's size: its box (spectate corner1 / corner2) or its radius. */
+  function gmSpecBox(a) {
+    const n = esc(a.name);
+    return a.spectateMin && a.spectateMax
+      ? `box ${Math.abs(a.spectateMax.x - a.spectateMin.x) + 1} × ${Math.abs(a.spectateMax.y - a.spectateMin.y) + 1} × ${Math.abs(a.spectateMax.z - a.spectateMin.z) + 1}`
+      : `radius ${a.spectateRadius} (or a box: <code>/game edit ${n} spectate corner1</code> + <code>corner2</code>)`;
   }
 
   /** The game's own reward points (Games → Points), and the sums commands can do. */
@@ -2107,7 +2115,7 @@
       ok(!!box || floor, box ? `Play box ${box}` : floor ? 'Play box: around the grid (optional: corner1 / corner2)' : 'Play box (two corners, height included):', box || floor ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
-      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, radius ${a.spectateRadius}: the queue for the next round waits here, players who are out watch from here`
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here`
         : 'Spectator area (optional; where the queue for the next round waits and players who are out watch):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
     ].join('');
     const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)' }[a.type] || '';
