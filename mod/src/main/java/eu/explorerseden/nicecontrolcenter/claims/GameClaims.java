@@ -127,7 +127,7 @@ public final class GameClaims {
 			respawnInside(now);
 			Kept kept = keptOnDeath.get(now.getUUID());
 			if (kept != null && kept.claim() != null) {
-				Claim at = gameClaimAt(now.level(), now.blockPosition());
+				Claim at = gameClaimFor(now);
 				if (!toHubOnRespawn.contains(now.getUUID()) && at != null && at.id.equals(kept.claim())) giveBackKept(now);
 				else forgetKept(now);
 			}
@@ -162,6 +162,11 @@ public final class GameClaims {
 	// ---------------------------------------------------------------- which claim
 
 	/** The game claim at the player's spot, or null. */
+	/** The game claim the player is in; none for an admin bypassing claims (/claim admin bypass): no inventory aside, kit, game mode or limits. */
+	public static Claim gameClaimFor(ServerPlayer p) {
+		return ClaimTool.bypassing(p) ? null : gameClaimAt(p.level(), p.blockPosition());
+	}
+
 	public static Claim gameClaimAt(Level level, BlockPos pos) {
 		Claim c = ClaimStore.claimAt(level, pos);
 		return c != null && c.admin != null && c.admin.active() ? c : null;
@@ -175,12 +180,12 @@ public final class GameClaims {
 	/** Inside a game claim that puts inventories aside (for blocking graves). */
 	public static boolean inInventoryClaim(ServerPlayer p) {
 		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.noGrave(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.noGrave(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.noGrave(p)) return true;
-		Claim c = gameClaimAt(p.level(), p.blockPosition());
+		Claim c = gameClaimFor(p);
 		return c != null && c.admin.inventory;
 	}
 
 	private static boolean inKitClaim(ServerPlayer p) {
-		Claim c = gameClaimAt(p.level(), p.blockPosition());
+		Claim c = gameClaimFor(p);
 		return c != null && c.admin.kit != null && !c.admin.kit.isEmpty();
 	}
 
@@ -197,7 +202,7 @@ public final class GameClaims {
 
 	/** In any game area: the market, the inbox and pets don't work there (they'd carry things in or out). */
 	public static boolean inGame(ServerPlayer p) {
-		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p) || gameClaimAt(p.level(), p.blockPosition()) != null;
+		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p) || gameClaimFor(p) != null;
 	}
 
 	/** True (with a message) when the player is in a game area, so {@code what} is refused. */
@@ -223,7 +228,7 @@ public final class GameClaims {
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			// Dungeon runs, wave games and quick rounds put things aside and give them back themselves.
 			if (!p.isAlive() || eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) continue;
-			Claim now = gameClaimAt(p.level(), p.blockPosition());
+			Claim now = gameClaimFor(p);
 			String nowId = now == null ? null : now.id;
 			String was = inside.get(p.getUUID());
 			Stash kept = stashes.get(p.getStringUUID());
@@ -390,7 +395,7 @@ public final class GameClaims {
 		String id = respawnIn.remove(p.getUUID());
 		Claim c = id == null ? null : ClaimStore.data().claims.get(id);
 		if (c == null || c.admin == null) {
-			Claim here = gameClaimAt(p.level(), p.blockPosition());
+			Claim here = gameClaimFor(p);
 			if (here != null && here.admin.respawnsInside() && !deathCount.containsKey(p.getUUID())) sendHome(p.level().getServer(), p);
 			return;
 		}
@@ -481,7 +486,7 @@ public final class GameClaims {
 	private static GameType playMode(ServerPlayer p) {
 		if (eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) && eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inDungeonDimension(p)) return GameType.ADVENTURE;
 		if (eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) return GameType.ADVENTURE;
-		Claim c = gameClaimAt(p.level(), p.blockPosition());
+		Claim c = gameClaimFor(p);
 		if (c == null) return null;
 		return switch (c.admin.mode()) {
 			case "creative" -> GameType.CREATIVE;

@@ -141,7 +141,7 @@ public final class ClaimCommand {
 						.then(Commands.literal("bypass").executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							boolean on = ClaimTool.toggleBypass(p);
-							ClaimTool.tell(p, on ? "Bypass on: claims don't stop you, and you can change every claim." : "Bypass off.", ChatFormatting.GOLD);
+							ClaimTool.tell(p, on ? "Bypass on: claims don't stop you, you can change every claim, and game areas leave you alone (no inventory aside, kit or game mode)." : "Bypass off.", ChatFormatting.GOLD);
 							return 1;
 						}))
 						.then(Commands.literal("delete").executes(ctx -> {

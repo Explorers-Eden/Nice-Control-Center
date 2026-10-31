@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.64.1
+- Claims: /claim admin bypass also skips game areas: no inventory put aside, no kit, no game mode switch, no death limits, market/inbox/pets work. Turning it on inside one gives your things back as if you'd left
+
 ## 1.64.0
 - Games: spectator areas can be a box: /game edit <name> spectate corner1 / corner2 (looked at, given, or at your feet; height included). Players waiting or watching may move anywhere inside it (else within the radius as before); without a spectate point the box's middle is where they're put. spectate clear removes all of it
 
