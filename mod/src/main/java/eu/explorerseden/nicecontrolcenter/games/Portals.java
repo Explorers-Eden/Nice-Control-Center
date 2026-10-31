@@ -262,31 +262,11 @@ public final class Portals {
 		return TAG + "_" + Integer.toHexString((kind + "|" + id + "|" + at.dim + "|" + Math.round(at.x * 2) + "|" + Math.round(at.y * 2) + "|" + Math.round(at.z * 2)).hashCode());
 	}
 
-	private static String typeName(String type) {
-		return switch (type) {
-			case "parkour" -> "Infinite parkour";
-			case "race" -> "Race";
-			case "dropper" -> "Dropper";
-			case "maze" -> "Maze";
-			case "waves" -> "Wave fight · parties of 1–4";
-			case "ghasts" -> "Ghast deflect";
-			case "colorfloor" -> "Colour floor";
-			case "anvils" -> "Anvil rain";
-			case "treasure" -> "Treasure grab";
-			case "fishing" -> "Fishing frenzy";
-			case "heads" -> "Head hunt";
-			default -> type;
-		};
-	}
-
 	/** The game's name, what it is, who plays now, and the best three. */
 	private static Component enterText(Arena a) {
 		MutableComponent t = Component.literal(a.shown()).withStyle(st -> st.withColor(a.rgb()).withBold(true));
-		String sub = typeName(a.type) + (a.type.equals("heads") ? " · " + a.heads.size() + " hidden" : " · step in");
-		Map<String, Object> live = Games.quick(a.type) ? QuickRuntime.live(a.id) : a.type.equals("waves") ? WaveRuntime.live(a.id) : Map.of();
-		Object playing = live.get("playing");
-		if (playing instanceof Number n && n.longValue() > 0) sub += " · " + n + " playing";
-		t.append(Component.literal("\n" + sub).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
+		// The game's own line under its name (panel), when it has one.
+		if (!a.subtitle.isBlank()) t.append(Component.literal("\n" + a.subtitle.strip()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
 		List<Games.Score> top = GameRuntime.top(a, 3);
 		String[] medal = { "1st", "2nd", "3rd" };
 		for (int i = 0; i < top.size(); i++) {

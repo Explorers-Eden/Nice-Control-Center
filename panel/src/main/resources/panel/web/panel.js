@@ -2014,6 +2014,7 @@
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
       const allFields = field('name', 'Name (one word, for the commands; reward rules follow a rename)', `<input type="text" data-g="name" value="${esc(a.name)}" maxlength="32" pattern="[A-Za-z0-9_-]+">`)
         + field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
+        + field('subtitle', 'Line under the name on its entrances (optional)', `<input type="text" data-g="subtitle" value="${esc(a.subtitle || '')}" maxlength="80" placeholder="e.g. Beat the record!">`)
         + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
         + gmPoints(a, field) + fields + own;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;

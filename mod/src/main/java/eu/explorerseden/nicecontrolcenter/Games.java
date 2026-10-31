@@ -81,6 +81,8 @@ public final class Games {
 		public String name = "";
 		/** What players see (spaces allowed); empty = the name. */
 		public String title = "";
+		/** An optional line under the name on its entrances ("Beat the record!"); empty = none. */
+		public String subtitle = "";
 
 		public String shown() {
 			return title == null || title.isBlank() ? name : title.strip();
@@ -269,6 +271,7 @@ public final class Games {
 				}
 				if (a.name == null) a.name = "";
 				if (a.title == null) a.title = "";
+				if (a.subtitle == null) a.subtitle = "";
 				// Colour floor: players gather on the middle platform (not where it was made).
 				if (a.type.equals("colorfloor") && a.corner != null) {
 					int step = Math.max(1, a.platformSize) + Math.max(0, a.platformGap);
@@ -445,6 +448,7 @@ public final class Games {
 			if (!a.name.matches("[A-Za-z0-9_-]{1,32}")) return "An arena needs a one-word name (letters, digits, - and _).";
 			if (!names.add(a.name.toLowerCase(Locale.ROOT))) return "Two arenas are called \"" + a.name + "\".";
 			if (a.title.length() > 48) return "The display name of " + a.name + " is up to 48 characters.";
+			if (a.subtitle.length() > 80) return "The entrance line of " + a.name + " is up to 80 characters.";
 		}
 		return null;
 	}
