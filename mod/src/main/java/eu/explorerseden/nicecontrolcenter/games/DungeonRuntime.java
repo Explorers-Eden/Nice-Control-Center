@@ -956,6 +956,7 @@ public final class DungeonRuntime {
 			}
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
+			Cleanup.refresh(p);
 			GameClaims.gameMode(p, false);
 			p.sendSystemMessage(Words.lit(fill(r.dungeon.enterMessage.isEmpty() ? "▶ {dungeon}: find the way out!" : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
 			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Words.lit(r.dungeon.name).withStyle(ChatFormatting.LIGHT_PURPLE)));

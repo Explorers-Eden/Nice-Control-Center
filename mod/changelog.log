@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.76.0
+- NPCs: a size range (each time one appears it gets a random size in between; body and fighter alike) and, as hostiles, a death loot table (nothing by default)
+- NPC walking: a checkpoint counts as reached when the way there ends within 3 blocks of it (spots on fences, slab edges or in narrow gaps could never be stood on exactly, so NPCs waited there until the 15-second rescue warped them on); standing still for 5 s it tries again with a bigger pathfinding budget; steps towards far checkpoints land on ground it can stand on; the warp is a last resort after 15 s
+- Games: everyone starts with full health and a full hunger bar (parkour, race, dropper, maze, wave fights, quick rounds, dungeons)
+- Maze and parkour: what lies around is also cleared when a run ends any other way (left, died, out of time) and nobody else is in it
+- Axolotls (and other brain-run mobs) chase players and bite them in reach themselves, not only through their brain (tested: one on land went after its target and killed it)
 ## 1.75.1
 - Fix: a server crash with NPCs walking back and forth (on the way back it looked one checkpoint past the end of the path)
 - NPCs walk far checkpoints in steps of up to 12 blocks (vanilla pathfinding stopped short on long ways, so they stood still until the 15-second rescue put them on the checkpoint: the "warping"); after a fall they go back to the checkpoint they last reached

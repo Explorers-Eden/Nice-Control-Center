@@ -316,7 +316,7 @@ public final class NpcRuntime {
 
 	/** What the placed NPC looks like and where: made again when it changes. */
 	private static String looks(Npc n) {
-		return Integer.toHexString((n.skin + "|" + n.skinValue + "|" + n.shown() + "|" + n.description + "|" + n.pose + "|" + n.mainHand + "|" + n.equipment + "|" + n.walks() + "|"
+		return Integer.toHexString((n.skin + "|" + n.skinValue + "|" + n.shown() + "|" + n.description + "|" + n.pose + "|" + n.mainHand + "|" + n.equipment + "|" + n.walks() + "|" + n.scaleMin + "|" + n.scaleMax + "|"
 				+ (n.spot == null ? "" : n.spot.dim + "|" + Math.round(n.spot.x * 2) + "|" + Math.round(n.spot.y * 2) + "|" + Math.round(n.spot.z * 2) + "|" + n.spot.yaw))
 				.hashCode());
 	}
@@ -421,12 +421,13 @@ public final class NpcRuntime {
 		Mob driver = null;
 		if (n.walks()) {
 			driver = driver(level, n, "minecraft:husk", n.spot.x, n.spot.y, n.spot.z, n.spot.yaw,
-					List.of(DRIVER, PLACED, WALKER, ID + n.id, LOOK + looks(n), PAIR + pair, MobLines.NMM_EXCLUDE), true);
+					List.of(DRIVER, PLACED, WALKER, ID + n.id, LOOK + looks(n), PAIR + pair, MobLines.NMM_EXCLUDE), true, "");
 			if (driver == null) return;
 			set(driver, Attributes.MOVEMENT_SPEED, n.walkSpeed);
 			// Pathfinding gives up beyond the follow range (35 for a husk): checkpoints can be far apart.
 			set(driver, Attributes.FOLLOW_RANGE, 128);
 		}
+		size(n, body, driver);
 		level.addFreshEntity(body);
 		if (driver != null) level.addFreshEntity(driver);
 		st.body = body;
@@ -499,8 +500,12 @@ public final class NpcRuntime {
 				continue;
 			}
 			double dx = d.getX() - c.pos.x, dz = d.getZ() - c.pos.z;
-			// Vanilla navigation calls it done a block or so short of the spot.
-			if (dx * dx + dz * dz < 2.25 && Math.abs(d.getY() - c.pos.y) < 2) {
+			// Close enough: on it, or as close as its way goes when the spot itself can't be stood on (a fence, a slab
+			// edge, a narrow gap; vanilla navigation then ends a block or two short and calls it done).
+			double h2 = dx * dx + dz * dz;
+			boolean close = h2 < 2.25 && Math.abs(d.getY() - c.pos.y) < 2
+					|| d.getNavigation().isDone() && h2 < 9 && Math.abs(d.getY() - c.pos.y) < 3;
+			if (close) {
 				d.getNavigation().stop();
 				st.reached = c.pos;
 				st.waiting = true;
@@ -510,25 +515,40 @@ public final class NpcRuntime {
 				d.setYBodyRot(c.pos.yaw);
 				continue;
 			}
-			if (d.getNavigation().isDone()) {
-				// Far checkpoints in steps of up to 12 blocks (vanilla pathfinding stops short on long ways); each step
-				// finds its own way around what's in between.
-				double far = Math.sqrt(dx * dx + dz * dz);
-				double k = Math.min(1, 12 / Math.max(1, far));
-				double tx = d.getX() - dx * k, tz = d.getZ() - dz * k;
-				double ty = k >= 1 ? c.pos.y : d.getY() + (c.pos.y - d.getY()) * k;
-				if (!d.getNavigation().moveTo(tx, ty, tz, 1.0) && k < 1) d.getNavigation().moveTo(c.pos.x, c.pos.y, c.pos.z, 1.0);
-			}
-			// Stuck for 15 s: put on the checkpoint it walks to.
 			Vec3 pos = d.position();
 			if (st.lastPos == null || pos.distanceToSqr(st.lastPos) > 0.25) {
 				st.lastPos = pos;
 				st.lastMoveAt = now;
-			} else if (now - st.lastMoveAt > 15_000) {
+			}
+			long still = now - st.lastMoveAt;
+			if (d.getNavigation().isDone() || still > 5_000 && still % 5_000 < 300) {
+				d.getNavigation().setMaxVisitedNodesMultiplier(still > 5_000 ? 4f : 2f);
+				// Far checkpoints in steps of up to 12 blocks (vanilla pathfinding stops short on long ways), each step on
+				// ground it can stand on; standing still for a while: the checkpoint itself, any way that gets within 2.
+				double far = Math.sqrt(h2);
+				double k = still > 5_000 ? 1 : Math.min(1, 12 / Math.max(1, far));
+				double tx = d.getX() - dx * k, tz = d.getZ() - dz * k;
+				double ty = k >= 1 ? c.pos.y : ground(d.level(), tx, d.getY() + (c.pos.y - d.getY()) * k, tz);
+				boolean going = d.getNavigation().moveTo(tx, ty, tz, k >= 1 && still > 5_000 ? 2 : 1, 1.0);
+				if (!going && k < 1) d.getNavigation().moveTo(c.pos.x, c.pos.y, c.pos.z, 2, 1.0);
+			}
+			if (still > 15_000) {
 				// Truly stuck: put on the checkpoint it walks to.
 				rescue(st, c.pos);
 			}
 		}
+	}
+
+	/** A height near y at x, z where a mob can stand (solid below, room for its head); y itself when there's none. */
+	private static double ground(net.minecraft.world.level.Level level, double x, double y, double z) {
+		int bx = (int) Math.floor(x), bz = (int) Math.floor(z), by = (int) Math.floor(y);
+		// Nearest first: y, y+1, y-1, y+2, y-2 … ±4.
+		for (int off : new int[] { 0, 1, -1, 2, -2, 3, -3, 4, -4 }) {
+			BlockPos feet = new BlockPos(bx, by + off, bz);
+			if (level.getBlockState(feet).getCollisionShape(level, feet).isEmpty() && level.getBlockState(feet.above()).getCollisionShape(level, feet.above()).isEmpty()
+					&& !level.getBlockState(feet.below()).getCollisionShape(level, feet.below()).isEmpty()) return feet.getY();
+		}
+		return y;
 	}
 
 	private static void advance(Npc n, Placed st) {
@@ -662,7 +682,7 @@ public final class NpcRuntime {
 		float yaw = random.nextFloat() * 360;
 		List<String> dTags = new ArrayList<>(List.of(DRIVER, HOSTILE, ID + n.id, PAIR + pair, MobLines.NMM_EXCLUDE));
 		dTags.addAll(extraTags);
-		Mob d = driver(level, n, type, x, y, z, yaw, dTags, false);
+		Mob d = driver(level, n, type, x, y, z, yaw, dTags, false, n.lootTable);
 		LivingEntity b = body(level, n, x, y, z, yaw, List.of(BODY, HOSTILE, ID + n.id, PAIR + pair, MobLines.NMM_EXCLUDE), false, true);
 		if (d == null || b == null) return false;
 		set(d, Attributes.MAX_HEALTH, n.hostile.health);
@@ -674,9 +694,18 @@ public final class NpcRuntime {
 		// Sun-sensitive fighters keep a helmet nobody sees.
 		if (d.getItemBySlot(EquipmentSlot.HEAD).isEmpty() && !type.equals("minecraft:pillager")) d.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
 		d.setDropChance(EquipmentSlot.HEAD, 0);
+		size(n, b, d);
 		level.addFreshEntity(d);
 		level.addFreshEntity(b);
 		return true;
+	}
+
+	/** A random size between the NPC's smallest and largest, the same for its body and its driver (so hits fit). */
+	private static void size(Npc n, LivingEntity body, LivingEntity driver) {
+		double scale = n.scaleMin + random.nextDouble() * (n.scaleMax - n.scaleMin);
+		if (Math.abs(scale - 1) < 0.001) return;
+		set(body, Attributes.SCALE, scale);
+		if (driver != null) set(driver, Attributes.SCALE, scale);
 	}
 
 	private static void set(LivingEntity e, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attr, double value) {
@@ -710,10 +739,11 @@ public final class NpcRuntime {
 	}
 
 	/** The hidden mob behind a walking or fighting NPC. */
-	private static Mob driver(ServerLevel level, Npc n, String type, double x, double y, double z, float yaw, List<String> tags, boolean invulnerable) {
+	private static Mob driver(ServerLevel level, Npc n, String type, double x, double y, double z, float yaw, List<String> tags, boolean invulnerable, String loot) {
 		StringBuilder nbt = new StringBuilder("{Tags:[");
 		for (int i = 0; i < tags.size(); i++) nbt.append(i == 0 ? "" : ",").append(Json.GSON.toJson(tags.get(i)));
-		nbt.append("],Silent:1b,PersistenceRequired:1b,CanPickUpLoot:0b,DeathLootTable:\"minecraft:empty\"");
+		nbt.append("],Silent:1b,PersistenceRequired:1b,CanPickUpLoot:0b,DeathLootTable:").append(Json.GSON.toJson(loot == null || loot.isBlank() ? "minecraft:empty"
+				: loot.contains(":") ? loot : "minecraft:" + loot));
 		if (invulnerable) nbt.append(",Invulnerable:1b");
 		nbt.append("}");
 		if (!(load(level, type, nbt.toString()) instanceof Mob m)) return null;

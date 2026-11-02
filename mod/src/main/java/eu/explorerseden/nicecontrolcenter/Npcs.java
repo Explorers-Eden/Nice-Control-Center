@@ -100,6 +100,12 @@ public final class Npcs {
 		public int lineEverySeconds = 20;
 		public boolean clickLines = false;
 
+		/** Size: each time it's made it gets a random size between these (1 = a player's size). */
+		public double scaleMin = 1;
+		public double scaleMax = 1;
+		/** As a hostile: what it drops when killed (a loot table id, e.g. minecraft:entities/zombie); empty = nothing. */
+		public String lootTable = "";
+
 		/** As a hostile in mob pools: its stats (it fights with what it holds). */
 		public Hostile hostile = new Hostile();
 
@@ -144,6 +150,9 @@ public final class Npcs {
 			lines.removeIf(l -> l == null || l.isBlank());
 			lineRadius = Math.max(2, Math.min(32, lineRadius));
 			lineEverySeconds = Math.max(5, Math.min(3600, lineEverySeconds));
+			scaleMin = Math.max(0.1, Math.min(5, scaleMin == 0 ? 1 : scaleMin));
+			scaleMax = Math.max(scaleMin, Math.min(5, scaleMax == 0 ? 1 : scaleMax));
+			lootTable = lootTable == null ? "" : lootTable.strip().toLowerCase(java.util.Locale.ROOT);
 			if (hostile == null) hostile = new Hostile();
 			hostile.health = Math.max(1, Math.min(2048, hostile.health));
 			hostile.damage = Math.max(0, Math.min(200, hostile.damage));
@@ -198,6 +207,7 @@ public final class Npcs {
 			if (n.description.length() > 100) return "The line under the name of " + n.name + " is up to 100 characters.";
 			if (n.skin.length() > 8000) return "The skin of " + n.name + " is too long.";
 			if (n.lines.size() > 50) return n.name + " has more than 50 talking lines.";
+			if (!n.lootTable.isEmpty() && !n.lootTable.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+")) return "The loot table of " + n.name + " isn't a loot table id (like minecraft:entities/zombie).";
 			for (String l : n.lines) if (l.length() > 200) return "A talking line of " + n.name + " is longer than 200 characters.";
 			for (Action a : n.onClick) if (a.text.length() > 2000 || a.text.contains("\n")) return "An action of " + n.name + " is too long.";
 			for (Action a : n.onHit) if (a.text.length() > 2000 || a.text.contains("\n")) return "An action of " + n.name + " is too long.";

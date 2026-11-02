@@ -12,6 +12,16 @@ final class Cleanup {
 	private Cleanup() {
 	}
 
+	/** A game starts with full health and a full hunger bar (and no fire or missing air). */
+	static void refresh(net.minecraft.server.level.ServerPlayer p) {
+		if (!p.isAlive()) return;
+		p.setHealth(p.getMaxHealth());
+		p.getFoodData().setFoodLevel(20);
+		p.getFoodData().setSaturation(5f);
+		p.clearFire();
+		p.setAirSupply(p.getMaxAirSupply());
+	}
+
 	/** Gone from the box; how many. */
 	static int items(ServerLevel level, AABB box) {
 		if (level == null || box == null) return 0;

@@ -127,6 +127,7 @@ Panel: Community → NPCs; in game `/npc`.
   a reward shop, talking lines (now and then, or one per click), the hostile stats.
 - **Hostiles:** `npc:<name>` in any mob pool (wave fights, dungeon markers `mob:npc:knight x2`, maze mobs), or
   `/npc summon <name> <x y z>`. It fights with what it holds: sword or nothing melee, bow/crossbow shoots, trident throws.
+  Panel: health, damage, speed, armor, a size range (random each time) and the loot table it drops.
 
 ## Points and reward shops
 - Points come from Rewards rules (the reward "Points") or `/points give <player> <n> [reason]`; own games built

@@ -390,6 +390,7 @@ public final class QuickRuntime {
 		}
 		Games.Pos spawn = spawnOf(a);
 		for (ServerPlayer p : going) {
+			Cleanup.refresh(p);
 			playing.put(p.getUUID(), r);
 			r.score.put(p.getUUID(), 0L);
 			if (kit(a)) {

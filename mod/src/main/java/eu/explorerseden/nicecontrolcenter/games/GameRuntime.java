@@ -290,6 +290,7 @@ public final class GameRuntime {
 				return "Unknown game.";
 			}
 		}
+		Cleanup.refresh(p);
 		level.playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 0.8f, 1.6f);
 		String hint = switch (a.type) {
 			case "parkour" -> "Jump as far as you can!";
@@ -334,6 +335,8 @@ public final class GameRuntime {
 			}
 		}
 		if (s.arena.type.equals("maze") && finished && s.arena.regenerate.equals("run") && level != null && sessions.values().stream().noneMatch(o -> o.arena == s.arena)) buildMaze(level, s.arena);
+		// However it ended (finished, left, died, out of time): with nobody else in it, what lies around goes.
+		else if (level != null) freshArea(level, s.arena);
 	}
 
 	// ---------------------------------------------------------------- parkour

@@ -68,42 +68,65 @@ public final class Aggro {
 		return t instanceof Player p && p.isAlive() && !p.isSpectator() && !p.isCreative() ? t : null;
 	}
 
-	/** Keeps the player the brain's attack target (set again every second; the brain may drop it). */
+	/**
+	 * Brain-run mobs (axolotls): they report their brain's target, which the usual target goal never fills, and their
+	 * brain moves them itself. So the nearest survival player within 16 blocks becomes the brain's attack target and
+	 * walk target, and when in reach they bite (once a second) even if the brain would rather do something else.
+	 */
 	private static final class BrainFight extends Goal {
 		private final Mob mob;
+		private LivingEntity foe;
+		private int next;
+		private int hitAt;
 
 		BrainFight(Mob mob) {
 			this.mob = mob;
 		}
 
-		private int next;
-
-		/**
-		 * About once a second. (Not "tickCount % 20": new goals are only looked at every other tick, which tick
-		 * depends on the mob's id, so for half of them that never lined up.)
-		 */
+		/** Looked for about once a second (not "tickCount % 20": new goals are only looked at every other tick). */
 		@Override
 		public boolean canUse() {
 			if (mob.tickCount < next) return false;
 			next = mob.tickCount + 20;
-			return true;
+			foe = find();
+			return foe != null;
 		}
 
 		@Override
 		public boolean canContinueToUse() {
-			return false;
+			return foe != null && foe.isAlive() && foe.level() == mob.level() && mob.distanceToSqr(foe) < 24 * 24
+					&& !(foe instanceof Player p && (p.isSpectator() || p.isCreative()));
 		}
 
-		/**
-		 * Such mobs report their brain's target (getTarget), which the usual target goal never fills: the nearest player
-		 * in survival within 16 blocks becomes it.
-		 */
 		@Override
-		public void start() {
-			if (target(mob) != null) return;
+		public void stop() {
+			foe = null;
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			if (foe == null) return;
+			var brain = mob.getBrain();
+			if (mob.tickCount % 20 == 0) brain.setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, foe);
+			if (mob.isWithinMeleeAttackRange(foe)) {
+				if (mob.tickCount >= hitAt && mob.level() instanceof ServerLevel level) {
+					hitAt = mob.tickCount + 20;
+					mob.doHurtTarget(level, foe);
+				}
+			} else if (mob.tickCount % 10 == 0) {
+				brain.setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET, new net.minecraft.world.entity.ai.memory.WalkTarget(foe, 1.0f, 0));
+			}
+		}
+
+		private LivingEntity find() {
 			Player p = mob.level().getNearestPlayer(mob.getX(), mob.getY(), mob.getZ(), 16,
 					e -> e instanceof Player pl && pl.isAlive() && !pl.isSpectator() && !pl.isCreative());
-			if (p != null) mob.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, (LivingEntity) p);
+			return p;
 		}
 	}
 

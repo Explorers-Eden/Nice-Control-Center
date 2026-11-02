@@ -428,6 +428,7 @@ public final class WaveRuntime {
 		games.put(a.id, g);
 		clearBox(server, g);
 		for (ServerPlayer p : party) {
+			Cleanup.refresh(p);
 			g.players.add(p.getUUID());
 			g.names.put(p.getUUID(), p.getGameProfile().name());
 			playing.put(p.getUUID(), g);

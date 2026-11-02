@@ -2366,6 +2366,8 @@
           ${field('Skin: a player name, a link to the skin picture (any site; uploaded through MineSkin), a textures.minecraft.net link or hash, or the base64 value', `<span class="pn-gm-skin">${nc.skins[n.id] ? face : ''}<input type="text" data-n="skin" value="${esc(n.skin)}" placeholder="Notch"></span>${n.skinError ? `<small class="pn-hint pn-warn"><i class="bi bi-exclamation-triangle"></i> ${esc(n.skinError)}</small>` : /^https?:\/\//i.test(n.skin || '') && !/textures\.minecraft\.net/i.test(n.skin) && n.skin !== n.skinSource ? '<small class="pn-hint">Uploading through MineSkin after saving (a few seconds, server running).</small>' : ''}`, true)}
           ${field('Pose', `<select data-n="pose">${nc.poses.map((p) => opt(p, n.pose, p.replace('_', ' '))).join('')}</select>`)}
           ${field('Main hand', `<select data-n="mainHand">${opt('right', n.mainHand, 'right')}${opt('left', n.mainHand, 'left')}</select>`)}
+          ${field('Size: smallest (1 = a player)', num('scaleMin', 0.1, 5, 0.05, n.scaleMin || 1))}
+          ${field('Size: largest (a random size in between each time it appears)', num('scaleMax', 0.1, 5, 0.05, n.scaleMax || 1))}
           ${field('Looks at players close by', `<select data-n="lookAtPlayers" data-bool="1">${opt(true, n.lookAtPlayers, 'yes')}${opt(false, n.lookAtPlayers, 'no')}</select>`)}
           <div class="pn-field pn-field-wide"><span>Wears and holds <small class="pn-hint">(<code>/npc equip ${esc(n.name)}</code>: what you wear and hold)</small></span>${ncGear(nc.equipment[n.id])}</div>
           <div class="pn-field pn-field-wide"><span>Walking path <small class="pn-hint">(<code>/npc path ${esc(n.name)} add [wait]</code> at each checkpoint)</small></span>${path ? `<ul class="pn-gm-heads">${path}</ul>` : '<p class="pn-hint">No path: it stands on its spot.</p>'}</div>
@@ -2385,6 +2387,7 @@
           ${field('Speed (0.25 is a player walking)', hnum('speed', 0.05, 1, 0.01))}
           ${field('Armor', hnum('armor', 0, 30))}
           ${field('Notices players within (blocks)', hnum('followRange', 8, 64))}
+          ${field('Drops when killed (loot table; empty = nothing)', `<input type="text" data-n="lootTable" value="${esc(n.lootTable || '')}" placeholder="minecraft:entities/zombie">`)}
         </div>
       </section>`;
     }).join('') || '<p class="np-empty">No NPCs yet. Stand where one should be in game and type <code>/npc create Guide</code>, or <code>/npc adopt Guide</code> next to a mannequin you made before.</p>';
@@ -2448,7 +2451,7 @@
     let name = 'npc';
     for (let k = 2; nc.settings.npcs.some((x) => x.name.toLowerCase() === name.toLowerCase()); k++) name = 'npc' + k;
     nc.settings.npcs.push({ id: '', name, title: name, description: '', skin: '', pose: 'standing', mainHand: 'right', equipment: [], spot: null, lookAtPlayers: true,
-      path: [], pathMode: 'loop', walkSpeed: 0.25, onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false,
+      path: [], pathMode: 'loop', walkSpeed: 0.25, scaleMin: 1, scaleMax: 1, lootTable: '', onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false,
       hostile: { health: 20, damage: 3, speed: 0.25, armor: 0, followRange: 32 } });
     ncOpen.add('new' + (nc.settings.npcs.length - 1));
     ncChanged(true);
