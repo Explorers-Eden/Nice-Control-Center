@@ -157,6 +157,12 @@ public final class WaveRuntime {
 
 	// ---------------------------------------------------------------- for others
 
+	/** The wave game they're in (null when none). */
+	public static Arena arenaOf(ServerPlayer p) {
+		Game g = playing.get(p.getUUID());
+		return g == null ? null : g.arena;
+	}
+
 	/** In a wave game (fighting, or down until the next wave). */
 	public static boolean inGame(ServerPlayer p) {
 		return playing.containsKey(p.getUUID());

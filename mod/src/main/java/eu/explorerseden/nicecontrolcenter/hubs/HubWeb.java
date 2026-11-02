@@ -22,28 +22,16 @@ public final class HubWeb {
 	private HubWeb() {
 	}
 
-	/** The player's hubs, with what the owner menu can change. */
-	public static Map<String, Object> list(MinecraftServer server, String uuid) {
-		UUID player;
-		try {
-			player = UUID.fromString(uuid);
-		} catch (IllegalArgumentException e) {
-			return Map.of("error", "Unknown player.");
-		}
+	/** Every hub for the panel (Claims → Waypoint hubs): what the owner menu shows, with the owner. */
+	public static Map<String, Object> listAll(MinecraftServer server) {
 		List<Map<String, Object>> hubs = new ArrayList<>();
-		Hubs.ownedHubs(server, player).forEach((id, hub) -> {
-			CompoundTag pos = hub.getCompoundOrEmpty("pos");
-			Map<String, Object> h = new LinkedHashMap<>();
-			h.put("id", id);
-			h.put("name", Hubs.name(server, hub));
-			h.put("description", Hubs.description(server, hub));
-			h.put("color", Hubs.dye(hub));
-			h.put("public", Hubs.isPublic(hub));
-			h.put("trusted", Hubs.trusted(hub));
-			h.put("dimension", Hubs.dimension(hub));
-			h.put("x", (int) Math.floor(pos.getDoubleOr("x", 0)));
-			h.put("y", (int) Math.floor(pos.getDoubleOr("y", 0)));
-			h.put("z", (int) Math.floor(pos.getDoubleOr("z", 0)));
+		Hubs.allHubs(server).forEach((id, hub) -> {
+			Map<String, Object> h = row(server, id, hub);
+			UUID owner = Hubs.owner(hub);
+			String name = hub.getCompoundOrEmpty("profile").getStringOr("name", "");
+			if (name.isBlank() && owner != null) name = server.services().nameToIdCache().get(owner).map(NameAndId::name).orElse("");
+			h.put("owner", owner == null ? "" : owner.toString());
+			h.put("ownerName", name);
 			hubs.add(h);
 		});
 		Map<String, Object> out = new LinkedHashMap<>();
@@ -53,19 +41,62 @@ public final class HubWeb {
 		return out;
 	}
 
+	private static Map<String, Object> row(MinecraftServer server, int id, CompoundTag hub) {
+		CompoundTag pos = hub.getCompoundOrEmpty("pos");
+		Map<String, Object> h = new LinkedHashMap<>();
+		h.put("id", id);
+		h.put("name", Hubs.name(server, hub));
+		h.put("description", Hubs.description(server, hub));
+		h.put("color", Hubs.dye(hub));
+		h.put("public", Hubs.isPublic(hub));
+		h.put("trusted", Hubs.trusted(hub));
+		h.put("dimension", Hubs.dimension(hub));
+		h.put("x", (int) Math.floor(pos.getDoubleOr("x", 0)));
+		h.put("y", (int) Math.floor(pos.getDoubleOr("y", 0)));
+		h.put("z", (int) Math.floor(pos.getDoubleOr("z", 0)));
+		return h;
+	}
+
+	/** The player's hubs, with what the owner menu can change. */
+	public static Map<String, Object> list(MinecraftServer server, String uuid) {
+		UUID player;
+		try {
+			player = UUID.fromString(uuid);
+		} catch (IllegalArgumentException e) {
+			return Map.of("error", "Unknown player.");
+		}
+		List<Map<String, Object>> hubs = new ArrayList<>();
+		Hubs.ownedHubs(server, player).forEach((id, hub) -> hubs.add(row(server, id, hub)));
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("hubs", hubs);
+		out.put("colors", Hubs.COLORS);
+		out.put("maxText", Hubs.MAX_TEXT);
+		return out;
+	}
+
 	/** Applies the changed fields of one hub the player owns; answers the hub as it is now, or an error. */
 	public static Map<String, Object> edit(MinecraftServer server, JsonObject in) {
+		return edit(server, in, false);
+	}
+
+	/** The panel's edit (any hub, as its owner would). */
+	public static Map<String, Object> adminEdit(MinecraftServer server, JsonObject in) {
+		return edit(server, in, true);
+	}
+
+	private static Map<String, Object> edit(MinecraftServer server, JsonObject in, boolean admin) {
 		UUID player;
 		int id;
+		CompoundTag hub;
 		try {
-			player = UUID.fromString(str(in, "uuid"));
 			id = Integer.parseInt(str(in, "id"));
+			hub = Hubs.hub(server, id);
+			if (hub == null) return Map.of("error", "That hub doesn't exist any more.");
+			player = admin ? Hubs.owner(hub) : UUID.fromString(str(in, "uuid"));
 		} catch (IllegalArgumentException e) {
 			return Map.of("error", "Unknown hub.");
 		}
-		CompoundTag hub = Hubs.hub(server, id);
-		if (hub == null) return Map.of("error", "That hub doesn't exist any more.");
-		if (!Hubs.ownedBy(hub, player)) return Map.of("error", "Only the hub's owner can change it.");
+		if (!admin && !Hubs.ownedBy(hub, player)) return Map.of("error", "Only the hub's owner can change it.");
 
 		String name = in.has("name") ? Hubs.clean(str(in, "name")) : null;
 		if (name != null && name.isEmpty()) return Map.of("error", "Give the hub a name.");

@@ -47,6 +47,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -155,6 +158,7 @@ public final class GameRuntime {
 			if (server.getTickCount() % 100 == 0) reload();
 			if (server.getTickCount() % 2 == 0) tick(server);
 			stepMazes();
+			if (server.getTickCount() % 60 == 0) mazeMobs(server);
 			if (server.getTickCount() % 1200 == 0) dailyMazes(server);
 		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
@@ -191,6 +195,7 @@ public final class GameRuntime {
 
 	private static void tick(MinecraftServer server) {
 		long now = System.currentTimeMillis();
+		LoopSound.tick(server);
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			Session s = sessions.get(p.getUUID());
 			if (s == null) {
@@ -274,7 +279,8 @@ public final class GameRuntime {
 				if (a.corner == null) return "This maze has no corner yet.";
 				if (mazeBuilding(a)) return "The maze is being built; try again in a few seconds.";
 				sessions.put(p.getUUID(), s);
-				p.teleportTo(level, a.corner.x + 1.5, a.corner.y + 1, a.corner.z + 1.5, Set.of(), 0, 0, true);
+				double in = Math.floor(a.corner.x) + 1 + a.mazePath / 2.0, inZ = Math.floor(a.corner.z) + 1 + a.mazePath / 2.0;
+				p.teleportTo(level, in, a.corner.y + 1, inZ, Set.of(), 0, 0, true);
 			}
 			case "waves" -> {
 				return "Wave arenas start from their pad (with your party).";
@@ -596,13 +602,73 @@ public final class GameRuntime {
 
 	private static void maze(MinecraftServer server, ServerPlayer p, Session s) {
 		Arena a = s.arena;
-		int n = a.size;
-		double fx = a.corner.x + (n - 1) * 2 + 1.5, fz = a.corner.z + (n - 1) * 2 + 1.5;
-		double dx = p.getX() - fx, dz = p.getZ() - fz;
-		if (dx * dx + dz * dz < 1.2 && Math.abs(p.getY() - (a.corner.y + 1)) < 2) end(server, s, null, true);
+		int from = mazeCell(a, a.size - 1);
+		double x = p.getX() - Math.floor(a.corner.x), z = p.getZ() - Math.floor(a.corner.z);
+		if (x >= from && x < from + a.mazePath && z >= from && z < from + a.mazePath && Math.abs(p.getY() - (a.corner.y + 1)) < 2) end(server, s, null, true);
 	}
 
-	/** A maze of size × size cells (each 1 block of path, walls between), 3 high, path from the corner to the far corner. */
+	/** Maze: where cell i (0 … size-1) starts, in blocks from the corner (it's mazePath wide). */
+	static int mazeCell(Arena a, int i) {
+		return i * (a.mazePath + 1) + 1;
+	}
+
+	/** Maze: the middle of the goal, on its floor (null without a corner). */
+	public static Games.Pos mazeGoal(Arena a) {
+		if (a.corner == null) return null;
+		double c = mazeCell(a, a.size - 1) + a.mazePath / 2.0;
+		return new Games.Pos(a.corner.dim, Math.floor(a.corner.x) + c, Math.floor(a.corner.y) + 1, Math.floor(a.corner.z) + c, 0);
+	}
+
+	/**
+	 * Maze mobs, every 3 s while someone runs it: up to mazeMobMax roam, each appearing in a cell 12–32 blocks from
+	 * a runner (none closer than 12 to anyone), so they come out of the dark rather than next to you. Gone when
+	 * nobody runs it.
+	 */
+	private static void mazeMobs(MinecraftServer server) {
+		for (Arena a : settings.arenas) {
+			if (!a.type.equals("maze") || a.corner == null) continue;
+			ServerLevel level = level(server, a.corner.dim);
+			if (level == null) continue;
+			String tag = "ncc_maze_" + a.id;
+			List<ServerPlayer> runners = new ArrayList<>();
+			for (Session s : sessions.values()) {
+				if (s.arena != a) continue;
+				ServerPlayer p = server.getPlayerList().getPlayer(s.player);
+				if (p != null && p.level() == level) runners.add(p);
+			}
+			int w = a.mazeBlocks();
+			AABB box = new AABB(Math.floor(a.corner.x), a.corner.y - 2, Math.floor(a.corner.z), Math.floor(a.corner.x) + w, a.corner.y + 12, Math.floor(a.corner.z) + w);
+			List<LivingEntity> mobs = level.getEntitiesOfClass(LivingEntity.class, box.inflate(16), e -> e.isAlive() && e.entityTags().contains(tag));
+			if (runners.isEmpty() || a.mazeMobs.isBlank() || a.mazeMobMax == 0) {
+				mobs.forEach(Entity::discard);
+				continue;
+			}
+			for (LivingEntity m : mobs) {
+				if (a.peacefulFight && m instanceof net.minecraft.world.entity.Mob mob) {
+					Aggro.make(mob, 3f);
+					if (mob.getTarget() == null) mob.setTarget(runners.get(random.nextInt(runners.size())));
+				}
+			}
+			if (mobs.size() >= a.mazeMobMax || mazeBuilding(a)) continue;
+			List<MobLines.Entry> pool = MobLines.parseList(a.mazeMobs);
+			if (pool.isEmpty()) continue;
+			ServerPlayer near = runners.get(random.nextInt(runners.size()));
+			for (int tries = 0; tries < 24; tries++) {
+				double x = Math.floor(a.corner.x) + mazeCell(a, random.nextInt(a.size)) + a.mazePath / 2.0;
+				double z = Math.floor(a.corner.z) + mazeCell(a, random.nextInt(a.size)) + a.mazePath / 2.0;
+				double d = Math.hypot(near.getX() - x, near.getZ() - z);
+				if (d < 12 || d > 32 || runners.stream().anyMatch(r -> Math.hypot(r.getX() - x, r.getZ() - z) < 12)) continue;
+				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+				MobLines.summon(server, a.corner.dim, x, Math.floor(a.corner.y) + 1, z, new MobLines.Entry(e.id(), 1, e.nbt()), "Tags:[\"" + tag + "\"]");
+				break;
+			}
+		}
+	}
+
+	/**
+	 * A maze of size × size cells (each mazePath blocks wide, walls of one block between), path from the corner
+	 * to the far corner; optionally a ceiling, chests in some dead ends.
+	 */
 	static void buildMaze(ServerLevel level, Arena a) {
 		int n = a.size;
 		int w = n * 2 + 1;
@@ -631,8 +697,23 @@ public final class GameRuntime {
 			open[to[0] * 2 + 1][to[1] * 2 + 1] = true;
 			stack.push(to);
 		}
+		// Dead ends (one way out) get a chest now and then; not the start or the goal.
+		List<int[]> chests = new ArrayList<>();
+		for (int i = 0; i < n && a.mazeChests > 0; i++) {
+			for (int j = 0; j < n; j++) {
+				if (i == 0 && j == 0 || i == n - 1 && j == n - 1) continue;
+				int x = i * 2 + 1, z = j * 2 + 1, ways = 0;
+				for (int[] d : dirs) if (open[x + d[0]][z + d[1]]) ways++;
+				if (ways == 1 && random.nextInt(100) < a.mazeChests) chests.add(new int[] { i, j });
+			}
+		}
 		// Placed over the next ticks (a big maze is millions of blocks): see stepMazes.
-		mazeBuilds.put(a.id, new MazeBuild(level, o, w, open, blocks(a.wall), blocks(a.floor), a.wallHeight, a.mazeLight));
+		MazeBuild b = new MazeBuild(level, o, a.mazePath, open, blocks(a.wall), blocks(a.floor), a.wallHeight, a.mazeLight);
+		b.ceiling = a.mazeCeiling.isBlank() ? List.of() : blocks(a.mazeCeiling);
+		b.goal = eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.mazeGoal, Blocks.SEA_LANTERN).stream().map(Block::defaultBlockState).toList();
+		b.chests = chests;
+		b.loot = a.mazeLoot;
+		mazeBuilds.put(a.id, b);
 		mazeDay.put(a.id, System.currentTimeMillis() / 86_400_000L);
 	}
 
@@ -640,8 +721,14 @@ public final class GameRuntime {
 	private static final class MazeBuild {
 		final ServerLevel level;
 		final BlockPos origin;
+		/** Blocks along each side; the path width; the layout (cells at odd spots, walls at even ones). */
 		final int width;
+		final int path;
 		final boolean[][] open;
+		List<BlockState> ceiling = List.of();
+		List<BlockState> goal = List.of();
+		List<int[]> chests = List.of();
+		String loot = "";
 		final List<BlockState> walls;
 		final List<BlockState> floors;
 		final int height;
@@ -649,10 +736,11 @@ public final class GameRuntime {
 		final int light;
 		int next;
 
-		MazeBuild(ServerLevel level, BlockPos origin, int width, boolean[][] open, List<BlockState> walls, List<BlockState> floors, int height, int light) {
+		MazeBuild(ServerLevel level, BlockPos origin, int path, boolean[][] open, List<BlockState> walls, List<BlockState> floors, int height, int light) {
 			this.level = level;
 			this.origin = origin;
-			this.width = width;
+			this.path = path;
+			this.width = (open.length / 2) * (path + 1) + 1;
 			this.open = open;
 			this.walls = walls;
 			this.floors = floors;
@@ -678,22 +766,59 @@ public final class GameRuntime {
 		for (var it = mazeBuilds.entrySet().iterator(); it.hasNext() && budget > 0;) {
 			MazeBuild b = it.next().getValue();
 			int total = b.width * b.width;
+			int span = b.path + 1;
 			while (b.next < total && budget-- > 0) {
 				int x = b.next / b.width, z = b.next % b.width;
 				b.next++;
+				// The layout spot of this block: walls on every span-th block, path in between.
+				int lx = x / span * 2 + (x % span == 0 ? 0 : 1), lz = z / span * 2 + (z % span == 0 ? 0 : 1);
+				boolean open = b.open[lx][lz];
 				b.level.setBlock(b.origin.offset(x, 0, z), b.floors.get(random.nextInt(b.floors.size())), 2);
-				// Up to 8 high: a lower wall height clears what a taller one left.
-				for (int y = 1; y <= 8; y++) {
-					b.level.setBlock(b.origin.offset(x, y, z), b.open[x][z] || y > b.height ? Blocks.AIR.defaultBlockState() : b.walls.get(random.nextInt(b.walls.size())), 2);
+				// Up to 9 high: a lower wall (or ceiling) clears what a taller one left; chests are emptied first so nothing spills.
+				for (int y = 1; y <= 9; y++) {
+					BlockPos at = b.origin.offset(x, y, z);
+					if (b.level.getBlockEntity(at) instanceof net.minecraft.world.Container c) c.clearContent();
+					BlockState st = y == b.height + 1 && !b.ceiling.isEmpty() ? b.ceiling.get(random.nextInt(b.ceiling.size()))
+							: open || y > b.height ? Blocks.AIR.defaultBlockState() : b.walls.get(random.nextInt(b.walls.size()));
+					b.level.setBlock(at, st, 2);
 				}
-				// Lit paths: a light in each cell (cells sit at odd spots), at head height but under a low ceiling.
-				if (b.light > 0 && b.open[x][z] && x % 2 == 1 && z % 2 == 1) {
+				// Lit paths: a light in each cell's first block, at head height but under a low ceiling.
+				if (b.light > 0 && open && lx % 2 == 1 && lz % 2 == 1 && x % span == 1 && z % span == 1) {
 					b.level.setBlock(b.origin.offset(x, Math.min(2, b.height), z), Blocks.LIGHT.defaultBlockState().setValue(net.minecraft.world.level.block.LightBlock.LEVEL, b.light), 2);
 				}
 			}
 			if (b.next >= total) {
-				b.level.setBlock(b.origin.offset(b.width - 2, 0, b.width - 2), Blocks.SEA_LANTERN.defaultBlockState(), 2);
+				int g = b.width - 1 - b.path;
+				for (int x = 0; x < b.path; x++) {
+					for (int z = 0; z < b.path; z++) b.level.setBlock(b.origin.offset(g + x, 0, g + z), b.goal.get(random.nextInt(b.goal.size())), 2);
+				}
+				placeChests(b);
 				it.remove();
+			}
+		}
+	}
+
+	/** The maze's dead-end chests, facing out of their dead end, filled from its loot table when opened. */
+	private static void placeChests(MazeBuild b) {
+		Identifier table = Identifier.tryParse(b.loot);
+		int[][] dirs = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+		for (int[] c : b.chests) {
+			int lx = c[0] * 2 + 1, lz = c[1] * 2 + 1;
+			net.minecraft.core.Direction face = net.minecraft.core.Direction.NORTH;
+			for (int[] d : dirs) {
+				if (b.open[lx + d[0]][lz + d[1]]) face = d[0] == 1 ? net.minecraft.core.Direction.EAST : d[0] == -1 ? net.minecraft.core.Direction.WEST : d[1] == 1 ? net.minecraft.core.Direction.SOUTH : net.minecraft.core.Direction.NORTH;
+			}
+			// Back against the dead end's far wall, in the middle of the path.
+			int bx = c[0] * (b.path + 1) + 1 + b.path / 2, bz = c[1] * (b.path + 1) + 1 + b.path / 2;
+			if (b.path > 1) {
+				bx -= face.getStepX() * (b.path / 2);
+				bz -= face.getStepZ() * (b.path / 2);
+			}
+			BlockPos at = b.origin.offset(bx, 1, bz);
+			b.level.setBlock(at, Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.FACING, face), 2);
+			if (table != null && b.level.getBlockEntity(at) instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity chest) {
+				chest.setLootTable(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.LOOT_TABLE, table));
+				chest.setLootTableSeed(random.nextLong());
 			}
 		}
 	}
@@ -899,7 +1024,7 @@ public final class GameRuntime {
 							}
 							if (!a.type.equals("maze") || a.corner == null) return "Only mazes and colour floors are built.";
 							buildMaze((ServerLevel) p.level(), a);
-							int w = a.size * 2 + 1;
+							int w = a.mazeBlocks();
 								return "Building the maze (" + w + " × " + w + " blocks)" + (w * w > 2048 * 20 ? ": it takes about " + Math.max(1, w * w / 2048 / 20) + " s." : ".");
 						})))
 						// Colour floor: the grid's corner at their feet (platforms go +X and +Z, the floor at this height).
@@ -1028,7 +1153,7 @@ public final class GameRuntime {
 					+ (type.equals("anvils") ? "; anvils fall from its top" : type.equals("fishing") ? "; put water in it" : "; treasure appears on its floor") + "). Try it with /game try " + name + ".";
 			case "heads" -> "Set the heads' skin: /game edit " + name + " texture <url or value>, then /game edit " + name + " headitem gives you heads to hide (placing one adds it)."
 					+ " Rewards every few heads are set in the panel.";
-			default -> "The maze is built from this corner (" + (a.size * 2 + 1) + " blocks each way, +X and +Z). The start point is here too; move it with /game edit " + name + " start.";
+			default -> "The maze is built from this corner (" + a.mazeBlocks() + " blocks each way, +X and +Z). The start point is here too; move it with /game edit " + name + " start.";
 		};
 		// Sensible starts for the quick rounds.
 		switch (type) {
@@ -1176,6 +1301,12 @@ public final class GameRuntime {
 				a.shown() + ": " + Games.scoreText(a.type, score, GameRuntime::clock));
 		var ps = eu.explorerseden.nicecontrolcenter.players.PointsStore.settings();
 		p.sendSystemMessage(Component.literal("+" + eu.explorerseden.nicecontrolcenter.Points.amount(ps, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
+	}
+
+	/** The game of their parkour, race, dropper or maze run (null when none). */
+	public static Arena arenaOf(ServerPlayer p) {
+		Session s = sessions.get(p.getUUID());
+		return s == null ? null : s.arena;
 	}
 
 	/** In a parkour, race, dropper or maze run. */

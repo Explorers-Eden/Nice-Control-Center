@@ -769,6 +769,15 @@ public final class DashboardServer {
 			}));
 			case "/api/pets/state" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.Json.GSON.toJsonTree(
 					eu.explorerseden.nicecontrolcenter.pets.PetStore.state())));
+			// Claims → Waypoint hubs: every hub, and the owner menu's changes made from the panel.
+			case "/api/hubs" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.listAll(minecraft)));
+			case "/api/hubs/edit" -> {
+				if (!requirePost(exchange)) {
+					return;
+				}
+				JsonObject body = jsonBody(exchange);
+				sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.hubs.HubWeb.adminEdit(minecraft, body)));
+			}
 			case "/api/claims/goml" -> sendJson(exchange, onServerThread(() -> eu.explorerseden.nicecontrolcenter.claims.ClaimApi.gomlPreview(minecraft, false)));
 			case "/api/claims/goml/import" -> {
 				if (!requirePost(exchange)) {

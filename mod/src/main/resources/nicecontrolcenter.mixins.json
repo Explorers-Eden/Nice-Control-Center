@@ -53,6 +53,7 @@
 		"GameChorusMixin",
 		"FishingFrenzyMixin",
 		"ClaimPlaceMixin",
+		"VillagerTradeMixin",
 		"MobGoalsAccessor",
 		"WeatherPacketMixin",
 		"GameClaimPickupMixin",

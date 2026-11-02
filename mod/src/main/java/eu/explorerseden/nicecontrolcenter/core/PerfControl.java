@@ -463,6 +463,7 @@ public final class PerfControl {
 		t.freezeWhenEmpty = true;
 		t.clearSky = true;
 		t.noPetPerks = true;
+		t.randomLooks = true;
 		return t;
 	}
 
@@ -485,6 +486,13 @@ public final class PerfControl {
 		if (!(level instanceof ServerLevel server)) return false;
 		Performance.DimTuning dt = dim(server);
 		return dt != null && dt.noPetPerks;
+	}
+
+	/** Mobs get random looks here and villagers don't trade (per-dimension tuning; always in the dungeon dimension). */
+	public static boolean randomLooks(net.minecraft.world.level.Level level) {
+		if (!(level instanceof ServerLevel server)) return false;
+		Performance.DimTuning dt = dim(server);
+		return dt != null && dt.randomLooks;
 	}
 
 	/** A dimension set to freeze while nobody is in it, and nobody is. */

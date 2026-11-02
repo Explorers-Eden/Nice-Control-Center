@@ -107,6 +107,11 @@ public final class QuickRuntime {
 		final Map<BlockPos, Long> landed = new HashMap<>();
 		// Treasure grab: item entity → points.
 		final Map<UUID, Integer> treasure = new HashMap<>();
+		// Fishing frenzy: bubbling spots on the water (x, y, z, until ms), catches flying out (entity → tick to go).
+		final List<double[]> puddles = new ArrayList<>();
+		final Map<ItemEntity, Long> shown = new HashMap<>();
+		/** Players whose action bar holds a message until then (ms): the score line waits. */
+		final Map<UUID, Long> holdBar = new HashMap<>();
 
 		Round(Arena arena) {
 			this.arena = arena;
@@ -170,6 +175,12 @@ public final class QuickRuntime {
 	}
 
 	// ---------------------------------------------------------------- for others
+
+	/** The game of the quick round they play (null when none). */
+	public static Arena arenaOf(ServerPlayer p) {
+		Round r = playing.get(p.getUUID());
+		return r == null ? null : r.arena;
+	}
 
 	/** In a quick round being played (the join window doesn't count). */
 	public static boolean inGame(ServerPlayer p) {
@@ -510,6 +521,7 @@ public final class QuickRuntime {
 			}
 			case "anvils" -> anvils(level, r, alive);
 			case "treasure" -> treasure(level, r, alive);
+			case "fishing" -> fishing(level, r);
 			default -> {
 			}
 		}
@@ -529,7 +541,9 @@ public final class QuickRuntime {
 		if (!a.type.equals("colorfloor") || r.called < 0) {
 			bar(server, r, Component.literal(time + " · " + alive.size() + (alive.size() == 1 ? " player" : " players")), progress, BossEvent.BossBarColor.BLUE);
 		}
+		long now = System.currentTimeMillis();
 		for (ServerPlayer p : alive) {
+			if (r.holdBar.getOrDefault(p.getUUID(), 0L) > now) continue;
 			long mine = r.score.getOrDefault(p.getUUID(), 0L);
 			String leader = alive.size() > 1 && lead != null && !lead.equals(p.getUUID()) ? " · leader " + r.names.get(lead) + " " + r.score.getOrDefault(lead, 0L) : "";
 			p.sendOverlayMessage(Component.literal(Games.scoreText(a.type, mine, GameRuntime::clock) + leader).withStyle(ChatFormatting.AQUA));
@@ -878,7 +892,7 @@ public final class QuickRuntime {
 	 * From the fishing mixin: what a player in a fishing round caught scores points instead (true: the catch is
 	 * used up, nothing lands).
 	 */
-	public static boolean fished(ServerPlayer p, List<ItemStack> loot) {
+	public static boolean fished(ServerPlayer p, List<ItemStack> loot, Entity hook) {
 		Round r = playing.get(p.getUUID());
 		if (r == null || !r.arena.type.equals("fishing") || r.state != State.PLAYING) return false;
 		int points = 0;
@@ -893,9 +907,75 @@ public final class QuickRuntime {
 			what.add(st.getHoverName().getString());
 		}
 		long n = r.score.merge(p.getUUID(), (long) points, Long::sum);
+		// What was caught flies out of the water like a normal catch, just for show (gone before it lands).
+		if (hook != null && p.level() instanceof ServerLevel level) {
+			for (ItemStack st : loot) {
+				ItemEntity shown = new ItemEntity(level, hook.getX(), hook.getY(), hook.getZ(), st.copy());
+				double dx = p.getX() - hook.getX(), dy = p.getY() - hook.getY(), dz = p.getZ() - hook.getZ();
+				shown.setDeltaMovement(dx * 0.1, dy * 0.1 + Math.sqrt(Math.sqrt(dx * dx + dy * dy + dz * dz)) * 0.08, dz * 0.1);
+				shown.setNeverPickUp();
+				shown.addTag(r.tag());
+				level.addFreshEntity(shown);
+				r.shown.put(shown, (long) level.getServer().getTickCount() + 14);
+			}
+		}
+		r.holdBar.put(p.getUUID(), System.currentTimeMillis() + 2_500);
 		p.sendOverlayMessage(Component.literal(String.join(", ", what) + ": +" + points + " · " + n + (n == 1 ? " point" : " points")).withStyle(points > 0 ? ChatFormatting.GOLD : ChatFormatting.GRAY));
 		p.level().playSound(null, p.blockPosition(), points >= r.arena.treasurePoints && points > 0 ? SoundEvents.PLAYER_LEVELUP : SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.7f, 1.2f);
 		return true;
+	}
+
+	/**
+	 * From the fishing mixin, every tick the hook waits in water: the most ticks left until a fish comes
+	 * (vanilla can take a minute and more): 2–7 s, under 1.5 s in a bubbling spot; then the fish still swims
+	 * up (1–4 s). -1 when not in a fishing round.
+	 */
+	public static int lureCap(ServerPlayer p, double x, double z) {
+		Round r = playing.get(p.getUUID());
+		if (r == null || !r.arena.type.equals("fishing") || r.state != State.PLAYING) return -1;
+		for (double[] d : r.puddles) {
+			double dx = d[0] - x, dz = d[2] - z;
+			if (dx * dx + dz * dz <= 2.5 * 2.5) return 25;
+		}
+		return 140;
+	}
+
+	/** Bubbling spots come and go on the water; catches shown flying out are taken away again. */
+	private static void fishing(ServerLevel level, Round r) {
+		long tick = level.getServer().getTickCount();
+		r.shown.entrySet().removeIf(e -> {
+			if (tick < e.getValue() && e.getKey().isAlive()) return false;
+			e.getKey().discard();
+			return true;
+		});
+		long now = System.currentTimeMillis();
+		r.puddles.removeIf(d -> d[3] < now);
+		if (r.puddles.size() < 3 && random.nextInt(60) == 0) {
+			AABB box = box(r.arena);
+			for (int tries = 0; tries < 12; tries++) {
+				int x = (int) Math.floor(box.minX + random.nextDouble() * (box.maxX - box.minX));
+				int z = (int) Math.floor(box.minZ + random.nextDouble() * (box.maxZ - box.minZ));
+				BlockPos found = null;
+				for (int y = (int) Math.floor(box.maxY); y >= (int) Math.floor(box.minY); y--) {
+					BlockPos at = new BlockPos(x, y, z);
+					if (level.getFluidState(at).is(net.minecraft.tags.FluidTags.WATER) && !level.getFluidState(at.above()).is(net.minecraft.tags.FluidTags.WATER)) {
+						if (level.getBlockState(at.above()).isAir()) found = at;
+						break;
+					}
+				}
+				if (found == null) continue;
+				r.puddles.add(new double[] { x + 0.5, found.getY() + 1.0, z + 0.5, now + 6_000 + random.nextInt(8_000) });
+				level.playSound(null, found, SoundEvents.BUBBLE_COLUMN_UPWARDS_AMBIENT, SoundSource.AMBIENT, 1f, 1f);
+				break;
+			}
+		}
+		if (tick % 4 == 0) {
+			for (double[] d : r.puddles) {
+				level.sendParticles(ParticleTypes.FISHING, d[0], d[1], d[2], 6, 1.2, 0, 1.2, 0);
+				level.sendParticles(ParticleTypes.BUBBLE_POP, d[0], d[1], d[2], 4, 1.0, 0.05, 1.0, 0.02);
+				if (tick % 12 == 0) level.sendParticles(ParticleTypes.SPLASH, d[0], d[1], d[2], 10, 0.8, 0.1, 0.8, 0.1);
+			}
+		}
 	}
 
 	// ---------------------------------------------------------------- out and end

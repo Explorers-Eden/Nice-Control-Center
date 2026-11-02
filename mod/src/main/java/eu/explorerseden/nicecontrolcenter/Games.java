@@ -101,6 +101,15 @@ public final class Games {
 			return 0xFFC83D;
 		}
 
+		/**
+		 * A sound played over and over to everyone in the game (only to them, it follows them): its id
+		 * ("minecraft:music_disc.pigstep", or a resource pack's), volume (0.05–1) and length in seconds (when it
+		 * starts again); empty = none.
+		 */
+		public String loopSound = "";
+		public double loopVolume = 0.5;
+		public int loopSeconds = 0;
+
 		/** parkour, race, dropper or maze. */
 		public String type = "parkour";
 		public boolean enabled = true;
@@ -133,6 +142,23 @@ public final class Games {
 		public int wallHeight = 3;
 		/** Maze: how light its paths are (0 = dark: no lights, up to 15). */
 		public int mazeLight = 0;
+		/** Maze: path width in blocks (1–5; walls stay one block thick). */
+		public int mazePath = 1;
+		/** Maze: a roof over it all (blocks like the walls; empty = open sky). */
+		public String mazeCeiling = "";
+		/** Maze: the blocks under the goal. */
+		public String mazeGoal = "minecraft:sea_lantern";
+		/** Maze: the share of dead ends with a chest (0–100 %), filled from this loot table. */
+		public int mazeChests = 0;
+		public String mazeLoot = "minecraft:chests/simple_dungeon";
+		/** Maze: mobs that roam it while someone runs it (pool like wave fights: "zombie x2, skeleton"), and how many at once. */
+		public String mazeMobs = "";
+		public int mazeMobMax = 6;
+
+		/** Maze: blocks along each side (cells and the walls between them). */
+		public int mazeBlocks() {
+			return size * (Math.max(1, mazePath) + 1) + 1;
+		}
 		/** Parkour: a reward every this many jumps (0 = none): everyCommands ({jumps}, {player}, {game}). The box (corner1/2) is optional. */
 		public int everyJumps = 0;
 		/**
@@ -276,6 +302,9 @@ public final class Games {
 				if (a.name == null) a.name = "";
 				if (a.title == null) a.title = "";
 				if (a.subtitle == null) a.subtitle = "";
+				a.loopSound = a.loopSound == null ? "" : a.loopSound.strip().toLowerCase(Locale.ROOT);
+				a.loopVolume = Math.max(0.05, Math.min(1, a.loopVolume == 0 ? 0.5 : a.loopVolume));
+				a.loopSeconds = Math.max(0, Math.min(3600, a.loopSeconds));
 				// Colour floor: players gather on the middle platform (not where it was made).
 				if (a.type.equals("colorfloor") && a.corner != null) {
 					int step = Math.max(1, a.platformSize) + Math.max(0, a.platformGap);
@@ -300,6 +329,13 @@ public final class Games {
 				a.size = Math.max(4, Math.min(256, a.size));
 				a.wallHeight = Math.max(1, Math.min(8, a.wallHeight));
 				a.mazeLight = Math.max(0, Math.min(15, a.mazeLight));
+				a.mazePath = Math.max(1, Math.min(5, a.mazePath));
+				if (a.mazeCeiling == null) a.mazeCeiling = "";
+				if (a.mazeGoal == null || a.mazeGoal.isBlank()) a.mazeGoal = "minecraft:sea_lantern";
+				a.mazeChests = Math.max(0, Math.min(100, a.mazeChests));
+				if (a.mazeLoot == null || a.mazeLoot.isBlank()) a.mazeLoot = "minecraft:chests/simple_dungeon";
+				if (a.mazeMobs == null) a.mazeMobs = "";
+				a.mazeMobMax = Math.max(0, Math.min(50, a.mazeMobMax));
 				a.ahead = Math.max(1, Math.min(8, a.ahead));
 				a.maxGap = Math.max(2, Math.min(5, a.maxGap));
 				a.timeLimit = Math.max(0, Math.min(3600, a.timeLimit));
@@ -455,6 +491,8 @@ public final class Games {
 			if (!names.add(a.name.toLowerCase(Locale.ROOT))) return "Two arenas are called \"" + a.name + "\".";
 			if (a.title.length() > 48) return "The display name of " + a.name + " is up to 48 characters.";
 			if (a.subtitle.length() > 80) return "The entrance line of " + a.name + " is up to 80 characters.";
+			if (!a.loopSound.isEmpty() && !a.loopSound.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+")) return "The sound of " + a.name + " isn't a sound id (like minecraft:music_disc.pigstep).";
+			if (!a.loopSound.isEmpty() && a.loopSeconds < 1) return "Give the sound of " + a.name + " its length in seconds (when it starts again).";
 		}
 		return null;
 	}

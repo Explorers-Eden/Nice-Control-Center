@@ -228,6 +228,26 @@ public final class Hubs {
 		return null;
 	}
 
+	/** Every hub, as (id, storage entry). */
+	public static java.util.Map<Integer, CompoundTag> allHubs(MinecraftServer server) {
+		java.util.Map<Integer, CompoundTag> out = new java.util.TreeMap<>();
+		CompoundTag hubs = database(server).getCompoundOrEmpty("waypoints").getCompoundOrEmpty("hubs");
+		for (String key : hubs.keySet()) {
+			if (!(hubs.get(key) instanceof CompoundTag hub)) continue;
+			try {
+				out.put(Integer.parseInt(key), hub);
+			} catch (NumberFormatException e) {
+				// Not a hub id.
+			}
+		}
+		return out;
+	}
+
+	/** The owner's id from the hub's profile (null when it has none). */
+	public static UUID owner(CompoundTag hub) {
+		return hub.getCompoundOrEmpty("profile").getIntArray("id").filter(a -> a.length == 4).map(UUIDUtil::uuidFromIntArray).orElse(null);
+	}
+
 	/** Every hub the player owns, as (id, storage entry). */
 	public static java.util.Map<Integer, CompoundTag> ownedHubs(MinecraftServer server, UUID player) {
 		java.util.Map<Integer, CompoundTag> out = new java.util.TreeMap<>();

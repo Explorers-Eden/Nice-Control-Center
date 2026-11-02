@@ -535,7 +535,7 @@
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-globe2"></i> Per dimension</h3>
 					<p class="np-card-intro">Make single worlds light, like a minigame world: no mobs spawning on their own, no random ticks (crops, leaves, ice), everything standing still while nobody is there, dropped items gone sooner, a sky that stays clear when it rains elsewhere. A world left as it is costs nothing extra.</p>
-					<div class="np-table-wrap"><table class="np-table pn-dimtune"><thead><tr><th>Dimension</th><th>Mobs spawn</th><th>Random ticks</th><th>Freeze when empty</th><th>Items gone after (s, 0 = 5 min)</th><th title="The sky there never darkens for rain or thunder; the weather elsewhere goes on as usual">Always clear sky</th><th title="Pets still follow, but their perks (effects, light, helping out) do nothing here">No pet perks</th></tr></thead><tbody id="pn-dimtune"></tbody></table></div>
+					<div class="np-table-wrap"><table class="np-table pn-dimtune"><thead><tr><th>Dimension</th><th>Mobs spawn</th><th>Random ticks</th><th>Freeze when empty</th><th>Items gone after (s, 0 = 5 min)</th><th title="The sky there never darkens for rain or thunder; the weather elsewhere goes on as usual">Always clear sky</th><th title="Pets still follow, but their perks (effects, light, helping out) do nothing here">No pet perks</th><th title="Mobs get random colours and kinds once (llamas, parrots, horses, rabbits, sheep…; villagers a random job; named mobs stay as they are), and villagers and wandering traders open no trading screen">Random looks, no trading</th></tr></thead><tbody id="pn-dimtune"></tbody></table></div>
 					<div class="np-form-actions"><button type="button" class="np-btn small" id="pn-dimtune-fair"><i class="bi bi-controller"></i> Minigame world profile for eden:flying_fair</button></div>
 				</section>
 				<section class="np-card">
@@ -756,6 +756,36 @@
 							<button type="button" class="np-btn danger" id="pn-cl-delete" data-old><i class="bi bi-trash"></i> Delete</button>
 							<button type="button" class="np-btn" id="pn-cl-close"><i class="bi bi-x-lg"></i> Close</button>
 							<span class="np-form-msg" id="pn-cl-msg"></span>
+						</div>
+					</form>
+				</section>
+			</div>
+
+			<div class="np-tab-panel" data-tab="hubs" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-signpost-split"></i> Waypoint hubs</h3>
+					<p class="np-card-intro">Every waypoint hub on the server. Click one to change what its owner can change in its menu (read from and saved to the running game).</p>
+					<div class="pn-cl-tools">
+						<input type="search" id="pn-hb-search" placeholder="Find a hub, owner or trusted player" autocomplete="off">
+						<select id="pn-hb-dim" aria-label="Dimension"></select>
+					</div>
+					<div class="np-table-wrap"><table class="np-table pn-cl-table" id="pn-hb-table"></table></div>
+					<span class="np-form-msg" id="pn-hb-load-msg"></span>
+				</section>
+				<section class="np-card" id="pn-hb-detail" hidden>
+					<h3 class="np-card-title"><i class="bi bi-pencil-square"></i> <span id="pn-hb-title">Hub</span></h3>
+					<p class="np-card-intro" id="pn-hb-sub"></p>
+					<form id="pn-hb-form" autocomplete="off" novalidate>
+						<div class="np-form-grid">
+							<label class="np-form-row">Name<input type="text" name="name" maxlength="50"></label>
+							<label class="np-form-row">Description<input type="text" name="description" maxlength="50" placeholder="(none)"></label>
+							<label class="np-form-row">Colour<select name="color"></select></label>
+							<label class="np-form-row">Public<span class="pn-comment">Private hubs are only in the waypoint lists of the owner and trusted players.</span><span class="np-switch"><input type="checkbox" name="public"><span></span></span></label>
+							<label class="np-form-row">Trusted players<span class="pn-comment">Names, comma-separated.</span><input type="text" name="trusted" placeholder="(nobody)"></label>
+						</div>
+						<div class="pn-sticky-save"><button type="submit" class="np-btn primary"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-hb-msg"></span></div>
+						<div class="np-form-actions">
+							<button type="button" class="np-btn" id="pn-hb-close"><i class="bi bi-x-lg"></i> Close</button>
 						</div>
 					</form>
 				</section>

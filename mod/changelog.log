@@ -1,4 +1,11 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.71.0
+- Games: a sound per game, played over and over to everyone in it (only to them, following them), with its length and volume; stops when they leave the game
+- Maze: path width (1–5), ceiling blocks, the blocks under the goal, chests in some dead ends (share and loot table), mobs roaming it while someone runs it (they come out 12–32 blocks away, peaceful ones attack too unless switched off, gone when nobody runs it); the goal has an exit ring and an "Exit" label in the game's colour
+- Fishing frenzy: fish bite within a few seconds (vanilla could take over a minute), bubbling spots on the water where they bite almost at once, the catch flies out of the water, and its line stays a moment before the score comes back
+- Per-dimension tuning: "Random looks" (on in the dungeon dimension): mobs get random colours and kinds once (llamas, parrots, horses, rabbits, axolotls, foxes, mooshrooms, fish, sheep, shulkers; villagers a random job and biome look), named mobs stay as they are; villagers and wandering traders there open no trading screen
+- Pets: a reaction (dancing and the like) while the owner is AFK plays where the pet is, instead of the pet darting to its next roaming spot
+- Waypoint hubs for the panel: every hub, changed like in its owner menu (name, description, colour, public, trusted players)
 ## 1.70.1
 - Pregen: pauses while the heap stays over 80 % full after collections and carries on below 65 %. Both overloads on 2026-11-02 were Distant Horizons holding the LOD data of freshly generated chunks until it could write them (about 9.5 of 13 GB), so chunks came in faster than DH could save
 ## 1.70.0

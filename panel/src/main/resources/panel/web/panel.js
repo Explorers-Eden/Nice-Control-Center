@@ -129,6 +129,7 @@
     { group: 'Community', items: [
       { id: 'claims', hue: '#f2b233', label: 'Claims', icon: 'bi-bounding-box', subs: [
         { tab: 'claims', label: 'Claims', perm: 'claims.view', desc: 'Land players have claimed: who owns it, who may do what, and where.' },
+        { tab: 'hubs', label: 'Waypoint hubs', perm: 'claims.view', desc: 'Every waypoint hub: owner, place, who may use it; change its name, colour and access.' },
         { tab: 'claimblocks', label: 'Claim blocks', perm: 'claims.view', desc: 'How many claim blocks each player has earned, bought and used.' },
         { tab: 'claimsettings', label: 'Settings', perm: 'claims.view', desc: 'Where players may claim, how they earn claim blocks, the claim tool and waypoint hubs.' },
         { tab: 'claimimport', label: 'GOML import', perm: 'claims.manage', desc: 'Bring over the claims made with Get Off My Lawn.' }] },
@@ -607,6 +608,7 @@
     if (tab === 'commands') loadCommands();
     if (tab === 'claims') loadClaims();
     if (tab === 'claimblocks') loadClaimBlocks();
+    if (tab === 'hubs') loadHubs();
     if (tab === 'claimsettings') loadClaimSettings();
     if (tab === 'tweaks' || tab === 'felling' || tab === 'chattweaks') loadTweaks();
     if (tab === 'market' || tab === 'servershop' || tab === 'pets') { loadMarket(); loadPets(); }
@@ -2009,13 +2011,21 @@
           + lines('checkpointCommands', 'Commands at each checkpoint ({checkpoint}, {player}, {game})')
           + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
         dropper: field('maxTries', 'Tries (0 = as many as it takes)', num('maxTries', 0, 999)) + `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
-        maze: field('size', `Cells per side (4–256; ${a.size * 2 + 1} × ${a.size * 2 + 1} blocks)`, num('size', 4, 256))
+        maze: field('size', `Cells per side (4–256; ${a.size * ((a.mazePath || 1) + 1) + 1} × ${a.size * ((a.mazePath || 1) + 1) + 1} blocks)`, num('size', 4, 256))
+          + field('mazePath', 'Path width (1–5 blocks)', num('mazePath', 1, 5))
           + field('wall', 'Wall blocks (ids or #tags, comma-separated: mixed at random; twice = twice as often)', `<input type="text" data-g="wall" value="${esc(a.wall)}" placeholder="minecraft:stone_bricks, minecraft:mossy_stone_bricks">`)
           + field('floor', 'Floor blocks (ids or #tags, comma-separated)', `<input type="text" data-g="floor" value="${esc(a.floor)}" placeholder="minecraft:smooth_stone">`)
           + field('wallHeight', 'Wall height', num('wallHeight', 1, 8))
           + field('mazeLight', 'Light level of the paths (0 = dark, up to 15)', num('mazeLight', 0, 15))
+          + field('mazeCeiling', 'Ceiling blocks (empty = open sky)', `<input type="text" data-g="mazeCeiling" value="${esc(a.mazeCeiling || '')}" placeholder="minecraft:deepslate_tiles">`)
+          + field('mazeGoal', 'Blocks under the goal', `<input type="text" data-g="mazeGoal" value="${esc(a.mazeGoal || 'minecraft:sea_lantern')}" placeholder="minecraft:sea_lantern">`)
+          + field('mazeChests', 'Dead ends with a chest (%)', num('mazeChests', 0, 100))
+          + field('mazeLoot', 'Chest loot table', `<input type="text" data-g="mazeLoot" value="${esc(a.mazeLoot || 'minecraft:chests/simple_dungeon')}" placeholder="minecraft:chests/simple_dungeon">`)
+          + field('mazeMobs', 'Mobs roaming it while someone runs it (empty = none)', `<input type="text" data-g="mazeMobs" value="${esc(a.mazeMobs || '')}" placeholder="zombie x2, skeleton, spider">`)
+          + field('mazeMobMax', 'Mobs at once', num('mazeMobMax', 0, 50))
+          + field('peacefulFight', 'Peaceful and neutral mobs', `<select data-g="peacefulFight" data-bool="1"><option value="true" ${a.peacefulFight !== false ? 'selected' : ''}>attack players too</option><option value="false" ${a.peacefulFight === false ? 'selected' : ''}>stay as they are</option></select>`)
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
-          + `<p class="pn-hint">After changing the size, blocks or light: <code>/game edit ${esc(a.name)} build</code> in game.</p>`,
+          + `<p class="pn-hint">After changing the size, path width, blocks, light or chests: <code>/game edit ${esc(a.name)} build</code> in game. Mobs come out 12–32 blocks from a runner and go when nobody runs it. The goal has an exit ring in the game's colour.</p>`,
         waves: gmWaveFields(a, field, num, text, lines),
         heads: gmHeadFields(a, field, num, lines),
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
@@ -2023,6 +2033,9 @@
         + field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
         + field('subtitle', 'Line under the name on its entrances (optional)', `<input type="text" data-g="subtitle" value="${esc(a.subtitle || '')}" maxlength="80" placeholder="e.g. Beat the record!">`)
         + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
+        + (heads ? '' : field('loopSound', 'Sound looped for everyone playing (id, optional)', `<input type="text" data-g="loopSound" value="${esc(a.loopSound || '')}" placeholder="minecraft:music_disc.pigstep">`)
+          + field('loopSeconds', 'Its length in seconds (when it starts again)', `<input type="number" data-g="loopSeconds" value="${a.loopSeconds || 0}" min="0" max="3600">`)
+          + field('loopVolume', 'Volume (0.05–1; players hear it on their Jukebox/Note Blocks slider)', `<input type="number" data-g="loopVolume" value="${a.loopVolume || 0.5}" min="0.05" max="1" step="0.05">`))
         + gmPoints(a, field) + fields + own + winner;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
       const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
@@ -2109,7 +2122,7 @@
     const num = (k, step) => `<input type="number" data-g="${k}" value="${a[k] || 0}" min="0" step="${step}">`;
     return field('pointsFixed', heads ? 'Points for finding them all' : timed ? 'Points for finishing' : 'Points when their score counts', num('pointsFixed', 1))
       + (timed ? '' : field('pointsPerScore', heads ? '+ points per head found' : `+ points per ${gmWord[a.type] ? gmWord[a.type][0] : 'point'} (e.g. 0.5)`, num('pointsPerScore', 0.1)))
-      + '<p class="pn-hint pn-field-wide">Commands can do sums too: <code>{score*2}</code>, <code>{score/10}</code>, <code>{jumps*3}</code>, <code>{wave+5}</code> (whole numbers), e.g. <code>points give {player} {score*2}</code>.</p>';
+      + '<p class="pn-hint pn-field-wide">Commands can do sums too: <code>{score*2}</code>, <code>{score/10}</code>, <code>{jumps*3}</code>, <code>{wave+5}</code>, <code>{score*1.5}</code> (rounded to whole numbers), e.g. <code>points give {player} {score*2}</code>.</p>';
   }
 
   /** A quick round's own fields (ghasts, colour floor, anvils, treasure, fishing), and what's still to set up in game. */
@@ -5365,8 +5378,8 @@
       const on = (k, def) => (d[k] === undefined ? def : d[k]);
       const sw = (k, def) => `<td><label class="np-switch"><input type="checkbox" data-dt="${k}" ${on(k, def) ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label></td>`;
       return `<tr data-dim="${esc(id)}"><td class="name">${esc(name(id))}<small>${esc(id)}</small></td>${sw('naturalSpawns', true)}${sw('randomTicks', true)}${sw('freezeWhenEmpty', false)}
-        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td>${sw('clearSky', false)}${sw('noPetPerks', false)}</tr>`;
-    }).join('') || '<tr><td colspan="7">No dimensions found yet: start the server once.</td></tr>';
+        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td>${sw('clearSky', false)}${sw('noPetPerks', false)}${sw('randomLooks', false)}</tr>`;
+    }).join('') || '<tr><td colspan="8">No dimensions found yet: start the server once.</td></tr>';
   }
 
   /** The rows back into settings: only dimensions that differ from normal are kept. */
@@ -5375,15 +5388,15 @@
     $('pn-dimtune').querySelectorAll('tr[data-dim]').forEach((tr) => {
       const v = (k) => tr.querySelector(`[data-dt="${k}"]`);
       const d = { naturalSpawns: v('naturalSpawns').checked, randomTicks: v('randomTicks').checked, freezeWhenEmpty: v('freezeWhenEmpty').checked,
-        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)), clearSky: v('clearSky').checked, noPetPerks: v('noPetPerks').checked };
-      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds || d.clearSky || d.noPetPerks) out[tr.dataset.dim] = d;
+        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)), clearSky: v('clearSky').checked, noPetPerks: v('noPetPerks').checked, randomLooks: v('randomLooks').checked };
+      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds || d.clearSky || d.noPetPerks || d.randomLooks) out[tr.dataset.dim] = d;
     });
     return out;
   }
 
   $('pn-dimtune-fair').addEventListener('click', () => {
     const id = 'eden:flying_fair';
-    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60, clearSky: true, noPetPerks: true } };
+    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60, clearSky: true, noPetPerks: true, randomLooks: true } };
     if (!dimTuneDims.some((d) => d.id === id)) dimTuneDims.push({ id, name: 'Flying Fair' });
     renderDimTune();
     formMsg('pn-perf-msg', 'Flying Fair set as a minigame world: save to use it.', true);
@@ -6897,6 +6910,90 @@
     }
   });
 
+  // ── Claims → Waypoint hubs ─────────────────────────────────────────────
+
+  let hbData = null;
+  let hbOpen = null;
+
+  async function loadHubs() {
+    try {
+      hbData = await api('api/hubs');
+      formMsg('pn-hb-load-msg', '', true);
+    } catch (e) {
+      hbData = null;
+      $('pn-hb-table').innerHTML = '';
+      return formMsg('pn-hb-load-msg', e.message, false);
+    }
+    const dims = [...new Set(hbData.hubs.map((h) => h.dimension))].sort();
+    const was = $('pn-hb-dim').value;
+    $('pn-hb-dim').innerHTML = '<option value="">All dimensions</option>' + dims.map((d) => `<option value="${esc(d)}">${esc(dimShort(d))}</option>`).join('');
+    if (dims.includes(was)) $('pn-hb-dim').value = was;
+    $('pn-hb-form').color.innerHTML = Object.keys(hbData.colors).map((k) => `<option value="${esc(k)}">${esc(k.replace(/_/g, ' '))}</option>`).join('');
+    renderHubs();
+  }
+
+  function renderHubs() {
+    const q = $('pn-hb-search').value.trim().toLowerCase();
+    const dim = $('pn-hb-dim').value;
+    const rows = hbData.hubs.filter((h) => (!dim || h.dimension === dim)
+      && (!q || [h.name, h.description, h.ownerName, ...h.trusted].some((x) => String(x || '').toLowerCase().includes(q))))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    $('pn-hb-table').innerHTML = rows.length ? `<thead><tr><th>Hub</th><th>Owner</th><th>Where</th><th>Access</th><th>Trusted</th><th>Description</th></tr></thead><tbody>${rows.map((h) => `
+      <tr data-hub="${h.id}" class="pn-cl-row">
+        <td><span class="pn-cl-dot" style="background:${esc(hbData.colors[h.color] || '#ffffff')}"></span>${esc(h.name)}</td>
+        <td>${esc(h.ownerName || '–')}</td>
+        <td>${esc(dimShort(h.dimension))} ${h.x}, ${h.y}, ${h.z}</td>
+        <td>${h.public ? 'public' : '<i class="bi bi-lock"></i> private'}</td>
+        <td>${h.trusted.length ? esc(h.trusted.join(', ')) : '<span class="pn-hint">–</span>'}</td>
+        <td>${h.description ? esc(h.description) : '<span class="pn-hint">–</span>'}</td></tr>`).join('')}</tbody>`
+      : `<tbody><tr><td class="pn-hint">${hbData.hubs.length ? 'Nothing matches.' : 'No waypoint hubs yet.'}</td></tr></tbody>`;
+  }
+
+  function openHub(h) {
+    hbOpen = h;
+    const f = $('pn-hb-form');
+    $('pn-hb-detail').hidden = false;
+    $('pn-hb-title').textContent = h.name;
+    $('pn-hb-sub').textContent = `Hub ${h.id} · ${h.ownerName || 'no owner'} · ${dimShort(h.dimension)} ${h.x}, ${h.y}, ${h.z}`;
+    f.name.value = h.name;
+    f.description.value = h.description || '';
+    f.color.value = h.color;
+    f.public.checked = !!h.public;
+    f.trusted.value = h.trusted.join(', ');
+    const editable = can('claims.manage');
+    f.querySelectorAll('input, select, button[type=submit]').forEach((el) => { el.disabled = !editable; });
+    Dirty.reset('hub');
+    $('pn-hb-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  $('pn-hb-search').addEventListener('input', () => hbData && renderHubs());
+  $('pn-hb-dim').addEventListener('change', () => hbData && renderHubs());
+  $('pn-hb-table').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-hub]');
+    if (!tr || !hbData) return;
+    const h = hbData.hubs.find((x) => String(x.id) === tr.dataset.hub);
+    if (h) openHub(h);
+  });
+  $('pn-hb-close').addEventListener('click', () => { $('pn-hb-detail').hidden = true; hbOpen = null; Dirty.reset('hub'); });
+  $('pn-hb-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const h = hbOpen;
+    if (!h) return;
+    if (!f.name.value.trim()) return formMsg('pn-hb-msg', 'Give the hub a name.', false);
+    try {
+      await api('api/hubs/edit', { id: String(h.id), name: f.name.value, description: f.description.value, color: f.color.value, public: f.public.checked,
+        trusted: f.trusted.value.split(',').map((x) => x.trim()).filter(Boolean) });
+      formMsg('pn-hb-msg', 'Saved.', true);
+      await loadHubs();
+      const fresh = hbData && hbData.hubs.find((x) => x.id === h.id);
+      if (fresh) openHub(fresh);
+      else { $('pn-hb-detail').hidden = true; Dirty.reset('hub'); }
+    } catch (err) {
+      formMsg('pn-hb-msg', err.message, false);
+    }
+  });
+
   // ── Claims → Claim blocks ──────────────────────────────────────────────
 
   async function loadClaimBlocks() {
@@ -7909,6 +8006,7 @@
   Dirty.track('ssmax', $('pn-ss-max'), { reload: loadMarket });
   Dirty.track('pets', $('pn-pt-form'), { reload: loadPets });
   Dirty.track('petperks', $('pn-pk-form'), { reload: loadPets });
+  Dirty.track('hub', $('pn-hb-form'), { reload: () => hbOpen && openHub(hbOpen) });
   Dirty.track('claim', $('pn-cl-form'), { reload: () => openClaim(clOpen && clOpen.id ? clData.claims.find((c) => c.id === clOpen.id) : null),
     extra: () => JSON.stringify(clMembers) });
 

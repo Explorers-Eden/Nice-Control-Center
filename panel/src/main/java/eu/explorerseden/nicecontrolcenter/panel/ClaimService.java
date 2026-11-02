@@ -555,6 +555,37 @@ final class ClaimService {
 			json(ctx, Map.of("ok", true, "running", server.running()));
 		}));
 
+		// Waypoint hubs (Warping Wonders), read and changed on the running game.
+		routes.get("/api/hubs", guard(Permissions.CLAIMS_VIEW, (ctx, me) -> {
+			if (server.state() != Supervisor.State.RUNNING) {
+				error(ctx, HttpStatus.CONFLICT, "Start the server first: hubs are read from the running game.");
+				return;
+			}
+			JsonObject answer = dashboard.get("/api/hubs");
+			if (answer == null) {
+				error(ctx, HttpStatus.BAD_GATEWAY, "The mod doesn't answer (it needs Nice Control Center 1.71.0 or newer).");
+				return;
+			}
+			json(ctx, answer);
+		}));
+		routes.post("/api/hubs/edit", guard(Permissions.CLAIMS_MANAGE, (ctx, me) -> {
+			if (server.state() != Supervisor.State.RUNNING) {
+				error(ctx, HttpStatus.CONFLICT, "Start the server first.");
+				return;
+			}
+			JsonObject body = com.google.gson.JsonParser.parseString(ctx.body()).getAsJsonObject();
+			JsonObject answer = dashboard.postForJson("/api/hubs/edit", body, me.name());
+			if (answer == null) {
+				error(ctx, HttpStatus.BAD_GATEWAY, "The mod doesn't answer.");
+				return;
+			}
+			if (answer.has("error")) {
+				error(ctx, HttpStatus.BAD_REQUEST, answer.get("error").getAsString());
+				return;
+			}
+			audit.log(me.name(), "hubs.edit", "hub " + (body.has("id") ? body.get("id").getAsString() : "?") + (answer.has("name") ? " (" + answer.get("name").getAsString() + ")" : ""), clientIp(ctx));
+			json(ctx, answer);
+		}));
 		routes.get("/api/claims/goml", guard(Permissions.CLAIMS_MANAGE, (ctx, me) -> {
 			if (server.state() != Supervisor.State.RUNNING) {
 				error(ctx, HttpStatus.CONFLICT, "Start the server first: GOML's claims are read from the running game.");

@@ -159,6 +159,8 @@ final class PetFollowers {
 		long retryAt;
 		/** Which way it looks while roaming (turned a little each tick, never snapped). */
 		float roamYaw = Float.NaN;
+		/** AFK: where a reaction plays (the pet stays put for it instead of rushing to its next roam spot). */
+		Vec3 moveAnchor;
 
 		Follower(int phase) {
 			this.phase = phase;
@@ -249,12 +251,16 @@ final class PetFollowers {
 			if (!goal.stay) goal = new Target(clear(goal.offset, h, size, player.getYRot()), goal.yaw, goal.follow, false);
 			if (f.outing != null && time > f.outing.until) endOuting(f, false);
 			float pitch = 0;
+			if (f.move == null || time >= f.moveUntil || !afk) f.moveAnchor = null;
 			if (f.outing != null && f.pos != null) {
 				goal = outing(f, f.outing, base, goal, player, time);
 			} else if (f.move != null && time < f.moveUntil) {
 				double a = time - f.moveStart;
 				// How far through the move (0 to 1).
 				double p = Math.min(1, a / Math.max(1, f.moveUntil - f.moveStart));
+				// Roaming (AFK) the goal is the next spot, blocks away: the move plays where the pet is.
+				if (afk && f.moveAnchor == null) f.moveAnchor = f.offset == null ? goal.offset : f.offset;
+				if (afk) goal = new Target(f.moveAnchor, goal.yaw, goal.follow, goal.stay);
 				Vec3 off = goal.offset;
 				float yaw = goal.yaw;
 				Vec3 off0 = off;

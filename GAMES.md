@@ -24,13 +24,16 @@ in the panel under **Games**. `<name>` is the game's one-word name.
    (`/game edit <name> start`).
 9. **Points** for a game: on its card, "Points when their score counts" (fixed) and "+ points per …" (per
    score; timed games only get the fixed amount). Commands can do sums: `{score*2}`, `{score/10}`, `{jumps*3}`,
-   `{wave+5}`, e.g. `points give {player} {score*2}`.
+   `{wave+5}`, `{score*1.5}` (rounded to a whole number), e.g. `points give {player} {score*2}`.
    **Rewards**: each game has commands (`{player}`, `{score}`, `{game}`). In **Rewards**, rules on
    "Finishes a game" / "Sets a personal best" (and the per-game triggers below) can give anything, including
    **Points** for the reward shops.
 10. **Box** (`/game edit <name> corner1` and `corner2`, standing there or looking at the block; height included):
     the play area where a game uses one.
-11. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
+11. **Sound** (optional, every game but the head hunt): a sound id played over and over to everyone in the game,
+    only to them (e.g. `minecraft:music_disc.pigstep`, or one from a resource pack), its length in seconds (when it
+    starts again) and the volume. Players hear it on their Jukebox/Note Blocks slider.
+12. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
 
 Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
@@ -56,7 +59,10 @@ game-area options, including the game mode inside).
 
 **Maze** (`maze`): generated, rebuilt daily or after each run.
 - Created at its corner; `/game edit <name> size <cells>` (4–256) then `/game edit <name> build` (big ones take a
-  few seconds). Panel: wall and floor blocks, height, light level of the paths.
+  few seconds). Panel: path width (1–5), wall, floor and ceiling blocks, height, light level of the paths, the blocks
+  under the goal, chests in dead ends (share and loot table), mobs roaming it while someone runs it (pool and how
+  many at once; they come out 12–32 blocks away and go when nobody runs it). Build again after changing the layout.
+- The goal has an exit ring and an "Exit" label in the game's colour.
 
 ## Wave fight (`waves`)
 A party of 1–4 (`/party invite <player>`) fights waves of mobs.
@@ -83,7 +89,8 @@ a deadly hit knocks them out. A spectator area also queues players for the next 
 panel: items and their points (`minecraft:diamond=5`).
 
 **Fishing frenzy** (`fishing`): catches score points. Created at the spawn; `corner1` / `corner2` with water inside;
-panel: points per catch.
+panel: points per catch. Fish bite within a few seconds; bubbling spots come and go on the water, and a hook in one
+gets a bite almost at once.
 
 ## Head hunt (`heads`)
 Heads hidden in the world; players right-click them.
@@ -100,6 +107,12 @@ Built anywhere, copied fresh for every party into the dungeon dimension.
   copy is in use. `/dungeon kit <name>` for its kit.
 - Random rooms: `/dungeon room create|save`, spots and doors as jigsaw blocks (see the Dungeons tab).
 - Panel: lives, time limit, peaceful and neutral mobs attacking too (on by default), rewards.
+
+## Game worlds
+Performance → per-dimension tuning (the Flying Fair preset sets these): no pet perks, and **random looks**: mobs
+there get random colours and kinds once (llamas, parrots, horses, rabbits, sheep…; villagers a random job; named
+mobs stay as they are), and villagers and wandering traders open no trading screen. Both are always on in the
+dungeon dimension.
 
 ## Points and reward shops
 - Points come from Rewards rules (the reward "Points") or `/points give <player> <n> [reason]`; own games built

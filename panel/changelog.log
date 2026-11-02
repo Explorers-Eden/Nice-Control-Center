@@ -1,3 +1,8 @@
+## 1.61.0
+- Claims → Waypoint hubs: every hub with owner, place, access and trusted players; click one to change its name, description, colour, public or private and trusted players (server running)
+- Games: sound per game (id, length, volume); maze path width, ceiling, goal blocks, dead-end chests with loot table, roaming mobs; the sums hint mentions {score*1.5}
+- Performance → per-dimension tuning: "Random looks, no trading" column (in the Flying Fair preset) (mod 1.71.0)
+
 ## 1.60.1
 - Pregen card: says why it's paused (players online, memory nearly full) (mod 1.70.1)
 

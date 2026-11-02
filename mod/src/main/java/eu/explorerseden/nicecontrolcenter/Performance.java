@@ -216,6 +216,8 @@ public final class Performance {
 		public boolean clearSky = false;
 		/** Pets' perks (effects, light, helping out) don't work here; the pets still follow. */
 		public boolean noPetPerks = false;
+		/** Mobs get random looks (llama, parrot, horse, rabbit… colours and kinds; villager jobs) once; villagers and traders don't trade. */
+		public boolean randomLooks = false;
 	}
 
 	public static final class Settings {

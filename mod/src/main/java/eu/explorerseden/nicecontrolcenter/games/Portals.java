@@ -215,15 +215,23 @@ public final class Portals {
 			for (Games.Pos e : a.entrances) ring(server, e, new DustParticleOptions(a.rgb(), 1.3f), turn, true);
 			for (Games.Pos w : a.watchEntrances) ring(server, w, new DustParticleOptions(lighter(a.rgb()), 1.3f), turn, true);
 			for (Games.Pos b : a.exitPads) ring(server, b, new DustParticleOptions(0xFF5A5A, 1.1f), turn, false);
+			// A maze's goal: an exit pad in the game's colour, as wide as its path.
+			Games.Pos goal = a.type.equals("maze") && !GameRuntime.mazeBuilding(a) ? GameRuntime.mazeGoal(a) : null;
+			if (goal != null) ring(server, goal, new DustParticleOptions(a.rgb(), 1.1f), turn, false, 0.9 * Math.max(1, a.mazePath * 0.6));
 		}
 	}
 
 	private static void ring(MinecraftServer server, Games.Pos pad, DustParticleOptions dust, double turn, boolean rise) {
+		ring(server, pad, dust, turn, rise, 0.9);
+	}
+
+	private static void ring(MinecraftServer server, Games.Pos pad, DustParticleOptions dust, double turn, boolean rise, double radius) {
 		ServerLevel level = GameRuntime.levelOf(server, pad.dim);
 		if (level == null || level.getNearestPlayer(pad.x, pad.y, pad.z, 32, false) == null) return;
-		for (int i = 0; i < 10; i++) {
-			double ang = i * Math.PI / 5 + turn;
-			level.sendParticles(dust, pad.x + Math.cos(ang) * 0.9, pad.y + 0.1, pad.z + Math.sin(ang) * 0.9, 1, 0, 0, 0, 0);
+		int dots = (int) Math.round(10 * radius / 0.9);
+		for (int i = 0; i < dots; i++) {
+			double ang = i * 2 * Math.PI / dots + turn;
+			level.sendParticles(dust, pad.x + Math.cos(ang) * radius, pad.y + 0.1, pad.z + Math.sin(ang) * radius, 1, 0, 0, 0, 0);
 		}
 		if (rise) level.sendParticles(ParticleTypes.END_ROD, pad.x, pad.y + 0.3, pad.z, 2, 0.3, 0.6, 0.3, 0.01);
 	}
@@ -239,6 +247,8 @@ public final class Portals {
 			for (Games.Pos e : a.entrances) out.put(key("enter", a.id, e), new Label(e, 2.2, enterText(a)));
 			for (Games.Pos w : a.watchEntrances) out.put(key("watch", a.id, w), new Label(w, 1.9, watchText(a)));
 			for (Games.Pos b : a.exitPads) out.put(key("back", a.id, b), new Label(b, 1.6, Component.literal("Back").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
+			Games.Pos goal = a.type.equals("maze") ? GameRuntime.mazeGoal(a) : null;
+			if (goal != null) out.put(key("mazeexit", a.id, goal), new Label(goal, 1.6, Component.literal("Exit").withStyle(st -> st.withColor(a.rgb()).withBold(true))));
 			if (a.spectate != null) out.put(key("spectate", a.id, a.spectate), new Label(a.spectate, 2.4,
 					Component.literal("Spectators").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(Component.literal("\n" + a.shown()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.WHITE)))));
 		}
