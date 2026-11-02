@@ -1269,6 +1269,26 @@
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-gm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-gm-msg"></span></div>
 			</div>
 
+			<div class="np-tab-panel" data-tab="npcs" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-person-badge"></i> NPCs</h3>
+					<p class="np-card-intro">Players in the world that you set up: a skin, a pose and what they wear; they stand on their spot or walk a path, say things, and do something when clicked or hit. Every NPC can also fight in games as a hostile: write <code>npc:&lt;name&gt;</code> in a mob pool (wave fights, dungeon markers <code>mob:npc:knight x2</code>, maze mobs).</p>
+					<dl class="pn-gm-howto">
+						<dt>Make one</dt><dd><code>/npc create &lt;name&gt;</code> where it should stand (facing your way), or <code>/npc adopt &lt;name&gt;</code> next to a mannequin you made before (skin, pose, name and equipment are kept)</dd>
+						<dt>In game</dt><dd><code>/npc move</code>, <code>skin &lt;name&gt; &lt;player|link|base64&gt;</code>, <code>pose</code>, <code>equip</code> (what you wear and hold), <code>shop</code>, <code>remove</code>, <code>list</code></dd>
+						<dt>Walking</dt><dd><code>/npc path &lt;name&gt; add [seconds to wait]</code> at each checkpoint in order (it looks the way you look while it waits); <code>path … remove</code> takes the last away, <code>clear</code> all. It finds its way between them and goes back on its path when it falls or gets stuck</dd>
+						<dt>Fighting</dt><dd>Sword or nothing: melee; bow or crossbow: shoots; trident: throws. Health, damage, speed and armor below; its gear adds to them</dd>
+					</dl>
+					<div class="np-filters">
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-nc-enabled"><span></span></span> NPCs on</label>
+						<button type="button" class="np-btn small" id="pn-nc-add"><i class="bi bi-plus-lg"></i> Add an NPC</button>
+						<span class="np-form-msg" id="pn-nc-note"></span>
+					</div>
+				</section>
+				<div id="pn-nc-list" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-nc-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-nc-msg"></span></div>
+			</div>
+
 			<div class="np-tab-panel" data-tab="dungeons" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-door-closed"></i> Dungeons</h3>

@@ -1,3 +1,7 @@
+## 1.62.0
+- Community → NPCs: every NPC as a card (skin with face, pose, hand, gear, walking path with waits, actions on a click and a hit, cooldown, reward shop, talking lines, hostile stats); saving keeps what was made in game meanwhile (mod 1.73.0)
+- Reward shops: the NPCs that open each shop instead of NPC spots
+
 ## 1.61.0
 - Claims → Waypoint hubs: every hub with owner, place, access and trusted players; click one to change its name, description, colour, public or private and trusted players (server running)
 - Games: sound per game (id, length, volume); maze path width, ceiling, goal blocks, dead-end chests with loot table, roaming mobs; the sums hint mentions {score*1.5}

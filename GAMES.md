@@ -114,9 +114,21 @@ there get random colours and kinds once (llamas, parrots, horses, rabbits, sheep
 mobs stay as they are), and villagers and wandering traders open no trading screen. Both are always on in the
 dungeon dimension.
 
+## NPCs
+Panel: Community → NPCs; in game `/npc`.
+- `/npc create <name>` where it should stand (facing your way), or `/npc adopt <name>` next to a mannequin you made
+  before (keeps skin, pose, name, equipment). `/npc skin <name> <player name|link|base64>`, `/npc pose`, `/npc equip`
+  (what you wear and hold), `/npc move`, `/npc remove`, `/npc list`.
+- Walking: `/npc path <name> add [seconds to wait]` at each checkpoint in order; `remove` (the last), `clear`.
+- Panel: actions on a right-click and on a hit (`say: Hello {player}!`, `player: spawn`, or a command as the server),
+  a reward shop, talking lines (now and then, or one per click), the hostile stats.
+- **Hostiles:** `npc:<name>` in any mob pool (wave fights, dungeon markers `mob:npc:knight x2`, maze mobs), or
+  `/npc summon <name> <x y z>`. It fights with what it holds: sword or nothing melee, bow/crossbow shoots, trident throws.
+
 ## Points and reward shops
 - Points come from Rewards rules (the reward "Points") or `/points give <player> <n> [reason]`; own games built
   with command blocks use `/points give|take|check`. Name and abbreviation: Games → Points.
-- A shop: `/points shop create <name>` where its NPC stands; `/points shop npc add <shop>` for more;
+- A shop: `/points shop create <name>` where its NPC stands; `/points shop npc add <shop>` for more (they're NPCs:
+  skin, lines and the rest under NPCs);
   hold an item, `/points shop item <shop> <price> <name>`. Skin, prices, limits, commands and other rewards:
   Games → Reward shops.

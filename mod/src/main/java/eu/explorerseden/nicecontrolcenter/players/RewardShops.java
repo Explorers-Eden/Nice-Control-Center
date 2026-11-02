@@ -106,7 +106,7 @@ public final class RewardShops {
 
 	/** A shop NPC: the claims let anyone talk to it. */
 	public static boolean isNpc(Entity e) {
-		return e.entityTags().contains(TAG);
+		return e.entityTags().contains(TAG) || eu.explorerseden.nicecontrolcenter.npcs.NpcRuntime.isNpc(e);
 	}
 
 	// ---------------------------------------------------------------- the NPCs
@@ -420,10 +420,11 @@ public final class RewardShops {
 					if (PointsStore.settings().shop(name) != null) return fail(ctx, "There's a shop called " + name + " already.");
 					Points.Shop s = new Points.Shop();
 					s.name = name;
-					s.npcs.add(spot(p));
 					PointsStore.settings().shops.add(s);
 					PointsStore.settings().fill();
-					return saved(ctx, "Made the shop " + name + " with an NPC here. Add rewards: hold an item and /points shop item " + name + " <price> <name>, or in the panel (Games → Reward shops), where its skin is set too.");
+					PointsStore.saveSettings();
+					String npc = eu.explorerseden.nicecontrolcenter.npcs.NpcRuntime.addShopNpc(p, s);
+					return saved(ctx, "Made the shop " + name + " with an NPC here (" + npc + ", Community → NPCs). Add rewards: hold an item and /points shop item " + name + " <price> <name>, or in the panel (Games → Reward shops), where its skin is set too.");
 				})))
 				.then(Commands.literal("delete").then(shopArg.get().executes(ctx -> {
 					Points.Shop s = shop(ctx);
@@ -435,10 +436,11 @@ public final class RewardShops {
 						.then(Commands.literal("add").then(shopArg.get().executes(ctx -> {
 							Points.Shop s = shop(ctx);
 							if (s == null) return fail(ctx, "There's no such shop.");
-							s.npcs.add(spot(ctx.getSource().getPlayerOrException()));
-							return saved(ctx, s.name + ": NPC " + s.npcs.size() + " here.");
+							String npc = eu.explorerseden.nicecontrolcenter.npcs.NpcRuntime.addShopNpc(ctx.getSource().getPlayerOrException(), s);
+							return saved(ctx, s.name + ": the NPC " + npc + " here opens it (Community → NPCs).");
 						})))
 						.then(Commands.literal("remove").executes(ctx -> {
+							if (true) return fail(ctx, "Shop NPCs are NPCs now: /npc remove <name> (or Community → NPCs).");
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							Entity near = null;
 							for (Entity e : npcs.keySet()) if (e.level() == p.level() && e.distanceToSqr(p) < 25 && (near == null || e.distanceToSqr(p) < near.distanceToSqr(p))) near = e;

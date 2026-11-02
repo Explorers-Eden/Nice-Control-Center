@@ -54,6 +54,8 @@
 		"FishingFrenzyMixin",
 		"ClaimPlaceMixin",
 		"VillagerTradeMixin",
+		"NpcDriverHiddenMixin",
+		"MannequinInvoker",
 		"MobGoalsAccessor",
 		"WeatherPacketMixin",
 		"GameClaimPickupMixin",

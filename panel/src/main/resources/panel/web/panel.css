@@ -1152,3 +1152,7 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-gm-card:not(.collapsed) .pn-gm-chevron { transform: rotate(90deg); }
 .pn-gm-card.collapsed > :not(.pn-rw-head) { display: none; }
 .pn-gm-card.collapsed { padding-bottom: 10px; }
+
+/* NPCs: the wait at a path checkpoint */
+.pn-nc-wait { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; font-size: .85em; color: var(--muted); }
+.pn-nc-wait input { width: 4.5rem; }

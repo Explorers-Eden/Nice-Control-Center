@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.73.0
+- NPCs (/npc, panel: Community → NPCs): players in the world with a skin (a player name, a link, its hash or base64), pose, shown name and a line under it, worn and held items; they stand on their spot (kept there, unharmed, looking at players near) or walk a path of checkpoints (finding their way, waiting at each, round and round or back and forth; back on the path when they fall or get stuck)
+- NPC actions: commands (as the server or as the player) and messages on a right-click and on a hit, with a wait per player; a reward shop on a right-click; talking lines under the name and in chat, now and then or one per click
+- /npc create, adopt (takes over a mannequin made before: skin, pose, name, equipment), move, remove, skin, pose, equip, path add|remove|clear, shop, summon, list
+- Hostile NPCs: npc:<name> in mob pools (wave fights, dungeon markers, maze mobs) or /npc summon: a skinned player fighting with what it holds (melee, bow, crossbow, trident), own health, damage, speed and armor, health in its name; hits on it land, the game counts it like its other mobs
+- Reward shop NPCs became NPCs with their shop (moved over once); /points shop create and npc add make an NPC for the shop
 ## 1.72.0
 - Games and dungeons: every word of their messages, titles, boss bars and labels starts with a capital ("Wave 3 In 4 s · Get Ready!"); commands (/game leave …), ids, {placeholders}, units after numbers and player names stay as they are
 ## 1.71.0

@@ -343,6 +343,7 @@ public final class Panel {
 			new RewardsRoutes(serverDir, audit).register(routes);
 			new GamesRoutes(serverDir, files, dashboard, audit).register(routes);
 			new PointsRoutes(serverDir, files, dashboard, audit).register(routes);
+			new NpcRoutes(serverDir, audit, icons).register(routes);
 			new DiscordRoutes(discord, dashboard.secret(), audit).register(routes);
 			mapRoutes.register(routes);
 			new WorldRoutes(trimmer, jobs).register(routes);

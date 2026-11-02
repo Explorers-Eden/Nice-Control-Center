@@ -136,6 +136,8 @@
       { id: 'market', hue: '#ffd166', label: 'Market', icon: 'bi-shop', subs: [
         { tab: 'market', label: 'Player market', perm: 'server.view', desc: 'The player market (/market): settings, what players sell and what sold.' },
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
+      { id: 'npcs', hue: '#8ecbff', label: 'NPCs', icon: 'bi-person-badge', subs: [
+        { tab: 'npcs', label: 'NPCs', perm: 'server.view', desc: 'Players in the world you set up: skin, pose, gear, paths, actions, talking lines, shops; also hostiles for games.' }] },
       { id: 'pets', hue: '#ff9ecf', label: 'Pets', icon: 'bi-emoji-smile', subs: [
         { tab: 'pets', label: 'Pets', perm: 'server.view', desc: 'Floating heads that follow their owner: pets, perks, names and reactions.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
@@ -603,6 +605,7 @@
     if (tab === 'games') loadGames();
     if (tab === 'dungeons') loadDungeons();
     if (tab === 'points' || tab === 'rewardshops') loadPoints();
+    if (tab === 'npcs') loadNpcs();
     if (tab === 'owncommands') loadOwnCommands();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
@@ -2276,6 +2279,184 @@
     }
   });
 
+  // ── NPCs ────────────────────────────────────────────────────────────────
+
+  const nc = { settings: null, skins: {}, equipment: {}, shops: [], poses: [], dirty: false, removed: { npcs: [], path: [] } };
+  const ncOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('pn-nc-open') || '[]'); } catch (e) { return []; } })());
+  const ncKeepOpen = () => { try { localStorage.setItem('pn-nc-open', JSON.stringify([...ncOpen])); } catch (e) { /* private window */ } };
+
+  async function loadNpcs(force) {
+    if (nc.dirty && nc.settings && !force) { renderNpcs(); return; }
+    try {
+      const d = await api('api/npcs');
+      nc.settings = d.settings;
+      nc.skins = d.skins || {};
+      nc.equipment = d.equipment || {};
+      nc.shops = d.shops || [];
+      nc.poses = d.poses || [];
+      nc.dirty = false;
+      nc.removed = { npcs: [], path: [] };
+      renderNpcs();
+      Dirty.reset('npcs');
+    } catch (err) {
+      formMsg('pn-nc-note', err.message, false);
+    }
+  }
+
+  /** Actions as lines: "say: …" (a message to the player), "player: …" (a command as them), anything else a command as the server. */
+  const ncActionsText = (list) => (list || []).map((a) => (a.type === 'message' ? 'say: ' : a.as === 'player' ? 'player: ' : '') + a.text).join('\n');
+  const ncActionsRead = (text) => text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = l.match(/^(say|player|server)\s*:\s*(.*)$/i);
+    if (!m) return { type: 'command', as: 'server', text: l };
+    const k = m[1].toLowerCase();
+    return k === 'say' ? { type: 'message', as: 'server', text: m[2] } : { type: 'command', as: k, text: m[2] };
+  }).filter((a) => a.text);
+
+  /** Worn and held items, like the game shows them (head to feet, then main and off hand). */
+  function ncGear(items) {
+    const at = new Map((items || []).map((it) => [it.slot, it]));
+    const cell = (s, hint) => {
+      const it = at.get(s);
+      if (!it) return `<span class="pn-kit-slot pn-kit-${hint}"></span>`;
+      const tip = JSON.stringify({ n: it.name + (it.count > 1 ? ` ×${it.count}` : ''), e: it.enchantments || [], id: it.id });
+      const pic = it.icon ? `<img src="info/items/${esc(it.icon)}" alt="" width="32" height="32">` : `<b>${esc(it.name.slice(0, 3))}</b>`;
+      return `<span class="pn-kit-slot filled${(it.enchantments || []).length ? ' ench' : ''}" data-itemtip="${esc(tip)}">${pic}</span>`;
+    };
+    return `<div class="pn-kit-inv"><div class="pn-kit-row">${cell(39, 'head')}${cell(38, 'chest')}${cell(37, 'legs')}${cell(36, 'feet')}<span class="pn-kit-gap"></span>${cell(0, 'mainhand')}${cell(40, 'offhand')}</div></div>`;
+  }
+
+  function renderNpcs() {
+    const edit = can('settings.server');
+    const s = nc.settings;
+    $('pn-nc-enabled').checked = s.enabled;
+    $('pn-nc-enabled').disabled = !edit;
+    $('pn-nc-add').disabled = !edit;
+    const opt = (v, cur, label) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(label)}</option>`;
+    $('pn-nc-list').innerHTML = s.npcs.map((n, i) => {
+      const key = n.id || 'new' + i;
+      const face = nc.skins[n.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(nc.skins[n.id])}" alt="" width="32" height="32">` : '<i class="bi bi-person-badge"></i>';
+      const field = (label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
+      const num = (k, min, max, step, v) => `<input type="number" data-n="${k}" value="${v}" min="${min}" max="${max}" step="${step || 1}">`;
+      const h = n.hostile || {};
+      const hnum = (k, min, max, step) => `<input type="number" data-h="${k}" value="${h[k]}" min="${min}" max="${max}" step="${step || 1}">`;
+      const where = n.spot ? `${esc(dimShort(n.spot.dim))} · ${Math.round(n.spot.x)}, ${Math.round(n.spot.y)}, ${Math.round(n.spot.z)}` : '';
+      const shop = nc.shops.find((x) => x.id === n.shop);
+      const path = (n.path || []).map((c, ci) => `<li><span>${ci + 1}. ${esc(dimShort(c.pos.dim))} · ${Math.round(c.pos.x)}, ${Math.round(c.pos.y)}, ${Math.round(c.pos.z)}</span>
+        <label class="pn-nc-wait">wait <input type="number" data-pw="${ci}" value="${c.waitSeconds || 0}" min="0" max="600"> s</label>
+        <button type="button" class="np-btn small danger" data-nact="pathrm" data-pi="${ci}" title="Take this checkpoint away"><i class="bi bi-x-lg"></i></button></li>`).join('');
+      return `<section class="pn-gm-card${ncOpen.has(key) ? '' : ' collapsed'}" data-npc="${i}">
+        <div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
+          <span class="pn-rw-give-icon">${face}</span>
+          <b class="pn-gm-name">${esc(n.title || n.name || 'New NPC')}</b>${n.title && n.title !== n.name ? `<span class="pn-hint">${esc(n.name)}</span>` : ''}
+          <span class="np-chip">${n.spot ? ((n.path || []).length ? `walks ${n.path.length} checkpoint${n.path.length === 1 ? '' : 's'}` : esc((n.pose || 'standing').replace('_', ' '))) : 'not placed'}</span>
+          ${shop ? `<span class="np-chip gold"><i class="bi bi-shop"></i> ${esc(shop.title || shop.name)}</span>` : ''}
+          <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-nact="delete" title="Remove the NPC"><i class="bi bi-trash"></i></button></span>
+        </div>
+        <p class="pn-hint">${n.spot ? `<i class="bi bi-geo-alt"></i> Stands at ${where}. Move it with <code>/npc move ${esc(n.name)}</code>.` : `<i class="bi bi-geo-alt"></i> Not placed: only a hostile for mob pools, or <code>/npc move ${esc(n.name)}</code> where it should stand.`} In mob pools: <code>npc:${esc(n.name)}</code></p>
+        <div class="pn-rw-grid">
+          ${field('Name (one word, for the commands and mob pools)', `<input type="text" data-n="name" value="${esc(n.name)}" maxlength="32">`)}
+          ${field('Shown name (empty = no name tag)', `<input type="text" data-n="title" value="${esc(n.title)}" maxlength="64">`)}
+          ${field('Line under the name (optional)', `<input type="text" data-n="description" value="${esc(n.description)}" maxlength="100" placeholder="e.g. Right-click me!">`)}
+          ${field('Skin: a player name, a textures.minecraft.net link, its hash, or the base64 value', `<span class="pn-gm-skin">${nc.skins[n.id] ? face : ''}<input type="text" data-n="skin" value="${esc(n.skin)}" placeholder="Notch"></span>`, true)}
+          ${field('Pose', `<select data-n="pose">${nc.poses.map((p) => opt(p, n.pose, p.replace('_', ' '))).join('')}</select>`)}
+          ${field('Main hand', `<select data-n="mainHand">${opt('right', n.mainHand, 'right')}${opt('left', n.mainHand, 'left')}</select>`)}
+          ${field('Looks at players close by', `<select data-n="lookAtPlayers" data-bool="1">${opt(true, n.lookAtPlayers, 'yes')}${opt(false, n.lookAtPlayers, 'no')}</select>`)}
+          <div class="pn-field pn-field-wide"><span>Wears and holds <small class="pn-hint">(<code>/npc equip ${esc(n.name)}</code>: what you wear and hold)</small></span>${ncGear(nc.equipment[n.id])}</div>
+          <div class="pn-field pn-field-wide"><span>Walking path <small class="pn-hint">(<code>/npc path ${esc(n.name)} add [wait]</code> at each checkpoint)</small></span>${path ? `<ul class="pn-gm-heads">${path}</ul>` : '<p class="pn-hint">No path: it stands on its spot.</p>'}</div>
+          ${field('Path', `<select data-n="pathMode">${opt('loop', n.pathMode, 'round and round')}${opt('back', n.pathMode, 'back and forth')}</select>`)}
+          ${field('Walking speed (0.1–1)', num('walkSpeed', 0.1, 1, 0.05, n.walkSpeed))}
+          ${field('On a right-click (one per line: <code>say: Hello {player}!</code>, <code>player: spawn</code>, or a command as the server)', `<textarea data-n="onClick" rows="3" placeholder="say: Welcome, {player}!&#10;give {player} minecraft:cookie">${esc(ncActionsText(n.onClick))}</textarea>`, true)}
+          ${field('On a hit (same as above)', `<textarea data-n="onHit" rows="2" placeholder="say: Ouch!">${esc(ncActionsText(n.onHit))}</textarea>`, true)}
+          ${field('Wait between two (seconds, per player)', num('cooldownSeconds', 0, 86400, 1, n.cooldownSeconds))}
+          ${field('Reward shop on a right-click', `<select data-n="shop">${opt('', n.shop, '(none)')}${nc.shops.map((x) => opt(x.id, n.shop, x.title || x.name)).join('')}</select>`)}
+          ${field('Talking lines (one per line; shown under the name and in chat to players close by)', `<textarea data-n="lines" rows="3" placeholder="Nice weather today.&#10;Have you seen the fair?">${esc((n.lines || []).join('\n'))}</textarea>`, true)}
+          ${field('Lines', `<select data-n="clickLines" data-bool="1">${opt(false, n.clickLines, 'now and then to players close by')}${opt(true, n.clickLines, 'the next one on each right-click')}</select>`)}
+          ${field('Close by (blocks)', num('lineRadius', 2, 32, 1, n.lineRadius))}
+          ${field('About every (seconds)', num('lineEverySeconds', 5, 3600, 1, n.lineEverySeconds))}
+          <h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-lightning"></i> As a hostile (<code>npc:${esc(n.name)}</code> in mob pools)</h4>
+          ${field('Health', hnum('health', 1, 2048))}
+          ${field('Damage', hnum('damage', 0, 200, 0.5))}
+          ${field('Speed (0.25 is a player walking)', hnum('speed', 0.05, 1, 0.01))}
+          ${field('Armor', hnum('armor', 0, 30))}
+          ${field('Notices players within (blocks)', hnum('followRange', 8, 64))}
+        </div>
+      </section>`;
+    }).join('') || '<p class="np-empty">No NPCs yet. Stand where one should be in game and type <code>/npc create Guide</code>, or <code>/npc adopt Guide</code> next to a mannequin you made before.</p>';
+    $('pn-nc-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+    $('pn-nc-save').disabled = !edit;
+  }
+
+  function ncChanged(rerender) {
+    nc.dirty = true;
+    $('pn-nc-save').disabled = false;
+    formMsg('pn-nc-msg', 'Not saved yet.', true);
+    if (rerender) renderNpcs();
+  }
+
+  $('pn-nc-list').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-npc]');
+    if (!card) return;
+    const n = nc.settings.npcs[+card.dataset.npc];
+    const t = e.target;
+    if (t.dataset.h) n.hostile[t.dataset.h] = Number(t.value) || 0;
+    else if (t.dataset.pw !== undefined) n.path[+t.dataset.pw].waitSeconds = Number(t.value) || 0;
+    else if (t.dataset.n) {
+      const k = t.dataset.n;
+      if (t.type === 'number') n[k] = Number(t.value) || 0;
+      else if (t.dataset.bool) n[k] = t.value === 'true';
+      else if (k === 'onClick' || k === 'onHit') n[k] = ncActionsRead(t.value);
+      else if (k === 'lines') n[k] = t.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      else n[k] = t.value;
+    } else return;
+    ncChanged(false);
+  });
+  $('pn-nc-list').addEventListener('click', (e) => {
+    const head = e.target.closest('.pn-gm-toggle');
+    if (head && !e.target.closest('input, button, label, select, a')) {
+      const card = head.closest('[data-npc]');
+      const n = nc.settings.npcs[+card.dataset.npc];
+      const key = n.id || 'new' + card.dataset.npc;
+      if (card.classList.toggle('collapsed')) ncOpen.delete(key); else ncOpen.add(key);
+      ncKeepOpen();
+      return;
+    }
+    const b = e.target.closest('[data-nact]');
+    if (!b) return;
+    const n = nc.settings.npcs[+b.closest('[data-npc]').dataset.npc];
+    if (b.dataset.nact === 'pathrm') {
+      const c = n.path[+b.dataset.pi];
+      if (n.id) nc.removed.path.push(spotKey(n.id, 'path', c.pos));
+      n.path.splice(+b.dataset.pi, 1);
+      ncChanged(true);
+    } else if (b.dataset.nact === 'delete') {
+      if (!confirm(`Remove the NPC ${n.name}?`)) return;
+      if (n.id) nc.removed.npcs.push(n.id);
+      nc.settings.npcs = nc.settings.npcs.filter((x) => x !== n);
+      ncChanged(true);
+    }
+  });
+  $('pn-nc-enabled').addEventListener('change', (e) => { nc.settings.enabled = e.target.checked; ncChanged(false); });
+  $('pn-nc-add').addEventListener('click', () => {
+    let name = 'npc';
+    for (let k = 2; nc.settings.npcs.some((x) => x.name.toLowerCase() === name.toLowerCase()); k++) name = 'npc' + k;
+    nc.settings.npcs.push({ id: '', name, title: name, description: '', skin: '', pose: 'standing', mainHand: 'right', equipment: [], spot: null, lookAtPlayers: true,
+      path: [], pathMode: 'loop', walkSpeed: 0.25, onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false,
+      hostile: { health: 20, damage: 3, speed: 0.25, armor: 0, followRange: 32 } });
+    ncOpen.add('new' + (nc.settings.npcs.length - 1));
+    ncChanged(true);
+  });
+  $('pn-nc-save').addEventListener('click', async () => {
+    try {
+      await api('api/npcs', { ...nc.settings, removed: nc.removed });
+      nc.dirty = false;
+      formMsg('pn-nc-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+      loadNpcs(true);
+    } catch (err) {
+      formMsg('pn-nc-msg', err.message, false);
+    }
+  });
+
   // ── Points and reward shops ─────────────────────────────────────────────
 
   const po = { settings: null, balances: { accounts: [], sold: {} }, live: false, skins: {}, actions: [], pets: [], dirty: false, removed: { shops: [], entries: [], npcs: [], items: [] } };
@@ -2293,6 +2474,7 @@
       po.pointsName = d.settings.name;
       po.actions = (d.actions || []).map((t) => (t.id === 'points' ? { ...t, label: d.settings.name } : t));
       po.pets = d.pets || [];
+      try { po.npcs = (await api('api/npcs')).settings.npcs; } catch (e) { po.npcs = []; }
       po.dirty = false;
       renderPoints();
       Dirty.reset('points');
@@ -2344,21 +2526,22 @@
     $('pn-ps-list').innerHTML = s.shops.map((shop, si) => {
       const face = po.skins[shop.id] ? `<img class="pn-gm-headface" src="info/heads/${esc(po.skins[shop.id])}" alt="" width="32" height="32">` : '';
       const field = (k, label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
-      const spots = shop.npcs.length
-        ? `<ul class="pn-gm-heads">${shop.npcs.map((n, ni) => `<li><span>${esc(dimShort(n.dim))} · ${Math.round(n.x)}, ${Math.round(n.y)}, ${Math.round(n.z)}</span><button type="button" class="np-btn small danger" data-sact="npcrm" data-n="${ni}" title="Take this NPC away"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
-        : `<p class="pn-hint">No NPCs yet: <code>/points shop npc add ${esc(shop.name)}</code> where one should stand.</p>`;
+      const mine = (po.npcs || []).filter((n) => n.shop === shop.id);
+      const spots = mine.length
+        ? `<p>${mine.map((n) => `<a href="#npcs" class="np-chip"><i class="bi bi-person-badge"></i> ${esc(n.title || n.name)}</a>`).join(' ')} <span class="pn-hint">(set up under NPCs)</span></p>`
+        : `<p class="pn-hint">No NPC opens it yet: <code>/points shop npc add ${esc(shop.name)}</code> where one should stand, or pick this shop on an NPC (NPCs page).</p>`;
       return `<section class="np-card pn-ps-shop" data-shop="${si}">
         <div class="pn-rw-head">
           <span class="pn-rw-give-icon">${face || '<i class="bi bi-shop-window"></i>'}</span>
-          <b class="pn-gm-name">${esc(shop.title || shop.name || 'New shop')}</b><span class="np-chip">${shop.npcs.length} NPC${shop.npcs.length === 1 ? '' : 's'}</span><span class="np-chip">${shop.entries.length} reward${shop.entries.length === 1 ? '' : 's'}</span>
+          <b class="pn-gm-name">${esc(shop.title || shop.name || 'New shop')}</b><span class="np-chip">${(po.npcs || []).filter((n) => n.shop === shop.id).length} NPC${(po.npcs || []).filter((n) => n.shop === shop.id).length === 1 ? '' : 's'}</span><span class="np-chip">${shop.entries.length} reward${shop.entries.length === 1 ? '' : 's'}</span>
           <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-sact="delete" title="Remove the shop and its NPCs"><i class="bi bi-trash"></i></button></span>
         </div>
         <div class="pn-rw-grid">
           ${field('name', 'Name (one word, for the commands)', `<input type="text" data-s="name" value="${esc(shop.name)}" maxlength="32">`)}
-          ${field('title', 'Shown above the NPCs', `<input type="text" data-s="title" value="${esc(shop.title)}" maxlength="64" placeholder="${esc(shop.name)}">`)}
+          ${field('title', 'Shop name (top of its menu; new shop NPCs take it too)', `<input type="text" data-s="title" value="${esc(shop.title)}" maxlength="64" placeholder="${esc(shop.name)}">`)}
           ${field('lookAtPlayers', 'NPCs look at players', `<select data-s="lookAtPlayers" data-bool="1"><option value="true" ${shop.lookAtPlayers ? 'selected' : ''}>yes</option><option value="false" ${shop.lookAtPlayers ? '' : 'selected'}>no</option></select>`)}
           ${field('greeting', 'Greeting on top of the shop', `<input type="text" data-s="greeting" value="${esc(shop.greeting)}" maxlength="300" placeholder="Spend your points on something nice!">`, true)}
-          ${field('texture', 'NPC skin (textures.minecraft.net URL, its hash, or the base64 value)', `<span class="pn-gm-skin">${face}<input type="text" data-s="texture" value="${esc(shop.texture)}" placeholder="http://textures.minecraft.net/texture/…"></span>`, true)}
+          ${field('texture', 'Skin for new shop NPCs (textures.minecraft.net URL, its hash, or the base64 value)', `<span class="pn-gm-skin">${face}<input type="text" data-s="texture" value="${esc(shop.texture)}" placeholder="http://textures.minecraft.net/texture/…"></span>`, true)}
           <div class="pn-field pn-field-wide"><span>NPCs</span>${spots}</div>
         </div>
         <h4 class="pn-ps-sub"><i class="bi bi-gift"></i> Rewards</h4>
@@ -7982,6 +8165,7 @@
   const tabPanel = (t) => document.querySelector(`.np-tab-panel[data-tab="${t}"]`);
   Dirty.track('points', tabPanel('points'), { saveButtons: [$('pn-po-save')], reload: () => { po.dirty = false; loadPoints(true); }, extra: () => po.settings });
   Dirty.track('rewardshops', tabPanel('rewardshops'), { saveButtons: [$('pn-ps-save')], reload: () => { po.dirty = false; loadPoints(true); }, extra: () => po.settings });
+  Dirty.track('npcs', tabPanel('npcs'), { saveButtons: [$('pn-nc-save')], reload: () => { nc.dirty = false; loadNpcs(true); }, extra: () => nc.settings });
   Dirty.track('games', tabPanel('games'), { saveButtons: [$('pn-gm-save')], reload: () => { gm.dirty = false; loadGames(); }, extra: () => gm.settings });
   Dirty.track('dungeons', tabPanel('dungeons'), { saveButtons: [$('pn-dg-save')], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings });
   Dirty.track('rewards', tabPanel('rewards'), { saveButtons: [$('pn-rw-save')], reload: () => { rw.dirty = false; loadRewards(); }, extra: () => rw.settings });

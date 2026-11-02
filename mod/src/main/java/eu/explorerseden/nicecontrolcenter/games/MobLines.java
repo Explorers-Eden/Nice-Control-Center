@@ -108,6 +108,14 @@ public final class MobLines {
 
 	/** Summons one mob of the entry (count is up to the caller), kept from despawning, with extra data (e.g. tags). */
 	public static void summon(MinecraftServer server, String dim, double x, double y, double z, Entry e, String extra) {
+		// An NPC made in Community → NPCs, fighting with what it holds; it keeps the caller's tags.
+		if (e.id().startsWith("npc:")) {
+			List<String> tags = new ArrayList<>();
+			java.util.regex.Matcher m = java.util.regex.Pattern.compile("Tags:\\[([^\\]]*)\\]").matcher(extra == null ? "" : extra);
+			if (m.find()) for (String t : m.group(1).split(",")) if (!t.isBlank()) tags.add(t.strip().replace("\"", ""));
+			eu.explorerseden.nicecontrolcenter.npcs.NpcRuntime.spawnHostile(server, dim, x, y, z, e.id().substring(4), tags);
+			return;
+		}
 		// The exclude tag goes into the caller's Tags (one Tags list only), else a list of its own.
 		String tags = extra != null && extra.contains("Tags:[") ? extra.replaceFirst("Tags:\\[", "Tags:[\"" + NMM_EXCLUDE + "\",") : (extra == null || extra.isEmpty() ? "" : extra + ",") + "Tags:[\"" + NMM_EXCLUDE + "\"]";
 		String own = "PersistenceRequired:1b," + tags + variants(server, e);

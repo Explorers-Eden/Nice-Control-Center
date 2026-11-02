@@ -71,8 +71,12 @@ final class ClaimService {
 
 	/** A kit as the panel shows it: per item its slot (or -1), id, name, count, enchantments and picture. */
 	private List<Map<String, Object>> kitItems(List<String> kit) {
+		return kitItems(kit, icons);
+	}
+
+	/** Shared with NPC equipment. */
+	static List<Map<String, Object>> kitItems(List<String> kit, ItemIcons ic) {
 		List<Map<String, Object>> out = new ArrayList<>();
-		ItemIcons ic = icons;
 		for (String json : kit) {
 			try {
 				com.google.gson.JsonObject o = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
