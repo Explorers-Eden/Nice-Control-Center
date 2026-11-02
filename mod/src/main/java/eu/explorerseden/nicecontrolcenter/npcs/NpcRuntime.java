@@ -36,7 +36,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundAnimatePacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -199,7 +198,7 @@ public final class NpcRuntime {
 			Entity by = source.getDirectEntity();
 			if (by != null && by.entityTags().contains(DRIVER)) {
 				Puppet pp = puppets.get(tag(by, PAIR));
-				if (pp != null && pp.body != null && pp.body.level() instanceof ServerLevel l) l.getChunkSource().sendToTrackingPlayers(pp.body, new ClientboundAnimatePacket(pp.body, 0));
+				if (pp != null && pp.body != null) swingArm(pp.body);
 			}
 			if (!victim.entityTags().contains(BODY)) return true;
 			// Arrows and the like hitting the body hurt the driver; bodies themselves never take damage.
@@ -559,6 +558,29 @@ public final class NpcRuntime {
 		}
 	}
 
+
+	/**
+	 * The body swings its arm, the way each game version does it (26.1: swing(hand); 26.3 changed it to a swing
+	 * animation packet, and the old animate packet's 0 now means "wake up", which drops players for a mannequin).
+	 */
+	private static void swingArm(LivingEntity body) {
+		try {
+			for (java.lang.reflect.Method m : LivingEntity.class.getMethods()) {
+				if (!m.getName().equals("swing") || m.getParameterCount() == 0 || m.getParameterTypes()[0] != InteractionHand.class) continue;
+				if (m.getParameterCount() == 1) {
+					m.invoke(body, InteractionHand.MAIN_HAND);
+					return;
+				}
+				if (m.getParameterCount() == 3 && m.getParameterTypes()[2] == boolean.class) {
+					Object anim = m.getParameterTypes()[1].getField("DEFAULT").get(null);
+					m.invoke(body, InteractionHand.MAIN_HAND, anim, true);
+					return;
+				}
+			}
+		} catch (ReflectiveOperationException | RuntimeException e) {
+			// No swing then.
+		}
+	}
 
 	/**
 	 * A hostile NPC for a mob pool line "npc:<name>" (waves, dungeon markers, mazes): the fighter carries the caller's

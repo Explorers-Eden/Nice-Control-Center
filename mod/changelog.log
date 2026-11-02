@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.73.2
+- Fix: players were disconnected ("Network Protocol Error") when a hostile NPC attacked them on 26.3: the arm swing used the old animation packet, whose number now means "wake up"; it swings the way each version does now
+- Games: axolotls (and other mobs run by a brain with a bite of their own) attack players too: the player becomes their brain's target, so they fight like they do with fish
 ## 1.73.1
 - Hostile NPCs: no health in their name; they show their shown name like other NPCs (none when it's empty)
 ## 1.73.0

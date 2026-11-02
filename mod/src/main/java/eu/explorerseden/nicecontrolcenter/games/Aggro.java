@@ -51,6 +51,12 @@ public final class Aggro {
 		acc.nicecontrolcenter$goals().addGoal(0, new Anger(m));
 		boolean ownAttack = m.getAttribute(Attributes.ATTACK_DAMAGE) != null;
 		boolean cantWalk = m.getNavigation() instanceof FlyingPathNavigation || m.getNavigation() instanceof WaterBoundPathNavigation || m instanceof AmbientCreature;
+		// Brain-run mobs with a fight of their own (axolotls): their brain ignores our goals, so it gets the player as
+		// its attack target and fights the way it does with fish.
+		if (ownAttack && m.getBrain().checkMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, net.minecraft.world.entity.ai.memory.MemoryStatus.REGISTERED)) {
+			acc.nicecontrolcenter$goals().addGoal(1, new BrainFight(m));
+			return;
+		}
 		if (m instanceof RangedAttackMob shooter) acc.nicecontrolcenter$goals().addGoal(1, new RangedAttackGoal(shooter, 1.2, 40, 14f));
 		else if (cantWalk && !ownAttack) acc.nicecontrolcenter$goals().addGoal(1, new Spit(m));
 		else if (m instanceof PathfinderMob walker) acc.nicecontrolcenter$goals().addGoal(1, new Charge(walker, damage, ownAttack));
@@ -60,6 +66,26 @@ public final class Aggro {
 	private static LivingEntity target(Mob m) {
 		LivingEntity t = m.getTarget();
 		return t instanceof Player p && p.isAlive() && !p.isSpectator() && !p.isCreative() ? t : null;
+	}
+
+	/** Keeps the player the brain's attack target (set again every second; the brain may drop it). */
+	private static final class BrainFight extends Goal {
+		private final Mob mob;
+
+		BrainFight(Mob mob) {
+			this.mob = mob;
+		}
+
+		@Override
+		public boolean canUse() {
+			return target(mob) != null;
+		}
+
+		@Override
+		public void tick() {
+			LivingEntity t = target(mob);
+			if (t != null && mob.tickCount % 20 == 0) mob.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, t);
+		}
 	}
 
 	/** Neutral mobs stay angry at the player they're after (bees sting, golems swing, wolves bite). */
