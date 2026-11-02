@@ -736,6 +736,7 @@ public final class GameRuntime {
 		b.goal = eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.mazeGoal, Blocks.SEA_LANTERN).stream().map(Block::defaultBlockState).toList();
 		b.chests = chests;
 		b.loot = a.mazeLoot;
+		b.area = mazeArea(a);
 		mazeBuilds.put(a.id, b);
 		mazeDay.put(a.id, System.currentTimeMillis() / 86_400_000L);
 	}
@@ -752,6 +753,8 @@ public final class GameRuntime {
 		List<BlockState> goal = List.of();
 		List<int[]> chests = List.of();
 		String loot = "";
+		/** The maze and a little around it, cleared of what lies around. */
+		AABB area;
 		final List<BlockState> walls;
 		final List<BlockState> floors;
 		final int height;
@@ -800,7 +803,10 @@ public final class GameRuntime {
 				// Up to 9 high: a lower wall (or ceiling) clears what a taller one left; chests are emptied first so nothing spills.
 				for (int y = 1; y <= 9; y++) {
 					BlockPos at = b.origin.offset(x, y, z);
-					if (b.level.getBlockEntity(at) instanceof net.minecraft.world.Container c) c.clearContent();
+					// An unopened loot chest would roll its loot and spill it when replaced: no loot table, nothing in it.
+					var be = b.level.getBlockEntity(at);
+					if (be instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity r) r.setLootTable(null);
+					if (be instanceof net.minecraft.world.Container c) c.clearContent();
 					BlockState st = y == b.height + 1 && !b.ceiling.isEmpty() ? b.ceiling.get(random.nextInt(b.ceiling.size()))
 							: open || y > b.height ? Blocks.AIR.defaultBlockState() : b.walls.get(random.nextInt(b.walls.size()));
 					b.level.setBlock(at, st, 2);
@@ -816,6 +822,8 @@ public final class GameRuntime {
 					for (int z = 0; z < b.path; z++) b.level.setBlock(b.origin.offset(g + x, 0, g + z), b.goal.get(random.nextInt(b.goal.size())), 2);
 				}
 				placeChests(b);
+				// Once more at the end: anything that came loose while it was being placed.
+				Cleanup.items(b.level, b.area);
 				it.remove();
 			}
 		}

@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.77.2
+- Fix: rebuilding a maze spilled the loot of its unopened dead-end chests (their loot table was rolled the moment the chest was replaced, after the maze area had been cleared): replaced chests lose their loot table first, and the maze is cleared once more when it's done (tested: 55 loose items before, none now)
 ## 1.77.1
 - Hostile NPCs with a trident throw it (every 2 s at players 4–20 blocks away they can see) and fight up close; before, they were a drowned underneath, which leaves players on dry land alone by day. Bows (skeleton) and crossbows (pillager) shoot as before (tested: arrows and tridents fly and hit)
 - Games: drowned fight players on land too, by day as well, whatever the peaceful-mobs switch says (wave fights, dungeons, mazes, quick rounds); with a trident they throw it, without one they charge
