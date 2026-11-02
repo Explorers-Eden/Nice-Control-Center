@@ -122,6 +122,7 @@ Panel: Community → NPCs; in game `/npc`.
   before (keeps skin, pose, name, equipment). `/npc skin <name> <player name|link|base64>`, `/npc pose`, `/npc equip`
   (what you wear and hold), `/npc move`, `/npc remove`, `/npc list`.
 - Walking: `/npc path <name> add [seconds to wait]` at each checkpoint in order; `remove` (the last), `clear`.
+  The panel picks how: round and round, back and forth, or to random checkpoints (a different one each time).
 - Panel: actions on a right-click and on a hit (`say: Hello {player}!`, `player: spawn`, or a command as the server),
   a reward shop, talking lines (now and then, or one per click), the hostile stats.
 - **Hostiles:** `npc:<name>` in any mob pool (wave fights, dungeon markers `mob:npc:knight x2`, maze mobs), or

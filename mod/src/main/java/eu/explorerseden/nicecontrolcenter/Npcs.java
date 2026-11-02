@@ -81,7 +81,7 @@ public final class Npcs {
 
 		/** Walking: checkpoints in order; empty = it stays on its spot. */
 		public List<Checkpoint> path = new ArrayList<>();
-		/** "loop" (back to the first) or "back" (back and forth). */
+		/** "loop" (back to the first), "back" (back and forth) or "random" (any other checkpoint next). */
 		public String pathMode = "loop";
 		/** Walking speed (0.1–1; 0.25 is a calm walk). */
 		public double walkSpeed = 0.25;
@@ -128,7 +128,7 @@ public final class Npcs {
 			if (path == null) path = new ArrayList<>();
 			path.removeIf(c -> c == null || c.pos == null || c.pos.dim == null);
 			for (Checkpoint c : path) c.waitSeconds = Math.max(0, Math.min(600, c.waitSeconds));
-			if (!"back".equals(pathMode)) pathMode = "loop";
+			if (!"back".equals(pathMode) && !"random".equals(pathMode)) pathMode = "loop";
 			walkSpeed = Math.max(0.1, Math.min(1, walkSpeed == 0 ? 0.25 : walkSpeed));
 			for (List<Action> list : List.of(onClick == null ? onClick = new ArrayList<>() : onClick, onHit == null ? onHit = new ArrayList<>() : onHit)) {
 				list.removeIf(a -> a == null || a.text == null || a.text.isBlank());

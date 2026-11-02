@@ -1,3 +1,6 @@
+## 1.64.0
+- NPCs: path "to random checkpoints" (mod 1.75.0)
+
 ## 1.63.0
 - NPCs: MineSkin API key (kept on the server, never shown again) for skins from any picture link; upload problems on the NPC's card; faces of NPC skins show (they were broken pictures) (mod 1.74.0)
 

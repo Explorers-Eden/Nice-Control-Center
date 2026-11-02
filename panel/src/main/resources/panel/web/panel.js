@@ -2369,7 +2369,7 @@
           ${field('Looks at players close by', `<select data-n="lookAtPlayers" data-bool="1">${opt(true, n.lookAtPlayers, 'yes')}${opt(false, n.lookAtPlayers, 'no')}</select>`)}
           <div class="pn-field pn-field-wide"><span>Wears and holds <small class="pn-hint">(<code>/npc equip ${esc(n.name)}</code>: what you wear and hold)</small></span>${ncGear(nc.equipment[n.id])}</div>
           <div class="pn-field pn-field-wide"><span>Walking path <small class="pn-hint">(<code>/npc path ${esc(n.name)} add [wait]</code> at each checkpoint)</small></span>${path ? `<ul class="pn-gm-heads">${path}</ul>` : '<p class="pn-hint">No path: it stands on its spot.</p>'}</div>
-          ${field('Path', `<select data-n="pathMode">${opt('loop', n.pathMode, 'round and round')}${opt('back', n.pathMode, 'back and forth')}</select>`)}
+          ${field('Path', `<select data-n="pathMode">${opt('loop', n.pathMode, 'round and round')}${opt('back', n.pathMode, 'back and forth')}${opt('random', n.pathMode, 'to random checkpoints')}</select>`)}
           ${field('Walking speed (0.1–1)', num('walkSpeed', 0.1, 1, 0.05, n.walkSpeed))}
           ${field('On a right-click (one per line: <code>say: Hello {player}!</code>, <code>player: spawn</code>, or a command as the server)', `<textarea data-n="onClick" rows="3" placeholder="say: Welcome, {player}!&#10;give {player} minecraft:cookie">${esc(ncActionsText(n.onClick))}</textarea>`, true)}
           ${field('On a hit (same as above)', `<textarea data-n="onHit" rows="2" placeholder="say: Ouch!">${esc(ncActionsText(n.onHit))}</textarea>`, true)}

@@ -521,6 +521,12 @@ public final class NpcRuntime {
 	private static void advance(Npc n, Placed st) {
 		int size = n.path.size();
 		if (size == 1) return;
+		if ("random".equals(n.pathMode)) {
+			// Any of the others: never the one it stands at.
+			int pick = random.nextInt(size - 1);
+			st.next = pick >= st.next ? pick + 1 : pick;
+			return;
+		}
 		if ("back".equals(n.pathMode)) {
 			if (st.next + st.dir >= size || st.next + st.dir < 0) st.dir = -st.dir;
 			st.next += st.dir;
