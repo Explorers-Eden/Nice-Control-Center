@@ -115,6 +115,8 @@ public final class NpcRuntime {
 		long lastMoveAt;
 		long lineAt;
 		long talkUntil;
+		/** The checkpoint it last stood at (its spot at first): where it goes back to after a fall. */
+		Games.Pos reached;
 		int clickLine;
 	}
 
@@ -422,6 +424,8 @@ public final class NpcRuntime {
 					List.of(DRIVER, PLACED, WALKER, ID + n.id, LOOK + looks(n), PAIR + pair, MobLines.NMM_EXCLUDE), true);
 			if (driver == null) return;
 			set(driver, Attributes.MOVEMENT_SPEED, n.walkSpeed);
+			// Pathfinding gives up beyond the follow range (35 for a husk): checkpoints can be far apart.
+			set(driver, Attributes.FOLLOW_RANGE, 128);
 		}
 		level.addFreshEntity(body);
 		if (driver != null) level.addFreshEntity(driver);
@@ -478,10 +482,9 @@ public final class NpcRuntime {
 			Npc n = settings.npc(en.getKey());
 			Mob d = st.driver;
 			if (n == null || !n.walks() || d == null || d.isRemoved()) continue;
-			if (st.next >= n.path.size()) st.next = 0;
+			if (st.next < 0 || st.next >= n.path.size()) st.next = 0;
 			Npcs.Checkpoint c = n.path.get(st.next);
-			Games.Pos back = st.next == 0 ? n.spot : n.path.get(Math.max(0, st.next - st.dir)).pos;
-			if (back == null) back = c.pos;
+			Games.Pos back = st.reached != null && st.reached.dim.equals(c.pos.dim) ? st.reached : n.spot;
 			// Fell (or in lava): back where it last was on the path.
 			double lowest = n.spot.y;
 			for (Npcs.Checkpoint k : n.path) lowest = Math.min(lowest, k.pos.y);
@@ -499,6 +502,7 @@ public final class NpcRuntime {
 			// Vanilla navigation calls it done a block or so short of the spot.
 			if (dx * dx + dz * dz < 2.25 && Math.abs(d.getY() - c.pos.y) < 2) {
 				d.getNavigation().stop();
+				st.reached = c.pos;
 				st.waiting = true;
 				st.waitUntil = now + c.waitSeconds * 1000L;
 				d.setYRot(c.pos.yaw);
@@ -506,13 +510,22 @@ public final class NpcRuntime {
 				d.setYBodyRot(c.pos.yaw);
 				continue;
 			}
-			if (d.getNavigation().isDone()) d.getNavigation().moveTo(c.pos.x, c.pos.y, c.pos.z, 1.0);
+			if (d.getNavigation().isDone()) {
+				// Far checkpoints in steps of up to 12 blocks (vanilla pathfinding stops short on long ways); each step
+				// finds its own way around what's in between.
+				double far = Math.sqrt(dx * dx + dz * dz);
+				double k = Math.min(1, 12 / Math.max(1, far));
+				double tx = d.getX() - dx * k, tz = d.getZ() - dz * k;
+				double ty = k >= 1 ? c.pos.y : d.getY() + (c.pos.y - d.getY()) * k;
+				if (!d.getNavigation().moveTo(tx, ty, tz, 1.0) && k < 1) d.getNavigation().moveTo(c.pos.x, c.pos.y, c.pos.z, 1.0);
+			}
 			// Stuck for 15 s: put on the checkpoint it walks to.
 			Vec3 pos = d.position();
 			if (st.lastPos == null || pos.distanceToSqr(st.lastPos) > 0.25) {
 				st.lastPos = pos;
 				st.lastMoveAt = now;
 			} else if (now - st.lastMoveAt > 15_000) {
+				// Truly stuck: put on the checkpoint it walks to.
 				rescue(st, c.pos);
 			}
 		}

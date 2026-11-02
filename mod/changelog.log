@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.75.1
+- Fix: a server crash with NPCs walking back and forth (on the way back it looked one checkpoint past the end of the path)
+- NPCs walk far checkpoints in steps of up to 12 blocks (vanilla pathfinding stopped short on long ways, so they stood still until the 15-second rescue put them on the checkpoint: the "warping"); after a fall they go back to the checkpoint they last reached
 ## 1.75.0
 - NPC paths: "to random checkpoints": after each stop it walks to another of its saved checkpoints, picked at random (next to round and round, back and forth)
 ## 1.74.1
