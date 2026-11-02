@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.73.1
+- Hostile NPCs: no health in their name; they show their shown name like other NPCs (none when it's empty)
 ## 1.73.0
 - NPCs (/npc, panel: Community → NPCs): players in the world with a skin (a player name, a link, its hash or base64), pose, shown name and a line under it, worn and held items; they stand on their spot (kept there, unharmed, looking at players near) or walk a path of checkpoints (finding their way, waiting at each, round and round or back and forth; back on the path when they fall or get stuck)
 - NPC actions: commands (as the server or as the player) and messages on a right-click and on a hit, with a wait per player; a reward shop on a right-click; talking lines under the name and in chat, now and then or one per click

@@ -214,7 +214,6 @@ public final class NpcRuntime {
 			Puppet pp = puppets.get(tag(entity, PAIR));
 			if (pp == null || pp.body == null || !(pp.body.level() instanceof ServerLevel l)) return;
 			l.broadcastDamageEvent(pp.body, source);
-			healthName(pp);
 		});
 	}
 
@@ -560,14 +559,6 @@ public final class NpcRuntime {
 		}
 	}
 
-	/** A hostile NPC's name with its health. */
-	private static void healthName(Puppet p) {
-		Npc n = npcOf(p.body);
-		if (n == null || p.driver == null) return;
-		String hp = "❤ " + (int) Math.ceil(p.driver.getHealth()) + "/" + (int) Math.ceil(p.driver.getMaxHealth());
-		p.body.setCustomName(Component.literal(n.title.isBlank() ? hp : n.shown() + " " + hp));
-		p.body.setCustomNameVisible(true);
-	}
 
 	/**
 	 * A hostile NPC for a mob pool line "npc:<name>" (waves, dungeon markers, mazes): the fighter carries the caller's
@@ -600,8 +591,6 @@ public final class NpcRuntime {
 		d.setDropChance(EquipmentSlot.HEAD, 0);
 		level.addFreshEntity(d);
 		level.addFreshEntity(b);
-		Puppet p = puppets.get(pair);
-		if (p != null) healthName(p);
 		return true;
 	}
 
@@ -618,7 +607,7 @@ public final class NpcRuntime {
 		for (int i = 0; i < tags.size(); i++) nbt.append(i == 0 ? "" : ",").append(Json.GSON.toJson(tags.get(i)));
 		nbt.append("],immovable:1b,NoGravity:1b,Silent:1b,PersistenceRequired:1b");
 		if (invulnerable) nbt.append(",Invulnerable:1b");
-		if (!n.title.isBlank() || hostile) nbt.append(",CustomNameVisible:1b,CustomName:").append(Json.GSON.toJson(n.shown()));
+		if (!n.title.isBlank()) nbt.append(",CustomNameVisible:1b,CustomName:").append(Json.GSON.toJson(n.shown()));
 		if (!n.description.isBlank() && !hostile) nbt.append(",description:").append(Json.GSON.toJson(n.description));
 		else nbt.append(",hide_description:1b");
 		nbt.append(",pose:\"").append(n.pose).append("\",main_hand:\"").append(n.mainHand).append("\"");
