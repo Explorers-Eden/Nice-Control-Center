@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.77.3
+- Maze: built smaller or somewhere else than last time, the part of the old maze the new one doesn't cover is taken away first (walls, ceiling, lights and floor). Each maze's last footprint is kept with the world (nicecontrolcenter-mazes.json), so this works from the next build on
 ## 1.77.2
 - Fix: rebuilding a maze spilled the loot of its unopened dead-end chests (their loot table was rolled the moment the chest was replaced, after the maze area had been cleared): replaced chests lose their loot table first, and the maze is cleared once more when it's done (tested: 55 loose items before, none now)
 ## 1.77.1

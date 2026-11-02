@@ -148,6 +148,8 @@ public final class GameRuntime {
 			scoresFile = server.getWorldPath(LevelResource.ROOT).resolve(Games.SCORES);
 			scores = Games.readScores(scoresFile);
 			placedFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-games-blocks.json");
+			mazesFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-mazes.json");
+			mazesBuilt = readMazes(mazesFile);
 			clearLeftovers(server);
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -737,8 +739,49 @@ public final class GameRuntime {
 		b.chests = chests;
 		b.loot = a.mazeLoot;
 		b.area = mazeArea(a);
+		// Built bigger (or elsewhere) before: what the new one doesn't cover goes.
+		MazeSpot was = mazesBuilt.get(a.id);
+		ServerLevel wasLevel = was == null ? null : levelOf(level.getServer(), was.dim);
+		if (was != null && wasLevel != null && (wasLevel != level || was.x != o.getX() || was.y != o.getY() || was.z != o.getZ() || was.w > b.width)) {
+			b.oldLevel = wasLevel;
+			b.oldOrigin = new BlockPos(was.x, was.y, was.z);
+			b.oldWidth = was.w;
+		}
+		MazeSpot now = new MazeSpot();
+		now.dim = a.corner.dim;
+		now.x = o.getX();
+		now.y = o.getY();
+		now.z = o.getZ();
+		now.w = b.width;
+		mazesBuilt.put(a.id, now);
+		if (mazesFile != null) write(mazesFile, Json.GSON.toJson(mazesBuilt));
 		mazeBuilds.put(a.id, b);
 		mazeDay.put(a.id, System.currentTimeMillis() / 86_400_000L);
+	}
+
+	/** Where each maze was last built and how big (arena id → footprint), so a smaller or moved one clears the rest. */
+	private static final class MazeSpot {
+		String dim;
+		int x;
+		int y;
+		int z;
+		int w;
+	}
+
+	private static Path mazesFile;
+	private static Map<String, MazeSpot> mazesBuilt = new HashMap<>();
+
+	private static Map<String, MazeSpot> readMazes(Path f) {
+		try {
+			if (Files.exists(f)) {
+				Map<String, MazeSpot> m = Json.GSON.fromJson(Files.readString(f), new com.google.gson.reflect.TypeToken<Map<String, MazeSpot>>() {
+				}.getType());
+				if (m != null) return new HashMap<>(m);
+			}
+		} catch (IOException | RuntimeException e) {
+			// Empty.
+		}
+		return new HashMap<>();
 	}
 
 	/** A maze being placed, column by column. */
@@ -755,6 +798,11 @@ public final class GameRuntime {
 		String loot = "";
 		/** The maze and a little around it, cleared of what lies around. */
 		AABB area;
+		/** The last build's footprint where it isn't covered by this one: cleared first (null = nothing to clear). */
+		ServerLevel oldLevel;
+		BlockPos oldOrigin;
+		int oldWidth;
+		int oldNext;
 		final List<BlockState> walls;
 		final List<BlockState> floors;
 		final int height;
@@ -791,6 +839,22 @@ public final class GameRuntime {
 		int budget = MAZE_COLUMNS_PER_TICK;
 		for (var it = mazeBuilds.entrySet().iterator(); it.hasNext() && budget > 0;) {
 			MazeBuild b = it.next().getValue();
+			// First what the last (bigger or moved) maze left outside this one.
+			while (b.oldLevel != null && b.oldNext < b.oldWidth * b.oldWidth && budget-- > 0) {
+				int x = b.oldNext / b.oldWidth, z = b.oldNext % b.oldWidth;
+				b.oldNext++;
+				BlockPos col = b.oldOrigin.offset(x, 0, z);
+				int rx = col.getX() - b.origin.getX(), rz = col.getZ() - b.origin.getZ();
+				if (b.oldLevel == b.level && col.getY() == b.origin.getY() && rx >= 0 && rz >= 0 && rx < b.width && rz < b.width) continue;
+				for (int y = 0; y <= 9; y++) {
+					BlockPos at = col.above(y);
+					var be = b.oldLevel.getBlockEntity(at);
+					if (be instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity r) r.setLootTable(null);
+					if (be instanceof net.minecraft.world.Container c) c.clearContent();
+					if (!b.oldLevel.getBlockState(at).isAir()) b.oldLevel.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
+				}
+			}
+			if (b.oldLevel != null && b.oldNext < b.oldWidth * b.oldWidth) continue;
 			int total = b.width * b.width;
 			int span = b.path + 1;
 			while (b.next < total && budget-- > 0) {
