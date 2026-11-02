@@ -49,6 +49,24 @@ public final class SystemMetrics {
 		return live / (double) max;
 	}
 
+	/**
+	 * How close the heap is to full, early enough to act on (0..1): the larger of {@link #liveHeapShare()} and what
+	 * the old generation holds right now. The after-collection figure of the old generation only changes on the rare
+	 * old/mixed collections (G1), so on its own it lags and shows "full" only once the heap already is; what was
+	 * promoted there since counts here straight away (some of it may be garbage, so this errs on the early side).
+	 */
+	public static double heapPressure() {
+		long max = Runtime.getRuntime().maxMemory();
+		if (max <= 0 || max == Long.MAX_VALUE) return 0;
+		long old = 0;
+		for (MemoryPoolMXBean pool : POOLS) {
+			if (pool.getType() != MemoryType.HEAP) continue;
+			String name = pool.getName();
+			if (name.contains("Old") || name.contains("Tenured")) old += pool.getUsage().getUsed();
+		}
+		return Math.max(liveHeapShare(), old / (double) max);
+	}
+
 	/** Reads current values; GC numbers are the change since the previous call. */
 	public static Sample sample() {
 		double cpuProcess = 0;

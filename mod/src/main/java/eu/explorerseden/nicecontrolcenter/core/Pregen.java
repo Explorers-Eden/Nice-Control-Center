@@ -239,18 +239,19 @@ public final class Pregen {
 		/**
 		 * Distant Horizons keeps the LOD data of every chunk loaded in memory until it's written; when chunks
 		 * come in faster than it writes, that grows until the heap is full (both overloads on 2026-11-02:
-		 * ~9.5 of 13 GB were its save queue). Waits above 80 % live heap until it's down to 65 %.
+		 * ~9.5 of 13 GB were its save queue). Waits above 75 % of the heap (old generation as it is now, so it
+		 * pauses before the heap is full, not after) until it's down to 60 %.
 		 */
 		private boolean memoryHeld() {
 			long now = System.currentTimeMillis();
 			if (now < memoryCheckAt) return pausedForMemory;
 			memoryCheckAt = now + 2_000;
-			double share = SystemMetrics.liveHeapShare();
-			if (!pausedForMemory && share > 0.80) {
+			double share = SystemMetrics.heapPressure();
+			if (!pausedForMemory && share > 0.75) {
 				pausedForMemory = true;
-				NiceControlCenter.LOGGER.warn("Pregen: paused, the heap is {} % full after collections; waiting for it to drop (Distant Horizons saving)",
+				NiceControlCenter.LOGGER.warn("Pregen: paused, the heap is {} % full; waiting for it to drop (Distant Horizons saving)",
 						Math.round(share * 100));
-			} else if (pausedForMemory && share < 0.65) {
+			} else if (pausedForMemory && share < 0.60) {
 				pausedForMemory = false;
 				NiceControlCenter.LOGGER.info("Pregen: memory back to {} %, carrying on", Math.round(share * 100));
 			}

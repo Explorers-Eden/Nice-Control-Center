@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.78.1
+- Fix: pregen paused for full memory only once the heap already was full: it read the old generation as of its last (rare) clean-up; it now counts what's there right now and pauses at 75 % (on again below 60 %)
 ## 1.78.0
 - Game music: a jukebox song (vanilla or from a datapack) looped for everyone in the game, with its own length (no seconds to enter any more); the server lists its songs for the panel on start (config/nicecontrolcenter-jukebox-songs.json). Sounds set before keep playing until another song is picked
 ## 1.77.4
