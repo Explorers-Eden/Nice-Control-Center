@@ -1124,6 +1124,7 @@ public final class QuickRuntime {
 		for (Entity e : level.getEntitiesOfClass(Entity.class, box.inflate(32), e -> e.entityTags().contains(r.tag()))) e.discard();
 		ConsoleRunner.quiet(server, "kill @e[tag=" + r.tag() + "]");
 		for (Entity e : level.getEntitiesOfClass(Entity.class, box, e -> e instanceof ItemEntity || e instanceof ExperienceOrb || e instanceof FallingBlockEntity || e instanceof LargeFireball || e instanceof Snowball)) e.discard();
+		Cleanup.items(level, box.inflate(2));
 		r.treasure.clear();
 		r.falling.clear();
 		if (a.type.equals("anvils")) {

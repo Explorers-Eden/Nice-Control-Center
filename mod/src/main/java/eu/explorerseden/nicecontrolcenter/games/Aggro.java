@@ -76,9 +76,17 @@ public final class Aggro {
 			this.mob = mob;
 		}
 
+		private int next;
+
+		/**
+		 * About once a second. (Not "tickCount % 20": new goals are only looked at every other tick, which tick
+		 * depends on the mob's id, so for half of them that never lined up.)
+		 */
 		@Override
 		public boolean canUse() {
-			return mob.tickCount % 20 == 0;
+			if (mob.tickCount < next) return false;
+			next = mob.tickCount + 20;
+			return true;
 		}
 
 		@Override

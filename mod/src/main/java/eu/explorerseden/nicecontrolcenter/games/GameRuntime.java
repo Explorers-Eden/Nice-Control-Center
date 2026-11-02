@@ -254,6 +254,7 @@ public final class GameRuntime {
 		if (sessions.containsKey(p.getUUID())) return "You're already in a game: /game leave first.";
 		ServerLevel level = level(server, a.start.dim);
 		if (level == null) return "That arena's dimension isn't there.";
+		freshArea(level, a);
 		Session s = new Session(p.getUUID(), a);
 		switch (a.type) {
 			case "parkour" -> {
@@ -343,6 +344,23 @@ public final class GameRuntime {
 		for (Session s : sessions.values()) if (s.arena == a && s.lane >= 0 && s.lane < lanes) used[s.lane] = true;
 		for (int i = 0; i < lanes; i++) if (!used[i]) return i;
 		return -1;
+	}
+
+	/** The maze and a little around it (null without a corner). */
+	static AABB mazeArea(Arena a) {
+		if (a.corner == null) return null;
+		double x = Math.floor(a.corner.x), y = Math.floor(a.corner.y), z = Math.floor(a.corner.z);
+		int w = a.mazeBlocks();
+		return new AABB(x - 2, y - 2, z - 2, x + w + 2, y + 12, z + w + 2);
+	}
+
+	/** A run starting with nobody else in the game: what earlier runs left lying around goes (maze, parkour box). */
+	private static void freshArea(ServerLevel level, Arena a) {
+		if (sessions.values().stream().anyMatch(o -> o.arena == a)) return;
+		AABB box = a.type.equals("maze") ? mazeArea(a) : null;
+		int[] pb = a.type.equals("parkour") ? parkourBox(a) : null;
+		if (pb != null) box = new AABB(pb[0] - 2, pb[1] - 2, pb[2] - 2, pb[3] + 3, pb[4] + 8, pb[5] + 3);
+		Cleanup.items(level, box);
 	}
 
 	/** The parkour box, when its corners are set (same dimension as the start). */
@@ -708,6 +726,8 @@ public final class GameRuntime {
 			}
 		}
 		// Placed over the next ticks (a big maze is millions of blocks): see stepMazes.
+		// What earlier runs left lying around goes with the old maze.
+		Cleanup.items(level, mazeArea(a));
 		MazeBuild b = new MazeBuild(level, o, a.mazePath, open, blocks(a.wall), blocks(a.floor), a.wallHeight, a.mazeLight);
 		b.ceiling = a.mazeCeiling.isBlank() ? List.of() : blocks(a.mazeCeiling);
 		b.goal = eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.mazeGoal, Blocks.SEA_LANTERN).stream().map(Block::defaultBlockState).toList();

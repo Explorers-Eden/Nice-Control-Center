@@ -775,7 +775,7 @@ public final class WaveRuntime {
 		AABB box = box(g.arena);
 		for (Entity e : level.getEntitiesOfClass(Entity.class, box.inflate(48), e -> e.entityTags().contains(g.tag()))) e.discard();
 		ConsoleRunner.quiet(server, "kill @e[tag=" + g.tag() + "]");
-		for (Entity e : level.getEntitiesOfClass(Entity.class, box, e -> e instanceof ItemEntity || e instanceof ExperienceOrb)) e.discard();
+		Cleanup.items(level, box.inflate(2));
 	}
 
 	// ---------------------------------------------------------------- helpers
