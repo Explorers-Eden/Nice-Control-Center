@@ -1,3 +1,6 @@
+## 1.63.0
+- NPCs: MineSkin API key (kept on the server, never shown again) for skins from any picture link; upload problems on the NPC's card; faces of NPC skins show (they were broken pictures) (mod 1.74.0)
+
 ## 1.62.0
 - Community → NPCs: every NPC as a card (skin with face, pose, hand, gear, walking path with waits, actions on a click and a hit, cooldown, reward shop, talking lines, hostile stats); saving keeps what was made in game meanwhile (mod 1.73.0)
 - Reward shops: the NPCs that open each shop instead of NPC spots

@@ -1156,3 +1156,5 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 /* NPCs: the wait at a path checkpoint */
 .pn-nc-wait { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; font-size: .85em; color: var(--muted); }
 .pn-nc-wait input { width: 4.5rem; }
+.pn-nc-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .9em; color: var(--muted); }
+.pn-nc-key input { width: 16rem; max-width: 60vw; }

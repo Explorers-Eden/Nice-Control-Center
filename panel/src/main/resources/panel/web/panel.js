@@ -2294,6 +2294,7 @@
       nc.equipment = d.equipment || {};
       nc.shops = d.shops || [];
       nc.poses = d.poses || [];
+      nc.keySet = !!d.mineskinKeySet;
       nc.dirty = false;
       nc.removed = { npcs: [], path: [] };
       renderNpcs();
@@ -2331,6 +2332,10 @@
     $('pn-nc-enabled').checked = s.enabled;
     $('pn-nc-enabled').disabled = !edit;
     $('pn-nc-add').disabled = !edit;
+    $('pn-nc-key').value = s.mineskinKey || '';
+    $('pn-nc-key').placeholder = nc.keySet && !nc.removed.mineskinKey ? 'saved (type a new one to replace it)' : 'for skins from picture links';
+    $('pn-nc-key').disabled = !edit;
+    $('pn-nc-key-clear').hidden = !nc.keySet || !!nc.removed.mineskinKey;
     const opt = (v, cur, label) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(label)}</option>`;
     $('pn-nc-list').innerHTML = s.npcs.map((n, i) => {
       const key = n.id || 'new' + i;
@@ -2358,7 +2363,7 @@
           ${field('Name (one word, for the commands and mob pools)', `<input type="text" data-n="name" value="${esc(n.name)}" maxlength="32">`)}
           ${field('Shown name (empty = no name tag)', `<input type="text" data-n="title" value="${esc(n.title)}" maxlength="64">`)}
           ${field('Line under the name (optional)', `<input type="text" data-n="description" value="${esc(n.description)}" maxlength="100" placeholder="e.g. Right-click me!">`)}
-          ${field('Skin: a player name, a textures.minecraft.net link, its hash, or the base64 value', `<span class="pn-gm-skin">${nc.skins[n.id] ? face : ''}<input type="text" data-n="skin" value="${esc(n.skin)}" placeholder="Notch"></span>`, true)}
+          ${field('Skin: a player name, a link to the skin picture (any site; uploaded through MineSkin), a textures.minecraft.net link or hash, or the base64 value', `<span class="pn-gm-skin">${nc.skins[n.id] ? face : ''}<input type="text" data-n="skin" value="${esc(n.skin)}" placeholder="Notch"></span>${n.skinError ? `<small class="pn-hint pn-warn"><i class="bi bi-exclamation-triangle"></i> ${esc(n.skinError)}</small>` : /^https?:\/\//i.test(n.skin || '') && !/textures\.minecraft\.net/i.test(n.skin) && n.skin !== n.skinSource ? '<small class="pn-hint">Uploading through MineSkin after saving (a few seconds, server running).</small>' : ''}`, true)}
           ${field('Pose', `<select data-n="pose">${nc.poses.map((p) => opt(p, n.pose, p.replace('_', ' '))).join('')}</select>`)}
           ${field('Main hand', `<select data-n="mainHand">${opt('right', n.mainHand, 'right')}${opt('left', n.mainHand, 'left')}</select>`)}
           ${field('Looks at players close by', `<select data-n="lookAtPlayers" data-bool="1">${opt(true, n.lookAtPlayers, 'yes')}${opt(false, n.lookAtPlayers, 'no')}</select>`)}
@@ -2437,6 +2442,8 @@
     }
   });
   $('pn-nc-enabled').addEventListener('change', (e) => { nc.settings.enabled = e.target.checked; ncChanged(false); });
+  $('pn-nc-key').addEventListener('input', (e) => { nc.settings.mineskinKey = e.target.value.trim(); delete nc.removed.mineskinKey; ncChanged(false); });
+  $('pn-nc-key-clear').addEventListener('click', () => { nc.removed.mineskinKey = ['1']; nc.settings.mineskinKey = ''; ncChanged(true); });
   $('pn-nc-add').addEventListener('click', () => {
     let name = 'npc';
     for (let k = 2; nc.settings.npcs.some((x) => x.name.toLowerCase() === name.toLowerCase()); k++) name = 'npc' + k;

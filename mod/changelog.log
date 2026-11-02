@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.74.0
+- NPC skins from any picture link (e.g. novaskin): uploaded once to Mojang through MineSkin (free API key, set on the NPCs page) and kept; /npc skin takes such links too; a failed upload says why on the NPC's card
+- Hostile NPCs show no name tag (it showed through walls); ones already out lose theirs
+- Games: axolotls really attack now (they keep their target in their brain, which the usual target finding never filled)
 ## 1.73.2
 - Fix: players were disconnected ("Network Protocol Error") when a hostile NPC attacked them on 26.3: the arm swing used the old animation packet, whose number now means "wake up"; it swings the way each version does now
 - Games: axolotls (and other mobs run by a brain with a bite of their own) attack players too: the player becomes their brain's target, so they fight like they do with fish

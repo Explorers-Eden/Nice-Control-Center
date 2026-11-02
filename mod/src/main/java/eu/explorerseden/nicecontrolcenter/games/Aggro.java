@@ -78,13 +78,24 @@ public final class Aggro {
 
 		@Override
 		public boolean canUse() {
-			return target(mob) != null;
+			return mob.tickCount % 20 == 0;
 		}
 
 		@Override
-		public void tick() {
-			LivingEntity t = target(mob);
-			if (t != null && mob.tickCount % 20 == 0) mob.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, t);
+		public boolean canContinueToUse() {
+			return false;
+		}
+
+		/**
+		 * Such mobs report their brain's target (getTarget), which the usual target goal never fills: the nearest player
+		 * in survival within 16 blocks becomes it.
+		 */
+		@Override
+		public void start() {
+			if (target(mob) != null) return;
+			Player p = mob.level().getNearestPlayer(mob.getX(), mob.getY(), mob.getZ(), 16,
+					e -> e instanceof Player pl && pl.isAlive() && !pl.isSpectator() && !pl.isCreative());
+			if (p != null) mob.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, (LivingEntity) p);
 		}
 	}
 

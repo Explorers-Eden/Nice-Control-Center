@@ -30,6 +30,8 @@ public final class Npcs {
 		public List<Npc> npcs = new ArrayList<>();
 		/** Reward shop NPCs were moved over (once). */
 		public boolean shopsMigrated = false;
+		/** For skins from any PNG link (mineskin.org, free); empty = none set. */
+		public String mineskinKey = "";
 
 		public Npc npc(String idOrName) {
 			if (idOrName == null) return null;
@@ -39,6 +41,8 @@ public final class Npcs {
 
 		public Settings fill() {
 			if (npcs == null) npcs = new ArrayList<>();
+			if (mineskinKey == null) mineskinKey = "";
+			mineskinKey = mineskinKey.strip();
 			npcs.removeIf(n -> n == null);
 			Set<String> ids = new HashSet<>();
 			for (Npc n : npcs) {
@@ -62,6 +66,10 @@ public final class Npcs {
 		public String description = "";
 		/** A player name, a textures.minecraft.net link or hash, or the base64 value; empty = the default look. */
 		public String skin = "";
+		/** A PNG link's skin as uploaded through MineSkin: its texture value, the link it was made from, or why it failed. */
+		public String skinValue = "";
+		public String skinSource = "";
+		public String skinError = "";
 		public String pose = "standing";
 		/** "right" or "left". */
 		public String mainHand = "right";
@@ -109,6 +117,9 @@ public final class Npcs {
 			if (description == null) description = "";
 			if (skin == null) skin = "";
 			skin = skin.strip();
+			if (skinValue == null) skinValue = "";
+			if (skinSource == null) skinSource = "";
+			if (skinError == null) skinError = "";
 			if (pose == null || !POSES.contains(pose)) pose = "standing";
 			if (!"left".equals(mainHand)) mainHand = "right";
 			if (equipment == null) equipment = new ArrayList<>();
@@ -140,6 +151,11 @@ public final class Npcs {
 			hostile.armor = Math.max(0, Math.min(30, hostile.armor));
 			hostile.followRange = Math.max(8, Math.min(64, hostile.followRange));
 		}
+	}
+
+	/** A link to a picture somewhere other than Mojang's skin server (uploaded through MineSkin). */
+	public static boolean pictureLink(String skin) {
+		return skin != null && skin.matches("(?i)https?://\\S+") && !skin.matches("(?i)https?://textures\\.minecraft\\.net/.*");
 	}
 
 	public static final class Checkpoint {

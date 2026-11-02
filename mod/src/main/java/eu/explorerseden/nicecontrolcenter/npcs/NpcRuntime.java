@@ -314,7 +314,7 @@ public final class NpcRuntime {
 
 	/** What the placed NPC looks like and where: made again when it changes. */
 	private static String looks(Npc n) {
-		return Integer.toHexString((n.skin + "|" + n.shown() + "|" + n.description + "|" + n.pose + "|" + n.mainHand + "|" + n.equipment + "|" + n.walks() + "|"
+		return Integer.toHexString((n.skin + "|" + n.skinValue + "|" + n.shown() + "|" + n.description + "|" + n.pose + "|" + n.mainHand + "|" + n.equipment + "|" + n.walks() + "|"
 				+ (n.spot == null ? "" : n.spot.dim + "|" + Math.round(n.spot.x * 2) + "|" + Math.round(n.spot.y * 2) + "|" + Math.round(n.spot.z * 2) + "|" + n.spot.yaw))
 				.hashCode());
 	}
@@ -348,6 +348,7 @@ public final class NpcRuntime {
 			}
 		}
 		placed.keySet().removeIf(id -> settings.npc(id) == null);
+		uploadSkins(server);
 		if (!settings.enabled) return;
 		for (Npc n : settings.npcs) {
 			if (n.spot == null) continue;
@@ -367,6 +368,45 @@ public final class NpcRuntime {
 			ServerLevel level = eu.explorerseden.nicecontrolcenter.games.GameRuntime.levelOf(server, n.spot.dim);
 			if (level == null || !level.isPositionEntityTicking(BlockPos.containing(n.spot.x, n.spot.y, n.spot.z))) continue;
 			summonPlaced(level, n, st);
+		}
+	}
+
+	/** NPC ids whose picture link is being uploaded. */
+	private static final java.util.Set<String> uploading = new java.util.HashSet<>();
+
+	/** Picture links not uploaded yet go through MineSkin (once per link; a failed one waits for a new link or key). */
+	private static void uploadSkins(MinecraftServer server) {
+		for (Npc n : settings.npcs) {
+			if (!Npcs.pictureLink(n.skin) || n.skin.equals(n.skinSource) || uploading.contains(n.id)) continue;
+			String id = n.id, link = n.skin, key = settings.mineskinKey;
+			if (key.isBlank()) {
+				if (!n.skinError.startsWith("Set a MineSkin")) {
+					n.skinError = "Set a MineSkin API key (NPCs page) to use picture links.";
+					save();
+				}
+				continue;
+			}
+			if (n.skinError.endsWith("[" + key.hashCode() + "|" + link.hashCode() + "]")) continue;
+			uploading.add(id);
+			NiceControlCenter.LOGGER.info("NPCs: uploading the skin of {} through MineSkin", n.name);
+			MineSkin.upload(link, key).whenComplete((value, error) -> server.execute(() -> {
+				uploading.remove(id);
+				Npc now = settings.npc(id);
+				if (now == null || !link.equals(now.skin)) return;
+				if (error == null) {
+					now.skinValue = value;
+					now.skinSource = link;
+					now.skinError = "";
+					NiceControlCenter.LOGGER.info("NPCs: skin of {} uploaded", now.name);
+				} else {
+					String why = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
+					// Remembers what failed, so it isn't tried again until the link or the key changes.
+					now.skinError = "MineSkin: " + why + " [" + key.hashCode() + "|" + link.hashCode() + "]";
+					NiceControlCenter.LOGGER.warn("NPCs: the skin of {} could not be uploaded: {}", now.name, why);
+				}
+				save();
+				keep(server);
+			}));
 		}
 	}
 
@@ -553,6 +593,10 @@ public final class NpcRuntime {
 			b.setYBodyRot(d.yBodyRot);
 			b.setDeltaMovement(Vec3.ZERO);
 			b.clearFire();
+			if (b.isCustomNameVisible() && b.entityTags().contains(HOSTILE)) {
+				b.setCustomNameVisible(false);
+				b.setCustomName(null);
+			}
 			if (d.isUsingItem() && !b.isUsingItem()) b.startUsingItem(d.getUsedItemHand());
 			else if (!d.isUsingItem() && b.isUsingItem()) b.stopUsingItem();
 		}
@@ -629,11 +673,12 @@ public final class NpcRuntime {
 		for (int i = 0; i < tags.size(); i++) nbt.append(i == 0 ? "" : ",").append(Json.GSON.toJson(tags.get(i)));
 		nbt.append("],immovable:1b,NoGravity:1b,Silent:1b,PersistenceRequired:1b");
 		if (invulnerable) nbt.append(",Invulnerable:1b");
-		if (!n.title.isBlank()) nbt.append(",CustomNameVisible:1b,CustomName:").append(Json.GSON.toJson(n.shown()));
+		// Hostiles have no name tag: it shows through walls.
+		if (!n.title.isBlank() && !hostile) nbt.append(",CustomNameVisible:1b,CustomName:").append(Json.GSON.toJson(n.shown()));
 		if (!n.description.isBlank() && !hostile) nbt.append(",description:").append(Json.GSON.toJson(n.description));
 		else nbt.append(",hide_description:1b");
 		nbt.append(",pose:\"").append(n.pose).append("\",main_hand:\"").append(n.mainHand).append("\"");
-		String profile = profile(n.skin);
+		String profile = profile(n);
 		if (profile != null) nbt.append(",profile:").append(profile);
 		nbt.append("}");
 		LivingEntity e = (LivingEntity) load(level, "minecraft:mannequin", nbt.toString());
@@ -671,7 +716,14 @@ public final class NpcRuntime {
 		}
 	}
 
-	/** The mannequin's profile: a player name (their skin, kept up to date by the game), or a texture value. */
+	/** The mannequin's profile: a picture link's uploaded skin, a player name (their skin), or a texture value. */
+	private static String profile(Npc n) {
+		if (Npcs.pictureLink(n.skin)) {
+			return !n.skinValue.isBlank() && n.skin.equals(n.skinSource) ? "{properties:[{name:\"textures\",value:\"" + n.skinValue + "\"}]}" : null;
+		}
+		return profile(n.skin);
+	}
+
 	private static String profile(String skin) {
 		if (skin == null || skin.isBlank()) return null;
 		String texture = Pets.texture(skin);
@@ -831,8 +883,14 @@ public final class NpcRuntime {
 					Npc n = npc(ctx);
 					if (n == null) return fail(ctx, "There's no such NPC.");
 					String s = StringArgumentType.getString(ctx, "skin").strip();
-					if (profile(s) == null) return fail(ctx, "Use a player name, a textures.minecraft.net link, its hash, or the base64 value.");
+					if (profile(s) == null && !Npcs.pictureLink(s)) return fail(ctx, "Use a player name, a link to the skin picture, a textures.minecraft.net hash, or the base64 value.");
 					n.skin = s;
+					if (Npcs.pictureLink(s)) {
+						if (settings.mineskinKey.isBlank()) return fail(ctx, "Picture links need a MineSkin API key (free at mineskin.org): set it on the NPCs page first.");
+						saved(ctx, n.name + ": uploading the picture through MineSkin; it shows in a few seconds.");
+						uploadSkins(ctx.getSource().getServer());
+						return 1;
+					}
 					return saved(ctx, n.name + ": skin set.");
 				}))))
 				.then(Commands.literal("pose").then(npcArg.get().then(Commands.argument("pose", StringArgumentType.word())

@@ -39,8 +39,14 @@ final class NpcRoutes {
 			out.put("settings", s);
 			Map<String, String> skins = new LinkedHashMap<>();
 			Map<String, Object> gear = new LinkedHashMap<>();
+			boolean keySet = !s.mineskinKey.isBlank();
+			s.mineskinKey = "";
+			out.put("mineskinKeySet", keySet);
 			for (Npcs.Npc n : s.npcs) {
 				String hash = Pets.skinHash(Pets.texture(n.skin));
+				if (hash == null && Npcs.pictureLink(n.skin) && n.skin.equals(n.skinSource)) hash = Pets.skinHash(n.skinValue);
+				// The marker after a failed upload is only for the mod.
+				n.skinError = n.skinError.replaceAll("\\s*\\[[^\\]]*\\]$", "");
 				if (hash != null) skins.put(n.id, hash);
 				if (!n.equipment.isEmpty()) gear.put(n.id, ClaimService.kitItems(n.equipment, icons));
 			}
@@ -72,6 +78,9 @@ final class NpcRoutes {
 			for (Npcs.Npc n : next.npcs) {
 				Npcs.Npc was = now.npcs.stream().filter(x -> x.id.equals(n.id)).findFirst().orElse(null);
 				if (was == null) {
+					n.skinValue = "";
+					n.skinSource = "";
+					n.skinError = "";
 					n.spot = null;
 					n.equipment = new ArrayList<>();
 					n.path = new ArrayList<>();
@@ -79,6 +88,10 @@ final class NpcRoutes {
 				}
 				n.spot = was.spot;
 				n.equipment = was.equipment;
+				// Uploaded through MineSkin by the mod.
+				n.skinValue = was.skinValue;
+				n.skinSource = was.skinSource;
+				n.skinError = was.skinError;
 				List<Npcs.Checkpoint> path = new ArrayList<>();
 				for (Npcs.Checkpoint c : was.path) {
 					if (gonePath.contains(Removed.spot(n.id, "path", c.pos))) continue;
@@ -93,6 +106,8 @@ final class NpcRoutes {
 				if (!goneNpcs.contains(was.id) && next.npcs.stream().noneMatch(x -> x.id.equals(was.id))) next.npcs.add(was);
 			}
 			next.shopsMigrated = now.shopsMigrated;
+			// The key is never sent to the page: empty keeps it, a new one replaces it, "removed" clears it.
+			if (removed.of("mineskinKey").isEmpty() && next.mineskinKey.isBlank()) next.mineskinKey = now.mineskinKey;
 			problem = Npcs.validate(next);
 			if (problem != null) {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);

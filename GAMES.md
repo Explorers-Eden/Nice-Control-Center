@@ -116,6 +116,8 @@ dungeon dimension.
 
 ## NPCs
 Panel: Community → NPCs; in game `/npc`.
+- Skins: a player name, a textures.minecraft.net link, or a link to any skin picture (e.g. novaskin): those are
+  uploaded through MineSkin once, which needs a free API key from mineskin.org (NPCs page, top).
 - `/npc create <name>` where it should stand (facing your way), or `/npc adopt <name>` next to a mannequin you made
   before (keeps skin, pose, name, equipment). `/npc skin <name> <player name|link|base64>`, `/npc pose`, `/npc equip`
   (what you wear and hold), `/npc move`, `/npc remove`, `/npc list`.

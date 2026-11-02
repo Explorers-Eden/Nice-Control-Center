@@ -245,6 +245,13 @@ final class PetsService {
 	}
 
 	/** A reward shop's NPC skin or a reward's head icon (Points): its face may be shown in the panel. */
+	/** NPC skins (the textures given, or a picture link's uploaded skin). */
+	private boolean isNpcSkin(String hash) {
+		var s = eu.explorerseden.nicecontrolcenter.Npcs.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Npcs.FILE));
+		for (var n : s.npcs) if (hash.equals(Pets.skinHash(Pets.texture(n.skin))) || hash.equals(Pets.skinHash(n.skinValue))) return true;
+		return false;
+	}
+
 	private boolean isShopSkin(String hash) {
 		eu.explorerseden.nicecontrolcenter.Points.Settings s = eu.explorerseden.nicecontrolcenter.Points.read(serverDir.resolve("config").resolve(eu.explorerseden.nicecontrolcenter.Points.FILE));
 		for (eu.explorerseden.nicecontrolcenter.Points.Shop shop : s.shops) {
@@ -374,7 +381,7 @@ final class PetsService {
 			WaypointHubs hubs = waypointHubs;
 			MarketService shop = market;
 			boolean known = settings().pets.stream().anyMatch(p -> hash.equals(Pets.skinHash(p.texture))) || hubs != null && hubs.isOwnerHead(hash)
-					|| shop != null && shop.isOfferHead(hash) || isHuntHead(hash) || isShopSkin(hash);
+					|| shop != null && shop.isOfferHead(hash) || isHuntHead(hash) || isShopSkin(hash) || isNpcSkin(hash);
 			Path f = known ? head(hash) : null;
 			if (f == null) {
 				ctx.status(HttpStatus.NOT_FOUND);
