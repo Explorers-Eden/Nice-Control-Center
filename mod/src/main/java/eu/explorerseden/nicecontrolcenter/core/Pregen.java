@@ -84,6 +84,9 @@ public final class Pregen {
 		volatile String lodStatus;
 		volatile long total = -1;
 		volatile boolean pausedForPlayers;
+		/** Held while the heap stays nearly full after collections (Distant Horizons' LOD saves falling behind). */
+		volatile boolean pausedForMemory;
+		long memoryCheckAt;
 		// Where a restart picks up: the ring being worked on and what was done before it.
 		volatile int ringStart;
 		volatile long doneAtRing;
@@ -202,6 +205,10 @@ public final class Pregen {
 					LockSupport.parkNanos(1_000_000_000L);
 					continue;
 				}
+				if (memoryHeld()) {
+					LockSupport.parkNanos(1_000_000_000L);
+					continue;
+				}
 				// Room left in the tick: back off when the server is busy.
 				float mspt = server.getCurrentSmoothedTickTime();
 				int budget = mspt > 45 ? 0 : mspt > 35 ? 2 : mspt > 25 ? 6 : MAX_IN_FLIGHT;
@@ -227,6 +234,27 @@ public final class Pregen {
 				return;
 			}
 			finished(this, cancelled ? stopReason : "finished");
+		}
+
+		/**
+		 * Distant Horizons keeps the LOD data of every chunk loaded in memory until it's written; when chunks
+		 * come in faster than it writes, that grows until the heap is full (both overloads on 2026-11-02:
+		 * ~9.5 of 13 GB were its save queue). Waits above 80 % live heap until it's down to 65 %.
+		 */
+		private boolean memoryHeld() {
+			long now = System.currentTimeMillis();
+			if (now < memoryCheckAt) return pausedForMemory;
+			memoryCheckAt = now + 2_000;
+			double share = SystemMetrics.liveHeapShare();
+			if (!pausedForMemory && share > 0.80) {
+				pausedForMemory = true;
+				NiceControlCenter.LOGGER.warn("Pregen: paused, the heap is {} % full after collections; waiting for it to drop (Distant Horizons saving)",
+						Math.round(share * 100));
+			} else if (pausedForMemory && share < 0.65) {
+				pausedForMemory = false;
+				NiceControlCenter.LOGGER.info("Pregen: memory back to {} %, carrying on", Math.round(share * 100));
+			}
+			return pausedForMemory;
 		}
 
 		volatile String lodResult = "finished";
@@ -549,6 +577,7 @@ public final class Pregen {
 		out.put("shape", j.circle ? "circle" : "square");
 		out.put("players", j.players);
 		if (j.pausedForPlayers) out.put("paused", "players online");
+		else if (j.pausedForMemory) out.put("paused", "memory nearly full");
 		out.put("done", done + skipped);
 		out.put("failed", skipped);
 		out.put("total", total);

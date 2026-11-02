@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.70.1
+- Pregen: pauses while the heap stays over 80 % full after collections and carries on below 65 %. Both overloads on 2026-11-02 were Distant Horizons holding the LOD data of freshly generated chunks until it could write them (about 9.5 of 13 GB), so chunks came in faster than DH could save
 ## 1.70.0
 - Claims: every block a player places needs building rights where it lands (glow berries and other blocks could be placed next to a block the player was only allowed to use, like cave vines, a flower pot or a composter)
 - Per-dimension tuning: "No pet perks" (pets still follow, their perks do nothing); always on in the dungeon dimension and in the Flying Fair preset

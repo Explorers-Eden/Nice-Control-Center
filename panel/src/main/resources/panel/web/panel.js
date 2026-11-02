@@ -1075,7 +1075,7 @@
       || String(st.dimension || '').replace(/^minecraft:/, '').replace(/^[^:]*:/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     const pct = st.total ? Math.floor(st.done / st.total * 100) : 0;
     const eta = !st.paused && st.phase !== 'lods' && !st.counting && st.etaSeconds > 0 ? ' · ' + duration(st.etaSeconds * 1000) : '';
-    const status = (st.paused ? 'paused' : st.phase === 'lods' ? 'LODs' : st.counting ? 'counting…' : pct + '%') + eta;
+    const status = (st.paused ? 'paused (' + st.paused + ')' : st.phase === 'lods' ? 'LODs' : st.counting ? 'counting…' : pct + '%') + eta;
     const html = `<i class="bi bi-grid-3x3-gap"></i><b>${esc(dim)}:</b><span>${esc(status)}</span>`;
     if (pill.dataset.html !== html) { pill.innerHTML = html; pill.dataset.html = html; }
     pill.title = (st.phase === 'lods' ? `Pregenerating Distant Horizons LODs in ${dim}: ${st.lodStatus || 'working…'}` : `Pregenerating ${dim}: ${(st.done || 0).toLocaleString()} of ${(st.total || 0).toLocaleString()} chunks`)

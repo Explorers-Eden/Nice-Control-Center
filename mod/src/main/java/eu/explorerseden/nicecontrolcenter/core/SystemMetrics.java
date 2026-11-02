@@ -29,6 +29,26 @@ public final class SystemMetrics {
 	private SystemMetrics() {
 	}
 
+	/**
+	 * Share of the maximum heap still in use after the last collection (0..1), and the current use when
+	 * that is lower (garbage included, so a low current use proves the live part is low too). Any thread.
+	 */
+	public static double liveHeapShare() {
+		Runtime runtime = Runtime.getRuntime();
+		long max = runtime.maxMemory();
+		if (max <= 0 || max == Long.MAX_VALUE) return 0;
+		long used = runtime.totalMemory() - runtime.freeMemory();
+		long live = 0;
+		for (MemoryPoolMXBean pool : POOLS) {
+			if (pool.getType() == MemoryType.HEAP && pool.isCollectionUsageThresholdSupported()) {
+				MemoryUsage afterGc = pool.getCollectionUsage();
+				if (afterGc != null) live += afterGc.getUsed();
+			}
+		}
+		if (live <= 0 || used < live) live = used;
+		return live / (double) max;
+	}
+
 	/** Reads current values; GC numbers are the change since the previous call. */
 	public static Sample sample() {
 		double cpuProcess = 0;

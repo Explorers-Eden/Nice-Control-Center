@@ -1,3 +1,6 @@
+## 1.60.1
+- Pregen card: says why it's paused (players online, memory nearly full) (mod 1.70.1)
+
 ## 1.60.0
 - Performance → per-dimension tuning: "No pet perks" column (in the Flying Fair preset); Games: colour floor platforms wool or concrete; winner commands on quick rounds (mod 1.70.0)
 
