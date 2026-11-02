@@ -162,7 +162,7 @@ public final class QuickRuntime {
 			Round r = playing.get(p.getUUID());
 			if (r == null || !r.arena.type.equals("ghasts") || !entity.entityTags().contains(r.tag())) return;
 			long n = r.score.merge(p.getUUID(), 1L, Long::sum);
-			p.sendOverlayMessage(Component.literal("+1 ghast · " + n).withStyle(ChatFormatting.GOLD));
+			p.sendOverlayMessage(Words.lit("+1 ghast · " + n).withStyle(ChatFormatting.GOLD));
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.6f);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -229,7 +229,7 @@ public final class QuickRuntime {
 		}
 		for (Round on : rounds.values()) {
 			if (on.next.remove(p.getUUID())) {
-				p.sendSystemMessage(Component.literal("You left the queue for " + on.arena.shown() + ".").withStyle(ChatFormatting.GRAY));
+				p.sendSystemMessage(Words.lit("You left the queue for " + on.arena.shown() + ".").withStyle(ChatFormatting.GRAY));
 				return true;
 			}
 		}
@@ -237,7 +237,7 @@ public final class QuickRuntime {
 			if (lobby.state == State.LOBBY && lobby.players.remove(p.getUUID())) {
 				lobby.names.remove(p.getUUID());
 				cooldown.put(p.getUUID(), System.currentTimeMillis() + 5000);
-				p.sendSystemMessage(Component.literal("You left the queue for " + lobby.arena.shown() + ".").withStyle(ChatFormatting.GRAY));
+				p.sendSystemMessage(Words.lit("You left the queue for " + lobby.arena.shown() + ".").withStyle(ChatFormatting.GRAY));
 				return true;
 			}
 		}
@@ -283,9 +283,9 @@ public final class QuickRuntime {
 				if (a.spectate != null && !r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && toSpectate(server, a, p)) {
 					r.next.add(p.getUUID());
 					r.names.putIfAbsent(p.getUUID(), p.getGameProfile().name());
-					p.sendSystemMessage(Component.literal("A round of " + a.shown() + " is on: you're in the queue for the next one (" + r.next.size() + "). Wait here; walking away leaves the queue.").withStyle(ChatFormatting.GOLD));
+					p.sendSystemMessage(Words.lit("A round of " + a.shown() + " is on: you're in the queue for the next one (" + r.next.size() + "). Wait here; walking away leaves the queue.").withStyle(ChatFormatting.GOLD));
 				} else if (server.getTickCount() % 40 == 0) {
-					p.sendOverlayMessage(Component.literal("A round of " + a.shown() + " is on; the next one starts after it").withStyle(ChatFormatting.GRAY));
+					p.sendOverlayMessage(Words.lit("A round of " + a.shown() + " is on; the next one starts after it").withStyle(ChatFormatting.GRAY));
 				}
 				continue;
 			}
@@ -293,7 +293,7 @@ public final class QuickRuntime {
 			if (r == null) {
 				String err = check(server, a);
 				if (err != null) {
-					if (server.getTickCount() % 40 == 0) p.sendOverlayMessage(Component.literal(a.shown() + " isn't set up yet").withStyle(ChatFormatting.RED));
+					if (server.getTickCount() % 40 == 0) p.sendOverlayMessage(Words.lit(a.shown() + " isn't set up yet").withStyle(ChatFormatting.RED));
 					continue;
 				}
 				r = new Round(a);
@@ -301,14 +301,14 @@ public final class QuickRuntime {
 				rounds.put(a.id, r);
 			}
 			if (r.players.size() >= a.maxPlayers) {
-				if (server.getTickCount() % 40 == 0) p.sendOverlayMessage(Component.literal(a.shown() + " is full (" + a.maxPlayers + "); the next round starts after it").withStyle(ChatFormatting.RED));
+				if (server.getTickCount() % 40 == 0) p.sendOverlayMessage(Words.lit(a.shown() + " is full (" + a.maxPlayers + "); the next round starts after it").withStyle(ChatFormatting.RED));
 				continue;
 			}
 			r.players.add(p.getUUID());
 			r.names.put(p.getUUID(), p.getGameProfile().name());
 			p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 0.8f, 1.4f);
 			long left = Math.max(0, (r.startsAt - now) / 1000);
-			p.sendSystemMessage(Component.literal("▶ You're in the next round of " + a.shown() + (left > 0 ? ": it starts in " + left + " s. Others can step on the pad to join." : ".")).withStyle(ChatFormatting.GREEN));
+			p.sendSystemMessage(Words.lit("▶ You're in the next round of " + a.shown() + (left > 0 ? ": it starts in " + left + " s. Others can step on the pad to join." : ".")).withStyle(ChatFormatting.GREEN));
 		}
 	}
 
@@ -338,7 +338,7 @@ public final class QuickRuntime {
 			onExit.remove(p.getUUID());
 			out(server, r, p, "You left " + r.arena.shown() + " early.", false);
 		} else if (ticks % 20 == 2) {
-			p.sendOverlayMessage(Component.literal("Leaving " + r.arena.shown() + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
+			p.sendOverlayMessage(Words.lit("Leaving " + r.arena.shown() + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
 		}
 	}
 
@@ -376,7 +376,7 @@ public final class QuickRuntime {
 		}
 		if (err != null || level == null || going.isEmpty()) {
 			rounds.remove(a.id);
-			for (ServerPlayer p : going) p.sendSystemMessage(Component.literal(err != null ? err : "Nobody was left on the pad.").withStyle(ChatFormatting.RED));
+			for (ServerPlayer p : going) p.sendSystemMessage(Words.lit(err != null ? err : "Nobody was left on the pad.").withStyle(ChatFormatting.RED));
 			return;
 		}
 		r.state = State.PLAYING;
@@ -400,9 +400,9 @@ public final class QuickRuntime {
 			p.teleportTo(level, spawn.x + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), spawn.y, spawn.z + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), Set.of(), spawn.yaw, 0, true);
 			p.resetFallDistance();
 			GameClaims.gameMode(p, false);
-			p.connection.send(new ClientboundSetTitleTextPacket(Component.literal(a.shown()).withStyle(st -> st.withColor(a.rgb()))));
-			p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(goal(a)).withStyle(ChatFormatting.GRAY)));
-			p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
+			p.connection.send(new ClientboundSetTitleTextPacket(Words.lit(a.shown()).withStyle(st -> st.withColor(a.rgb()))));
+			p.connection.send(new ClientboundSetSubtitleTextPacket(Words.lit(goal(a)).withStyle(ChatFormatting.GRAY)));
+			p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");
 		}
 		level.playSound(null, spawn.x, spawn.y, spawn.z, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 1f, 2f);
@@ -442,7 +442,7 @@ public final class QuickRuntime {
 			r.players.removeIf(id -> {
 				ServerPlayer p = server.getPlayerList().getPlayer(id);
 				boolean gone = p == null || !nearPad(a, p);
-				if (gone && p != null) p.sendSystemMessage(Component.literal("You walked away from " + a.shown() + ": not in the next round.").withStyle(ChatFormatting.GRAY));
+				if (gone && p != null) p.sendSystemMessage(Words.lit("You walked away from " + a.shown() + ": not in the next round.").withStyle(ChatFormatting.GRAY));
 				return gone;
 			});
 			if (r.players.isEmpty()) {
@@ -451,7 +451,7 @@ public final class QuickRuntime {
 				return;
 			}
 			long left = r.startsAt - now;
-			bar(server, r, Component.literal(a.shown() + " · starts in " + (left / 1000 + 1) + " s · " + r.players.size() + "/" + a.maxPlayers),
+			bar(server, r, Words.lit(a.shown() + " · starts in " + (left / 1000 + 1) + " s · " + r.players.size() + "/" + a.maxPlayers),
 					a.joinSeconds == 0 ? 1f : left / (a.joinSeconds * 1000f), BossEvent.BossBarColor.YELLOW);
 			if (left <= 0) start(server, r);
 			return;
@@ -466,8 +466,8 @@ public final class QuickRuntime {
 		r.next.removeIf(id -> {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			boolean gone = p == null || a.spectate == null || !inSpectate(a, p, 3);
-			if (gone && p != null) p.sendSystemMessage(Component.literal("You left the spectator area: out of the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
-			if (!gone && server.getTickCount() % 40 == 0) p.sendOverlayMessage(Component.literal(a.shown() + ": you're next (" + (r.next.indexOf(id) + 1) + " in the queue)").withStyle(ChatFormatting.GOLD));
+			if (gone && p != null) p.sendSystemMessage(Words.lit("You left the spectator area: out of the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
+			if (!gone && server.getTickCount() % 40 == 0) p.sendOverlayMessage(Words.lit(a.shown() + ": you're next (" + (r.next.indexOf(id) + 1) + " in the queue)").withStyle(ChatFormatting.GOLD));
 			return gone;
 		});
 		boolean survival = survival(a);
@@ -489,7 +489,7 @@ public final class QuickRuntime {
 				}
 				Games.Pos s = spawnOf(a);
 				p.teleportTo(level, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);
-				p.sendOverlayMessage(Component.literal("Stay in the arena (exit pads or /game leave take you out)").withStyle(ChatFormatting.RED));
+				p.sendOverlayMessage(Words.lit("Stay in the arena (exit pads or /game leave take you out)").withStyle(ChatFormatting.RED));
 			}
 		}
 		alive = alive(server, r);
@@ -539,14 +539,14 @@ public final class QuickRuntime {
 		String time = a.timeLimit > 0 ? GameRuntime.clock(Math.max(0, a.timeLimit * 1000L - r.elapsed())).replaceAll("\\.\\d$", "") + " left" : GameRuntime.clock(r.elapsed()).replaceAll("\\.\\d$", "");
 		float progress = a.timeLimit > 0 ? 1f - r.elapsed() / (a.timeLimit * 1000f) : 1f;
 		if (!a.type.equals("colorfloor") || r.called < 0) {
-			bar(server, r, Component.literal(time + " · " + alive.size() + (alive.size() == 1 ? " player" : " players")), progress, BossEvent.BossBarColor.BLUE);
+			bar(server, r, Words.lit(time + " · " + alive.size() + (alive.size() == 1 ? " player" : " players")), progress, BossEvent.BossBarColor.BLUE);
 		}
 		long now = System.currentTimeMillis();
 		for (ServerPlayer p : alive) {
 			if (r.holdBar.getOrDefault(p.getUUID(), 0L) > now) continue;
 			long mine = r.score.getOrDefault(p.getUUID(), 0L);
 			String leader = alive.size() > 1 && lead != null && !lead.equals(p.getUUID()) ? " · leader " + r.names.get(lead) + " " + r.score.getOrDefault(lead, 0L) : "";
-			p.sendOverlayMessage(Component.literal(Games.scoreText(a.type, mine, GameRuntime::clock) + leader).withStyle(ChatFormatting.AQUA));
+			p.sendOverlayMessage(Words.lit(Games.scoreText(a.type, mine, GameRuntime::clock) + leader).withStyle(ChatFormatting.AQUA));
 		}
 	}
 
@@ -685,8 +685,8 @@ public final class QuickRuntime {
 			r.vanished = 0;
 			r.nextCallAt = now + 1500;
 			for (ServerPlayer p : alive) {
-				p.connection.send(new ClientboundSetTitleTextPacket(Component.literal("Faster!").withStyle(ChatFormatting.RED)));
-				p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(String.format(Locale.ROOT, "%.1f s a colour", r.seconds)).withStyle(ChatFormatting.GRAY)));
+				p.connection.send(new ClientboundSetTitleTextPacket(Words.lit("Faster!").withStyle(ChatFormatting.RED)));
+				p.connection.send(new ClientboundSetSubtitleTextPacket(Words.lit(String.format(Locale.ROOT, "%.1f s a colour", r.seconds)).withStyle(ChatFormatting.GRAY)));
 			}
 			level.playSound(null, platform(a, 4), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1f, 1.2f);
 			return;
@@ -706,12 +706,12 @@ public final class QuickRuntime {
 			Component name = colourName(a, r.called);
 			for (ServerPlayer p : alive) {
 				p.connection.send(new ClientboundSetTitleTextPacket(name));
-				p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("vanishes in " + String.format(Locale.ROOT, "%.0f", Math.ceil(r.seconds)) + " s · get off it!").withStyle(ChatFormatting.GRAY)));
+				p.connection.send(new ClientboundSetSubtitleTextPacket(Words.lit("vanishes in " + String.format(Locale.ROOT, "%.0f", Math.ceil(r.seconds)) + " s · get off it!").withStyle(ChatFormatting.GRAY)));
 			}
 			level.playSound(null, platform(a, 4), SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 1f, 1f);
 		}
 		long left = r.callAt - now;
-		bar(server, r, Component.empty().append(colourName(a, r.called)).append(Component.literal(" · " + String.format(Locale.ROOT, "%.1f", Math.max(0, left) / 1000.0) + " s").withStyle(ChatFormatting.WHITE)),
+		bar(server, r, Component.empty().append(colourName(a, r.called)).append(Words.lit(" · " + String.format(Locale.ROOT, "%.1f", Math.max(0, left) / 1000.0) + " s").withStyle(ChatFormatting.WHITE)),
 				Math.max(0f, left / (float) (r.seconds * 1000)), BossEvent.BossBarColor.RED);
 		if (left > 0) {
 			if (left < 1500 && server.getTickCount() % 6 == 0) level.playSound(null, platform(a, 4), SoundEvents.NOTE_BLOCK_HAT.value(), SoundSource.PLAYERS, 0.8f, 1.6f);
@@ -838,7 +838,7 @@ public final class QuickRuntime {
 			for (ServerPlayer p : alive) {
 				if (p.distanceToSqr(item) > 1.8 * 1.8) continue;
 				long n = r.score.merge(p.getUUID(), (long) e.getValue(), Long::sum);
-				p.sendOverlayMessage(Component.literal("+" + e.getValue() + " · " + n + (n == 1 ? " point" : " points")).withStyle(ChatFormatting.GOLD));
+				p.sendOverlayMessage(Words.lit("+" + e.getValue() + " · " + n + (n == 1 ? " point" : " points")).withStyle(ChatFormatting.GOLD));
 				level.playSound(null, p.blockPosition(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.8f, 1.2f + e.getValue() * 0.05f);
 				level.sendParticles(ParticleTypes.HAPPY_VILLAGER, item.getX(), item.getY() + 0.3, item.getZ(), 8, 0.3, 0.3, 0.3, 0);
 				item.discard();
@@ -920,7 +920,7 @@ public final class QuickRuntime {
 			}
 		}
 		r.holdBar.put(p.getUUID(), System.currentTimeMillis() + 2_500);
-		p.sendOverlayMessage(Component.literal(String.join(", ", what) + ": +" + points + " · " + n + (n == 1 ? " point" : " points")).withStyle(points > 0 ? ChatFormatting.GOLD : ChatFormatting.GRAY));
+		p.sendOverlayMessage(Words.lit(String.join(", ", what) + ": +" + points + " · " + n + (n == 1 ? " point" : " points")).withStyle(points > 0 ? ChatFormatting.GOLD : ChatFormatting.GRAY));
 		p.level().playSound(null, p.blockPosition(), points >= r.arena.treasurePoints && points > 0 ? SoundEvents.PLAYER_LEVELUP : SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.7f, 1.2f);
 		return true;
 	}
@@ -990,16 +990,16 @@ public final class QuickRuntime {
 		if (r.bar != null) r.bar.removePlayer(p);
 		if (counts) {
 			r.counted.add(id);
-			if (why != null) p.sendSystemMessage(Component.literal(why + " " + Games.scoreText(r.arena.type, r.score.getOrDefault(id, 0L), GameRuntime::clock) + ".").withStyle(ChatFormatting.YELLOW));
+			if (why != null) p.sendSystemMessage(Words.lit(why + " " + Games.scoreText(r.arena.type, r.score.getOrDefault(id, 0L), GameRuntime::clock) + ".").withStyle(ChatFormatting.YELLOW));
 			result(server, r, p);
 		} else if (why != null) {
-			p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
+			p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
 		}
 		finishFor(server, r.arena, p);
 		// Out but not gone: they watch the rest of the round from the spectator area.
 		if (counts && r.state == State.PLAYING && r.arena.spectate != null && toSpectate(server, r.arena, p)) {
 			r.watching.add(id);
-			p.sendSystemMessage(Component.literal("Watch the rest of the round from here.").withStyle(ChatFormatting.GRAY));
+			p.sendSystemMessage(Words.lit("Watch the rest of the round from here.").withStyle(ChatFormatting.GRAY));
 		}
 		if (r.state == State.PLAYING && r.players.stream().noneMatch(r::in)) end(server, r, null);
 	}
@@ -1011,8 +1011,8 @@ public final class QuickRuntime {
 		if (score <= 0) return;
 		boolean record = GameRuntime.recordScore(a, p, score);
 		String shown = Games.scoreText(a.type, score, GameRuntime::clock);
-		if (record) p.sendSystemMessage(Component.literal("New personal best in " + a.shown() + ": " + shown + "!").withStyle(ChatFormatting.GOLD));
-		if (!a.finishMessage.isBlank()) p.sendSystemMessage(Component.literal(fill(a.finishMessage, a, p, String.valueOf(score))).withStyle(ChatFormatting.YELLOW));
+		if (record) p.sendSystemMessage(Words.lit("New personal best in " + a.shown() + ": " + shown + "!").withStyle(ChatFormatting.GOLD));
+		if (!a.finishMessage.isBlank()) p.sendSystemMessage(Words.lit(fill(a.finishMessage, a, p, String.valueOf(score))).withStyle(ChatFormatting.YELLOW));
 		commands(server, a.finishCommands, a, p, String.valueOf(score));
 		RewardsControl.fireGame(server, "gameFinished", p, a.name, score, false);
 		GameRuntime.points(p, a, score, false);
@@ -1043,10 +1043,10 @@ public final class QuickRuntime {
 			// Survival rounds: whoever is left won it.
 			if (survival(a) && r.startedWith > 1 && still.size() == 1) {
 				ServerPlayer w = still.get(0);
-				w.connection.send(new ClientboundSetTitleTextPacket(Component.literal("You win!").withStyle(ChatFormatting.GOLD)));
+				w.connection.send(new ClientboundSetTitleTextPacket(Words.lit("You win!").withStyle(ChatFormatting.GOLD)));
 			}
 			for (ServerPlayer p : still) {
-				if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.YELLOW));
+				if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.YELLOW));
 				r.out.add(p.getUUID());
 				playing.remove(p.getUUID());
 				onExit.remove(p.getUUID());
@@ -1074,7 +1074,7 @@ public final class QuickRuntime {
 				if (p == null) continue;
 				n.players.add(id);
 				n.names.put(id, p.getGameProfile().name());
-				p.sendSystemMessage(Component.literal("▶ The next round of " + a.shown() + " starts in " + Math.max(5, a.joinSeconds) + " s. Others can still step on the pad to join.").withStyle(ChatFormatting.GREEN));
+				p.sendSystemMessage(Words.lit("▶ The next round of " + a.shown() + " starts in " + Math.max(5, a.joinSeconds) + " s. Others can still step on the pad to join.").withStyle(ChatFormatting.GREEN));
 			}
 			if (!n.players.isEmpty()) rounds.put(a.id, n);
 		}
@@ -1096,18 +1096,18 @@ public final class QuickRuntime {
 			ServerPlayer w = server.getPlayerList().getPlayer(winner);
 			if (w != null) {
 				String score = String.valueOf(r.score.getOrDefault(winner, 0L));
-				w.sendSystemMessage(Component.literal("★ You won " + r.arena.shown() + "!").withStyle(ChatFormatting.GOLD));
+				w.sendSystemMessage(Words.lit("★ You won " + r.arena.shown() + "!").withStyle(ChatFormatting.GOLD));
 				commands(server, r.arena.winnerCommands, r.arena, w, score);
 				RewardsControl.fireGame(server, "gameWon", w, r.arena.name, r.score.getOrDefault(winner, 0L), false);
 			}
 		}
-		MutableComponent line = Component.literal("■ " + r.arena.shown() + " · ").withStyle(ChatFormatting.GOLD);
+		MutableComponent line = Words.lit("■ " + r.arena.shown() + " · ").withStyle(ChatFormatting.GOLD);
 		String[] medal = { "1st", "2nd", "3rd" };
 		for (int i = 0; i < Math.min(3, order.size()); i++) {
 			UUID id = order.get(i);
-			if (i > 0) line.append(Component.literal("  ").withStyle(ChatFormatting.GRAY));
-			line.append(Component.literal(medal[i] + " " + r.names.get(id) + " ").withStyle(i == 0 ? ChatFormatting.YELLOW : ChatFormatting.WHITE))
-					.append(Component.literal(Games.scoreText(r.arena.type, r.score.getOrDefault(id, 0L), GameRuntime::clock)).withStyle(ChatFormatting.GRAY));
+			if (i > 0) line.append(Words.lit("  ").withStyle(ChatFormatting.GRAY));
+			line.append(Words.lit(medal[i] + " " + r.names.get(id) + " ").withStyle(i == 0 ? ChatFormatting.YELLOW : ChatFormatting.WHITE))
+					.append(Words.lit(Games.scoreText(r.arena.type, r.score.getOrDefault(id, 0L), GameRuntime::clock)).withStyle(ChatFormatting.GRAY));
 		}
 		for (UUID id : r.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);

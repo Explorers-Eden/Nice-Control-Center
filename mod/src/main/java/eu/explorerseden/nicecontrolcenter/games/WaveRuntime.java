@@ -227,7 +227,7 @@ public final class WaveRuntime {
 						onExit.remove(p.getUUID());
 						out(server, in, p, "You left " + in.arena.shown() + " early.");
 					} else if (ticks % 20 == 2) {
-						p.sendOverlayMessage(Component.literal("Leaving " + in.arena.shown() + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
+						p.sendOverlayMessage(Words.lit("Leaving " + in.arena.shown() + " in " + ((EXIT_TICKS - ticks) / 20 + 1) + "… step off to stay").withStyle(ChatFormatting.RED));
 					}
 				} else {
 					onExit.remove(p.getUUID());
@@ -240,13 +240,13 @@ public final class WaveRuntime {
 				continue;
 			}
 			if (!Parties.isLeader(p.getUUID())) {
-				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Component.literal("Your party leader starts " + a.shown() + " from the pad").withStyle(ChatFormatting.GRAY));
+				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Words.lit("Your party leader starts " + a.shown() + " from the pad").withStyle(ChatFormatting.GRAY));
 				continue;
 			}
 			List<ServerPlayer> party = partyNear(server, p, a);
 			if (party.size() < a.minParty || party.size() > a.maxParty) {
 				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) {
-					p.sendOverlayMessage(Component.literal(a.shown() + " is for " + (a.minParty == a.maxParty ? a.minParty : a.minParty + "–" + a.maxParty) + " player" + (a.maxParty == 1 ? "" : "s")
+					p.sendOverlayMessage(Words.lit(a.shown() + " is for " + (a.minParty == a.maxParty ? a.minParty : a.minParty + "–" + a.maxParty) + " player" + (a.maxParty == 1 ? "" : "s")
 							+ " (your party here: " + party.size() + ")").withStyle(ChatFormatting.RED));
 				}
 				continue;
@@ -257,7 +257,7 @@ public final class WaveRuntime {
 					Game busy = games.get(a.id);
 					String who = party.size() == 1 ? "" : " with " + String.join(", ", party.subList(1, party.size()).stream().map(x -> x.getGameProfile().name()).toList());
 					String what = busy == null ? a.shown() + who + " starts" : "Queueing for " + a.shown() + who;
-					p.sendOverlayMessage(Component.literal(what + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.GOLD));
+					p.sendOverlayMessage(Words.lit(what + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.GOLD));
 					p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.6f, 0.8f);
 				}
 				continue;
@@ -269,7 +269,7 @@ public final class WaveRuntime {
 				continue;
 			}
 			String err = start(server, a, party);
-			if (err != null) p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+			if (err != null) p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 		}
 	}
 
@@ -311,7 +311,7 @@ public final class WaveRuntime {
 		ServerLevel level = a.spectate == null ? null : GameRuntime.levelOf(server, a.spectate.dim);
 		for (ServerPlayer m : party) {
 			if (level != null) m.teleportTo(level, a.spectate.x, a.spectate.y, a.spectate.z, Set.of(), a.spectate.yaw, 0, true);
-			m.sendSystemMessage(Component.literal("A game is running in " + a.shown() + ": you're number " + q.size() + " in the queue"
+			m.sendSystemMessage(Words.lit("A game is running in " + a.shown() + ": you're number " + q.size() + " in the queue"
 					+ (level != null ? ". Wait here (leaving the area leaves the queue)." : ". Stay near the pad.") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
 		}
 	}
@@ -354,7 +354,7 @@ public final class WaveRuntime {
 				ServerPlayer leader = server.getPlayerList().getPlayer(party.get(0));
 				if (leader == null || !waiting(a, leader)) {
 					q.remove(party);
-					if (leader != null) leader.sendSystemMessage(Component.literal("You left the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
+					if (leader != null) leader.sendSystemMessage(Words.lit("You left the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
 				}
 			}
 			Game g = games.get(a.id);
@@ -365,7 +365,7 @@ public final class WaveRuntime {
 					ServerPlayer m = server.getPlayerList().getPlayer(id);
 					if (m == null) continue;
 					String state = g != null ? "wave " + g.wave + (a.rounds > 0 ? "/" + a.rounds : "") + " running" : i == 1 ? "starting soon" : "waiting";
-					if (server.getTickCount() % 40 == 0) m.sendOverlayMessage(Component.literal(a.shown() + " · " + state + " · you're " + ordinal(i) + " in the queue").withStyle(ChatFormatting.GOLD));
+					if (server.getTickCount() % 40 == 0) m.sendOverlayMessage(Words.lit(a.shown() + " · " + state + " · you're " + ordinal(i) + " in the queue").withStyle(ChatFormatting.GOLD));
 				}
 			}
 			if (g != null || q.isEmpty()) {
@@ -378,7 +378,7 @@ public final class WaveRuntime {
 				if (server.getTickCount() % 20 == 0) {
 					for (UUID id : first) {
 						ServerPlayer m = server.getPlayerList().getPlayer(id);
-						if (m != null) m.sendOverlayMessage(Component.literal(a.shown() + " starts in " + ((at - now) / 1000 + 1) + "…").withStyle(ChatFormatting.GREEN));
+						if (m != null) m.sendOverlayMessage(Words.lit(a.shown() + " starts in " + ((at - now) / 1000 + 1) + "…").withStyle(ChatFormatting.GREEN));
 					}
 				}
 				continue;
@@ -391,11 +391,11 @@ public final class WaveRuntime {
 				if (m != null && !playing.containsKey(id) && waiting(a, m)) party.add(m);
 			}
 			if (party.size() < a.minParty || party.size() > a.maxParty) {
-				for (ServerPlayer m : party) m.sendSystemMessage(Component.literal("Not enough of your party is here for " + a.shown() + ": left the queue.").withStyle(ChatFormatting.RED));
+				for (ServerPlayer m : party) m.sendSystemMessage(Words.lit("Not enough of your party is here for " + a.shown() + ": left the queue.").withStyle(ChatFormatting.RED));
 				continue;
 			}
 			String err = start(server, a, party);
-			if (err != null) for (ServerPlayer m : party) m.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+			if (err != null) for (ServerPlayer m : party) m.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 		}
 	}
 
@@ -441,7 +441,7 @@ public final class WaveRuntime {
 			GameClaims.gameMode(p, false);
 			String hint = (a.rounds > 0 ? "Survive " + a.rounds + " waves" : "Survive as many waves as you can")
 					+ (a.teamLives > 0 ? "; the team has " + a.teamLives + (a.teamLives == 1 ? " life" : " lives") : "") + ". Exit pads or /game leave take you out.";
-			p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + hint : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
+			p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + hint : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");
 		}
 		g.nextAt = System.currentTimeMillis() + a.breakSeconds * 1000L;
@@ -487,7 +487,7 @@ public final class WaveRuntime {
 			}
 			if (!box.inflate(1).contains(p.position())) {
 				p.teleportTo(level, g.arena.spawn.x, g.arena.spawn.y, g.arena.spawn.z, Set.of(), g.arena.spawn.yaw, 0, true);
-				p.sendOverlayMessage(Component.literal("Stay in the arena (exit pads or /game leave take you out)").withStyle(ChatFormatting.RED));
+				p.sendOverlayMessage(Words.lit("Stay in the arena (exit pads or /game leave take you out)").withStyle(ChatFormatting.RED));
 			}
 		}
 		for (UUID id : g.down) {
@@ -503,7 +503,7 @@ public final class WaveRuntime {
 		if (g.state == State.BREAK) {
 			long left = g.nextAt - now;
 			Countdown.tick("wave:" + g.arena.id, left, alive);
-			bar(server, g, Component.literal("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
+			bar(server, g, Words.lit("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
 			if (left <= 0) beginWave(server, g, level);
 			return;
 		}
@@ -543,7 +543,7 @@ public final class WaveRuntime {
 		}
 		// (Just summoned ones count too: they're not in the list taken above.)
 		int left = mobs.size() + spawned + g.toSpawn.size();
-		bar(server, g, Component.literal("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " · " + left + (left == 1 ? " mob" : " mobs")),
+		bar(server, g, Words.lit("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " · " + left + (left == 1 ? " mob" : " mobs")),
 				g.waveSize == 0 ? 0 : Math.min(1f, left / (float) g.waveSize), BossEvent.BossBarColor.RED);
 		if (left == 0) waveCleared(server, g, level);
 	}
@@ -608,8 +608,8 @@ public final class WaveRuntime {
 		for (UUID id : g.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p == null || !g.in(id)) continue;
-			p.connection.send(new ClientboundSetTitleTextPacket(Component.literal("Wave " + g.wave).withStyle(ChatFormatting.RED)));
-			p.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(g.waveSize + (g.waveSize == 1 ? " mob" : " mobs")).withStyle(ChatFormatting.GRAY)));
+			p.connection.send(new ClientboundSetTitleTextPacket(Words.lit("Wave " + g.wave).withStyle(ChatFormatting.RED)));
+			p.connection.send(new ClientboundSetSubtitleTextPacket(Words.lit(g.waveSize + (g.waveSize == 1 ? " mob" : " mobs")).withStyle(ChatFormatting.GRAY)));
 		}
 		level.playSound(null, a.spawn.x, a.spawn.y, a.spawn.z, SoundEvents.RAID_HORN.value(), SoundSource.HOSTILE, 1.2f, 1f);
 	}
@@ -621,7 +621,7 @@ public final class WaveRuntime {
 		for (UUID id : g.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p == null || !g.in(id)) continue;
-			p.sendSystemMessage(Component.literal("✔ Wave " + g.wave + " cleared!").withStyle(ChatFormatting.GREEN));
+			p.sendSystemMessage(Words.lit("✔ Wave " + g.wave + " cleared!").withStyle(ChatFormatting.GREEN));
 			for (String line : a.waveCommands) {
 				String cmd = fill(line.strip().replaceFirst("^/", ""), a, p, wave).replace("{wave}", wave);
 				if (!cmd.isEmpty()) ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
@@ -655,7 +655,7 @@ public final class WaveRuntime {
 		p.resetFallDistance();
 		if (kit(g.arena)) GameClaims.giveBackKept(p);
 		else GameClaims.restoreFor(p, false);
-		p.sendSystemMessage(Component.literal("You're back in!").withStyle(ChatFormatting.GREEN));
+		p.sendSystemMessage(Words.lit("You're back in!").withStyle(ChatFormatting.GREEN));
 	}
 
 	// ---------------------------------------------------------------- deaths and leaving
@@ -669,7 +669,7 @@ public final class WaveRuntime {
 		g.down.add(p.getUUID());
 		g.teamDeaths++;
 		String lives = g.arena.teamLives > 0 ? " (" + Math.max(0, g.arena.teamLives - g.teamDeaths) + " team " + (g.arena.teamLives - g.teamDeaths == 1 ? "life" : "lives") + " left)" : "";
-		tell(server, g, Component.literal(p.getGameProfile().name() + " is down: back at the next wave" + lives + ".").withStyle(ChatFormatting.RED));
+		tell(server, g, Words.lit(p.getGameProfile().name() + " is down: back at the next wave" + lives + ".").withStyle(ChatFormatting.RED));
 	}
 
 	private static void respawned(MinecraftServer server, ServerPlayer p) {
@@ -684,7 +684,7 @@ public final class WaveRuntime {
 			ServerLevel level = GameRuntime.levelOf(server, g.arena.spectate.dim);
 			if (level != null) {
 				p.teleportTo(level, g.arena.spectate.x, g.arena.spectate.y, g.arena.spectate.z, Set.of(), g.arena.spectate.yaw, 0, true);
-				p.sendSystemMessage(Component.literal("Wait here for the next wave (an exit pad takes you out).").withStyle(ChatFormatting.GRAY));
+				p.sendSystemMessage(Words.lit("Wait here for the next wave (an exit pad takes you out).").withStyle(ChatFormatting.GRAY));
 				return;
 			}
 		}
@@ -692,7 +692,7 @@ public final class WaveRuntime {
 		if (level != null) p.teleportTo(level, g.arena.spawn.x, g.arena.spawn.y, g.arena.spawn.z, Set.of(), g.arena.spawn.yaw, 0, true);
 		g.watching.put(p.getUUID(), p.gameMode.getGameModeForPlayer());
 		p.setGameMode(GameType.SPECTATOR);
-		p.sendSystemMessage(Component.literal("You watch your party until the next wave.").withStyle(ChatFormatting.GRAY));
+		p.sendSystemMessage(Words.lit("You watch your party until the next wave.").withStyle(ChatFormatting.GRAY));
 	}
 
 	/** A player is out for good (exit pad, /game leave, logout, another dimension); the game goes on for the others. */
@@ -706,7 +706,7 @@ public final class WaveRuntime {
 			p.setCamera(p);
 			p.setGameMode(mode);
 		}
-		if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
+		if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
 		if (p.isAlive()) finishFor(server, g.arena, p);
 		else afterRespawn.put(p.getUUID(), g.arena);
 		if (!g.trial && g.players.stream().noneMatch(g::in)) end(server, g, false, null);
@@ -750,7 +750,7 @@ public final class WaveRuntime {
 			else if (a.rounds == 0 && !a.finishMessage.isBlank()) line = fill(a.finishMessage, a, p, score);
 			else line = a.loseMessage.isBlank() ? "✖ " + a.shown() + ": " + (why == null ? "the game is over" : why.replaceAll("\\.$", "")) + " after " + g.cleared + (g.cleared == 1 ? " wave" : " waves") + "."
 					: fill(a.loseMessage, a, p, score).replace("{wave}", score);
-			p.sendSystemMessage(Component.literal(line + (record ? " · new personal best!" : "")).withStyle(won ? ChatFormatting.GOLD : record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
+			p.sendSystemMessage(Words.lit(line + (record ? " · new personal best!" : "")).withStyle(won ? ChatFormatting.GOLD : record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
 			if (finished && g.cleared > 0) {
 				commands(server, a.finishCommands, a, p, score);
 				RewardsControl.fireGame(server, "gameFinished", p, a.name, g.cleared, false);

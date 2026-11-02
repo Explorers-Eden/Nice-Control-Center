@@ -174,7 +174,7 @@ public final class DungeonRuntime {
 		BlockPos a = Corners.pick(ctx, p);
 		selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), a, null, System.currentTimeMillis() + 30 * 60_000L, false));
 		Corners.show(p, a, null);
-		ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of " + name + " is at " + a.toShortString() + ". Set the opposite corner (height included) with /dungeon corner2 [x y z]"
+		ctx.getSource().sendSuccess(() -> Words.lit("Corner 1 of " + name + " is at " + a.toShortString() + ". Set the opposite corner (height included) with /dungeon corner2 [x y z]"
 				+ " (or look at it), then /dungeon save " + name
 				+ ". Inside, place data structure blocks as markers: start (required), exit, checkpoint, mob:<id> [xN] [{data}], boss:<id> [{data}].").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 		return 1;
@@ -188,7 +188,7 @@ public final class DungeonRuntime {
 		BlockPos b = Corners.pick(ctx, p);
 		selections.put(p.getUUID(), new Selection(s.name, s.dim, s.a, b, System.currentTimeMillis() + 30 * 60_000L, s.room));
 		Corners.show(p, s.a, b);
-		ctx.getSource().sendSuccess(() -> Component.literal("Box: " + Corners.size(s.a, b) + " (corner 2 at " + b.toShortString() + "). " + (s.room ? "/dungeon room save " : "/dungeon save ") + s.name + " keeps it.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		ctx.getSource().sendSuccess(() -> Words.lit("Box: " + Corners.size(s.a, b) + " (corner 2 at " + b.toShortString() + "). " + (s.room ? "/dungeon room save " : "/dungeon save ") + s.name + " keeps it.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 		return 1;
 	}
 
@@ -200,7 +200,7 @@ public final class DungeonRuntime {
 		BlockPos a = Corners.pick(ctx, p);
 		selections.put(p.getUUID(), new Selection(name, p.level().dimension().identifier().toString(), a, null, System.currentTimeMillis() + 30 * 60_000L, true));
 		Corners.show(p, a, null);
-		ctx.getSource().sendSuccess(() -> Component.literal("Corner 1 of the room " + name + " is at " + a.toShortString() + ". Set the opposite corner with /dungeon corner2 [x y z] (or look at it), then /dungeon room save " + name + " [group]"
+		ctx.getSource().sendSuccess(() -> Words.lit("Corner 1 of the room " + name + " is at " + a.toShortString() + ". Set the opposite corner with /dungeon corner2 [x y z] (or look at it), then /dungeon room save " + name + " [group]"
 				+ ". Its doors are jigsaw blocks (/dungeon tool door <name>); spots for rooms inside it too (/dungeon tool spot <group> <door>).").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 		return 1;
 	}
@@ -254,7 +254,7 @@ public final class DungeonRuntime {
 		target.savedBy = by;
 		DungeonTemplates.saveRoom(server, level, a, b, target).whenComplete((ok, err) -> server.execute(() -> {
 			if (err != null) {
-				failed.accept(Component.literal("Could not save the room " + name + ": " + err.getMessage()));
+				failed.accept(Words.lit("Could not save the room " + name + ": " + err.getMessage()));
 				return;
 			}
 			if (fresh) settings.rooms.add(target);
@@ -266,7 +266,7 @@ public final class DungeonRuntime {
 			for (Dungeons.Marker m : target.markers) counts.merge(m.type, 1, Integer::sum);
 			String markers = counts.isEmpty() ? "" : ", " + counts.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).reduce((x, y) -> x + ", " + y).orElse("");
 			String names = target.connectors.stream().filter(c -> !c.spot()).map(c -> c.name).distinct().reduce((x, y) -> x + ", " + y).orElse("");
-			done.accept(Component.literal("Saved the room " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + doors + (doors == 1 ? " door" : " doors")
+			done.accept(Words.lit("Saved the room " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + doors + (doors == 1 ? " door" : " doors")
 					+ (names.isEmpty() ? "" : ": " + names) + (spots.isEmpty() ? "" : ", " + spots) + markers + ")"
 					+ (target.groups.isEmpty() ? ". Put it in a group (panel, or /dungeon room group " + name + " <group>) so spots can get it." : " in " + String.join(", ", target.groups) + ".")
 					+ (target.connectors.isEmpty() ? " It has no jigsaw blocks, so it can't join a spot." : "")).withStyle(target.connectors.isEmpty() ? ChatFormatting.GOLD : ChatFormatting.GREEN));
@@ -315,7 +315,7 @@ public final class DungeonRuntime {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
 		String cmd = "give " + p.getStringUUID() + " " + item + "[block_entity_data={" + data + "},custom_name=" + snbt(title) + ",lore=[" + snbt(lore) + "]]";
 		ConsoleRunner.quiet(ctx.getSource().getServer(), cmd);
-		ctx.getSource().sendSuccess(() -> Component.literal("Here's " + title + ". Place it in creative (as an op) and its settings come along.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
+		ctx.getSource().sendSuccess(() -> Words.lit("Here's " + title + ". Place it in creative (as an op) and its settings come along.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 		return 1;
 	}
 
@@ -590,7 +590,7 @@ public final class DungeonRuntime {
 			for (BlockPos c : r.checkpoints) {
 				if (!c.equals(r.checkpoint) && p.distanceToSqr(c.getX() + 0.5, c.getY() + 0.5, c.getZ() + 0.5) < 4) {
 					r.checkpoint = c;
-					tellRun(server, r, Component.literal("✦ Checkpoint reached by " + p.getGameProfile().name()).withStyle(ChatFormatting.GOLD));
+					tellRun(server, r, Words.lit("✦ Checkpoint reached by " + p.getGameProfile().name()).withStyle(ChatFormatting.GOLD));
 					level.playSound(null, c, SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.7f, 1.4f);
 				}
 			}
@@ -661,7 +661,7 @@ public final class DungeonRuntime {
 			if (r.bar != null) r.bar.removeAllPlayers();
 			r.bar = null;
 			if ("boss".equals(r.dungeon.clearOn)) clear(server, r);
-			else tellRun(server, r, Component.literal("The boss is down!").withStyle(ChatFormatting.GOLD));
+			else tellRun(server, r, Words.lit("The boss is down!").withStyle(ChatFormatting.GOLD));
 		}
 	}
 
@@ -674,7 +674,7 @@ public final class DungeonRuntime {
 		long left = r.players.size() - r.out.size();
 		String limit = r.dungeon.timeLimit > 0 ? " / " + GameRuntime.clock(r.dungeon.timeLimit * 60_000L) : "";
 		int lives = r.lives.getOrDefault(p.getUUID(), 0);
-		p.sendOverlayMessage(Component.literal(r.dungeon.name + " · " + GameRuntime.clock(r.millis()) + limit
+		p.sendOverlayMessage(Words.lit(r.dungeon.name + " · " + GameRuntime.clock(r.millis()) + limit
 				+ (r.dungeon.lives > 0 ? " · " + "❤".repeat(Math.min(lives, 10)) + (lives == 0 ? "last life" : "") : "")
 				+ (r.players.size() > 1 ? " · " + left + " in" : "")).withStyle(ChatFormatting.LIGHT_PURPLE));
 	}
@@ -697,7 +697,7 @@ public final class DungeonRuntime {
 				continue;
 			}
 			if (!Parties.isLeader(p.getUUID())) {
-				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Component.literal("Your party leader starts the dungeon from the pad").withStyle(ChatFormatting.GRAY));
+				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) p.sendOverlayMessage(Words.lit("Your party leader starts the dungeon from the pad").withStyle(ChatFormatting.GRAY));
 				continue;
 			}
 			List<ServerPlayer> party = partyNear(server, p, pad);
@@ -705,7 +705,7 @@ public final class DungeonRuntime {
 			if (ticks < PAD_TICKS) {
 				if (ticks % 20 == 2) {
 					String who = party.size() == 1 ? "" : " with " + String.join(", ", party.subList(1, party.size()).stream().map(x -> x.getGameProfile().name()).toList());
-					p.sendOverlayMessage(Component.literal("Dungeon (" + pad.pool + ")" + who + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.LIGHT_PURPLE));
+					p.sendOverlayMessage(Words.lit("Dungeon (" + pad.pool + ")" + who + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.LIGHT_PURPLE));
 					p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.6f, 0.8f);
 				}
 				continue;
@@ -722,11 +722,11 @@ public final class DungeonRuntime {
 			}
 			String err = start(server, party, pad.pool);
 			if (err != null) {
-				p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+				p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 			} else if (!missing.isEmpty()) {
 				for (UUID id : missing) {
 					ServerPlayer m = server.getPlayerList().getPlayer(id);
-					if (m != null) m.sendSystemMessage(Component.literal("Your party went into a dungeon without you (be within " + (int) PARTY_RANGE + " blocks of the pad).").withStyle(ChatFormatting.GRAY));
+					if (m != null) m.sendSystemMessage(Words.lit("Your party went into a dungeon without you (be within " + (int) PARTY_RANGE + " blocks of the pad).").withStyle(ChatFormatting.GRAY));
 				}
 			}
 		}
@@ -759,7 +759,7 @@ public final class DungeonRuntime {
 		var q = queues.computeIfAbsent(pool, k -> new java.util.ArrayDeque<>());
 		q.add(ids);
 		for (ServerPlayer m : party) {
-			m.sendSystemMessage(Component.literal("Every dungeon copy is in use: your party is " + ordinal(q.size()) + " in the queue. Wait here; walking away leaves it.").withStyle(ChatFormatting.LIGHT_PURPLE));
+			m.sendSystemMessage(Words.lit("Every dungeon copy is in use: your party is " + ordinal(q.size()) + " in the queue. Wait here; walking away leaves it.").withStyle(ChatFormatting.LIGHT_PURPLE));
 		}
 		NiceControlCenter.LOGGER.info("Dungeons: {} queued for the {} pool ({} waiting)", String.join(", ", party.stream().map(x -> x.getGameProfile().name()).toList()), pool, q.size());
 	}
@@ -773,7 +773,7 @@ public final class DungeonRuntime {
 				party.removeIf(id -> {
 					ServerPlayer p = server.getPlayerList().getPlayer(id);
 					boolean gone = p == null || area == null || !p.level().dimension().identifier().toString().equals(area.dim) || p.distanceToSqr(area.x, area.y, area.z) > r * r;
-					if (gone && p != null) p.sendSystemMessage(Component.literal("You left the waiting area: out of the dungeon queue.").withStyle(ChatFormatting.GRAY));
+					if (gone && p != null) p.sendSystemMessage(Words.lit("You left the waiting area: out of the dungeon queue.").withStyle(ChatFormatting.GRAY));
 					return gone;
 				});
 			}
@@ -782,7 +782,7 @@ public final class DungeonRuntime {
 			for (List<UUID> party : e.getValue()) {
 				for (UUID id : party) {
 					ServerPlayer p = server.getPlayerList().getPlayer(id);
-					if (p != null) p.sendOverlayMessage(Component.literal("Dungeon queue: " + ordinal(place) + " in line").withStyle(ChatFormatting.LIGHT_PURPLE));
+					if (p != null) p.sendOverlayMessage(Words.lit("Dungeon queue: " + ordinal(place) + " in line").withStyle(ChatFormatting.LIGHT_PURPLE));
 				}
 				place++;
 			}
@@ -795,7 +795,7 @@ public final class DungeonRuntime {
 			}
 			if (party.isEmpty()) continue;
 			String err = start(server, party, e.getKey());
-			if (err != null) for (ServerPlayer p : party) p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+			if (err != null) for (ServerPlayer p : party) p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 		}
 		queues.values().removeIf(java.util.Deque::isEmpty);
 	}
@@ -880,7 +880,7 @@ public final class DungeonRuntime {
 			for (String n : roomNames) out.put(n, DungeonTemplates.readRoom(server, n));
 			return out;
 		});
-		r.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal(fill(d.prepareMessage.isEmpty() ? "Preparing your dungeon…" : d.prepareMessage, r, null)),
+		r.bar = new ServerBossEvent(UUID.randomUUID(), Words.lit(fill(d.prepareMessage.isEmpty() ? "Preparing your dungeon…" : d.prepareMessage, r, null)),
 				BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
 		r.bar.setProgress(0);
 		for (ServerPlayer p : party) {
@@ -957,8 +957,8 @@ public final class DungeonRuntime {
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
 			GameClaims.gameMode(p, false);
-			p.sendSystemMessage(Component.literal(fill(r.dungeon.enterMessage.isEmpty() ? "▶ {dungeon}: find the way out!" : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
-			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Component.literal(r.dungeon.name).withStyle(ChatFormatting.LIGHT_PURPLE)));
+			p.sendSystemMessage(Words.lit(fill(r.dungeon.enterMessage.isEmpty() ? "▶ {dungeon}: find the way out!" : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Words.lit(r.dungeon.name).withStyle(ChatFormatting.LIGHT_PURPLE)));
 			commands(server, r.dungeon.enterCommands, r, p);
 		}
 		level.playSound(null, r.start, SoundEvents.ENDER_EYE_DEATH, SoundSource.PLAYERS, 1f, 0.8f);
@@ -994,7 +994,7 @@ public final class DungeonRuntime {
 		if (lives > 0) {
 			r.lives.put(p.getUUID(), lives - 1);
 			r.respawnInside.add(p.getUUID());
-			tellRun(server, r, Component.literal(p.getGameProfile().name() + " died" + (lives - 1 == 0 ? " (last life left)" : " (" + (lives - 1) + " lives left)")).withStyle(ChatFormatting.RED));
+			tellRun(server, r, Words.lit(p.getGameProfile().name() + " died" + (lives - 1 == 0 ? " (last life left)" : " (" + (lives - 1) + " lives left)")).withStyle(ChatFormatting.RED));
 			return;
 		}
 		// Out: they watch (when others are still in) or go back once they've respawned.
@@ -1003,12 +1003,12 @@ public final class DungeonRuntime {
 		commands(server, r.dungeon.exitCommands, r, p);
 		if (inside) {
 			r.respawnInside.add(p.getUUID());
-			tellRun(server, r, Component.literal(p.getGameProfile().name() + " is out and watches.").withStyle(ChatFormatting.GRAY));
+			tellRun(server, r, Words.lit(p.getGameProfile().name() + " is out and watches.").withStyle(ChatFormatting.GRAY));
 		} else {
 			playing.remove(p.getUUID());
 			afterRespawn.add(p.getUUID());
 			afterRespawnRemove.put(p.getUUID(), r.dungeon.removePickups);
-			p.sendSystemMessage(Component.literal("You're out of this run.").withStyle(ChatFormatting.GRAY));
+			p.sendSystemMessage(Words.lit("You're out of this run.").withStyle(ChatFormatting.GRAY));
 		}
 	}
 
@@ -1042,7 +1042,7 @@ public final class DungeonRuntime {
 		if (r.out.contains(p.getUUID())) {
 			r.watching.put(p.getUUID(), p.gameMode.getGameModeForPlayer());
 			p.setGameMode(GameType.SPECTATOR);
-			p.sendSystemMessage(Component.literal("You're out: you watch your party until the run ends.").withStyle(ChatFormatting.GRAY));
+			p.sendSystemMessage(Words.lit("You're out: you watch your party until the run ends.").withStyle(ChatFormatting.GRAY));
 			watchers(server, r);
 			return;
 		}
@@ -1074,7 +1074,7 @@ public final class DungeonRuntime {
 			cooldown.put(p.getUUID(), System.currentTimeMillis() + settings.cooldown * 1000L);
 			commands(server, r.dungeon.exitCommands, r, p);
 		}
-		if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
+		if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
 		if (p.isAlive()) {
 			leaveRun(server, r, p);
 		} else {
@@ -1122,7 +1122,7 @@ public final class DungeonRuntime {
 		if (r.state == State.LOADING || r.state == State.PASTING) {
 			for (UUID id : r.players) {
 				ServerPlayer p = server.getPlayerList().getPlayer(id);
-				if (p != null && why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.RED));
+				if (p != null && why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.RED));
 				playing.remove(id);
 			}
 			r.players.clear();
@@ -1145,7 +1145,7 @@ public final class DungeonRuntime {
 		for (UUID id : r.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p == null) continue;
-			p.sendSystemMessage(Component.literal(fill(message, r, p)).withStyle(color));
+			p.sendSystemMessage(Words.lit(fill(message, r, p)).withStyle(color));
 			if (!r.out.contains(id)) {
 				commands(server, r.dungeon.exitCommands, r, p);
 				cooldown.put(id, System.currentTimeMillis() + settings.cooldown * 1000L);
@@ -1277,7 +1277,7 @@ public final class DungeonRuntime {
 						long pads = settings.pads.stream().filter(x -> x.pool.equals(pool)).count();
 						b.append("\n").append(pool).append(": ").append(names.isEmpty() ? "no dungeons" : String.join(", ", names)).append(" · ").append(pads).append(pads == 1 ? " pad" : " pads");
 					}
-					ctx.getSource().sendSuccess(() -> Component.literal("Dungeon pools:" + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
+					ctx.getSource().sendSuccess(() -> Words.lit("Dungeon pools:" + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
 					return 1;
 				}))
 				.then(Commands.literal("top").then(dungeonArg.get().executes(ctx -> {
@@ -1289,7 +1289,7 @@ public final class DungeonRuntime {
 						Dungeons.Best best = board.get(String.valueOf(n));
 						if (best != null) b.append("\n").append(n == 1 ? "Solo" : n + " players").append(": ").append(GameRuntime.clock(best.millis)).append(" · ").append(String.join(", ", best.names));
 					}
-					ctx.getSource().sendSuccess(() -> Component.literal(b.toString()).withStyle(ChatFormatting.GOLD), false);
+					ctx.getSource().sendSuccess(() -> Words.lit(b.toString()).withStyle(ChatFormatting.GOLD), false);
 					return 1;
 				})))
 				.then(Commands.literal("create").requires(admin).then(Commands.argument("name", StringArgumentType.word()).executes(DungeonRuntime::corner1)
@@ -1314,7 +1314,7 @@ public final class DungeonRuntime {
 							if (!in) x.groups.add(g);
 							settings.fill();
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal(x.name + (in ? " left the group " : " is in the group ") + g + " (groups: " + (x.groups.isEmpty() ? "none" : String.join(", ", x.groups)) + ")."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit(x.name + (in ? " left the group " : " is in the group ") + g + " (groups: " + (x.groups.isEmpty() ? "none" : String.join(", ", x.groups)) + ")."), true);
 							return 1;
 						}))))
 						.then(Commands.literal("weight").then(roomArg.get().then(Commands.argument("weight", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 100)).executes(ctx -> {
@@ -1322,7 +1322,7 @@ public final class DungeonRuntime {
 							if (x == null) return fail(ctx, "There's no such room.");
 							x.weight = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "weight");
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal(x.name + " has the weight " + x.weight + " now."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit(x.name + " has the weight " + x.weight + " now."), true);
 							return 1;
 						}))))
 						.then(Commands.literal("delete").then(roomArg.get().executes(ctx -> {
@@ -1332,7 +1332,7 @@ public final class DungeonRuntime {
 							settings.fill();
 							saveSettings();
 							DungeonTemplates.deleteRoom(ctx.getSource().getServer(), x.name);
-							ctx.getSource().sendSuccess(() -> Component.literal("Removed the room " + x.name + "."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit("Removed the room " + x.name + "."), true);
 							return 1;
 						})))
 						.then(Commands.literal("list").executes(ctx -> {
@@ -1343,7 +1343,7 @@ public final class DungeonRuntime {
 							}
 							long loose = settings.rooms.stream().filter(x -> x.groups.isEmpty()).count();
 							if (loose > 0) b.append("\n").append(loose).append(" room(s) in no group");
-							ctx.getSource().sendSuccess(() -> Component.literal("Room groups:" + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
+							ctx.getSource().sendSuccess(() -> Words.lit("Room groups:" + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
 							return 1;
 						})))
 				.then(Commands.literal("tool").requires(admin)
@@ -1366,7 +1366,7 @@ public final class DungeonRuntime {
 					if (x == null) return fail(ctx, "There's no such dungeon.");
 					x.kit = GameClaims.kitFrom(p);
 					saveSettings();
-					ctx.getSource().sendSuccess(() -> Component.literal(x.name + "'s kit is what you carry now (" + x.kit.size() + " stacks)."
+					ctx.getSource().sendSuccess(() -> Words.lit(x.name + "'s kit is what you carry now (" + x.kit.size() + " stacks)."
 							+ ("own".equals(x.gear) ? " It's handed out only when the dungeon puts things aside (gear: kit, in the panel)." : "")), true);
 					return 1;
 				})))
@@ -1377,7 +1377,7 @@ public final class DungeonRuntime {
 					if (p != null && playing.containsKey(p.getUUID())) return fail(ctx, "You're in a dungeon already: /dungeon leave first.");
 					String err = start(ctx.getSource().getServer(), p == null ? List.of() : List.of(p), x);
 					if (err != null) return fail(ctx, err);
-					ctx.getSource().sendSuccess(() -> Component.literal("Copying " + x.name + "…"), true);
+					ctx.getSource().sendSuccess(() -> Words.lit("Copying " + x.name + "…"), true);
 					return 1;
 				})))
 				.then(Commands.literal("delete").requires(admin).then(dungeonArg.get().executes(ctx -> {
@@ -1386,7 +1386,7 @@ public final class DungeonRuntime {
 					settings.dungeons.remove(x);
 					saveSettings();
 					DungeonTemplates.delete(ctx.getSource().getServer(), x.name);
-					ctx.getSource().sendSuccess(() -> Component.literal("Removed " + x.name + " (runs already going keep their copy)."), true);
+					ctx.getSource().sendSuccess(() -> Words.lit("Removed " + x.name + " (runs already going keep their copy)."), true);
 					return 1;
 				})))
 				.then(Commands.literal("pool").requires(admin).then(dungeonArg.get().then(poolArg.get().executes(ctx -> {
@@ -1394,7 +1394,7 @@ public final class DungeonRuntime {
 					if (x == null) return fail(ctx, "There's no such dungeon.");
 					x.pool = Dungeons.pool(StringArgumentType.getString(ctx, "pool"));
 					saveSettings();
-					ctx.getSource().sendSuccess(() -> Component.literal(x.name + " is in the " + x.pool + " pool now."), true);
+					ctx.getSource().sendSuccess(() -> Words.lit(x.name + " is in the " + x.pool + " pool now."), true);
 					return 1;
 				}))))
 				.then(Commands.literal("pad").requires(admin)
@@ -1406,7 +1406,7 @@ public final class DungeonRuntime {
 							settings.pads.add(pad);
 							settings.fill();
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal("Pad for the " + pad.pool + " pool here: the party leader standing on it for two seconds starts a run."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit("Pad for the " + pad.pool + " pool here: the party leader standing on it for two seconds starts a run."), true);
 							return 1;
 						})))
 						// A pool's waiting area: when every copy is in use, parties queue there.
@@ -1417,7 +1417,7 @@ public final class DungeonRuntime {
 									String pool = Dungeons.pool(StringArgumentType.getString(ctx, "pool"));
 									if (settings.waiting.remove(pool) == null) return fail(ctx, "The " + pool + " pool has no waiting area.");
 									saveSettings();
-									ctx.getSource().sendSuccess(() -> Component.literal("The " + pool + " pool has no waiting area any more: when every copy is in use, players try again later."), true);
+									ctx.getSource().sendSuccess(() -> Words.lit("The " + pool + " pool has no waiting area any more: when every copy is in use, players try again later."), true);
 									return 1;
 								}))))
 						.then(Commands.literal("remove").executes(ctx -> {
@@ -1436,13 +1436,13 @@ public final class DungeonRuntime {
 							if (near == null) return fail(ctx, "No pad within 4 blocks.");
 							settings.pads.remove(near);
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal("Pad removed."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit("Pad removed."), true);
 							return 1;
 						})))
 				.then(Commands.literal("runs").requires(admin).executes(ctx -> {
 					StringBuilder b = new StringBuilder();
 					for (Run r : slots.values()) b.append("\nslot ").append(r.slot).append(": ").append(r.dungeon.name).append(" · ").append(r.state.name().toLowerCase(Locale.ROOT)).append(" · ").append(String.join(", ", r.names.values()));
-					ctx.getSource().sendSuccess(() -> Component.literal(b.isEmpty() ? "No dungeon runs right now." : "Dungeon runs:" + b), false);
+					ctx.getSource().sendSuccess(() -> Words.lit(b.isEmpty() ? "No dungeon runs right now." : "Dungeon runs:" + b), false);
 					return 1;
 				})));
 	}
@@ -1482,7 +1482,7 @@ public final class DungeonRuntime {
 		target.savedBy = p == null ? "console" : p.getGameProfile().name();
 		DungeonTemplates.save(server, level, a, b, target).whenComplete((ok, err) -> server.execute(() -> {
 			if (err != null) {
-				ctx.getSource().sendFailure(Component.literal("Could not save " + name + ": " + err.getMessage()));
+				ctx.getSource().sendFailure(Words.lit("Could not save " + name + ": " + err.getMessage()));
 				return;
 			}
 			if (fresh) settings.dungeons.add(target);
@@ -1493,7 +1493,7 @@ public final class DungeonRuntime {
 			for (Dungeons.Marker m : target.markers) counts.merge(m.type, 1, Integer::sum);
 			String markers = counts.isEmpty() ? "no markers" : counts.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).reduce((x, y) -> x + ", " + y).orElse("");
 			String spots = spots(target.connectors);
-			ctx.getSource().sendSuccess(() -> Component.literal("Saved " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + target.pieces + " pieces, " + markers + (spots.isEmpty() ? "" : ", " + spots)
+			ctx.getSource().sendSuccess(() -> Words.lit("Saved " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + target.pieces + " pieces, " + markers + (spots.isEmpty() ? "" : ", " + spots)
 					+ ") in the " + target.pool + " pool." + (target.hasMarker("start") ? "" : " It needs a start marker before players can get it.")
 					+ (target.hasMarker("exit") || "boss".equals(target.clearOn) ? "" : " Without an exit marker it can't be cleared.")).withStyle(target.hasMarker("start") ? ChatFormatting.GREEN : ChatFormatting.GOLD), true);
 		}));
@@ -1507,12 +1507,12 @@ public final class DungeonRuntime {
 		settings.waiting.put(pool, new Games.Pos(p.level().dimension().identifier().toString(), Math.floor(p.getX()) + 0.5, Math.floor(p.getY()), Math.floor(p.getZ()) + 0.5, Math.round(p.getYRot() / 90f) * 90f));
 		if (radius > 0) settings.waitRadius = radius;
 		saveSettings();
-		ctx.getSource().sendSuccess(() -> Component.literal("Waiting area for the " + pool + " pool here (radius " + settings.waitRadius + "): when every copy is in use, parties queue here and start as soon as one is free."), true);
+		ctx.getSource().sendSuccess(() -> Words.lit("Waiting area for the " + pool + " pool here (radius " + settings.waitRadius + "): when every copy is in use, parties queue here and start as soon as one is free."), true);
 		return 1;
 	}
 
 	private static int fail(CommandContext<CommandSourceStack> ctx, String why) {
-		ctx.getSource().sendFailure(Component.literal(why));
+		ctx.getSource().sendFailure(Words.lit(why));
 		return 0;
 	}
 }

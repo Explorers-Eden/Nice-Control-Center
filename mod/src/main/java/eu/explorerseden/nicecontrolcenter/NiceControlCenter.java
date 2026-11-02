@@ -75,6 +75,7 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.games.WaveRuntime.register();
 		eu.explorerseden.nicecontrolcenter.games.QuickRuntime.register();
 		eu.explorerseden.nicecontrolcenter.games.RandomLooks.register();
+		eu.explorerseden.nicecontrolcenter.games.Words.register();
 		eu.explorerseden.nicecontrolcenter.games.HeadHunt.register();
 		eu.explorerseden.nicecontrolcenter.games.Portals.register();
 		eu.explorerseden.nicecontrolcenter.players.PointsStore.register();

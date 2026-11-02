@@ -105,7 +105,7 @@ public final class Portals {
 					case WATCH -> "Watching " + hit.shown() + "…";
 					default -> "Back…";
 				};
-				p.sendOverlayMessage(Component.literal(what).withStyle(kind == Kind.BACK ? ChatFormatting.GRAY : ChatFormatting.GOLD));
+				p.sendOverlayMessage(Words.lit(what).withStyle(kind == Kind.BACK ? ChatFormatting.GRAY : ChatFormatting.GOLD));
 				p.level().playSound(null, p.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS, 0.8f, 1.4f);
 			}
 			if (ticks < HOLD_TICKS) continue;
@@ -122,7 +122,7 @@ public final class Portals {
 	/** Into the game: solo games start the run, wave games and quick rounds bring them to the start point (party along). */
 	private static void enter(MinecraftServer server, ServerPlayer p, Arena a) {
 		if (GameRuntime.inRun(p) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p) || DungeonRuntime.inRun(p)) {
-			p.sendSystemMessage(Component.literal("You're in a game already: /game leave first.").withStyle(ChatFormatting.RED));
+			p.sendSystemMessage(Words.lit("You're in a game already: /game leave first.").withStyle(ChatFormatting.RED));
 			return;
 		}
 		Games.Pos here = new Games.Pos(dim(p), p.getX(), p.getY(), p.getZ(), p.getYRot());
@@ -131,19 +131,19 @@ public final class Portals {
 			return;
 		}
 		if (a.start == null) {
-			p.sendSystemMessage(Component.literal(a.shown() + " isn't set up yet.").withStyle(ChatFormatting.RED));
+			p.sendSystemMessage(Words.lit(a.shown() + " isn't set up yet.").withStyle(ChatFormatting.RED));
 			return;
 		}
 		cameFrom.put(p.getUUID(), here);
 		switch (a.type) {
 			case "parkour", "dropper", "maze" -> {
 				String err = GameRuntime.start(server, p, a);
-				if (err != null) p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+				if (err != null) p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 			}
 			case "race" -> {
 				to(server, p, a.start);
 				String err = GameRuntime.start(server, p, a);
-				if (err != null) p.sendSystemMessage(Component.literal(err).withStyle(ChatFormatting.RED));
+				if (err != null) p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 			}
 			default -> {
 				// Wave games and quick rounds start from their start point: the party (within 8 blocks) comes along.
@@ -158,25 +158,25 @@ public final class Portals {
 					cameFrom.put(g.getUUID(), here);
 					to(server, g, a.start);
 				}
-				p.sendSystemMessage(Component.literal(a.type.equals("waves") ? "▶ " + a.shown() + ": the party leader stays on the start point to begin." : "▶ " + a.shown() + ": you're in the next round.").withStyle(ChatFormatting.GREEN));
+				p.sendSystemMessage(Words.lit(a.type.equals("waves") ? "▶ " + a.shown() + ": the party leader stays on the start point to begin." : "▶ " + a.shown() + ": you're in the next round.").withStyle(ChatFormatting.GREEN));
 			}
 		}
 	}
 
 	private static void watch(MinecraftServer server, ServerPlayer p, Arena a) {
 		if (a.spectate == null) {
-			p.sendSystemMessage(Component.literal(a.shown() + " has no spectator area yet.").withStyle(ChatFormatting.RED));
+			p.sendSystemMessage(Words.lit(a.shown() + " has no spectator area yet.").withStyle(ChatFormatting.RED));
 			return;
 		}
 		cameFrom.put(p.getUUID(), new Games.Pos(dim(p), p.getX(), p.getY(), p.getZ(), p.getYRot()));
 		to(server, p, a.spectate);
-		p.sendSystemMessage(Component.literal("Watching " + a.shown() + ". A back point takes you out again.").withStyle(ChatFormatting.AQUA));
+		p.sendSystemMessage(Words.lit("Watching " + a.shown() + ". A back point takes you out again.").withStyle(ChatFormatting.AQUA));
 	}
 
 	/** A back point: out of a solo run, then back where they came from. */
 	private static void back(MinecraftServer server, ServerPlayer p, Arena a) {
 		if (GameRuntime.inRun(p)) GameRuntime.leaveRun(server, p);
-		if (!returnTo(server, p, a)) p.sendSystemMessage(Component.literal("There's nowhere to go back to (no entrance or hub spawn set).").withStyle(ChatFormatting.GRAY));
+		if (!returnTo(server, p, a)) p.sendSystemMessage(Words.lit("There's nowhere to go back to (no entrance or hub spawn set).").withStyle(ChatFormatting.GRAY));
 	}
 
 	/**
@@ -246,22 +246,22 @@ public final class Portals {
 			if (!a.enabled) continue;
 			for (Games.Pos e : a.entrances) out.put(key("enter", a.id, e), new Label(e, 2.2, enterText(a)));
 			for (Games.Pos w : a.watchEntrances) out.put(key("watch", a.id, w), new Label(w, 1.9, watchText(a)));
-			for (Games.Pos b : a.exitPads) out.put(key("back", a.id, b), new Label(b, 1.6, Component.literal("Back").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
+			for (Games.Pos b : a.exitPads) out.put(key("back", a.id, b), new Label(b, 1.6, Words.lit("Back").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
 			Games.Pos goal = a.type.equals("maze") ? GameRuntime.mazeGoal(a) : null;
-			if (goal != null) out.put(key("mazeexit", a.id, goal), new Label(goal, 1.6, Component.literal("Exit").withStyle(st -> st.withColor(a.rgb()).withBold(true))));
+			if (goal != null) out.put(key("mazeexit", a.id, goal), new Label(goal, 1.6, Words.lit("Exit").withStyle(st -> st.withColor(a.rgb()).withBold(true))));
 			if (a.spectate != null) out.put(key("spectate", a.id, a.spectate), new Label(a.spectate, 2.4,
-					Component.literal("Spectators").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(Component.literal("\n" + a.shown()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.WHITE)))));
+					Words.lit("Spectators").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(Words.lit("\n" + a.shown()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.WHITE)))));
 		}
 		Dungeons.Settings d = DungeonRuntime.settings();
 		if (d.enabled) {
 			for (Dungeons.Pad pad : d.pads) {
 				if (pad.pos == null) continue;
-				out.put(key("dungeon", pad.pool, pad.pos), new Label(pad.pos, 2.2, Component.literal("Dungeon").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
-						.append(Component.literal("\n" + cap(pad.pool) + " · Party leader steps on").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+				out.put(key("dungeon", pad.pool, pad.pos), new Label(pad.pos, 2.2, Words.lit("Dungeon").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
+						.append(Words.lit("\n" + cap(pad.pool) + " · Party leader steps on").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			}
 			for (Map.Entry<String, Games.Pos> w : d.waiting.entrySet()) {
-				out.put(key("dqueue", w.getKey(), w.getValue()), new Label(w.getValue(), 2.4, Component.literal("Dungeon queue").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
-						.append(Component.literal("\n" + cap(w.getKey())).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+				out.put(key("dqueue", w.getKey(), w.getValue()), new Label(w.getValue(), 2.4, Words.lit("Dungeon queue").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
+						.append(Words.lit("\n" + cap(w.getKey())).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			}
 		}
 		return out;
@@ -288,18 +288,18 @@ public final class Portals {
 
 	/** The game's name, what it is, who plays now, and the best three. */
 	private static Component enterText(Arena a) {
-		MutableComponent t = Component.literal(a.shown()).withStyle(st -> st.withColor(a.rgb()).withBold(true));
+		MutableComponent t = Words.lit(a.shown()).withStyle(st -> st.withColor(a.rgb()).withBold(true));
 		// The game's own line under its name (panel), when it has one.
-		if (!a.subtitle.isBlank()) t.append(Component.literal("\n" + a.subtitle.strip()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
+		if (!a.subtitle.isBlank()) t.append(Words.lit("\n" + a.subtitle.strip()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
 		List<Games.Score> top = GameRuntime.top(a, 3);
 		String[] medal = { "1st", "2nd", "3rd" };
 		for (int i = 0; i < top.size(); i++) {
 			Games.Score sc = top.get(i);
 			int rank = i;
-			t.append(Component.literal("\n" + medal[i] + " " + cap(sc.name) + " · " + capWords(Games.scoreText(a.type, sc.best, GameRuntime::clock)))
+			t.append(Words.lit("\n" + medal[i] + " " + cap(sc.name) + " · " + capWords(Games.scoreText(a.type, sc.best, GameRuntime::clock)))
 					.withStyle(st -> st.withBold(false).withColor(rank == 0 ? ChatFormatting.YELLOW : ChatFormatting.WHITE)));
 		}
-		if (top.isEmpty()) t.append(Component.literal("\nNo best yet: be the first!").withStyle(st -> st.withBold(false).withColor(ChatFormatting.DARK_GRAY)));
+		if (top.isEmpty()) t.append(Words.lit("\nNo best yet: be the first!").withStyle(st -> st.withBold(false).withColor(ChatFormatting.DARK_GRAY)));
 		return t;
 	}
 
@@ -307,8 +307,8 @@ public final class Portals {
 		Map<String, Object> live = Games.quick(a.type) ? QuickRuntime.live(a.id) : a.type.equals("waves") ? WaveRuntime.live(a.id) : Map.of();
 		Object playing = live.get("playing");
 		String now = playing instanceof Number n && n.longValue() > 0 ? n + " playing now" : "nobody playing right now";
-		return Component.literal("Watch " + a.shown()).withStyle(st -> st.withColor(lighter(a.rgb())).withBold(true))
-				.append(Component.literal("\n" + now).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
+		return Words.lit("Watch " + a.shown()).withStyle(st -> st.withColor(lighter(a.rgb())).withBold(true))
+				.append(Words.lit("\n" + now).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
 	}
 
 	/**

@@ -29,7 +29,7 @@ final class Spectating {
 			ServerPlayer target = in.get(Math.floorMod(id.hashCode(), in.size()));
 			w.teleportTo((ServerLevel) target.level(), target.getX(), target.getY(), target.getZ(), Set.of(), target.getYRot(), target.getXRot(), true);
 			w.setCamera(target);
-			w.sendOverlayMessage(Component.literal("Watching " + target.getGameProfile().name()).withStyle(ChatFormatting.GRAY));
+			w.sendOverlayMessage(Words.lit("Watching " + target.getGameProfile().name()).withStyle(ChatFormatting.GRAY));
 		}
 	}
 }

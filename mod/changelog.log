@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.72.0
+- Games and dungeons: every word of their messages, titles, boss bars and labels starts with a capital ("Wave 3 In 4 s · Get Ready!"); commands (/game leave …), ids, {placeholders}, units after numbers and player names stay as they are
 ## 1.71.0
 - Games: a sound per game, played over and over to everyone in it (only to them, following them), with its length and volume; stops when they leave the game
 - Maze: path width (1–5), ceiling blocks, the blocks under the goal, chests in some dead ends (share and loot table), mobs roaming it while someone runs it (they come out 12–32 blocks away, peaceful ones attack too unless switched off, gone when nobody runs it); the goal has an exit ring and an "Exit" label in the game's colour

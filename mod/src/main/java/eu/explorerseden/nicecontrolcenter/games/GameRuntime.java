@@ -239,7 +239,7 @@ public final class GameRuntime {
 			case "dropper" -> clock(s.millis()) + (s.progress > 0 ? " · try " + (s.progress + 1) : "") + best(s, " · best ");
 			default -> clock(s.millis()) + best(s, " · best ");
 		};
-		p.sendOverlayMessage(Component.literal(s.arena.shown() + " · " + line).withStyle(st -> st.withColor(s.arena.rgb())));
+		p.sendOverlayMessage(Words.lit(s.arena.shown() + " · " + line).withStyle(st -> st.withColor(s.arena.rgb())));
 	}
 
 	private static String best(Session s, String lead) {
@@ -296,7 +296,7 @@ public final class GameRuntime {
 			case "dropper" -> "Land in the water at the bottom." + (a.maxTries > 0 ? " " + a.maxTries + " tries." : "");
 			default -> "Find the way to the glowing corner.";
 		};
-		p.sendSystemMessage(Component.literal(a.startMessage.isBlank() ? "▶ " + a.shown() + " started. " + hint + " /game leave stops." : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
+		p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + " started. " + hint + " /game leave stops." : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 		commands(server, a.startCommands, a, p, "");
 		return null;
 	}
@@ -317,10 +317,10 @@ public final class GameRuntime {
 			String result = Games.higherIsBetter(s.arena.type) ? s.progress + " jump" + (s.progress == 1 ? "" : "s") : clock(score);
 			if (finished) {
 				String line = s.arena.finishMessage.isBlank() ? "■ " + s.arena.shown() + ": " + result : fill(s.arena.finishMessage, s.arena, p, result);
-				p.sendSystemMessage(Component.literal(line + (record ? " · new personal best!" : "")).withStyle(record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
+				p.sendSystemMessage(Words.lit(line + (record ? " · new personal best!" : "")).withStyle(record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
 				commands(server, s.arena.finishCommands, s.arena, p, result);
 			}
-			else if (why != null) p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.GRAY));
+			else if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
 			// To the game hub spawn, else the start point (not after dying: the respawn does that; not when they left for another dimension).
 			if (p.isAlive() && (why == null || !why.startsWith("You left the arena"))) {
 				if (!Portals.returnTo(server, p, s.arena) && level != null) p.teleportTo(level, s.arena.start.x, s.arena.start.y, s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
@@ -528,8 +528,8 @@ public final class GameRuntime {
 		String jumps = String.valueOf(s.progress);
 		int lvl = parkourLevel(a, s.progress);
 		if (lvl > parkourLevel(a, s.progress - 1)) {
-			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Component.literal("Level " + (lvl + 1)).withStyle(ChatFormatting.GOLD)));
-			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket(Component.literal(switch (lvl) {
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Words.lit("Level " + (lvl + 1)).withStyle(ChatFormatting.GOLD)));
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket(Words.lit(switch (lvl) {
 				case 1 -> "up, down and sideways";
 				case 2 -> "longer jumps";
 				case 3 -> "slabs";
@@ -540,7 +540,7 @@ public final class GameRuntime {
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.0f);
 		}
 		if (a.everyJumps > 0 && s.progress % a.everyJumps == 0) {
-			p.sendOverlayMessage(Component.literal("★ " + s.progress + " jumps!").withStyle(ChatFormatting.GOLD));
+			p.sendOverlayMessage(Words.lit("★ " + s.progress + " jumps!").withStyle(ChatFormatting.GOLD));
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.4f);
 			for (String line : a.everyCommands) {
 				String cmd = fill(Games.math(line.strip().replaceFirst("^/", ""), Map.of("jumps", jumps)), a, p, jumps).replace("{jumps}", jumps);
@@ -858,13 +858,13 @@ public final class GameRuntime {
 					if (Games.quick(a.type)) {
 						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
 						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
-						ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": you're on the pad; the round starts once the join window closes."), false);
+						ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": you're on the pad; the round starts once the join window closes."), false);
 						return 1;
 					}
 					if (a.type.equals("waves")) {
 						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
 						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
-						ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": the party leader stands on the pad to start (or queue up)."), false);
+						ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": the party leader stands on the pad to start (or queue up)."), false);
 						return 1;
 					}
 					String err = start(ctx.getSource().getServer(), p, a);
@@ -886,12 +886,12 @@ public final class GameRuntime {
 					StringBuilder b = new StringBuilder(a.shown() + (list.isEmpty() ? ": no runs yet." : ":"));
 					int i = 1;
 					for (Games.Score sc : list) b.append("\n").append(i++).append(". ").append(sc.name).append(" · ").append(Games.scoreText(a.type, sc.best, GameRuntime::clock));
-					ctx.getSource().sendSuccess(() -> Component.literal(b.toString()).withStyle(ChatFormatting.GOLD), false);
+					ctx.getSource().sendSuccess(() -> Words.lit(b.toString()).withStyle(ChatFormatting.GOLD), false);
 					return 1;
 				})))
 				.then(Commands.literal("list").executes(ctx -> {
 					String names = settings.arenas.stream().filter(a -> a.enabled).map(a -> a.shown() + (a.shown().equals(a.name) ? "" : " (/game join " + a.name + ")") + " · " + a.type).reduce((x, y) -> x + ", " + y).orElse("none yet");
-					ctx.getSource().sendSuccess(() -> Component.literal("Games: " + names), false);
+					ctx.getSource().sendSuccess(() -> Words.lit("Games: " + names), false);
 					return 1;
 				}))
 				.then(Commands.literal("spawn").requires(admin)
@@ -899,13 +899,13 @@ public final class GameRuntime {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							settings.hub = pos(p);
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal("Hub spawn set here: players who log out or die in game areas or in this dimension come back here."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit("Hub spawn set here: players who log out or die in game areas or in this dimension come back here."), true);
 							return 1;
 						}))
 						.then(Commands.literal("clear").executes(ctx -> {
 							settings.hub = null;
 							saveSettings();
-							ctx.getSource().sendSuccess(() -> Component.literal("Hub spawn cleared: players go to their home or respawn point again."), true);
+							ctx.getSource().sendSuccess(() -> Words.lit("Hub spawn cleared: players go to their home or respawn point again."), true);
 							return 1;
 						})))
 				.then(Commands.literal("create").requires(admin)
@@ -919,7 +919,7 @@ public final class GameRuntime {
 					QuickRuntime.stop(ctx.getSource().getServer(), a);
 					settings.arenas.remove(a);
 					saveSettings();
-					ctx.getSource().sendSuccess(() -> Component.literal("Removed " + a.shown() + " (the blocks it built stay)."), true);
+					ctx.getSource().sendSuccess(() -> Words.lit("Removed " + a.shown() + " (the blocks it built stay)."), true);
 					return 1;
 				})))
 				.then(Commands.literal("try").requires(admin).then(arenaArg.get().executes(ctx -> {
@@ -927,13 +927,13 @@ public final class GameRuntime {
 					if (a != null && Games.quick(a.type)) {
 						String err = QuickRuntime.trial(ctx.getSource().getServer(), a, ctx.getSource().getPlayerOrException());
 						if (err != null) return fail(ctx, err);
-						ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": a round with only you in it; /game leave ends it."), true);
+						ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": a round with only you in it; /game leave ends it."), true);
 						return 1;
 					}
 					if (a == null || !a.type.equals("waves")) return fail(ctx, "Only wave arenas and quick rounds can be tried.");
 					String err = WaveRuntime.trial(ctx.getSource().getServer(), a);
 					if (err != null) return fail(ctx, err);
-					ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
+					ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
 					return 1;
 				})))
 				.then(Commands.literal("edit").requires(admin).then(arenaArg.get()
@@ -1085,7 +1085,7 @@ public final class GameRuntime {
 		if (a == null) return fail(ctx, "There's no such game.");
 		String msg = e.apply(a, p);
 		saveSettings();
-		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
+		ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": " + msg), true);
 		return 1;
 	}
 
@@ -1104,7 +1104,7 @@ public final class GameRuntime {
 		Corners.show(p, at, o);
 		String msg = "Corner " + (first ? 1 : 2) + " at " + at.toShortString() + (o == null ? ". Now the opposite corner (height included): /game edit " + a.name + (first ? " corner2" : " corner1") + " [x y z] or look at it."
 				: ". Box " + Corners.size(at, o) + ".");
-		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
+		ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": " + msg), true);
 		return 1;
 	}
 
@@ -1126,7 +1126,7 @@ public final class GameRuntime {
 		Corners.show(p, at, o);
 		String msg = "Spectator area corner " + (first ? 1 : 2) + " at " + at.toShortString() + (o == null ? ". Now the opposite corner (height included): /game edit " + a.name + " spectate " + (first ? "corner2" : "corner1") + " [x y z] or look at it."
 				: ". Spectator area " + Corners.size(at, o) + "; players are put at " + Math.round(a.spectate.x) + " " + Math.round(a.spectate.y) + " " + Math.round(a.spectate.z) + " (/game edit " + a.name + " spectate moves that spot).");
-		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
+		ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": " + msg), true);
 		return 1;
 	}
 
@@ -1185,7 +1185,7 @@ public final class GameRuntime {
 		settings.fill();
 		saveSettings();
 		if (type.equals("maze")) buildMaze((ServerLevel) p.level(), a);
-		ctx.getSource().sendSuccess(() -> Component.literal("Made the " + type + " game " + name + ". " + next + (type.equals("heads") ? "" : " Then its entrance, e.g. in the hub: /game edit " + name + " entrance add (and a display name: /game edit " + name + " title …).")).withStyle(ChatFormatting.GREEN), true);
+		ctx.getSource().sendSuccess(() -> Words.lit("Made the " + type + " game " + name + ". " + next + (type.equals("heads") ? "" : " Then its entrance, e.g. in the hub: /game edit " + name + " entrance add (and a display name: /game edit " + name + " title …).")).withStyle(ChatFormatting.GREEN), true);
 		return 1;
 	}
 
@@ -1224,7 +1224,7 @@ public final class GameRuntime {
 		net.minecraft.world.item.ItemStack st = HeadHunt.headItem(p, a, count);
 		if (st == null) return fail(ctx, "Set the heads' skin first: /game edit " + a.name + " texture <url or value>.");
 		if (!p.getInventory().add(st)) p.level().addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
-		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": here are heads to hide; each one you place joins the hunt (break it in creative to take it out)."), false);
+		ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": here are heads to hide; each one you place joins the hunt (break it in creative to take it out)."), false);
 		return 1;
 	}
 
@@ -1240,7 +1240,7 @@ public final class GameRuntime {
 		boolean done = add ? HeadHunt.add(a, p.level(), b.getBlockPos()) : HeadHunt.remove(a, p.level(), b.getBlockPos());
 		String msg = add ? (done ? "Head added (" + a.heads.size() + " hidden); it takes the hunt's skin." : "That head is in the hunt already.")
 				: (done ? "Head taken out (" + a.heads.size() + " left)." : "That head isn't in the hunt.");
-		ctx.getSource().sendSuccess(() -> Component.literal(a.shown() + ": " + msg), true);
+		ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": " + msg), true);
 		return done ? 1 : 0;
 	}
 
@@ -1255,7 +1255,7 @@ public final class GameRuntime {
 	}
 
 	private static int fail(CommandContext<CommandSourceStack> ctx, String why) {
-		ctx.getSource().sendFailure(Component.literal(why));
+		ctx.getSource().sendFailure(Words.lit(why));
 		return 0;
 	}
 
@@ -1300,7 +1300,7 @@ public final class GameRuntime {
 		long now = eu.explorerseden.nicecontrolcenter.players.PointsStore.add(p.getStringUUID(), p.getGameProfile().name(), n,
 				a.shown() + ": " + Games.scoreText(a.type, score, GameRuntime::clock));
 		var ps = eu.explorerseden.nicecontrolcenter.players.PointsStore.settings();
-		p.sendSystemMessage(Component.literal("+" + eu.explorerseden.nicecontrolcenter.Points.amount(ps, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
+		p.sendSystemMessage(Words.lit("+" + eu.explorerseden.nicecontrolcenter.Points.amount(ps, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
 	}
 
 	/** The game of their parkour, race, dropper or maze run (null when none). */
