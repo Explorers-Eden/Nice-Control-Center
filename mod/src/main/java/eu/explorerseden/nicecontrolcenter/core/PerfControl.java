@@ -462,6 +462,7 @@ public final class PerfControl {
 		t.randomTicks = false;
 		t.freezeWhenEmpty = true;
 		t.clearSky = true;
+		t.noPetPerks = true;
 		return t;
 	}
 
@@ -477,6 +478,13 @@ public final class PerfControl {
 		if (!(level instanceof ServerLevel server)) return false;
 		Performance.DimTuning dt = dim(server);
 		return dt != null && dt.clearSky;
+	}
+
+	/** Pets' perks are off in this level (per-dimension tuning; always in the dungeon dimension). */
+	public static boolean noPetPerks(net.minecraft.world.level.Level level) {
+		if (!(level instanceof ServerLevel server)) return false;
+		Performance.DimTuning dt = dim(server);
+		return dt != null && dt.noPetPerks;
 	}
 
 	/** A dimension set to freeze while nobody is in it, and nobody is. */

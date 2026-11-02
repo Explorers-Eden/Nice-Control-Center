@@ -52,6 +52,7 @@
 		"ToolCareMixin",
 		"GameChorusMixin",
 		"FishingFrenzyMixin",
+		"ClaimPlaceMixin",
 		"MobGoalsAccessor",
 		"WeatherPacketMixin",
 		"GameClaimPickupMixin",

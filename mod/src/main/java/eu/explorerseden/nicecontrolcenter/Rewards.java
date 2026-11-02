@@ -34,6 +34,7 @@ public final class Rewards {
 			new Trigger("enterClaim", "Enters one of their claims", "", "", false),
 			new Trigger("gameFinished", "Finishes a game", "Arena (empty: any)", "At least … jumps or waves / within … seconds (0: any)", false),
 			new Trigger("gameRecord", "Sets a personal best in a game", "Arena (empty: any)", "", false),
+			new Trigger("gameWon", "Wins a round (2 or more players)", "Arena (empty: any)", "", false),
 			new Trigger("waveCleared", "Clears a wave in a wave arena", "Arena (empty: any)", "From wave … (0: every wave)", false),
 			new Trigger("parkourJumps", "Makes jumps in parkour", "Arena (empty: any)", "Every … jumps (0: each jump)", false),
 			new Trigger("headsFound", "Finds hidden heads (head hunt)", "Head hunt (empty: any)", "Every … heads (0: each one)", false),

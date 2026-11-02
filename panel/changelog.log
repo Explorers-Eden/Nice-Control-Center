@@ -1,3 +1,6 @@
+## 1.60.0
+- Performance → per-dimension tuning: "No pet perks" column (in the Flying Fair preset); Games: colour floor platforms wool or concrete; winner commands on quick rounds (mod 1.70.0)
+
 ## 1.59.0
 - Fix: saving Games, Dungeons or Reward shops with the page open from before something was made in game erased it (a game made with /game create, entrances and other points, heads, dungeons and rooms with their saved blocks, pads, waiting areas, shops, rewards, NPC spots, items). Pages now send only what you deleted; everything else in the file stays
 

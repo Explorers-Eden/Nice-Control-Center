@@ -612,6 +612,14 @@ public final class DungeonRuntime {
 			for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box, e -> e.isAlive())) Aggro.make(m, 3f);
 		}
 		if (r.state != State.RUNNING) return;
+		if (r.dungeon.timeLimit > 0) {
+			List<ServerPlayer> in = new ArrayList<>();
+			for (UUID id : r.players) {
+				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				if (p != null && !r.out.contains(id)) in.add(p);
+			}
+			Countdown.tick("dungeon:" + r.slot, r.dungeon.timeLimit * 60_000L - r.millis(), in);
+		}
 		if (r.dungeon.timeLimit > 0 && r.millis() > r.dungeon.timeLimit * 60_000L) {
 			fail(server, r, "Time's up.");
 			return;

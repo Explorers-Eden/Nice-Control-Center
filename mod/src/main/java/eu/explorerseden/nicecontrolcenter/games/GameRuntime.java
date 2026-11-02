@@ -552,6 +552,7 @@ public final class GameRuntime {
 	}
 
 	private static void race(MinecraftServer server, ServerPlayer p, Session s) {
+		if (s.arena.timeLimit > 0) Countdown.tick("race:" + s.player, s.arena.timeLimit * 1000L - s.millis(), List.of(p));
 		if (s.arena.timeLimit > 0 && s.millis() > s.arena.timeLimit * 1000L) {
 			end(server, s, "Time's up: run over.", false);
 			return;

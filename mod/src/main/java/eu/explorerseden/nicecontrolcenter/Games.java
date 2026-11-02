@@ -157,6 +157,8 @@ public final class Games {
 		/** Run as the server for the player (without /) on start and when a run counts. */
 		public List<String> startCommands = new ArrayList<>();
 		public List<String> finishCommands = new ArrayList<>();
+		/** Quick rounds with two or more players: run for the winner ({player}, {score}, {game}). */
+		public List<String> winnerCommands = new ArrayList<>();
 
 		// Waves: a party fights waves of mobs in a box built in the world.
 		/** Where players appear (and come back after dying); the fight box (two corners, its height included). */
@@ -216,6 +218,8 @@ public final class Games {
 		/** Colour floor: the 3×3 grid of platforms (corner = its lowest north-west block), their size and the gap between. */
 		public List<String> colors = new ArrayList<>(List.of("minecraft:red_wool", "minecraft:orange_wool", "minecraft:yellow_wool", "minecraft:lime_wool",
 				"minecraft:light_blue_wool", "minecraft:blue_wool", "minecraft:purple_wool", "minecraft:pink_wool", "minecraft:white_wool"));
+		/** Colour floor: the platforms are wool or concrete, in nine of the 16 colours (picked anew each time). */
+		public String colorMaterial = "wool";
 		public int platformSize = 5;
 		public int platformGap = 2;
 		/** Colour floor: seconds before the called colour vanishes, how much faster after each refill, and the fastest. */
@@ -305,6 +309,7 @@ public final class Games {
 				if (a.finishMessage == null) a.finishMessage = "";
 				if (a.startCommands == null) a.startCommands = new ArrayList<>();
 				if (a.finishCommands == null) a.finishCommands = new ArrayList<>();
+				if (a.winnerCommands == null) a.winnerCommands = new ArrayList<>();
 				if (a.mobSpawns == null) a.mobSpawns = new ArrayList<>();
 				if (a.exitPads == null) a.exitPads = new ArrayList<>();
 				a.spectateRadius = Math.max(2, Math.min(64, a.spectateRadius));
@@ -334,6 +339,7 @@ public final class Games {
 				a.colors.removeIf(x -> x == null || x.isBlank());
 				if (a.colors.isEmpty()) a.colors = new Arena().colors;
 				a.platformSize = Math.max(1, Math.min(16, a.platformSize));
+				if (!"concrete".equals(a.colorMaterial)) a.colorMaterial = "wool";
 				a.platformGap = Math.max(0, Math.min(16, a.platformGap));
 				a.roundSeconds = Math.max(1, Math.min(60, a.roundSeconds));
 				a.speedUp = Math.max(0, Math.min(30, a.speedUp));

@@ -496,6 +496,7 @@ public final class WaveRuntime {
 		Spectating.follow(server, g.watching.keySet(), alive);
 		if (g.state == State.BREAK) {
 			long left = g.nextAt - now;
+			Countdown.tick("wave:" + g.arena.id, left, alive);
 			bar(server, g, Component.literal("Wave " + g.wave + (g.arena.rounds > 0 ? "/" + g.arena.rounds : "") + " in " + (left / 1000 + 1) + " s"), 1f, BossEvent.BossBarColor.YELLOW);
 			if (left <= 0) beginWave(server, g, level);
 			return;

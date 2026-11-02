@@ -214,6 +214,8 @@ public final class Performance {
 		public int itemDespawnSeconds = 0;
 		/** The sky there never darkens for rain or thunder (the weather is the server's; players there just don't get it). */
 		public boolean clearSky = false;
+		/** Pets' perks (effects, light, helping out) don't work here; the pets still follow. */
+		public boolean noPetPerks = false;
 	}
 
 	public static final class Settings {

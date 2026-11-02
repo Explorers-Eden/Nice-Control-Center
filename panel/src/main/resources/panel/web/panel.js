@@ -1992,6 +1992,7 @@
         + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards'
           : quick ? 'Commands for each player whose score counts ({score}): round rewards'
           : a.type === 'parkour' ? 'Commands when a run ends (they fell; {score} = jumps made, only with at least one)' : 'Commands when they finish ({score} = their time)');
+      const winner = quick ? lines('winnerCommands', 'Commands for the winner, with 2 or more players ({player}, {score}); also the Rewards trigger "Wins a round"') : '';
       const fields = {
         parkour: field('palette', 'Blocks (ids or #tags, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
           + `<p class="pn-hint pn-field-wide"><i class="bi bi-bounding-box"></i> ${a.areaMin && a.areaMax
@@ -2022,7 +2023,7 @@
         + field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
         + field('subtitle', 'Line under the name on its entrances (optional)', `<input type="text" data-g="subtitle" value="${esc(a.subtitle || '')}" maxlength="80" placeholder="e.g. Beat the record!">`)
         + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
-        + gmPoints(a, field) + fields + own;
+        + gmPoints(a, field) + fields + own + winner;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
       const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
         : waves || quick
@@ -2135,7 +2136,7 @@
     const pool = (label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="pool" data-lines="1" rows="2" spellcheck="false" placeholder="zombie">${esc((a.pool || []).join('\n'))}</textarea></label>`;
     const own = {
       ghasts: pool('Ghasts (one per line; <code>{ExplosionPower:0}</code> keeps the arena whole)') + field('maxAlive', 'Ghasts at once', num('maxAlive', 1, 200)),
-      colorfloor: field('colors', 'Colours (block ids or #tags like #minecraft:wool, comma-separated; more than 9: nine at random)', `<input type="text" data-g="colors" value="${esc((a.colors || []).join(', '))}">`)
+      colorfloor: field('colorMaterial', 'Platforms (nine of the 16 colours, picked anew each time)', `<select data-g="colorMaterial"><option value="wool" ${a.colorMaterial !== 'concrete' ? 'selected' : ''}>wool</option><option value="concrete" ${a.colorMaterial === 'concrete' ? 'selected' : ''}>concrete</option></select>`)
         + field('platformSize', 'Platform size (blocks)', num('platformSize', 1, 16)) + field('platformGap', 'Gap between platforms', num('platformGap', 0, 16))
         + field('roundSeconds', 'Seconds before a colour vanishes', num('roundSeconds', 1, 60, 0.1)) + field('speedUp', 'Faster after each refill (s)', num('speedUp', 0, 30, 0.1))
         + field('minRoundSeconds', 'Fastest (s)', num('minRoundSeconds', 1, 60, 0.1)) + field('refillEvery', 'Colours before the grid refills', num('refillEvery', 1, 8))
@@ -5364,8 +5365,8 @@
       const on = (k, def) => (d[k] === undefined ? def : d[k]);
       const sw = (k, def) => `<td><label class="np-switch"><input type="checkbox" data-dt="${k}" ${on(k, def) ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label></td>`;
       return `<tr data-dim="${esc(id)}"><td class="name">${esc(name(id))}<small>${esc(id)}</small></td>${sw('naturalSpawns', true)}${sw('randomTicks', true)}${sw('freezeWhenEmpty', false)}
-        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td>${sw('clearSky', false)}</tr>`;
-    }).join('') || '<tr><td colspan="6">No dimensions found yet: start the server once.</td></tr>';
+        <td><input type="number" data-dt="itemDespawnSeconds" min="0" max="3600" value="${d.itemDespawnSeconds || 0}" ${editable ? '' : 'disabled'}></td>${sw('clearSky', false)}${sw('noPetPerks', false)}</tr>`;
+    }).join('') || '<tr><td colspan="7">No dimensions found yet: start the server once.</td></tr>';
   }
 
   /** The rows back into settings: only dimensions that differ from normal are kept. */
@@ -5374,15 +5375,15 @@
     $('pn-dimtune').querySelectorAll('tr[data-dim]').forEach((tr) => {
       const v = (k) => tr.querySelector(`[data-dt="${k}"]`);
       const d = { naturalSpawns: v('naturalSpawns').checked, randomTicks: v('randomTicks').checked, freezeWhenEmpty: v('freezeWhenEmpty').checked,
-        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)), clearSky: v('clearSky').checked };
-      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds || d.clearSky) out[tr.dataset.dim] = d;
+        itemDespawnSeconds: Math.max(0, Math.min(3600, Number(v('itemDespawnSeconds').value) || 0)), clearSky: v('clearSky').checked, noPetPerks: v('noPetPerks').checked };
+      if (!d.naturalSpawns || !d.randomTicks || d.freezeWhenEmpty || d.itemDespawnSeconds || d.clearSky || d.noPetPerks) out[tr.dataset.dim] = d;
     });
     return out;
   }
 
   $('pn-dimtune-fair').addEventListener('click', () => {
     const id = 'eden:flying_fair';
-    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60, clearSky: true } };
+    perfSettings.dimensions = { ...readDimTune(), [id]: { naturalSpawns: false, randomTicks: false, freezeWhenEmpty: true, itemDespawnSeconds: 60, clearSky: true, noPetPerks: true } };
     if (!dimTuneDims.some((d) => d.id === id)) dimTuneDims.push({ id, name: 'Flying Fair' });
     renderDimTune();
     formMsg('pn-perf-msg', 'Flying Fair set as a minigame world: save to use it.', true);

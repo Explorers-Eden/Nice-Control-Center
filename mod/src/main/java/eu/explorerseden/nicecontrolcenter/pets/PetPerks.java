@@ -157,7 +157,8 @@ public final class PetPerks {
 				st.bondSaved = time;
 				PetStore.changed();
 			}
-			List<Pets.Perk> perks = PetStore.activePerks(owner, owned);
+			// Off in dimensions set so (games, dungeons): the pet just follows.
+			List<Pets.Perk> perks = eu.explorerseden.nicecontrolcenter.core.PerfControl.noPetPerks(player.level()) ? List.of() : PetStore.activePerks(owner, owned);
 			if (perks.contains(Pets.Perk.LANTERN) || perks.contains(Pets.Perk.NIGHT_EYES)) lantern(player, st, perks.contains(Pets.Perk.NIGHT_EYES), s.perks, time);
 			else lightOff(st);
 			if (perks.contains(Pets.Perk.WATCHFUL_EYE)) {
@@ -219,6 +220,7 @@ public final class PetPerks {
 	static boolean active(ServerPlayer player, Pets.Perk perk) {
 		if (!PetStore.enabled() || !PetStore.settings().perks.enabled) return false;
 		if (PlayerActivity.isAfk(player) || player.isSpectator() || player.isCreative() || !player.isAlive()) return false;
+		if (eu.explorerseden.nicecontrolcenter.core.PerfControl.noPetPerks(player.level())) return false;
 		Pets.Owned owned = PetFollowers.shownOwned(player.getUUID());
 		Pets.Owner owner = owned == null ? null : PetStore.data().owners.get(player.getStringUUID());
 		return owner != null && PetStore.activePerks(owner, owned).contains(perk);

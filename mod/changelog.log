@@ -1,4 +1,13 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.70.0
+- Claims: every block a player places needs building rights where it lands (glow berries and other blocks could be placed next to a block the player was only allowed to use, like cave vines, a flower pot or a composter)
+- Per-dimension tuning: "No pet perks" (pets still follow, their perks do nothing); always on in the dungeon dimension and in the Flying Fair preset
+- Colour floor: wool or concrete platforms (nine of the 16 colours, picked anew each time) instead of a block list
+- Back points: just "Back" on their label
+- Treasure grab: a sparkle over each treasure every second (and its glow set again)
+- Quick rounds: commands for the winner when two or more played, and the Rewards trigger "Wins a round"
+- Timers tick for the last five seconds: quick rounds, wave breaks, race time limits, dungeon time limits
+
 ## 1.69.2
 - Games: entrance and other labels without a background, with a shadow, at 0.75 size (old ones are replaced by themselves); names, scores and lines start with capitals ("1st NiceRon · 42 Jumps", "No best yet…")
 

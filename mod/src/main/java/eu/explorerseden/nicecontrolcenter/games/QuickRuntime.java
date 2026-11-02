@@ -491,6 +491,7 @@ public final class QuickRuntime {
 			end(server, r, null);
 			return;
 		}
+		if (a.timeLimit > 0) Countdown.tick("quick:" + a.id, a.timeLimit * 1000L - r.elapsed(), alive);
 		if (a.timeLimit > 0 && r.elapsed() >= a.timeLimit * 1000L) {
 			end(server, r, "Time's up!");
 			return;
@@ -618,8 +619,11 @@ public final class QuickRuntime {
 
 	/** The colours: block ids and tags (a tag gives a colour per block in it). */
 	private static List<Block> colours(Arena a) {
-		return eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.colors, Blocks.STONE);
+		String m = "concrete".equals(a.colorMaterial) ? "concrete" : "wool";
+		return eu.explorerseden.nicecontrolcenter.core.BlockLists.of(String.join(",", DYES.stream().map(d -> "minecraft:" + d + "_" + m).toList()), Blocks.STONE);
 	}
+
+	private static final List<String> DYES = List.of("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black");
 
 	/** Platform i (0–8, row by row) from the grid's corner. */
 	private static BlockPos platform(Arena a, int i) {
@@ -800,6 +804,15 @@ public final class QuickRuntime {
 
 	private static void treasure(ServerLevel level, Round r, List<ServerPlayer> alive) {
 		Arena a = r.arena;
+		// Easy to see: a sparkle over each one every second (and their glow set again).
+		if (level.getGameTime() % 20 == 0) {
+			for (UUID id : r.treasure.keySet()) {
+				Entity item = level.getEntity(id);
+				if (item == null) continue;
+				item.setGlowingTag(true);
+				level.sendParticles(ParticleTypes.END_ROD, item.getX(), item.getY() + 0.6, item.getZ(), 3, 0.15, 0.25, 0.15, 0.01);
+			}
+		}
 		// Picked up: walking into one.
 		for (Iterator<Map.Entry<UUID, Integer>> it = r.treasure.entrySet().iterator(); it.hasNext();) {
 			Map.Entry<UUID, Integer> e = it.next();
@@ -997,6 +1010,17 @@ public final class QuickRuntime {
 			int c = Long.compare(r.score.getOrDefault(y, 0L), r.score.getOrDefault(x, 0L));
 			return c != 0 ? c : Integer.compare(r.counted.indexOf(y), r.counted.indexOf(x));
 		});
+		// With two or more players: the winner's own rewards (commands, Rewards trigger "Wins a round").
+		UUID winner = order.get(0);
+		if (r.startedWith > 1 && r.score.getOrDefault(winner, 0L) > 0) {
+			ServerPlayer w = server.getPlayerList().getPlayer(winner);
+			if (w != null) {
+				String score = String.valueOf(r.score.getOrDefault(winner, 0L));
+				w.sendSystemMessage(Component.literal("★ You won " + r.arena.shown() + "!").withStyle(ChatFormatting.GOLD));
+				commands(server, r.arena.winnerCommands, r.arena, w, score);
+				RewardsControl.fireGame(server, "gameWon", w, r.arena.name, r.score.getOrDefault(winner, 0L), false);
+			}
+		}
 		MutableComponent line = Component.literal("■ " + r.arena.shown() + " · ").withStyle(ChatFormatting.GOLD);
 		String[] medal = { "1st", "2nd", "3rd" };
 		for (int i = 0; i < Math.min(3, order.size()); i++) {

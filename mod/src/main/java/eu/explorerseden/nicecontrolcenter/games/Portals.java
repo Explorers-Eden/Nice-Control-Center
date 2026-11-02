@@ -238,8 +238,7 @@ public final class Portals {
 			if (!a.enabled) continue;
 			for (Games.Pos e : a.entrances) out.put(key("enter", a.id, e), new Label(e, 2.2, enterText(a)));
 			for (Games.Pos w : a.watchEntrances) out.put(key("watch", a.id, w), new Label(w, 1.9, watchText(a)));
-			for (Games.Pos b : a.exitPads) out.put(key("back", a.id, b), new Label(b, 1.6, Component.literal("Back").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
-					.append(Component.literal("\nStand here to go back").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+			for (Games.Pos b : a.exitPads) out.put(key("back", a.id, b), new Label(b, 1.6, Component.literal("Back").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
 			if (a.spectate != null) out.put(key("spectate", a.id, a.spectate), new Label(a.spectate, 2.4,
 					Component.literal("Spectators").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(Component.literal("\n" + a.shown()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.WHITE)))));
 		}
