@@ -30,9 +30,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
    **Points** for the reward shops.
 10. **Box** (`/game edit <name> corner1` and `corner2`, standing there or looking at the block; height included):
     the play area where a game uses one.
-11. **Sound** (optional, every game but the head hunt): a sound id played over and over to everyone in the game,
-    only to them (e.g. `minecraft:music_disc.pigstep`, or one from a resource pack), its length in seconds (when it
-    starts again) and the volume. Players hear it on their Jukebox/Note Blocks slider.
+11. **Music** (optional, every game but the head hunt): pick a jukebox song from the list (vanilla and datapack
+    songs, with their length) and a volume; it loops for everyone in the game, only for them, on their
+    Jukebox/Note Blocks slider.
 12. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
 
 Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,

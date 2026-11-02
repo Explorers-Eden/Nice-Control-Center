@@ -150,6 +150,7 @@ public final class GameRuntime {
 			placedFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-games-blocks.json");
 			mazesFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-mazes.json");
 			mazesBuilt = readMazes(mazesFile);
+			LoopSound.exportSongs(server);
 			clearLeftovers(server);
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {

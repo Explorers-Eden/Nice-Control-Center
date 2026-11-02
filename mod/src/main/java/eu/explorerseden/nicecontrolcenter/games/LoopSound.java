@@ -38,7 +38,11 @@ final class LoopSound {
 			if (a == null) a = WaveRuntime.arenaOf(p);
 			if (a == null) a = GameRuntime.arenaOf(p);
 			Playing was = playing.get(p.getUUID());
-			String sound = a == null || a.loopSound.isEmpty() || a.loopSeconds < 1 ? null : a.loopSound;
+			// A jukebox song (its own sound and length), else a sound id with the length given.
+			net.minecraft.world.item.JukeboxSong song = a == null || a.loopSong.isEmpty() ? null : song(server, a.loopSong);
+			String sound = song != null ? song.soundEvent().value().location().toString()
+					: a == null || a.loopSound.isEmpty() || a.loopSeconds < 1 ? null : a.loopSound;
+			long length = song != null ? Math.max(20, song.lengthInTicks()) : a == null ? 0 : a.loopSeconds * 20L;
 			if (was != null && (sound == null || !sound.equals(was.sound()) || !a.id.equals(was.arena()))) {
 				stop(p, was.sound());
 				playing.remove(p.getUUID());
@@ -47,12 +51,38 @@ final class LoopSound {
 			if (sound == null || was != null && tick < was.again()) continue;
 			Identifier id = Identifier.tryParse(sound.contains(":") ? sound : "minecraft:" + sound);
 			if (id == null) continue;
-			Holder<SoundEvent> event = Holder.direct(SoundEvent.createVariableRangeEvent(id));
+			Holder<SoundEvent> event = song != null ? song.soundEvent() : Holder.direct(SoundEvent.createVariableRangeEvent(id));
 			p.connection.send(new ClientboundSoundEntityPacket(event, SoundSource.RECORDS, p, (float) a.loopVolume, 1f, p.getRandom().nextLong()));
-			playing.put(p.getUUID(), new Playing(a.id, sound, tick + a.loopSeconds * 20L));
+			playing.put(p.getUUID(), new Playing(a.id, sound, tick + length));
 		}
 		for (Iterator<UUID> it = playing.keySet().iterator(); it.hasNext();) {
 			if (server.getPlayerList().getPlayer(it.next()) == null) it.remove();
+		}
+	}
+
+	private static net.minecraft.world.item.JukeboxSong song(MinecraftServer server, String id) {
+		Identifier i = Identifier.tryParse(id.contains(":") ? id : "minecraft:" + id);
+		if (i == null) return null;
+		return server.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.JUKEBOX_SONG)
+				.get(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.JUKEBOX_SONG, i)).map(Holder::value).orElse(null);
+	}
+
+	/** Every jukebox song the server knows (vanilla and datapacks), with its name and length, for the panel's list. */
+	static void exportSongs(MinecraftServer server) {
+		java.util.List<java.util.Map<String, Object>> out = new java.util.ArrayList<>();
+		server.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.JUKEBOX_SONG).listElements().forEach(h -> {
+			java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+			m.put("id", h.key().identifier().toString());
+			m.put("name", h.value().description().getString());
+			m.put("seconds", Math.round(h.value().lengthInSeconds()));
+			out.add(m);
+		});
+		out.sort(java.util.Comparator.comparing(m -> String.valueOf(m.get("name")).toLowerCase(java.util.Locale.ROOT)));
+		try {
+			java.nio.file.Path f = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve(eu.explorerseden.nicecontrolcenter.Games.Arena.SONGS);
+			java.nio.file.Files.writeString(f, eu.explorerseden.nicecontrolcenter.Json.GSON.toJson(out));
+		} catch (java.io.IOException e) {
+			eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.warn("Games: could not write the jukebox song list: {}", e.getMessage());
 		}
 	}
 

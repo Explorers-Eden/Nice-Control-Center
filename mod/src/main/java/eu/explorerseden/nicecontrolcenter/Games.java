@@ -109,6 +109,11 @@ public final class Games {
 		public String loopSound = "";
 		public double loopVolume = 0.5;
 		public int loopSeconds = 0;
+		/** A jukebox song (minecraft:pigstep, a datapack's…) looped instead: its own length is used; wins over loopSound. */
+		public String loopSong = "";
+
+		/** Jukebox songs the server knows (written by the mod on start for the panel). */
+		public static final String SONGS = "nicecontrolcenter-jukebox-songs.json";
 
 		/** parkour, race, dropper or maze. */
 		public String type = "parkour";
@@ -305,6 +310,7 @@ public final class Games {
 				a.loopSound = a.loopSound == null ? "" : a.loopSound.strip().toLowerCase(Locale.ROOT);
 				a.loopVolume = Math.max(0.05, Math.min(1, a.loopVolume == 0 ? 0.5 : a.loopVolume));
 				a.loopSeconds = Math.max(0, Math.min(3600, a.loopSeconds));
+				a.loopSong = a.loopSong == null ? "" : a.loopSong.strip().toLowerCase(Locale.ROOT);
 				// Colour floor: players gather on the middle platform (not where it was made).
 				if (a.type.equals("colorfloor") && a.corner != null) {
 					int step = Math.max(1, a.platformSize) + Math.max(0, a.platformGap);
@@ -492,7 +498,8 @@ public final class Games {
 			if (a.title.length() > 48) return "The display name of " + a.name + " is up to 48 characters.";
 			if (a.subtitle.length() > 80) return "The entrance line of " + a.name + " is up to 80 characters.";
 			if (!a.loopSound.isEmpty() && !a.loopSound.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+")) return "The sound of " + a.name + " isn't a sound id (like minecraft:music_disc.pigstep).";
-			if (!a.loopSound.isEmpty() && a.loopSeconds < 1) return "Give the sound of " + a.name + " its length in seconds (when it starts again).";
+			if (!a.loopSong.isEmpty() && !a.loopSong.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+")) return "The song of " + a.name + " isn't a jukebox song id.";
+			if (a.loopSong.isEmpty() && !a.loopSound.isEmpty() && a.loopSeconds < 1) return "Give the sound of " + a.name + " its length in seconds (when it starts again).";
 		}
 		return null;
 	}

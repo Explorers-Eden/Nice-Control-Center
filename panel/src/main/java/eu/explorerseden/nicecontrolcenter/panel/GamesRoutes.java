@@ -53,6 +53,15 @@ final class GamesRoutes {
 				if (hash != null) skins.put(a.id, hash);
 			}
 			out.put("headSkins", skins);
+			// Jukebox songs for the game sound list (written by the mod when the server starts).
+			Object songs = java.util.List.of();
+			try {
+				java.nio.file.Path f = serverDir.resolve("config").resolve(Games.Arena.SONGS);
+				if (java.nio.file.Files.exists(f)) songs = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(f));
+			} catch (Exception e) {
+				songs = java.util.List.of();
+			}
+			out.put("songs", songs);
 			// Live (players in each arena now, top 10) while the server runs; else the saved scores.
 			JsonElement live = null;
 			try {

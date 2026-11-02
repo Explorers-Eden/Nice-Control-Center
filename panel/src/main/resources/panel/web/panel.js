@@ -1957,6 +1957,7 @@
       gm.live = d.live || null;
       gm.scores = d.scores || null;
       gm.headSkins = d.headSkins || {};
+      gm.songs = d.songs || [];
       gm.dirty = false;
       gm.removed = { arenas: [], points: [] };
       renderArenas();
@@ -2036,8 +2037,7 @@
         + field('title', 'Display name (spaces allowed; commands use ' + esc(a.name) + ')', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
         + field('subtitle', 'Line under the name on its entrances (optional)', `<input type="text" data-g="subtitle" value="${esc(a.subtitle || '')}" maxlength="80" placeholder="e.g. Beat the record!">`)
         + field('color', 'Colour (entrance title and particles, watch point, start title)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
-        + (heads ? '' : field('loopSound', 'Sound looped for everyone playing (id, optional)', `<input type="text" data-g="loopSound" value="${esc(a.loopSound || '')}" placeholder="minecraft:music_disc.pigstep">`)
-          + field('loopSeconds', 'Its length in seconds (when it starts again)', `<input type="number" data-g="loopSeconds" value="${a.loopSeconds || 0}" min="0" max="3600">`)
+        + (heads ? '' : field('loopSong', 'Music looped for everyone playing (a jukebox song; it starts again when it ends)', gmSongSelect(a))
           + field('loopVolume', 'Volume (0.05–1; players hear it on their Jukebox/Note Blocks slider)', `<input type="number" data-g="loopVolume" value="${a.loopVolume || 0.5}" min="0.05" max="1" step="0.05">`))
         + gmPoints(a, field) + fields + own + winner;
       const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
@@ -2116,6 +2116,17 @@
     return a.spectateMin && a.spectateMax
       ? `box ${Math.abs(a.spectateMax.x - a.spectateMin.x) + 1} × ${Math.abs(a.spectateMax.y - a.spectateMin.y) + 1} × ${Math.abs(a.spectateMax.z - a.spectateMin.z) + 1}`
       : `radius ${a.spectateRadius} (or a box: <code>/game edit ${n} spectate corner1</code> + <code>corner2</code>)`;
+  }
+
+  /** Jukebox songs (vanilla and datapacks) as the mod listed them, "Name · 3:08"; a sound set before stays as an option. */
+  function gmSongSelect(a) {
+    const songs = gm.songs || [];
+    const len = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const opts = songs.map((s) => `<option value="${esc(s.id)}" ${s.id === a.loopSong ? 'selected' : ''}>${esc(s.name || s.id)} · ${len(s.seconds || 0)}</option>`).join('');
+    const unknown = a.loopSong && !songs.some((s) => s.id === a.loopSong) ? `<option value="${esc(a.loopSong)}" selected>${esc(a.loopSong)}</option>` : '';
+    const old = !a.loopSong && a.loopSound ? `<option value="__old__" selected>${esc(a.loopSound)} (set before, ${a.loopSeconds || 0} s)</option>` : '';
+    return `<select data-g="loopSong"><option value="" ${a.loopSong || old ? '' : 'selected'}>(none)</option>${old}${unknown}${opts}</select>`
+      + (songs.length ? '' : '<small class="pn-hint">The list fills once the server has started with this version.</small>');
   }
 
   /** The game's own reward points (Games → Points), and the sums commands can do. */
@@ -2216,6 +2227,10 @@
         const m = line.match(/^\s*(\d{1,4})\s*[:=]\s*(.+?)\s*$/);
         if (m) a[k][String(Number(m[1]))] = m[2];
       });
+    }
+    else if (k === 'loopSong') {
+      // Picking a song (or none) replaces a sound set before; "__old__" keeps that one.
+      if (e.target.value !== '__old__') { a.loopSong = e.target.value; a.loopSound = ''; a.loopSeconds = 0; }
     }
     else if (k === 'palette' || k === 'colors') a[k] = e.target.value.split(',').map((x) => x.trim()).filter(Boolean);
     else if (e.target.dataset.lines) a[k] = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
