@@ -31,6 +31,14 @@ public final class FileWatch {
 		return t;
 	}
 
+	/** The file's last-modified time read from the disk now (and kept): for a command that must see the latest. */
+	public static long now(Path file) {
+		long t = read(file);
+		times.put(file, t);
+		start();
+		return t;
+	}
+
 	private static long read(Path file) {
 		try {
 			return Files.exists(file) ? Files.getLastModifiedTime(file).toMillis() : 0;

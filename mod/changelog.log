@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.77.4
+- Fix: a game change saved in the panel could be lost or ignored: in-game /game commands (build, corners, entrances…) worked with the settings read up to 5 s earlier and wrote them back over the panel's (e.g. a new maze size); they now read the file first
+- Fix: a maze made new after a finished run used the game as it was when the run started (a size changed meanwhile was ignored)
+- Fix: games compared by their settings object, which is replaced each time the panel saves: parkour lanes could be handed out twice, a daily maze rebuilt with someone inside, the "playing" count be off
 ## 1.77.3
 - Maze: built smaller or somewhere else than last time, the part of the old maze the new one doesn't cover is taken away first (walls, ceiling, lights and floor). Each maze's last footprint is kept with the world (nicecontrolcenter-mazes.json), so this works from the next build on
 ## 1.77.2

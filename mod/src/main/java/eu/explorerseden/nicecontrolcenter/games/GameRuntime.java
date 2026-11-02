@@ -184,6 +184,12 @@ public final class GameRuntime {
 		settings = Games.read(file());
 	}
 
+	/** reload() with the file's time read right now (commands: a panel save a second ago counts). */
+	static void reloadNow() {
+		eu.explorerseden.nicecontrolcenter.core.FileWatch.now(file());
+		reload();
+	}
+
 	static void saveSettings() {
 		try {
 			Games.write(file(), settings);
@@ -336,9 +342,12 @@ public final class GameRuntime {
 				if (record) RewardsControl.fireGame(server, "gameRecord", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));
 			}
 		}
-		if (s.arena.type.equals("maze") && finished && s.arena.regenerate.equals("run") && level != null && sessions.values().stream().noneMatch(o -> o.arena == s.arena)) buildMaze(level, s.arena);
+		// The game as it's set now (the panel may have changed it during the run, e.g. a new size), not as it was at the start.
+		reloadNow();
+		Arena now = settings.arenas.stream().filter(x -> x.id.equals(s.arena.id)).findFirst().orElse(s.arena);
+		if (now.type.equals("maze") && finished && now.regenerate.equals("run") && level != null && sessions.values().stream().noneMatch(o -> o.arena.id.equals(now.id))) buildMaze(level, now);
 		// However it ended (finished, left, died, out of time): with nobody else in it, what lies around goes.
-		else if (level != null) freshArea(level, s.arena);
+		else if (level != null) freshArea(level, now);
 	}
 
 	// ---------------------------------------------------------------- parkour
@@ -346,7 +355,7 @@ public final class GameRuntime {
 	private static int freeLane(Arena a) {
 		int lanes = laneCount(a);
 		boolean[] used = new boolean[lanes];
-		for (Session s : sessions.values()) if (s.arena == a && s.lane >= 0 && s.lane < lanes) used[s.lane] = true;
+		for (Session s : sessions.values()) if (s.arena.id.equals(a.id) && s.lane >= 0 && s.lane < lanes) used[s.lane] = true;
 		for (int i = 0; i < lanes; i++) if (!used[i]) return i;
 		return -1;
 	}
@@ -361,7 +370,7 @@ public final class GameRuntime {
 
 	/** A run starting with nobody else in the game: what earlier runs left lying around goes (maze, parkour box). */
 	private static void freshArea(ServerLevel level, Arena a) {
-		if (sessions.values().stream().anyMatch(o -> o.arena == a)) return;
+		if (sessions.values().stream().anyMatch(o -> o.arena.id.equals(a.id))) return;
 		AABB box = a.type.equals("maze") ? mazeArea(a) : null;
 		int[] pb = a.type.equals("parkour") ? parkourBox(a) : null;
 		if (pb != null) box = new AABB(pb[0] - 2, pb[1] - 2, pb[2] - 2, pb[3] + 3, pb[4] + 8, pb[5] + 3);
@@ -655,7 +664,7 @@ public final class GameRuntime {
 			String tag = "ncc_maze_" + a.id;
 			List<ServerPlayer> runners = new ArrayList<>();
 			for (Session s : sessions.values()) {
-				if (s.arena != a) continue;
+				if (!s.arena.id.equals(a.id)) continue;
 				ServerPlayer p = server.getPlayerList().getPlayer(s.player);
 				if (p != null && p.level() == level) runners.add(p);
 			}
@@ -927,7 +936,7 @@ public final class GameRuntime {
 		long today = System.currentTimeMillis() / 86_400_000L;
 		for (Arena a : settings.arenas) {
 			if (!a.type.equals("maze") || a.corner == null || !a.regenerate.equals("daily") || mazeDay.getOrDefault(a.id, today) >= today) continue;
-			if (sessions.values().stream().anyMatch(s -> s.arena == a)) continue;
+			if (sessions.values().stream().anyMatch(s -> s.arena.id.equals(a.id))) continue;
 			ServerLevel level = level(server, a.corner.dim);
 			if (level != null) buildMaze(level, a);
 		}
@@ -992,12 +1001,14 @@ public final class GameRuntime {
 				.then(Commands.literal("spawn").requires(admin)
 						.then(Commands.literal("set").executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
+							reloadNow();
 							settings.hub = pos(p);
 							saveSettings();
 							ctx.getSource().sendSuccess(() -> Words.lit("Hub spawn set here: players who log out or die in game areas or in this dimension come back here."), true);
 							return 1;
 						}))
 						.then(Commands.literal("clear").executes(ctx -> {
+							reloadNow();
 							settings.hub = null;
 							saveSettings();
 							ctx.getSource().sendSuccess(() -> Words.lit("Hub spawn cleared: players go to their home or respawn point again."), true);
@@ -1009,7 +1020,7 @@ public final class GameRuntime {
 				.then(Commands.literal("delete").requires(admin).then(arenaArg.get().executes(ctx -> {
 					Arena a = arena(ctx);
 					if (a == null) return fail(ctx, "There's no such game.");
-					for (Session s : List.copyOf(sessions.values())) if (s.arena == a) end(ctx.getSource().getServer(), s, "This game was removed.", false);
+					for (Session s : List.copyOf(sessions.values())) if (s.arena.id.equals(a.id)) end(ctx.getSource().getServer(), s, "This game was removed.", false);
 					WaveRuntime.stop(ctx.getSource().getServer(), a);
 					QuickRuntime.stop(ctx.getSource().getServer(), a);
 					settings.arenas.remove(a);
@@ -1227,6 +1238,7 @@ public final class GameRuntime {
 
 	private static int create(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		reloadNow();
 		String type = StringArgumentType.getString(ctx, "type").toLowerCase(Locale.ROOT);
 		String name = StringArgumentType.getString(ctx, "name");
 		if (!Games.TYPES.contains(type)) return fail(ctx, "Types: " + String.join(", ", Games.TYPES) + ".");
@@ -1346,6 +1358,9 @@ public final class GameRuntime {
 	}
 
 	private static Arena arena(CommandContext<CommandSourceStack> ctx) {
+		// What the panel saved a moment ago counts: read now (not only every 5 s), so this command neither works with
+		// old settings (a maze built at its old size) nor writes them back over the panel's.
+		reloadNow();
 		return settings.arena(StringArgumentType.getString(ctx, "arena"));
 	}
 
@@ -1425,7 +1440,7 @@ public final class GameRuntime {
 			if (a.type.equals("waves")) m.putAll(WaveRuntime.live(a.id));
 			else if (Games.quick(a.type)) m.putAll(QuickRuntime.live(a.id));
 			else if (a.type.equals("heads")) m.putAll(HeadHunt.live(a));
-			else m.put("playing", sessions.values().stream().filter(s -> s.arena == a).count());
+			else m.put("playing", sessions.values().stream().filter(s -> s.arena.id.equals(a.id)).count());
 			m.put("top", top(a, 10));
 			out.add(m);
 		}
