@@ -55,6 +55,7 @@
 		"ClaimPlaceMixin",
 		"VillagerTradeMixin",
 		"NpcDriverHiddenMixin",
+		"NpcNoRidingMixin",
 		"MannequinInvoker",
 		"MobGoalsAccessor",
 		"WeatherPacketMixin",

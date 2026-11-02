@@ -85,6 +85,8 @@ public final class NpcRuntime {
 	static final String PLACED = "ncc_npc_placed";
 	static final String HOSTILE = "ncc_npc_hostile";
 	static final String WALKER = "ncc_npc_walker";
+	/** The invisible seat a sitting NPC rides (riding is what makes the player model sit). */
+	public static final String SEAT = "ncc_npc_seat";
 	static final String ID = "ncc_npcid_";
 	static final String PAIR = "ncc_npcpair_";
 	static final String LOOK = "ncc_npclook_";
@@ -316,7 +318,7 @@ public final class NpcRuntime {
 
 	/** What the placed NPC looks like and where: made again when it changes. */
 	private static String looks(Npc n) {
-		return Integer.toHexString((n.skin + "|" + n.skinValue + "|" + n.shown() + "|" + n.description + "|" + n.pose + "|" + n.mainHand + "|" + n.equipment + "|" + n.walks() + "|" + n.scaleMin + "|" + n.scaleMax + "|"
+		return Integer.toHexString((n.skin + "|" + n.skinValue + "|" + n.nameColor + "|" + n.shown() + "|" + n.description + "|" + n.pose + "|" + n.mainHand + "|" + n.equipment + "|" + n.walks() + "|" + n.sits() + "|" + n.scaleMin + "|" + n.scaleMax + "|"
 				+ (n.spot == null ? "" : n.spot.dim + "|" + Math.round(n.spot.x * 2) + "|" + Math.round(n.spot.y * 2) + "|" + Math.round(n.spot.z * 2) + "|" + n.spot.yaw))
 				.hashCode());
 	}
@@ -333,19 +335,23 @@ public final class NpcRuntime {
 	public static void keep(MinecraftServer server) {
 		Map<String, LivingEntity> bodies = new HashMap<>();
 		Map<String, Mob> drivers = new HashMap<>();
+		Map<String, Entity> seats = new HashMap<>();
 		for (ServerLevel level : server.getAllLevels()) {
 			for (Entity e : level.getAllEntities()) {
 				if (e == null || e.isRemoved() || !e.entityTags().contains(PLACED)) continue;
 				Npc n = npcOf(e);
 				boolean body = e.entityTags().contains(BODY);
+				boolean seat = e.entityTags().contains(SEAT);
 				boolean ok = settings.enabled && n != null && n.spot != null && e.entityTags().contains(LOOK + looks(n));
-				if (ok && body) ok = e instanceof LivingEntity && !bodies.containsKey(n.id);
-				if (ok && !body) ok = e instanceof Mob && n.walks() && !drivers.containsKey(n.id);
+				if (ok && seat) ok = n.sits() && !seats.containsKey(n.id);
+				else if (ok && body) ok = e instanceof LivingEntity && !bodies.containsKey(n.id);
+				else if (ok) ok = e instanceof Mob && n.walks() && !drivers.containsKey(n.id);
 				if (!ok) {
 					e.discard();
 					continue;
 				}
-				if (body) bodies.put(n.id, (LivingEntity) e);
+				if (seat) seats.put(n.id, e);
+				else if (body) bodies.put(n.id, (LivingEntity) e);
 				else drivers.put(n.id, (Mob) e);
 			}
 		}
@@ -362,6 +368,13 @@ public final class NpcRuntime {
 				if (d != null) d.discard();
 				b = null;
 				d = null;
+			}
+			// A sitting one needs its seat, and to be on it.
+			Entity seat = seats.get(n.id);
+			if (n.sits() && b != null && (seat == null || b.getVehicle() != seat)) {
+				b.discard();
+				if (seat != null) seat.discard();
+				b = null;
 			}
 			Placed st = placed.computeIfAbsent(n.id, k -> new Placed());
 			st.body = b;
@@ -430,6 +443,16 @@ public final class NpcRuntime {
 		size(n, body, driver);
 		level.addFreshEntity(body);
 		if (driver != null) level.addFreshEntity(driver);
+		if (n.sits()) {
+			// Riding puts the hips at the seat: the seat goes where the NPC would stand (e.g. on top of a stair).
+			Entity seat = load(level, "minecraft:item_display", "{Tags:[\"" + SEAT + "\",\"" + PLACED + "\",\"" + ID + n.id + "\",\"" + LOOK + looks(n) + "\",\""
+					+ MobLines.NMM_EXCLUDE + "\"]}");
+			if (seat != null) {
+				seat.snapTo(n.spot.x, n.spot.y, n.spot.z, n.spot.yaw, 0);
+				level.addFreshEntity(seat);
+				body.startRiding(seat, true, false);
+			}
+		}
 		st.body = body;
 		st.driver = driver;
 		st.next = 0;
@@ -448,8 +471,14 @@ public final class NpcRuntime {
 			e.clearFire();
 			if (!e.getActiveEffects().isEmpty()) e.removeAllEffects();
 			if (e.getHealth() < e.getMaxHealth()) e.setHealth(e.getMaxHealth());
-			if (e.isPassenger()) e.stopRiding();
+			boolean seated = e.getVehicle() != null && e.getVehicle().entityTags().contains(SEAT);
+			if (e.isPassenger() && !seated) e.stopRiding();
 			if (e.isVehicle()) e.ejectPassengers();
+			if (seated) {
+				e.setYBodyRot(n.spot == null ? e.getYRot() : n.spot.yaw);
+				if (n.lookAtPlayers) look(level, e);
+				continue;
+			}
 			if (n.walks()) {
 				// Waiting at a checkpoint: it may look at players near.
 				if (st.waiting && n.lookAtPlayers && st.driver != null) look(level, st.driver);
@@ -623,6 +652,8 @@ public final class NpcRuntime {
 				it.remove();
 				continue;
 			}
+			if (d.isPassenger()) d.stopRiding();
+			if (b.isPassenger()) b.stopRiding();
 			// Placed by hand every tick: no physics, so it never pushes its driver back.
 			b.noPhysics = true;
 			b.setPos(d.getX(), d.getY(), d.getZ());
@@ -722,10 +753,14 @@ public final class NpcRuntime {
 		nbt.append("],immovable:1b,NoGravity:1b,Silent:1b,PersistenceRequired:1b");
 		if (invulnerable) nbt.append(",Invulnerable:1b");
 		// Hostiles have no name tag: it shows through walls.
-		if (!n.title.isBlank() && !hostile) nbt.append(",CustomNameVisible:1b,CustomName:").append(Json.GSON.toJson(n.shown()));
+		if (!n.title.isBlank() && !hostile) {
+			nbt.append(",CustomNameVisible:1b,CustomName:");
+			if (n.nameColor.isEmpty()) nbt.append(Json.GSON.toJson(n.shown()));
+			else nbt.append("{text:").append(Json.GSON.toJson(n.shown())).append(",color:\"").append(n.nameColor.toLowerCase(Locale.ROOT)).append("\"}");
+		}
 		if (!n.description.isBlank() && !hostile) nbt.append(",description:").append(Json.GSON.toJson(n.description));
 		else nbt.append(",hide_description:1b");
-		nbt.append(",pose:\"").append(n.pose).append("\",main_hand:\"").append(n.mainHand).append("\"");
+		nbt.append(",pose:\"").append(n.pose.equals("sitting") ? "standing" : n.pose).append("\",main_hand:\"").append(n.mainHand).append("\"");
 		String profile = profile(n);
 		if (profile != null) nbt.append(",profile:").append(profile);
 		nbt.append("}");
@@ -846,7 +881,7 @@ public final class NpcRuntime {
 		for (Npcs.Action a : actions) {
 			String text = a.text.replace("{player}", p.getGameProfile().name()).replace("{uuid}", p.getStringUUID()).replace("{npc}", n.shown());
 			if ("message".equals(a.type)) {
-				p.sendSystemMessage(Component.literal(n.title.isBlank() ? text : n.shown() + ": " + text));
+				p.sendSystemMessage(n.title.isBlank() ? Component.literal(text) : chatName(n).append(Component.literal(text).withStyle(ChatFormatting.WHITE)));
 				continue;
 			}
 			String cmd = text.startsWith("/") ? text.substring(1) : text;
@@ -877,8 +912,14 @@ public final class NpcRuntime {
 		}
 	}
 
+	/** "Name: " in the NPC's colour (gold without one). */
+	private static net.minecraft.network.chat.MutableComponent chatName(Npc n) {
+		var name = Component.literal(n.shown() + ": ");
+		return n.nameColor.isEmpty() ? name.withStyle(ChatFormatting.GOLD) : name.withStyle(st -> st.withColor(Integer.parseInt(n.nameColor.substring(1), 16)));
+	}
+
 	private static void say(Npc n, Placed st, String line, List<ServerPlayer> to) {
-		for (ServerPlayer p : to) p.sendSystemMessage(Component.literal(n.shown() + ": ").withStyle(ChatFormatting.GOLD).append(Component.literal(line).withStyle(ChatFormatting.WHITE)));
+		for (ServerPlayer p : to) p.sendSystemMessage(chatName(n).append(Component.literal(line).withStyle(ChatFormatting.WHITE)));
 		if (st.body != null && !st.body.isRemoved()) {
 			describe(st.body, line);
 			st.talkUntil = System.currentTimeMillis() + 5_000;

@@ -1158,3 +1158,4 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-nc-wait input { width: 4.5rem; }
 .pn-nc-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .9em; color: var(--muted); }
 .pn-nc-key input { width: 16rem; max-width: 60vw; }
+.pn-nc-color { display: inline-flex; align-items: center; gap: .5rem; }

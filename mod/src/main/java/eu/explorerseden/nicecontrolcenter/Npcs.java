@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 public final class Npcs {
 	public static final String FILE = "nicecontrolcenter-npcs.json";
-	public static final List<String> POSES = List.of("standing", "crouching", "sleeping", "swimming", "fall_flying");
+	public static final List<String> POSES = List.of("standing", "sitting", "crouching", "sleeping", "swimming", "fall_flying");
 
 	private Npcs() {
 	}
@@ -62,6 +62,8 @@ public final class Npcs {
 		public String name = "";
 		/** Shown above it; empty = no name tag. */
 		public String title = "";
+		/** The name's colour on its name tag and in chat ("#ffaa00"); empty = white on the tag, gold in chat. */
+		public String nameColor = "";
 		/** A line under the name (the mannequin's description); empty = none. Talking lines show there too. */
 		public String description = "";
 		/** A player name, a textures.minecraft.net link or hash, or the base64 value; empty = the default look. */
@@ -117,9 +119,15 @@ public final class Npcs {
 			return path != null && !path.isEmpty();
 		}
 
+		/** Sits on an invisible seat at its spot (only when it stands still: walkers and hostiles stand). */
+		public boolean sits() {
+			return "sitting".equals(pose) && !walks();
+		}
+
 		void fill() {
 			if (name == null) name = "";
 			if (title == null) title = "";
+			if (nameColor == null || !nameColor.matches("#[0-9a-fA-F]{6}")) nameColor = "";
 			if (description == null) description = "";
 			if (skin == null) skin = "";
 			skin = skin.strip();

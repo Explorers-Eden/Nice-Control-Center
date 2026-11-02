@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.77.0
+- NPCs: "sitting" pose (they sit on an invisible seat at their spot, e.g. put the spot on a stair; standing NPCs only, walkers and hostiles stand)
+- NPCs: a colour for their name on the name tag and in chat
+- NPCs never get into boats or minecarts or onto anything else (/ride included), only onto their own seat
 ## 1.76.0
 - NPCs: a size range (each time one appears it gets a random size in between; body and fighter alike) and, as hostiles, a death loot table (nothing by default)
 - NPC walking: a checkpoint counts as reached when the way there ends within 3 blocks of it (spots on fences, slab edges or in narrow gaps could never be stood on exactly, so NPCs waited there until the 15-second rescue warped them on); standing still for 5 s it tries again with a bigger pathfinding budget; steps towards far checkpoints land on ground it can stand on; the warp is a last resort after 15 s

@@ -2362,6 +2362,7 @@
         <div class="pn-rw-grid">
           ${field('Name (one word, for the commands and mob pools)', `<input type="text" data-n="name" value="${esc(n.name)}" maxlength="32">`)}
           ${field('Shown name (empty = no name tag)', `<input type="text" data-n="title" value="${esc(n.title)}" maxlength="64">`)}
+          ${field('Name colour (name tag and chat)', `<span class="pn-nc-color"><input type="color" data-n="nameColor" value="${esc(n.nameColor || '#ffffff')}">${n.nameColor ? '<button type="button" class="np-btn small" data-nact="nocolor" title="Back to the default (white tag, gold in chat)"><i class="bi bi-x-lg"></i></button>' : '<small class="pn-hint">default</small>'}</span>`)}
           ${field('Line under the name (optional)', `<input type="text" data-n="description" value="${esc(n.description)}" maxlength="100" placeholder="e.g. Right-click me!">`)}
           ${field('Skin: a player name, a link to the skin picture (any site; uploaded through MineSkin), a textures.minecraft.net link or hash, or the base64 value', `<span class="pn-gm-skin">${nc.skins[n.id] ? face : ''}<input type="text" data-n="skin" value="${esc(n.skin)}" placeholder="Notch"></span>${n.skinError ? `<small class="pn-hint pn-warn"><i class="bi bi-exclamation-triangle"></i> ${esc(n.skinError)}</small>` : /^https?:\/\//i.test(n.skin || '') && !/textures\.minecraft\.net/i.test(n.skin) && n.skin !== n.skinSource ? '<small class="pn-hint">Uploading through MineSkin after saving (a few seconds, server running).</small>' : ''}`, true)}
           ${field('Pose', `<select data-n="pose">${nc.poses.map((p) => opt(p, n.pose, p.replace('_', ' '))).join('')}</select>`)}
@@ -2437,6 +2438,9 @@
       if (n.id) nc.removed.path.push(spotKey(n.id, 'path', c.pos));
       n.path.splice(+b.dataset.pi, 1);
       ncChanged(true);
+    } else if (b.dataset.nact === 'nocolor') {
+      n.nameColor = '';
+      ncChanged(true);
     } else if (b.dataset.nact === 'delete') {
       if (!confirm(`Remove the NPC ${n.name}?`)) return;
       if (n.id) nc.removed.npcs.push(n.id);
@@ -2451,7 +2455,7 @@
     let name = 'npc';
     for (let k = 2; nc.settings.npcs.some((x) => x.name.toLowerCase() === name.toLowerCase()); k++) name = 'npc' + k;
     nc.settings.npcs.push({ id: '', name, title: name, description: '', skin: '', pose: 'standing', mainHand: 'right', equipment: [], spot: null, lookAtPlayers: true,
-      path: [], pathMode: 'loop', walkSpeed: 0.25, scaleMin: 1, scaleMax: 1, lootTable: '', onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false,
+      nameColor: '', path: [], pathMode: 'loop', walkSpeed: 0.25, scaleMin: 1, scaleMax: 1, lootTable: '', onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false,
       hostile: { health: 20, damage: 3, speed: 0.25, armor: 0, followRange: 32 } });
     ncOpen.add('new' + (nc.settings.npcs.length - 1));
     ncChanged(true);
