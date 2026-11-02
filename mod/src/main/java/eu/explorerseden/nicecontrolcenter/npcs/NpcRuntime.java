@@ -162,6 +162,8 @@ public final class NpcRuntime {
 			if (e instanceof Mob m && e.entityTags().contains(DRIVER)) {
 				p.driver = m;
 				if (e.entityTags().contains(WALKER)) calm(m);
+				// Goals aren't saved: given again whenever it's loaded.
+				if (e.entityTags().contains(HOSTILE) && m.getMainHandItem().is(Items.TRIDENT)) ((MobGoalsAccessor) m).nicecontrolcenter$goals().addGoal(1, new TridentThrow(m));
 			} else if (e instanceof LivingEntity l && e.entityTags().contains(BODY)) {
 				p.body = l;
 			}
@@ -673,6 +675,45 @@ public final class NpcRuntime {
 	}
 
 
+	/** A trident NPC throws it at players 4–20 blocks away it can see, every 2 seconds (up close it fights). */
+	private static final class TridentThrow extends net.minecraft.world.entity.ai.goal.Goal {
+		private final Mob mob;
+		private int next;
+
+		TridentThrow(Mob mob) {
+			this.mob = mob;
+		}
+
+		@Override
+		public boolean canUse() {
+			LivingEntity t = mob.getTarget();
+			if (t == null || !t.isAlive() || mob.tickCount < next) return false;
+			double d = mob.distanceToSqr(t);
+			return d > 16 && d < 400 && mob.getSensing().hasLineOfSight(t);
+		}
+
+		@Override
+		public boolean canContinueToUse() {
+			return false;
+		}
+
+		@Override
+		public void start() {
+			LivingEntity t = mob.getTarget();
+			if (t == null || !(mob.level() instanceof ServerLevel level)) return;
+			next = mob.tickCount + 40;
+			var trident = new net.minecraft.world.entity.projectile.arrow.ThrownTrident(level, mob, new ItemStack(Items.TRIDENT));
+			trident.pickup = net.minecraft.world.entity.projectile.arrow.AbstractArrow.Pickup.DISALLOWED;
+			double dx = t.getX() - mob.getX(), dy = t.getY(0.3333) - trident.getY(), dz = t.getZ() - mob.getZ();
+			double flat = Math.sqrt(dx * dx + dz * dz);
+			trident.shoot(dx, dy + flat * 0.2, dz, 1.6f, 4f);
+			level.addFreshEntity(trident);
+			level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), net.minecraft.sounds.SoundEvents.DROWNED_SHOOT, mob.getSoundSource(), 1f, 1f);
+			Puppet p = puppets.get(tag(mob, PAIR));
+			if (p != null && p.body != null) swingArm(p.body);
+		}
+	}
+
 	/**
 	 * The body swings its arm, the way each game version does it (26.1: swing(hand); 26.3 changed it to a swing
 	 * animation packet, and the old animate packet's 0 now means "wake up", which drops players for a mannequin).
@@ -708,7 +749,8 @@ public final class NpcRuntime {
 			return false;
 		}
 		ItemStack hand = item(server, n, 0);
-		String type = hand.is(Items.BOW) ? "minecraft:skeleton" : hand.is(Items.CROSSBOW) ? "minecraft:pillager" : hand.is(Items.TRIDENT) ? "minecraft:drowned" : "minecraft:husk";
+		// A trident: a husk that throws it (a drowned only goes after targets in water or at night).
+		String type = hand.is(Items.BOW) ? "minecraft:skeleton" : hand.is(Items.CROSSBOW) ? "minecraft:pillager" : "minecraft:husk";
 		String pair = UUID.randomUUID().toString().substring(0, 8);
 		float yaw = random.nextFloat() * 360;
 		List<String> dTags = new ArrayList<>(List.of(DRIVER, HOSTILE, ID + n.id, PAIR + pair, MobLines.NMM_EXCLUDE));

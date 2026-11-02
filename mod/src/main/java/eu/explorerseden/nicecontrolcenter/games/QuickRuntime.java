@@ -512,9 +512,9 @@ public final class QuickRuntime {
 			case "ghasts" -> ghasts(server, level, r, alive);
 			case "colorfloor" -> {
 				colorFloor(server, level, r, alive);
-				if (a.peacefulFight && server.getTickCount() % 20 == 0) {
+				if (server.getTickCount() % 20 == 0) {
 					for (LivingEntity m : level.getEntitiesOfClass(LivingEntity.class, box(a).inflate(8), e -> e.isAlive() && e.entityTags().contains(r.tag()))) {
-						if (!(m instanceof net.minecraft.world.entity.Mob mob)) continue;
+						if (!(m instanceof net.minecraft.world.entity.Mob mob) || !a.peacefulFight && !Aggro.landShy(mob)) continue;
 						Aggro.make(mob, 3f);
 						if (mob.getTarget() == null && !alive.isEmpty()) mob.setTarget(alive.get(0));
 					}

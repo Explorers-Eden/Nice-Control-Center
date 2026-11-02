@@ -665,7 +665,7 @@ public final class GameRuntime {
 				continue;
 			}
 			for (LivingEntity m : mobs) {
-				if (a.peacefulFight && m instanceof net.minecraft.world.entity.Mob mob) {
+				if (m instanceof net.minecraft.world.entity.Mob mob && (a.peacefulFight || Aggro.landShy(mob))) {
 					Aggro.make(mob, 3f);
 					if (mob.getTarget() == null) mob.setTarget(runners.get(random.nextInt(runners.size())));
 				}

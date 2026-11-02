@@ -42,8 +42,27 @@ public final class Aggro {
 	private Aggro() {
 	}
 
+	/**
+	 * Monsters that leave players alone on land: drowned only go after targets in water or at night (and head for water
+	 * by day). In games they're always handed to {@link #make}, whatever the peaceful-mobs switch says.
+	 */
+	public static boolean landShy(Mob m) {
+		return m instanceof net.minecraft.world.entity.monster.zombie.Drowned;
+	}
+
 	/** Makes the mob fight players (melee damage when it has no attack of its own); hostile mobs are left as they are. */
 	public static void make(Mob m, float damage) {
+		// Drowned: any player, anywhere, any time; their trident throw works once they have a target, without one
+		// they charge (their own melee goal refuses targets on dry land by day).
+		if (landShy(m)) {
+			if (!done.add(m)) return;
+			MobGoalsAccessor acc = (MobGoalsAccessor) m;
+			acc.nicecontrolcenter$targets().addGoal(0, new NearestAttackableTargetGoal<>(m, Player.class, false));
+			// Above their urge to go back to water by day (which outranks their own attacks).
+			if (m.getMainHandItem().is(net.minecraft.world.item.Items.TRIDENT) && m instanceof RangedAttackMob thrower) acc.nicecontrolcenter$goals().addGoal(0, new RangedAttackGoal(thrower, 1.0, 40, 12f));
+			else if (m instanceof PathfinderMob walker) acc.nicecontrolcenter$goals().addGoal(0, new Charge(walker, damage, true));
+			return;
+		}
 		if (m instanceof Enemy && !(m instanceof NeutralMob)) return;
 		if (!done.add(m)) return;
 		MobGoalsAccessor acc = (MobGoalsAccessor) m;

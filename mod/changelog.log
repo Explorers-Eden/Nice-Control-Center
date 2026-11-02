@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.77.1
+- Hostile NPCs with a trident throw it (every 2 s at players 4–20 blocks away they can see) and fight up close; before, they were a drowned underneath, which leaves players on dry land alone by day. Bows (skeleton) and crossbows (pillager) shoot as before (tested: arrows and tridents fly and hit)
+- Games: drowned fight players on land too, by day as well, whatever the peaceful-mobs switch says (wave fights, dungeons, mazes, quick rounds); with a trident they throw it, without one they charge
 ## 1.77.0
 - NPCs: "sitting" pose (they sit on an invisible seat at their spot, e.g. put the spot on a stair; standing NPCs only, walkers and hostiles stand)
 - NPCs: a colour for their name on the name tag and in chat
