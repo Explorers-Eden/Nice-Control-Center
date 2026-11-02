@@ -239,7 +239,7 @@ public final class Portals {
 			for (Games.Pos e : a.entrances) out.put(key("enter", a.id, e), new Label(e, 2.2, enterText(a)));
 			for (Games.Pos w : a.watchEntrances) out.put(key("watch", a.id, w), new Label(w, 1.9, watchText(a)));
 			for (Games.Pos b : a.exitPads) out.put(key("back", a.id, b), new Label(b, 1.6, Component.literal("Back").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
-					.append(Component.literal("\nstand here to go back").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+					.append(Component.literal("\nStand here to go back").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			if (a.spectate != null) out.put(key("spectate", a.id, a.spectate), new Label(a.spectate, 2.4,
 					Component.literal("Spectators").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(Component.literal("\n" + a.shown()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.WHITE)))));
 		}
@@ -248,18 +248,33 @@ public final class Portals {
 			for (Dungeons.Pad pad : d.pads) {
 				if (pad.pos == null) continue;
 				out.put(key("dungeon", pad.pool, pad.pos), new Label(pad.pos, 2.2, Component.literal("Dungeon").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
-						.append(Component.literal("\n" + pad.pool + " · party leader steps on").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+						.append(Component.literal("\n" + cap(pad.pool) + " · Party leader steps on").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			}
 			for (Map.Entry<String, Games.Pos> w : d.waiting.entrySet()) {
 				out.put(key("dqueue", w.getKey(), w.getValue()), new Label(w.getValue(), 2.4, Component.literal("Dungeon queue").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
-						.append(Component.literal("\n" + w.getKey()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+						.append(Component.literal("\n" + cap(w.getKey())).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			}
 		}
 		return out;
 	}
 
+	/** First letter upper case ("niceron" → "Niceron"). */
+	private static String cap(String s) {
+		return s == null || s.isEmpty() ? "" : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+	}
+
+	/** Every word's first letter upper case ("42 jumps" → "42 Jumps"). */
+	private static String capWords(String s) {
+		StringBuilder out = new StringBuilder();
+		for (String w : s.split(" ", -1)) out.append(out.length() > 0 ? " " : "").append(cap(w));
+		return out.toString();
+	}
+
+	/** Labels made with an older look (background, size) go and come back new: this is part of their tag. */
+	private static final String LOOK = "v2";
+
 	private static String key(String kind, String id, Games.Pos at) {
-		return TAG + "_" + Integer.toHexString((kind + "|" + id + "|" + at.dim + "|" + Math.round(at.x * 2) + "|" + Math.round(at.y * 2) + "|" + Math.round(at.z * 2)).hashCode());
+		return TAG + "_" + Integer.toHexString((LOOK + "|" + kind + "|" + id + "|" + at.dim + "|" + Math.round(at.x * 2) + "|" + Math.round(at.y * 2) + "|" + Math.round(at.z * 2)).hashCode());
 	}
 
 	/** The game's name, what it is, who plays now, and the best three. */
@@ -272,10 +287,10 @@ public final class Portals {
 		for (int i = 0; i < top.size(); i++) {
 			Games.Score sc = top.get(i);
 			int rank = i;
-			t.append(Component.literal("\n" + medal[i] + " " + sc.name + " · " + Games.scoreText(a.type, sc.best, GameRuntime::clock))
+			t.append(Component.literal("\n" + medal[i] + " " + cap(sc.name) + " · " + capWords(Games.scoreText(a.type, sc.best, GameRuntime::clock)))
 					.withStyle(st -> st.withBold(false).withColor(rank == 0 ? ChatFormatting.YELLOW : ChatFormatting.WHITE)));
 		}
-		if (top.isEmpty()) t.append(Component.literal("\nno best yet: be the first!").withStyle(st -> st.withBold(false).withColor(ChatFormatting.DARK_GRAY)));
+		if (top.isEmpty()) t.append(Component.literal("\nNo best yet: be the first!").withStyle(st -> st.withBold(false).withColor(ChatFormatting.DARK_GRAY)));
 		return t;
 	}
 
@@ -314,7 +329,7 @@ public final class Portals {
 				ServerLevel level = GameRuntime.levelOf(server, at.dim);
 				if (level == null || !level.isPositionEntityTicking(BlockPos.containing(at.x, at.y, at.z))) continue;
 				String text = Json.GSON.toJson(net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), w.getValue().text()).getOrThrow());
-				ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:text_display %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],billboard:\"center\",alignment:\"center\",line_width:220,background:1073741824,text:%s}",
+				ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:text_display %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],billboard:\"center\",alignment:\"center\",line_width:220,background:0,shadow:1b,transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[0.75f,0.75f,0.75f]},text:%s}",
 						at.dim, at.x, at.y + w.getValue().height(), at.z, TAG, w.getKey(), text));
 			}
 			return;

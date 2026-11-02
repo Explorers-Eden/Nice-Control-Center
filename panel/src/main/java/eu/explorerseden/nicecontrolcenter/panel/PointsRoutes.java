@@ -98,9 +98,11 @@ final class PointsRoutes {
 				error(ctx, HttpStatus.BAD_REQUEST, problem);
 				return;
 			}
-			// Set only in game (NPC spots are placed there, items come from the hand): kept as the mod wrote them,
-			// except that the page may take some out.
+			// Set or made in game (NPC spots, items from the hand, shops and rewards made there), also while the page was
+			// open: kept as the mod wrote them; only what the page deleted goes.
 			Points.Settings now = Points.read(file());
+			Removed removed = Removed.from(ctx.body());
+			java.util.Set<String> goneShops = removed.of("shops"), goneEntries = removed.of("entries"), goneNpcs = removed.of("npcs"), goneItems = removed.of("items");
 			for (Points.Shop shop : next.shops) {
 				Points.Shop was = now.shops.stream().filter(x -> x.id.equals(shop.id)).findFirst().orElse(null);
 				if (was == null) {
@@ -108,18 +110,16 @@ final class PointsRoutes {
 					for (Points.Entry e : shop.entries) e.items = new ArrayList<>();
 					continue;
 				}
-				List<String> keep = shop.npcs.stream().map(PointsRoutes::spot).toList();
-				shop.npcs = new ArrayList<>(was.npcs.stream().filter(p -> keep.contains(spot(p))).toList());
+				shop.npcs = new ArrayList<>(was.npcs.stream().filter(p -> !goneNpcs.contains(Removed.spot(shop.id, "npcs", p))).toList());
 				for (Points.Entry e : shop.entries) {
 					Points.Entry old = was.entry(e.id);
 					if (old == null) {
 						e.items = new ArrayList<>();
 						continue;
 					}
-					List<String> kept = e.items.stream().map(i -> i.item == null ? "" : i.item.stack).toList();
 					List<Points.Stack> items = new ArrayList<>();
 					for (Points.Stack st : old.items) {
-						if (!kept.contains(st.item.stack)) continue;
+						if (goneItems.contains(shop.id + "|" + e.id + "|" + st.item.stack)) continue;
 						// The count may be changed on the page.
 						Points.Stack mine = e.items.stream().filter(i -> i.item != null && st.item.stack.equals(i.item.stack)).findFirst().orElse(st);
 						st.count = Math.max(1, Math.min(6400, mine.count));
@@ -127,6 +127,12 @@ final class PointsRoutes {
 					}
 					e.items = items;
 				}
+				for (Points.Entry old : was.entries) {
+					if (shop.entry(old.id) == null && !goneEntries.contains(shop.id + "|" + old.id)) shop.entries.add(old);
+				}
+			}
+			for (Points.Shop was : now.shops) {
+				if (!goneShops.contains(was.id) && next.shops.stream().noneMatch(x -> x.id.equals(was.id))) next.shops.add(was);
 			}
 			problem = Points.validate(next);
 			if (problem != null) {
@@ -169,7 +175,4 @@ final class PointsRoutes {
 		}));
 	}
 
-	private static String spot(eu.explorerseden.nicecontrolcenter.Games.Pos p) {
-		return p.dim + "|" + Math.round(p.x * 2) + "|" + Math.round(p.y * 2) + "|" + Math.round(p.z * 2);
-	}
 }

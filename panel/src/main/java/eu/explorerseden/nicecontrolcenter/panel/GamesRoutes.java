@@ -36,12 +36,9 @@ final class GamesRoutes {
 		return serverDir.resolve("config").resolve(Dungeons.FILE);
 	}
 
-	/** What the file has, without what the page took away (matched by spot). */
-	private static java.util.List<Games.Pos> kept(java.util.List<Games.Pos> was, java.util.List<Games.Pos> page) {
-		java.util.function.Function<Games.Pos, String> key = (p) -> p.dim + "|" + Math.round(p.x * 2) + "|" + Math.round(p.y * 2) + "|" + Math.round(p.z * 2);
-		java.util.Set<String> keep = new java.util.HashSet<>();
-		if (page != null) for (Games.Pos p : page) if (p != null) keep.add(key.apply(p));
-		return new java.util.ArrayList<>(was.stream().filter(p -> keep.contains(key.apply(p))).toList());
+	/** What the file has, without the spots the page deleted. */
+	private static java.util.List<Games.Pos> minus(java.util.List<Games.Pos> was, String owner, String field, java.util.Set<String> gone) {
+		return new java.util.ArrayList<>(was.stream().filter(p -> !gone.contains(Removed.spot(owner, field, p))).toList());
 	}
 
 	void register(JavalinDefaultRoutingApi routes) {
@@ -86,6 +83,8 @@ final class GamesRoutes {
 			// What's only set in game (/game edit: positions, mob spawns, exit pads, kit) stays as the mod wrote it,
 			// so a page opened before such an edit doesn't undo it.
 			Games.Settings now = Games.read(file());
+			Removed removed = Removed.from(ctx.body());
+			java.util.Set<String> gone = removed.of("points");
 			for (Games.Arena a : next.arenas) {
 				Games.Arena was = now.arenas.stream().filter(x -> x.id.equals(a.id)).findFirst().orElse(null);
 				if (was == null) continue;
@@ -102,15 +101,18 @@ final class GamesRoutes {
 				a.spectateRadius = was.spectateRadius;
 				a.spectateMin = was.spectateMin;
 				a.spectateMax = was.spectateMax;
-				// Placed in game; the page can only take some away.
-				a.exitPads = kept(was.exitPads, a.exitPads);
-				a.entrances = kept(was.entrances, a.entrances);
-				a.watchEntrances = kept(was.watchEntrances, a.watchEntrances);
+				// Placed in game (also while the page was open): only what the page deleted goes.
+				a.exitPads = minus(was.exitPads, a.id, "exitPads", gone);
+				a.entrances = minus(was.entrances, a.id, "entrances", gone);
+				a.watchEntrances = minus(was.watchEntrances, a.id, "watchEntrances", gone);
+				a.heads = minus(was.heads, a.id, "heads", gone);
 				a.kit = was.kit;
-				// Head hunts: heads are hidden in game; the page can only take some out.
-				java.util.Set<String> kept = new java.util.HashSet<>();
-				for (Games.Pos h : a.heads) kept.add(h.dim + "|" + (int) Math.floor(h.x) + "|" + (int) Math.floor(h.y) + "|" + (int) Math.floor(h.z));
-				a.heads = new java.util.ArrayList<>(was.heads.stream().filter(h -> kept.contains(h.dim + "|" + (int) Math.floor(h.x) + "|" + (int) Math.floor(h.y) + "|" + (int) Math.floor(h.z))).toList());
+			}
+			// Games made in game while the page was open stay (only the ones deleted on the page go).
+			java.util.Set<String> deleted = removed.of("arenas");
+			for (Games.Arena was : now.arenas) {
+				if (deleted.contains(was.id) || next.arenas.stream().anyMatch(x -> x.id.equals(was.id))) continue;
+				next.arenas.add(was);
 			}
 			// Renamed games: Rewards rules that named the old name follow.
 			Map<String, String> renamed = new LinkedHashMap<>();
@@ -203,10 +205,15 @@ final class GamesRoutes {
 				r.savedBy = was.savedBy;
 			}
 			next.rooms.removeIf(r -> now.room(r.id) == null);
-			// Waiting areas are set in game; the page can only take some away.
-			java.util.Set<String> keepAreas = next.waiting == null ? java.util.Set.of() : next.waiting.keySet();
+			// Made in game while the page was open (dungeons, rooms, pads, waiting areas): only what the page deleted goes.
+			Removed removed = Removed.from(ctx.body());
+			java.util.Set<String> goneDungeons = removed.of("dungeons"), goneRooms = removed.of("rooms"), gonePads = removed.of("pads"), goneWaiting = removed.of("waiting");
+			for (Dungeons.Dungeon was : now.dungeons) if (!goneDungeons.contains(was.id) && next.dungeon(was.id) == null) next.dungeons.add(was);
+			for (Dungeons.Room was : now.rooms) if (!goneRooms.contains(was.id) && next.room(was.id) == null) next.rooms.add(was);
+			if (next.pads == null) next.pads = new java.util.ArrayList<>();
+			for (Dungeons.Pad was : now.pads) if (!gonePads.contains(was.id) && next.pads.stream().noneMatch(x -> x.id.equals(was.id))) next.pads.add(was);
 			next.waiting = new java.util.LinkedHashMap<>();
-			for (var e : now.waiting.entrySet()) if (keepAreas.contains(e.getKey())) next.waiting.put(e.getKey(), e.getValue());
+			for (var e : now.waiting.entrySet()) if (!goneWaiting.contains(e.getKey())) next.waiting.put(e.getKey(), e.getValue());
 			for (Dungeons.Room was : now.rooms) {
 				if (next.room(was.id) != null || !was.name.matches("[A-Za-z0-9_-]{1,32}")) continue;
 				try {

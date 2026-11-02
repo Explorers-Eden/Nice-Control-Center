@@ -1929,7 +1929,9 @@
 
   // ── Games ──────────────────────────────────────────────────────────────
 
-  const gm = { settings: null, live: null, scores: null, headSkins: {}, dirty: false };
+  const gm = { settings: null, live: null, scores: null, headSkins: {}, dirty: false, removed: { arenas: [], points: [] } };
+  /** A spot's key as the server makes it (Removed.spot): what the page deleted is sent by key, the rest stays. */
+  const spotKey = (owner, field, p) => `${owner}|${field}|${p.dim}|${Math.round(p.x * 2)}|${Math.round(p.y * 2)}|${Math.round(p.z * 2)}`;
   /** Game cards start closed; the open ones are remembered (also across reloads). */
   const gmOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('pn-gm-open') || '[]'); } catch (e) { return []; } })());
   const gmKeepOpen = () => { try { localStorage.setItem('pn-gm-open', JSON.stringify([...gmOpen])); } catch (e) { /* private window */ } };
@@ -1951,6 +1953,7 @@
       gm.scores = d.scores || null;
       gm.headSkins = d.headSkins || {};
       gm.dirty = false;
+      gm.removed = { arenas: [], points: [] };
       renderArenas();
       Dirty.reset('games');
     } catch (err) {
@@ -2218,13 +2221,16 @@
     if (!b) return;
     const a = gm.settings.arenas[+b.closest('[data-arena]').dataset.arena];
     if (b.dataset.gact === 'ptrm') {
+      gm.removed.points.push(spotKey(a.id, b.dataset.pk, a[b.dataset.pk][+b.dataset.pi]));
       a[b.dataset.pk].splice(+b.dataset.pi, 1);
       gmChanged(true);
     } else if (b.dataset.gact === 'headrm') {
+      gm.removed.points.push(spotKey(a.id, 'heads', a.heads[+b.dataset.h]));
       a.heads.splice(+b.dataset.h, 1);
       gmChanged(true);
     } else if (b.dataset.gact === 'delete') {
       if (!confirm(`Remove ${a.name}? Its scores stay in the world file; what it built stays in the world.`)) return;
+      if (a.id) gm.removed.arenas.push(a.id);
       gm.settings.arenas = gm.settings.arenas.filter((x) => x !== a);
       gmChanged(true);
     } else if (b.dataset.gact === 'reset') {
@@ -2247,7 +2253,7 @@
   });
   $('pn-gm-save').addEventListener('click', async () => {
     try {
-      await api('api/games', gm.settings);
+      await api('api/games', { ...gm.settings, removed: gm.removed });
       gm.dirty = false;
       formMsg('pn-gm-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
       loadGames();
@@ -2258,7 +2264,7 @@
 
   // ── Points and reward shops ─────────────────────────────────────────────
 
-  const po = { settings: null, balances: { accounts: [], sold: {} }, live: false, skins: {}, actions: [], pets: [], dirty: false };
+  const po = { settings: null, balances: { accounts: [], sold: {} }, live: false, skins: {}, actions: [], pets: [], dirty: false, removed: { shops: [], entries: [], npcs: [], items: [] } };
   const poNum = (n) => Number(n || 0).toLocaleString();
 
   async function loadPoints(force) {
@@ -2266,6 +2272,7 @@
     try {
       const d = await api('api/points');
       po.settings = d.settings;
+      po.removed = { shops: [], entries: [], npcs: [], items: [] };
       po.balances = d.balances || { accounts: [], sold: {} };
       po.live = !!d.live;
       po.skins = d.skins || {};
@@ -2489,21 +2496,31 @@
     const act = b.dataset.sact;
     if (act === 'delete') {
       if (!confirm(`Remove the shop ${shop.name} and its NPCs? What players bought stays theirs.`)) return;
+      if (shop.id) po.removed.shops.push(shop.id);
       po.settings.shops = po.settings.shops.filter((x) => x !== shop);
-    } else if (act === 'npcrm') shop.npcs.splice(+b.dataset.n, 1);
+    } else if (act === 'npcrm') {
+      po.removed.npcs.push(spotKey(shop.id, 'npcs', shop.npcs[+b.dataset.n]));
+      shop.npcs.splice(+b.dataset.n, 1);
+    }
     else if (act === 'addentry') shop.entries.push({ id: '', name: 'New reward', description: '', icon: 'minecraft:chest', iconTexture: '', price: 10, perPlayer: 0, stock: 0, items: [], commands: [], actions: [] });
     else if (act === 'entryrm') {
       if (!confirm(`Remove ${entry.name} from ${shop.name}?`)) return;
+      if (entry.id) po.removed.entries.push(`${shop.id}|${entry.id}`);
       shop.entries = shop.entries.filter((x) => x !== entry);
-    } else if (act === 'itemrm') entry.items.splice(+b.dataset.i, 1);
+    } else if (act === 'itemrm') {
+      const it = entry.items[+b.dataset.i];
+      if (it && it.item) po.removed.items.push(`${shop.id}|${entry.id}|${it.item.stack}`);
+      entry.items.splice(+b.dataset.i, 1);
+    }
     else return;
     poChanged(true);
   });
 
   async function poSave(msgId) {
     try {
-      await api('api/points', po.settings);
+      await api('api/points', { ...po.settings, removed: po.removed });
       po.dirty = false;
+      po.removed = { shops: [], entries: [], npcs: [], items: [] };
       formMsg(msgId, serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
       loadPoints(true);
     } catch (err) {
@@ -2515,7 +2532,7 @@
 
   // ── Dungeons ───────────────────────────────────────────────────────────
 
-  const dg = { settings: null, runs: [], scores: {}, dirty: false };
+  const dg = { settings: null, runs: [], scores: {}, dirty: false, removed: { dungeons: [], rooms: [], pads: [], waiting: [] } };
 
   async function loadDungeons() {
     try {
@@ -2525,6 +2542,7 @@
       const fresh = !dg.dirty || !dg.settings;
       if (fresh) {
         dg.settings = d.settings;
+        dg.removed = { dungeons: [], rooms: [], pads: [], waiting: [] };
         dg.dirty = false;
       }
       renderDungeons();
@@ -2748,6 +2766,7 @@
     if (!del) return;
     const r = dg.settings.rooms[+del.dataset.dgroomdel];
     if (!confirm(`Remove the room ${r.name}? Its saved blocks go too once you save; what you built stays in the world.`)) return;
+    if (r.id) dg.removed.rooms.push(r.id);
     dg.settings.rooms = dg.settings.rooms.filter((x) => x !== r);
     dgChanged(true);
   });
@@ -2758,6 +2777,7 @@
     if (del) {
       const d = dg.settings.dungeons[+del.dataset.dgdel];
       if (!confirm(`Remove ${d.name}? Its saved blocks go too once you save; what you built stays in the world.`)) return;
+      if (d.id) dg.removed.dungeons.push(d.id);
       dg.settings.dungeons = dg.settings.dungeons.filter((x) => x !== d);
       dgChanged(true);
     } else if (kit) {
@@ -2768,12 +2788,15 @@
   $('pn-dg-pads').addEventListener('click', (e) => {
     const w = e.target.closest('[data-dgwait]');
     if (w) {
+      dg.removed.waiting.push(w.dataset.dgwait);
       delete dg.settings.waiting[w.dataset.dgwait];
       dgChanged(true);
       return;
     }
     const b = e.target.closest('[data-dgpad]');
     if (!b) return;
+    const pad = dg.settings.pads[+b.dataset.dgpad];
+    if (pad && pad.id) dg.removed.pads.push(pad.id);
     dg.settings.pads.splice(+b.dataset.dgpad, 1);
     dgChanged(true);
   });
@@ -2791,8 +2814,9 @@
   $('pn-dg-refresh').addEventListener('click', loadDungeons);
   $('pn-dg-save').addEventListener('click', async () => {
     try {
-      await api('api/dungeons', dg.settings);
+      await api('api/dungeons', { ...dg.settings, removed: dg.removed });
       dg.dirty = false;
+      dg.removed = { dungeons: [], rooms: [], pads: [], waiting: [] };
       formMsg('pn-dg-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
       loadDungeons();
     } catch (err) {
