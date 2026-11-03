@@ -121,7 +121,10 @@ public final class SlotRuntime {
 				pull(sl, p, m, parts);
 				return InteractionResult.SUCCESS;
 			}
-			// The shelves and the rest are for show: admins in creative change them by breaking and placing.
+			// Building against it: the base has nothing to open, the shelves and the trapdoor take blocks while sneaking
+			// (then they aren't used). Otherwise they're for show.
+			boolean placing = p.getItemInHand(hand).getItem() instanceof net.minecraft.world.item.BlockItem;
+			if (placing && (pos.equals(parts.base()) || p.isSecondaryUseActive())) return InteractionResult.PASS;
 			BlockState st = sl.getBlockState(pos);
 			sl.sendBlockUpdated(pos, st, st, 3);
 			p.inventoryMenu.sendAllDataToRemote();
@@ -205,8 +208,10 @@ public final class SlotRuntime {
 	static Parts parts(Machine m) {
 		Rotation rot = Rotation.values()[Math.floorMod(m.rotation, 4)];
 		BlockPos base = BlockPos.containing(m.base.x, m.base.y, m.base.z);
+		// Only the machine's own blocks (the base, the lever, three shelves, the trapdoor): the air around them in the
+		// look is free to build in.
 		List<BlockPos> all = new ArrayList<>();
-		for (int x = -1; x <= 0; x++) for (int y = 0; y <= 2; y++) for (int z = -1; z <= 0; z++) all.add(base.offset(new BlockPos(x, y, z).rotate(rot)));
+		for (int[] o : new int[][] { { 0, 0, 0 }, { 0, 0, -1 }, { -1, 0, 0 }, { -1, 1, 0 }, { 0, 1, 0 }, { 0, 2, 0 } }) all.add(base.offset(new BlockPos(o[0], o[1], o[2]).rotate(rot)));
 		return new Parts(m.base.dim, base, base.offset(new BlockPos(0, 0, -1).rotate(rot)), base.above(), all, rot.rotate(Direction.EAST));
 	}
 
@@ -470,9 +475,9 @@ public final class SlotRuntime {
 		v.until = System.currentTimeMillis() + 180_000;
 		int inTheWay = 0;
 		for (Map.Entry<BlockPos, BlockState> b : blocks(level, v.look, v.turns, v.base)) {
+			if (b.getValue().isAir()) continue;
 			BlockState now = level.getBlockState(b.getKey());
 			if (!now.isAir() && !now.canBeReplaced()) inTheWay++;
-			if (b.getValue().isAir()) continue;
 			net.minecraft.nbt.CompoundTag tag = new net.minecraft.nbt.CompoundTag();
 			tag.put("block_state", net.minecraft.nbt.NbtUtils.writeBlockState(b.getValue()));
 			tag.putBoolean("Glowing", true);
@@ -520,7 +525,8 @@ public final class SlotRuntime {
 		var template = manager == null ? java.util.Optional.<StructureTemplate>empty() : manager.get(Identifier.fromNamespaceAndPath("nicecontrolcenter", "slot_machine/" + v.look));
 		if (template.isEmpty()) return "The look " + v.look + " isn't there.";
 		Rotation rot = Rotation.values()[v.turns];
-		StructurePlaceSettings place = new StructurePlaceSettings().setRotation(rot);
+		// The look's air isn't placed: what's built around the machine stays.
+		StructurePlaceSettings place = new StructurePlaceSettings().setRotation(rot).addProcessor(net.minecraft.world.level.levelgen.structure.templatesystem.BlockIgnoreProcessor.STRUCTURE_AND_AIR);
 		BlockPos origin = v.base.subtract(StructureTemplate.calculateRelativePosition(place, new BlockPos(1, 0, 1)));
 		template.get().placeInWorld(level, origin, origin, place, RandomSource.create(), 2);
 		Machine m = new Machine();

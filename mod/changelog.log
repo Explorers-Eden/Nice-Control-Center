@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.3
+- Slot machines: only their six own blocks count as the machine; the air spots of the look are free to build in, and placing a machine leaves what's there (the look's air isn't placed; the preview only counts real blocks as replaced). Blocks go against the base as usual, and against the shelves and trapdoor while sneaking
 ## 1.80.2
 - Slot machines removed in the panel are taken away in game too (blocks and all), also when removed while the server was off
 ## 1.80.1
