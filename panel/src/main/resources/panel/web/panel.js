@@ -138,7 +138,8 @@
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
         { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
-        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' }] },
+        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
+        { tab: 'slots', label: 'Slot machines', perm: 'server.view', desc: 'Slot machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rules', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, play games, and at in-game times.' },
         { tab: 'points', label: 'Points', perm: 'server.view', desc: 'One points balance per player for all games: how they earn it, balances, giving and taking.' },
@@ -607,6 +608,7 @@
     if (tab === 'dungeons') loadDungeons();
     if (tab === 'points' || tab === 'rewardshops') loadPoints();
     if (tab === 'npcs') loadNpcs();
+    if (tab === 'slots') loadSlots();
     if (tab === 'owncommands') loadOwnCommands();
     if (tab === 'info') loadInfo();
     if (tab === 'commands') loadCommands();
@@ -2519,6 +2521,195 @@
       loadNpcs(true);
     } catch (err) {
       formMsg('pn-nc-msg', err.message, false);
+    }
+  });
+
+  // ── Slot machines ───────────────────────────────────────────────────────
+
+  const sm = { settings: null, looks: [], icons: {}, points: { name: 'Points', enabled: true }, dirty: false, removed: { types: [], machines: [] } };
+  const smOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('pn-sm-open') || '[]'); } catch (e) { return []; } })());
+  const smKeepOpen = () => { try { localStorage.setItem('pn-sm-open', JSON.stringify([...smOpen])); } catch (e) { /* private window */ } };
+  const smId = (s) => { const t = String(s || '').trim().toLowerCase(); return t && !t.includes(':') ? 'minecraft:' + t : t; };
+  const smName = (id) => String(id || '').replace(/^minecraft:/, '').replace(/_/g, ' ');
+
+  async function loadSlots(force) {
+    if (sm.dirty && sm.settings && !force) { renderSlots(); return; }
+    try {
+      const d = await api('api/slots');
+      sm.settings = d.settings;
+      sm.looks = d.looks || [];
+      sm.icons = d.icons || {};
+      sm.points = d.points || sm.points;
+      sm.dirty = false;
+      sm.removed = { types: [], machines: [] };
+      renderSlots();
+      Dirty.reset('slots');
+    } catch (err) {
+      formMsg('pn-sm-note', err.message, false);
+    }
+  }
+
+  /** A symbol: its picture when the panel has one, else its name. */
+  function smPic(id) {
+    const h = sm.icons[smId(id)];
+    return h ? `<img class="pn-sm-pic" src="info/items/${esc(h)}" alt="" width="24" height="24" title="${esc(smName(id))}">` : `<span class="pn-sm-pic pn-sm-noimg" title="${esc(smName(id))}">${esc(smName(id).slice(0, 3))}</span>`;
+  }
+
+  function renderSlots() {
+    const edit = can('settings.server');
+    const s = sm.settings;
+    const pts = sm.points.name || 'Points';
+    $('pn-sm-enabled').checked = s.enabled;
+    $('pn-sm-list').innerHTML = s.types.map((t, i) => {
+      const key = t.id || 'new' + i;
+      const field = (label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
+      const H = (icon, title) => `<h4 class="pn-ps-sub pn-field-wide"><i class="bi ${icon}"></i> ${title}</h4>`;
+      const chance = (t.wins || []).reduce((a, w) => a + (Number(w.chance) || 0), 0);
+      const back = t.cost > 0 ? (t.wins || []).reduce((a, w) => a + (Number(w.chance) || 0) / 100 * (Number(w.payout) || 0), 0) / t.cost : 0;
+      const used = s.machines.filter((m) => m.type === t.id).length;
+      const wins = (t.wins || []).map((w, wi) => `<div class="pn-sm-win" data-w="${wi}">
+          <div class="pn-sm-row">${[0, 1, 2].map((k) => `<span class="pn-sm-sym">${smPic((w.symbols || [])[k] || '')}<input type="text" data-ws="${k}" value="${esc((w.symbols || [])[k] || '')}" placeholder="minecraft:diamond"></span>`).join('')}</div>
+          <label class="pn-field"><span>Chance per pull (%)</span><input type="number" data-wk="chance" value="${w.chance}" min="0" max="100" step="0.01"></label>
+          <label class="pn-field"><span>Pays (${esc(pts)})</span><input type="number" data-wk="payout" value="${w.payout}" min="0" step="1"></label>
+          <label class="pn-field"><span>Tell everyone</span><select data-wk="announce" data-bool="1"><option value="false" ${w.announce ? '' : 'selected'}>no</option><option value="true" ${w.announce ? 'selected' : ''}>yes (big wins)</option></select></label>
+          <label class="pn-field pn-sm-msg"><span>Message (empty = the row and the payout)</span><input type="text" data-wk="message" value="${esc(w.message || '')}" maxlength="200" placeholder="Jackpot, {player}! +{payout}"></label>
+          <label class="pn-field pn-field-wide"><span>Commands too (one per line, without /; {player}, {uuid}, {payout})</span><textarea data-wk="commands" rows="1" spellcheck="false" placeholder="give {player} minecraft:diamond 3">${esc((w.commands || []).join('\n'))}</textarea></label>
+          <button type="button" class="np-btn small danger pn-sm-winrm" data-smact="winrm" title="Remove this win"><i class="bi bi-trash"></i></button>
+        </div>`).join('') || '<p class="pn-hint pn-field-wide">No wins yet: every pull loses.</p>';
+      return `<section class="pn-gm-card${smOpen.has(key) ? '' : ' collapsed'}" data-type="${i}">
+        <div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
+          <span class="pn-rw-give-icon"><i class="bi bi-dice-5"></i></span>
+          <b class="pn-gm-name">${esc(t.title || t.name || 'New type')}</b>${t.title && t.title !== t.name ? `<span class="pn-hint">${esc(t.name)}</span>` : ''}
+          <span class="np-chip">${Number(t.cost).toLocaleString()} ${esc(pts)} a pull</span>
+          <span class="np-chip ${chance > 100 ? 'danger' : ''}">wins ${+chance.toFixed(2)} %</span>
+          <span class="np-chip ${back > 1 ? 'danger' : 'gold'}" title="On average, of every ${esc(pts)} put in">returns ${+(back * 100).toFixed(1)} %</span>
+          <span class="np-chip">${used} machine${used === 1 ? '' : 's'}</span>
+          <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-smact="delete" title="Remove the type"><i class="bi bi-trash"></i></button></span>
+        </div>
+        <div class="pn-rw-grid">
+          ${H('bi-tag', 'Name')}
+          ${field('Name (one word, for /slots place)', `<input type="text" data-s="name" value="${esc(t.name)}" maxlength="32">`)}
+          ${field('Shown name (spaces allowed)', `<input type="text" data-s="title" value="${esc(t.title || '')}" maxlength="48" placeholder="${esc(t.name)}">`)}
+          ${H('bi-coin', 'A pull')}
+          ${field(`Costs (${esc(pts)})`, `<input type="number" data-s="cost" value="${t.cost}" min="0" step="1">`)}
+          ${field('Reels spin (seconds)', `<input type="number" data-s="spinSeconds" value="${t.spinSeconds}" min="1" max="10" step="0.5">`)}
+          ${H('bi-trophy', 'Wins')}
+          <p class="pn-hint pn-field-wide">Three symbols (item ids) left to right; one filled in means three of it. Any win: ${+chance.toFixed(2)} % of pulls${chance > 100 ? ' <b class="pn-warn">(more than 100 %)</b>' : ''}. On average ${+(back * 100).toFixed(1)} % of what's put in comes back${back > 1 ? ' <b class="pn-warn">(players win points in the long run)</b>' : ''}.</p>
+          <div class="pn-field-wide pn-sm-wins">${wins}</div>
+          <div class="pn-field-wide"><button type="button" class="np-btn small" data-smact="winadd"><i class="bi bi-plus-lg"></i> Add a win</button></div>
+          ${H('bi-x-circle', 'Losing rows')}
+          ${field('Extra symbols on losing rows (item ids, comma-separated; the wins\' symbols show up too)', `<input type="text" data-s="fillers" value="${esc((t.fillers || []).join(', '))}" placeholder="minecraft:coal, minecraft:bone">`, true)}
+          <div class="pn-field-wide pn-sm-fillers">${(t.fillers || []).map(smPic).join('')}</div>
+        </div>
+      </section>`;
+    }).join('') || '<p class="np-empty">No types yet. Add one, give it wins, save, then place machines in game with <code>/slots place &lt;type&gt;</code>.</p>';
+    const typeOpts = (cur) => `<option value="" ${cur ? '' : 'selected'}>(none)</option>` + s.types.map((t) => `<option value="${esc(t.id)}" ${t.id === cur ? 'selected' : ''}>${esc(t.title || t.name)}</option>`).join('');
+    $('pn-sm-machines').innerHTML = s.machines.length
+      ? `<ul class="pn-gm-heads pn-sm-machines">${s.machines.map((m, mi) => `<li data-machine="${mi}"><span class="np-chip">${esc(m.look)}</span>
+          <span>${esc(dimShort(m.base.dim))} · ${Math.round(m.base.x)}, ${Math.round(m.base.y)}, ${Math.round(m.base.z)}</span>
+          <select data-mk="type">${typeOpts(m.type)}</select>
+          <button type="button" class="np-btn small danger" data-smact="mrm" title="Forget it (its blocks stay; /slots remove next to it takes them away too)"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
+      : '<p class="pn-hint">None placed yet: <code>/slots place &lt;type&gt;</code> in game.</p>';
+    if (!sm.points.enabled) $('pn-sm-machines').innerHTML += `<p class="pn-hint pn-warn"><i class="bi bi-exclamation-triangle"></i> ${esc(pts)} are off (Rewards → Points): pulls that cost something don't work.</p>`;
+    tabPanel('slots').querySelectorAll('#pn-sm-list input, #pn-sm-list select, #pn-sm-list textarea, #pn-sm-list button, #pn-sm-machines select, #pn-sm-machines button, #pn-sm-add, #pn-sm-enabled').forEach((el) => { el.disabled = !edit; });
+    $('pn-sm-save').disabled = !edit;
+  }
+
+  function smChanged(rerender) {
+    sm.dirty = true;
+    $('pn-sm-save').disabled = false;
+    formMsg('pn-sm-msg', 'Not saved yet.', true);
+    if (rerender) renderSlots();
+  }
+
+  $('pn-sm-list').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-type]');
+    if (!card) return;
+    const t = sm.settings.types[+card.dataset.type];
+    const el = e.target;
+    const winEl = el.closest('[data-w]');
+    if (winEl) {
+      const w = t.wins[+winEl.dataset.w];
+      if (el.dataset.ws !== undefined) {
+        w.symbols = w.symbols || [];
+        w.symbols[+el.dataset.ws] = smId(el.value);
+        w.symbols = w.symbols.map((x) => x || '');
+      } else if (el.dataset.wk === 'commands') w.commands = el.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      else if (el.dataset.bool) w[el.dataset.wk] = el.value === 'true';
+      else if (el.type === 'number') w[el.dataset.wk] = Number(el.value) || 0;
+      else w[el.dataset.wk] = el.value;
+    } else if (el.dataset.s) {
+      const k = el.dataset.s;
+      if (el.type === 'number') t[k] = Number(el.value) || 0;
+      else if (k === 'fillers') t[k] = el.value.split(',').map(smId).filter(Boolean);
+      else t[k] = el.value;
+    } else return;
+    smChanged(false);
+  });
+  // Odds and chips follow when a field is left.
+  $('pn-sm-list').addEventListener('change', (e) => { if (e.target.closest('[data-type]')) renderSlots(); });
+  $('pn-sm-list').addEventListener('click', (e) => {
+    const head = e.target.closest('.pn-gm-toggle');
+    if (head && !e.target.closest('input, button, label, select, a')) {
+      const card = head.closest('[data-type]');
+      const t = sm.settings.types[+card.dataset.type];
+      const key = t.id || 'new' + card.dataset.type;
+      if (card.classList.toggle('collapsed')) smOpen.delete(key); else smOpen.add(key);
+      smKeepOpen();
+      return;
+    }
+    const b = e.target.closest('[data-smact]');
+    if (!b) return;
+    const t = sm.settings.types[+b.closest('[data-type]').dataset.type];
+    if (b.dataset.smact === 'winadd') {
+      t.wins.push({ symbols: ['minecraft:diamond', 'minecraft:diamond', 'minecraft:diamond'], chance: 1, payout: t.cost * 10, commands: [], message: '', announce: false });
+      smChanged(true);
+    } else if (b.dataset.smact === 'winrm') {
+      t.wins.splice(+b.closest('[data-w]').dataset.w, 1);
+      smChanged(true);
+    } else if (b.dataset.smact === 'delete') {
+      const used = sm.settings.machines.filter((m) => m.type === t.id).length;
+      if (!confirm(`Remove the type ${t.name}?${used ? ` Its ${used} machine${used === 1 ? '' : 's'} stop working until they get another type.` : ''}`)) return;
+      if (t.id) sm.removed.types.push(t.id);
+      sm.settings.types = sm.settings.types.filter((x) => x !== t);
+      smChanged(true);
+    }
+  });
+  $('pn-sm-machines').addEventListener('input', (e) => {
+    const li = e.target.closest('[data-machine]');
+    if (!li || e.target.dataset.mk !== 'type') return;
+    sm.settings.machines[+li.dataset.machine].type = e.target.value;
+    smChanged(false);
+  });
+  $('pn-sm-machines').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-smact="mrm"]');
+    if (!b) return;
+    const m = sm.settings.machines[+b.closest('[data-machine]').dataset.machine];
+    if (!confirm('Forget this machine? Its blocks stay in the world (in game, /slots remove next to it takes them away too).')) return;
+    sm.removed.machines.push(m.id);
+    sm.settings.machines = sm.settings.machines.filter((x) => x !== m);
+    smChanged(true);
+  });
+  $('pn-sm-enabled').addEventListener('change', (e) => { sm.settings.enabled = e.target.checked; smChanged(false); });
+  $('pn-sm-add').addEventListener('click', () => {
+    let name = 'slots';
+    for (let k = 2; sm.settings.types.some((x) => x.name.toLowerCase() === name); k++) name = 'slots' + k;
+    sm.settings.types.push({ id: '', name, title: '', cost: 10, spinSeconds: 2.5, fillers: ['minecraft:coal', 'minecraft:rotten_flesh', 'minecraft:bone'],
+      wins: [{ symbols: ['minecraft:diamond', 'minecraft:diamond', 'minecraft:diamond'], chance: 1, payout: 300, commands: [], message: '', announce: true },
+        { symbols: ['minecraft:emerald', 'minecraft:emerald', 'minecraft:emerald'], chance: 5, payout: 50, commands: [], message: '', announce: false },
+        { symbols: ['minecraft:gold_ingot', 'minecraft:gold_ingot', 'minecraft:gold_ingot'], chance: 15, payout: 15, commands: [], message: '', announce: false }] });
+    smOpen.add('new' + (sm.settings.types.length - 1));
+    smChanged(true);
+  });
+  $('pn-sm-save').addEventListener('click', async () => {
+    try {
+      await api('api/slots', { ...sm.settings, removed: sm.removed });
+      sm.dirty = false;
+      formMsg('pn-sm-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+      loadSlots(true);
+    } catch (err) {
+      formMsg('pn-sm-msg', err.message, false);
     }
   });
 
@@ -8230,6 +8421,7 @@
   const tabPanel = (t) => document.querySelector(`.np-tab-panel[data-tab="${t}"]`);
   Dirty.track('points', tabPanel('points'), { saveButtons: [$('pn-po-save')], reload: () => { po.dirty = false; loadPoints(true); }, extra: () => po.settings });
   Dirty.track('rewardshops', tabPanel('rewardshops'), { saveButtons: [$('pn-ps-save')], reload: () => { po.dirty = false; loadPoints(true); }, extra: () => po.settings });
+  Dirty.track('slots', tabPanel('slots'), { saveButtons: [$('pn-sm-save')], reload: () => { sm.dirty = false; loadSlots(true); }, extra: () => sm.settings });
   Dirty.track('npcs', tabPanel('npcs'), { saveButtons: [$('pn-nc-save')], reload: () => { nc.dirty = false; loadNpcs(true); }, extra: () => nc.settings });
   Dirty.track('games', tabPanel('games'), { saveButtons: [$('pn-gm-save')], reload: () => { gm.dirty = false; loadGames(); }, extra: () => gm.settings });
   Dirty.track('dungeons', tabPanel('dungeons'), { saveButtons: [$('pn-dg-save')], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings });

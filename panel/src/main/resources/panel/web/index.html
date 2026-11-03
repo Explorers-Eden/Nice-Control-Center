@@ -1291,6 +1291,29 @@
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-nc-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-nc-msg"></span></div>
 			</div>
 
+			<div class="np-tab-panel" data-tab="slots" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-dice-5"></i> Slot machines</h3>
+					<p class="np-card-intro">Machines players spend points at: pulling the lever costs the type's price, the shelf above the lever's block spins and stops on a row, and a winning row pays out. Each machine is one of the five built-in looks and uses one type below; changing a type changes all its machines. Anyone can pull the lever, also in claims; the machine itself can't be changed or broken (admins in creative can).</p>
+					<dl class="pn-gm-howto">
+						<dt>Place one</dt><dd><code>/slots place &lt;type&gt; [acacia|bamboo|mangrove|poplar|warped]</code>: a glowing preview appears two blocks ahead, its front toward you; click <b>Place</b>, <b>Turn</b>, <b>Look</b>, move it a block at a time, or <b>Cancel</b></dd>
+						<dt>Change</dt><dd><code>/slots type &lt;type&gt;</code> next to one; <code>/slots remove</code> takes the nearest away (blocks too); <code>/slots list</code></dd>
+						<dt>Odds</dt><dd>Each win has its own chance per pull; together they're the chance of any win, the rest are losses showing a mixed row. The return shows how much of what's put in comes back on average</dd>
+					</dl>
+					<div class="np-filters">
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-sm-enabled"><span></span></span> Slot machines on</label>
+						<button type="button" class="np-btn small" id="pn-sm-add"><i class="bi bi-plus-lg"></i> Add a type</button>
+						<span class="np-form-msg" id="pn-sm-note"></span>
+					</div>
+				</section>
+				<div id="pn-sm-list" class="pn-rw-list"></div>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Placed machines</h3>
+					<div id="pn-sm-machines"></div>
+				</section>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-sm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-sm-msg"></span></div>
+			</div>
+
 			<div class="np-tab-panel" data-tab="dungeons" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-door-closed"></i> Dungeons</h3>

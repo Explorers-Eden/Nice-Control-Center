@@ -1,3 +1,6 @@
+## 1.69.0
+- Games → Slot machines: types (cost per pull, spin time, wins with three symbols, chance and payout, commands, message, announcement; losing symbols) with the chance of any win and the average return shown; the machines placed in game with their type (mod 1.80.0)
+
 ## 1.68.2
 - Games: anvil rain has "right above a player (%)" (mod 1.79.5)
 

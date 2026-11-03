@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.0
+- Slot machines: five looks to place anywhere, turned any way (/slots place <type> [look] with a glowing preview to place, turn, change the look, move or cancel). The lever costs points, flicks back at once and works for everyone, also in claims; the shelf above spins three reels that stop one by one, with sounds, and a win pays out (points, commands, a message, an announcement for big ones) with particles. Types with their cost and wins (symbols, chance, payout) are set in the panel; /slots type, remove and list in game
 ## 1.79.8
 - Fix: anvil rain dropped no anvils when the box's top layer had light blocks (or grass, flowers…): anvils only started in air. They now start in anything you can walk through, and the light block stays
 ## 1.79.7

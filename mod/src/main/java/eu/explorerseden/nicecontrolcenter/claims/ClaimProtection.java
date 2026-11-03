@@ -101,6 +101,8 @@ public final class ClaimProtection {
 		BlockPos pos = hit.getBlockPos();
 		// A head hunt's heads are there to be clicked by anyone.
 		if (eu.explorerseden.nicecontrolcenter.games.HeadHunt.isHuntHead(level, pos)) return InteractionResult.PASS;
+		// Slot machines: anyone pulls the lever, nobody changes the rest (SlotRuntime decides).
+		if (eu.explorerseden.nicecontrolcenter.games.SlotRuntime.isMachine(level, pos)) return InteractionResult.PASS;
 		BlockState state = level.getBlockState(pos);
 		ItemStack held = player.getItemInHand(hand);
 		Role needed;

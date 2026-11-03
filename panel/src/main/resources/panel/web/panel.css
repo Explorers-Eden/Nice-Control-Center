@@ -1166,3 +1166,21 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-gm-card .pn-rw-grid > .pn-ps-sub .bi { color: var(--accent, #ffc83d); }
 .pn-gm-card .pn-field-wide > .pn-hint { display: block; margin-top: 4px; }
 .pn-rw-grid > .pn-break { grid-column: 1 / -1; height: 0; }
+
+/* Slot machines: wins as rows of three symbols with their chance and payout. */
+.pn-sm-wins { display: grid; gap: 10px; }
+.pn-sm-win { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; align-items: end; padding: 10px 12px; border: 1px solid var(--card-border); border-radius: 10px; position: relative; }
+.pn-sm-win > .pn-field-wide { grid-column: 1 / -1; }
+.pn-sm-row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding-right: 40px; }
+.pn-sm-sym { display: flex; align-items: center; gap: 6px; flex: 1 1 170px; }
+.pn-sm-sym input { flex: 1; min-width: 0; font: inherit; font-size: var(--fs-md); color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 6px 8px; }
+.pn-sm-pic { width: 24px; height: 24px; image-rendering: pixelated; flex: none; }
+.pn-sm-noimg { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 4px; background: rgba(var(--ink),.08); color: var(--muted); }
+.pn-sm-winrm { position: absolute; top: 8px; right: 8px; }
+.pn-sm-fillers { display: flex; gap: 6px; flex-wrap: wrap; }
+.pn-sm-machines li { gap: 10px; }
+.pn-sm-machines select { max-width: 220px; }
+.np-chip.danger { color: #ff6b6b; border-color: rgba(255,107,107,.45); }
+.pn-sm-machines select { font: inherit; color: var(--text); background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); border-radius: 8px; padding: 5px 8px; }
+.pn-sm-machines li > span:nth-child(2) { flex: 1; }
+.pn-sm-win > .pn-sm-msg { grid-column: span 2; }
