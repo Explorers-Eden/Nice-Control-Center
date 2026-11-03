@@ -896,6 +896,8 @@ public final class QuickRuntime {
 		item.setGlowingTag(true);
 		item.setDeltaMovement(0, 0.2, 0);
 		item.addTag(r.tag());
+		// Enchantments Encore's Seeker turns the glow of every dropped item off twice a second, except these.
+		item.addTag("eden.technical");
 		level.addFreshEntity(item);
 		r.treasure.put(item.getUUID(), points);
 	}

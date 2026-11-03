@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.7
+- Fix: treasure grab's treasure stopped glowing half a second after it appeared: Enchantments Encore's Seeker turns the glow of all dropped items off unless someone with a Seeker helmet is near; the treasure now carries the tag it leaves alone (eden.technical)
 ## 1.80.6
 - Treasure grab: one small sparkle over each treasure every two seconds instead of end rod particles every second
 ## 1.80.5
