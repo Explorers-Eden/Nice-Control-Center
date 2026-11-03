@@ -794,7 +794,7 @@ public final class QuickRuntime {
 			f.setHurtsEntities(2f, 40);
 			f.disableDrop();
 			// Silent: no clang on landing (dozens a second get loud).
-			if (!a.anvilSound) f.setSilent(true);
+			f.setSilent(true);
 			f.addTag(r.tag());
 			r.falling.add(f);
 		}

@@ -88,8 +88,8 @@ a deadly hit knocks them out. A spectator area also queues players for the next 
   refills, mobs (peaceful ones attack too unless switched off).
 
 **Anvil rain** (`anvils`): dodge anvils falling from the box's top. Created at the spawn; `corner1` / `corner2`.
-  Panel: anvils a second and how fast that grows, the share dropped right above a player (70 % by default), and
-  the landing sound (off by default: dozens a second get loud).
+  Panel: anvils a second and how fast that grows, the share dropped right above a player (70 % by default).
+  The anvils land without a sound.
 
 **Treasure grab** (`treasure`): glowing items appear on the box's floor. Created at the spawn; `corner1` / `corner2`;
 panel: items and their points (`minecraft:diamond=5`).
