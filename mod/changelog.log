@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.1
+- Games: mobs from pools get their usual weapon again (skeletons, strays and bogged a bow, pillagers a crossbow, wither skeletons a stone sword, vindicators an axe, piglins and zombified piglins gold): summoning them with NBT skipped it. A main hand set in the line wins; armour in the line is kept alongside
+- Colour floor: mobs appear on a random block of a platform, not always its middle
 ## 1.79.0
 - Games: music in the spectator area too (its own jukebox song and volume), for the queue, players who are out and visitors from a watch point; leaving the game or the area stops the music at once
 - Games: the song starts again after a respawn or a change of dimension (it used to stay quiet until its length had run out)

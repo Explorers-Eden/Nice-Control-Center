@@ -35,7 +35,7 @@ in the panel under **Games**. `<name>` is the game's one-word name.
     Jukebox/Note Blocks slider. A second song can play in the **spectator area** (the queue, players who are out,
     visitors from a watch point). Leaving the game or the area stops it at once.
 12. **Mobs** (wave fights, ghast deflect, colour floor, maze): one mob pool, the same everywhere, one line per mob
-    like `/summon`: `zombie`, `skeleton x2`, `husk {HandItems:[{id:"minecraft:iron_sword",count:1}]}`, or an NPC
+    like `/summon`: `zombie`, `skeleton x2`, `husk {equipment:{mainhand:{id:"minecraft:iron_sword",count:1}}}`, or an NPC
     `npc:knight`; plus how many at once and whether peaceful mobs fight.
 13. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
 

@@ -2127,7 +2127,7 @@
    */
   function gmMobs(a, field, num, o) {
     const npcs = (gm.npcs || []).map((n) => `<code>npc:${esc(n.name)}</code>`).join(' ');
-    return `<label class="pn-field pn-field-wide"><span>${o.label}</span><textarea data-g="pool" data-lines="1" rows="3" spellcheck="false" placeholder="zombie&#10;skeleton x2&#10;husk {HandItems:[{id:&quot;minecraft:iron_sword&quot;,count:1}]}">${esc((a.pool || []).join('\n'))}</textarea>
+    return `<label class="pn-field pn-field-wide"><span>${o.label}</span><textarea data-g="pool" data-lines="1" rows="3" spellcheck="false" placeholder="zombie&#10;skeleton x2&#10;husk {equipment:{mainhand:{id:&quot;minecraft:iron_sword&quot;,count:1}}}">${esc((a.pool || []).join('\n'))}</textarea>
       <small class="pn-hint">One per line, like <code>/summon</code>: the mob, <code>x3</code> for several, its NBT in <code>{…}</code>${o.nbt ? ` (${o.nbt})` : ''}; or an NPC from the NPCs page${npcs ? `: ${npcs}` : ' (<code>npc:name</code>)'}.${o.hint ? ' ' + o.hint : ''}</small></label>`
       + (o.count ? field('maxAlive', o.count, num('maxAlive', 1, 200)) : '')
       + (o.peaceful === false ? '' : field('peacefulFight', 'Peaceful and neutral mobs', `<select data-g="peacefulFight" data-bool="1"><option value="true" ${a.peacefulFight !== false ? 'selected' : ''}>attack players too</option><option value="false" ${a.peacefulFight === false ? 'selected' : ''}>stay as they are</option></select>`));

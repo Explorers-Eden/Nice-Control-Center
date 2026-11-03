@@ -729,7 +729,7 @@ public final class QuickRuntime {
 		r.nextCallAt = now + 1500;
 		level.playSound(null, platform(a, 4), SoundEvents.GLASS_BREAK, SoundSource.PLAYERS, 1f, 0.8f);
 		if (r.vanished >= a.refillEvery) r.refillAt = now + 2000;
-		// A mob now and then, on a platform that's still there.
+		// A mob now and then, on a random block of a platform that's still there.
 		if (a.mobsEvery > 0 && r.colours % a.mobsEvery == 0 && !a.pool.isEmpty()) {
 			List<Integer> standing = new ArrayList<>();
 			for (int i = 0; i < 9; i++) if (!r.gone[i]) standing.add(i);
@@ -737,7 +737,7 @@ public final class QuickRuntime {
 			MobLines.Entry e = MobLines.parse(a.pool.get(random.nextInt(a.pool.size())));
 			if (e != null && !standing.isEmpty() && mobs < a.maxAlive) {
 				BlockPos c = platform(a, standing.get(random.nextInt(standing.size())));
-				MobLines.summon(server, a.corner.dim, c.getX() + a.platformSize / 2.0, c.getY() + 1, c.getZ() + a.platformSize / 2.0, new MobLines.Entry(e.id(), 1, e.nbt()), "Tags:[\"" + r.tag() + "\"]");
+				MobLines.summon(server, a.corner.dim, c.getX() + random.nextInt(a.platformSize) + 0.5, c.getY() + 1, c.getZ() + random.nextInt(a.platformSize) + 0.5, new MobLines.Entry(e.id(), 1, e.nbt()), "Tags:[\"" + r.tag() + "\"]");
 			}
 		}
 	}

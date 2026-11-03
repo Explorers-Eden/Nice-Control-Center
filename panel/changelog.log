@@ -1,3 +1,6 @@
+## 1.68.1
+- Games: the mob pool example uses today's NBT (equipment:{mainhand:{…}}; HandItems no longer works in this Minecraft)
+
 ## 1.68.0
 - Games and NPCs: each card in titled sections (Name and look, Setup in game, the game's own settings, Mobs, Music, Rewards and messages; NPCs: Name and look, Walking, Right-click and hit, Talking, As a hostile), with shorter labels
 - Games: one mob block for every game with mobs (pool one per line like /summon, the NPCs you can use as npc:<name>, how many at once, peaceful mobs); the maze uses it too

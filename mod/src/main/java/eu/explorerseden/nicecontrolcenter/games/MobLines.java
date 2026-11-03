@@ -106,6 +106,20 @@ public final class MobLines {
 	/** Nice Mob Manager leaves mobs with this tag alone. */
 	public static final String NMM_EXCLUDE = "mob_manager.settings.exclude";
 
+	/** The weapon a mob spawns with in the wild (null = none or not always). */
+	static String weapon(String id) {
+		return switch (id) {
+			case "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:illusioner" -> "minecraft:bow";
+			case "minecraft:wither_skeleton" -> "minecraft:stone_sword";
+			case "minecraft:pillager" -> "minecraft:crossbow";
+			case "minecraft:vindicator" -> "minecraft:iron_axe";
+			case "minecraft:zombified_piglin" -> "minecraft:golden_sword";
+			case "minecraft:piglin" -> RANDOM.nextBoolean() ? "minecraft:golden_sword" : "minecraft:crossbow";
+			case "minecraft:piglin_brute" -> "minecraft:golden_axe";
+			default -> null;
+		};
+	}
+
 	/** Summons one mob of the entry (count is up to the caller), kept from despawning, with extra data (e.g. tags). */
 	public static void summon(MinecraftServer server, String dim, double x, double y, double z, Entry e, String extra) {
 		// An NPC made in Community → NPCs, fighting with what it holds; it keeps the caller's tags.
@@ -119,7 +133,16 @@ public final class MobLines {
 		// The exclude tag goes into the caller's Tags (one Tags list only), else a list of its own.
 		String tags = extra != null && extra.contains("Tags:[") ? extra.replaceFirst("Tags:\\[", "Tags:[\"" + NMM_EXCLUDE + "\",") : (extra == null || extra.isEmpty() ? "" : extra + ",") + "Tags:[\"" + NMM_EXCLUDE + "\"]";
 		String own = "PersistenceRequired:1b," + tags + variants(server, e);
-		String data = e.nbt().isEmpty() ? "{" + own + "}" : "{" + own + "," + e.nbt().substring(1);
+		// /summon with NBT skips the mob's usual gear: skeletons get their bow etc. unless the line sets a main hand.
+		String nbt = e.nbt();
+		String weapon = weapon(e.id());
+		if (weapon != null && !nbt.contains("mainhand") && !nbt.contains("HandItems")) {
+			String hand = "mainhand:{id:\"" + weapon + "\",count:1}";
+			int at = nbt.indexOf("equipment:{");
+			if (at >= 0) nbt = nbt.substring(0, at + 11) + hand + (nbt.charAt(at + 11) == '}' ? "" : ",") + nbt.substring(at + 11);
+			else own += ",equipment:{" + hand + "}";
+		}
+		String data = nbt.isEmpty() ? "{" + own + "}" : "{" + own + "," + nbt.substring(1);
 		ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon %s %.2f %.2f %.2f %s", dim, e.id(), x, y, z, data));
 	}
 }
