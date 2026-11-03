@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.6
+- Quick rounds: the title (the game's name and its entrance line) shows when a player joins (steps on the start pad or into the queue), not when the round starts, where it was in the way
 ## 1.79.5
 - Anvil rain: anvils land without their clang (dozens a second got loud), and more of them come down right above a player: 70 % by default (was half, and more spread out), set per game
 ## 1.79.4

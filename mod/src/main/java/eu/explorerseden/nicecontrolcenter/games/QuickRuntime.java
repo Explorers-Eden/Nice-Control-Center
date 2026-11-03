@@ -283,6 +283,7 @@ public final class QuickRuntime {
 				if (a.spectate != null && !r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && toSpectate(server, a, p)) {
 					r.next.add(p.getUUID());
 					r.names.putIfAbsent(p.getUUID(), p.getGameProfile().name());
+					title(p, a);
 					p.sendSystemMessage(Words.lit("A round of " + a.shown() + " is on: you're in the queue for the next one (" + r.next.size() + "). Wait here; walking away leaves the queue.").withStyle(ChatFormatting.GOLD));
 				} else if (server.getTickCount() % 40 == 0) {
 					p.sendOverlayMessage(Words.lit("A round of " + a.shown() + " is on; the next one starts after it").withStyle(ChatFormatting.GRAY));
@@ -306,10 +307,20 @@ public final class QuickRuntime {
 			}
 			r.players.add(p.getUUID());
 			r.names.put(p.getUUID(), p.getGameProfile().name());
+			title(p, a);
 			p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 0.8f, 1.4f);
 			long left = Math.max(0, (r.startsAt - now) / 1000);
 			p.sendSystemMessage(Words.lit("▶ You're in the next round of " + a.shown() + (left > 0 ? ": it starts in " + left + " s. Others can step on the pad to join." : ".")).withStyle(ChatFormatting.GREEN));
 		}
+	}
+
+	/**
+	 * The game's name with the line its entrances show, when they join (the pad or the queue), not when the round
+	 * starts, where it would be in the way.
+	 */
+	private static void title(ServerPlayer p, Arena a) {
+		p.connection.send(new ClientboundSetTitleTextPacket(Words.lit(a.shown()).withStyle(st -> st.withColor(a.rgb()))));
+		p.connection.send(new ClientboundSetSubtitleTextPacket(a.subtitle.isBlank() ? Component.empty() : Words.lit(a.subtitle.strip()).withStyle(ChatFormatting.GRAY)));
 	}
 
 	private static Arena startPad(ServerPlayer p) {
@@ -401,9 +412,6 @@ public final class QuickRuntime {
 			p.teleportTo(level, spawn.x + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), spawn.y, spawn.z + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), Set.of(), spawn.yaw, 0, true);
 			p.resetFallDistance();
 			GameClaims.gameMode(p, false);
-			p.connection.send(new ClientboundSetTitleTextPacket(Words.lit(a.shown()).withStyle(st -> st.withColor(a.rgb()))));
-			// The game's name with the line its entrances show (the goal goes to chat): a short title that fits.
-			p.connection.send(new ClientboundSetSubtitleTextPacket(a.subtitle.isBlank() ? Component.empty() : Words.lit(a.subtitle.strip()).withStyle(ChatFormatting.GRAY)));
 			p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");
 		}
