@@ -1159,3 +1159,10 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-nc-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .9em; color: var(--muted); }
 .pn-nc-key input { width: 16rem; max-width: 60vw; }
 .pn-nc-color { display: inline-flex; align-items: center; gap: .5rem; }
+
+/* Game and NPC cards: titled sections with a line between them. */
+.pn-gm-card .pn-rw-grid > .pn-ps-sub { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid rgba(var(--ink),.08); color: var(--text); }
+.pn-gm-card .pn-rw-grid > .pn-ps-sub:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.pn-gm-card .pn-rw-grid > .pn-ps-sub .bi { color: var(--accent, #ffc83d); }
+.pn-gm-card .pn-field-wide > .pn-hint { display: block; margin-top: 4px; }
+.pn-rw-grid > .pn-break { grid-column: 1 / -1; height: 0; }

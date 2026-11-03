@@ -398,6 +398,12 @@ public final class DungeonRuntime {
 		}));
 	}
 
+	/** Reads the file again right now (not up to 5 s late): commands change what the panel saved last, not an older copy. */
+	public static void reloadNow() {
+		eu.explorerseden.nicecontrolcenter.core.FileWatch.now(file());
+		reload();
+	}
+
 	public static void reload() {
 		long now;
 		try {
@@ -1265,7 +1271,11 @@ public final class DungeonRuntime {
 		var blockPos = (java.util.function.Function<String, com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, net.minecraft.commands.arguments.coordinates.Coordinates>>) n -> Commands.argument(n, net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos());
 		var poolArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("pool", StringArgumentType.word())
 				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.pools(), b));
-		d.register(Commands.literal("dungeon").requires(Everyone.unless("nicecontrolcenter.dungeons.use"))
+		java.util.function.Predicate<CommandSourceStack> use = Everyone.unless("nicecontrolcenter.dungeons.use");
+		d.register(Commands.literal("dungeon").requires(src -> {
+			reloadNow();
+			return use.test(src);
+		})
 				.then(Commands.literal("leave").executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					Run r = playing.get(p.getUUID());

@@ -112,6 +112,10 @@ public final class Games {
 		/** A jukebox song (minecraft:pigstep, a datapack's…) looped instead: its own length is used; wins over loopSound. */
 		public String loopSong = "";
 
+		/** Music for everyone in its spectator area (watching, queued, out for the wave): a jukebox song; empty = none. */
+		public String spectateSong = "";
+		public double spectateVolume = 0.5;
+
 		/** Jukebox songs the server knows (written by the mod on start for the panel). */
 		public static final String SONGS = "nicecontrolcenter-jukebox-songs.json";
 
@@ -156,9 +160,9 @@ public final class Games {
 		/** Maze: the share of dead ends with a chest (0–100 %), filled from this loot table. */
 		public int mazeChests = 0;
 		public String mazeLoot = "minecraft:chests/simple_dungeon";
-		/** Maze: mobs that roam it while someone runs it (pool like wave fights: "zombie x2, skeleton"), and how many at once. */
-		public String mazeMobs = "";
-		public int mazeMobMax = 6;
+		/** Before 1.79: the maze's mobs as one comma line and how many at once; moved into pool and maxAlive (null once moved). */
+		public String mazeMobs;
+		public Integer mazeMobMax;
 
 		/** Maze: blocks along each side (cells and the walls between them). */
 		public int mazeBlocks() {
@@ -311,6 +315,8 @@ public final class Games {
 				a.loopVolume = Math.max(0.05, Math.min(1, a.loopVolume == 0 ? 0.5 : a.loopVolume));
 				a.loopSeconds = Math.max(0, Math.min(3600, a.loopSeconds));
 				a.loopSong = a.loopSong == null ? "" : a.loopSong.strip().toLowerCase(Locale.ROOT);
+				a.spectateSong = a.spectateSong == null ? "" : a.spectateSong.strip().toLowerCase(Locale.ROOT);
+				a.spectateVolume = Math.max(0.05, Math.min(1, a.spectateVolume == 0 ? 0.5 : a.spectateVolume));
 				// Colour floor: players gather on the middle platform (not where it was made).
 				if (a.type.equals("colorfloor") && a.corner != null) {
 					int step = Math.max(1, a.platformSize) + Math.max(0, a.platformGap);
@@ -340,8 +346,16 @@ public final class Games {
 				if (a.mazeGoal == null || a.mazeGoal.isBlank()) a.mazeGoal = "minecraft:sea_lantern";
 				a.mazeChests = Math.max(0, Math.min(100, a.mazeChests));
 				if (a.mazeLoot == null || a.mazeLoot.isBlank()) a.mazeLoot = "minecraft:chests/simple_dungeon";
-				if (a.mazeMobs == null) a.mazeMobs = "";
-				a.mazeMobMax = Math.max(0, Math.min(50, a.mazeMobMax));
+				// Mazes kept their mobs in a line of their own; now the same pool (one per line) as every other game.
+				if (a.mazeMobs != null) {
+					if (a.type.equals("maze")) {
+						int most = a.mazeMobMax == null ? 6 : a.mazeMobMax;
+						a.pool = most <= 0 ? new ArrayList<>() : splitMobs(a.mazeMobs);
+						a.maxAlive = Math.max(1, most);
+					}
+					a.mazeMobs = null;
+				}
+				a.mazeMobMax = null;
 				a.ahead = Math.max(1, Math.min(8, a.ahead));
 				a.maxGap = Math.max(2, Math.min(5, a.maxGap));
 				a.timeLimit = Math.max(0, Math.min(3600, a.timeLimit));
@@ -476,6 +490,32 @@ public final class Games {
 	}
 
 	/** In the arena's spectator area: its box when both corners are set, else within the radius of its point (plus slack). */
+	/** A comma line of mobs ("zombie x2, skeleton {…}") as pool lines, not splitting inside {…}, […] or quotes. */
+	public static List<String> splitMobs(String text) {
+		List<String> out = new ArrayList<>();
+		int depth = 0;
+		char quote = 0;
+		StringBuilder cur = new StringBuilder();
+		for (char ch : (text == null ? "" : text).toCharArray()) {
+			if (quote != 0) {
+				if (ch == quote) quote = 0;
+			} else if (ch == '"' || ch == '\'') {
+				quote = ch;
+			} else if (ch == '{' || ch == '[') {
+				depth++;
+			} else if (ch == '}' || ch == ']') {
+				depth = Math.max(0, depth - 1);
+			} else if (ch == ',' && depth == 0) {
+				if (!cur.toString().isBlank()) out.add(cur.toString().strip());
+				cur.setLength(0);
+				continue;
+			}
+			cur.append(ch);
+		}
+		if (!cur.toString().isBlank()) out.add(cur.toString().strip());
+		return out;
+	}
+
 	public static boolean inSpectate(Arena a, String dim, double x, double y, double z, double slack) {
 		if (a.spectateMin != null && a.spectateMax != null && a.spectateMin.dim.equals(a.spectateMax.dim)) {
 			if (!dim.equals(a.spectateMin.dim)) return false;

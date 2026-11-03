@@ -1,3 +1,9 @@
+## 1.68.0
+- Games and NPCs: each card in titled sections (Name and look, Setup in game, the game's own settings, Mobs, Music, Rewards and messages; NPCs: Name and look, Walking, Right-click and hit, Talking, As a hostile), with shorter labels
+- Games: one mob block for every game with mobs (pool one per line like /summon, the NPCs you can use as npc:<name>, how many at once, peaceful mobs); the maze uses it too
+- Games: spectator area music (song and volume) next to the game's music (mod 1.79.0)
+- Menu: Rewards now holds Rules, Points and Reward shops (they were under Games); old links still work. Reward shops explain that NPCs open them
+
 ## 1.67.0
 - Games: music is a list of the server's jukebox songs ("Lena Raine - Pigstep · 2:29") and a volume (mod 1.78.0)
 

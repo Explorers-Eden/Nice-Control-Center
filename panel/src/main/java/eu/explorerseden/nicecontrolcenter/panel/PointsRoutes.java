@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
 
-/** Points and reward shops (Games → Points, Reward shops): the shops (config file), balances (from the mod, or the world's file when it's off), give and take. */
+/** Points and reward shops (Rewards → Points, Reward shops): the shops (config file), balances (from the mod, or the world's file when it's off), give and take. */
 final class PointsRoutes {
 	private final Path serverDir;
 	private final ServerFiles files;

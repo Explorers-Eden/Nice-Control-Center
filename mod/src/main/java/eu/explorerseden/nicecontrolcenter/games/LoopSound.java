@@ -17,11 +17,12 @@ import net.minecraft.sounds.SoundSource;
 import eu.explorerseden.nicecontrolcenter.Games.Arena;
 
 /**
- * A game's own sound (Arena.loopSound), played again and again to each player in it, only to them and
- * following them (Music/Jukebox volume slider: records). Stopped when they leave the game.
+ * A game's music (Arena.loopSong, or a sound id set before songs), played again and again to each player in it,
+ * only to them and following them (Music/Jukebox volume slider: records), and its spectator music (spectateSong)
+ * to everyone in its spectator area. Stopped when they leave.
  */
 final class LoopSound {
-	private record Playing(String arena, String sound, long again) {
+	private record Playing(String arena, String sound, long again, int entity) {
 	}
 
 	private static final Map<UUID, Playing> playing = new HashMap<>();
@@ -37,27 +38,70 @@ final class LoopSound {
 			Arena a = QuickRuntime.arenaOf(p);
 			if (a == null) a = WaveRuntime.arenaOf(p);
 			if (a == null) a = GameRuntime.arenaOf(p);
+			// In a game's spectator area (watching, queued, or out for the wave) its spectator music wins.
+			Arena watching = watching(p);
+			String key;
+			String songId;
+			String oldSound = "";
+			int oldSeconds = 0;
+			double volume;
+			if (watching != null) {
+				key = "watch:" + watching.id;
+				songId = watching.spectateSong;
+				volume = watching.spectateVolume;
+			} else if (a != null) {
+				key = a.id;
+				songId = a.loopSong;
+				oldSound = a.loopSound;
+				oldSeconds = a.loopSeconds;
+				volume = a.loopVolume;
+			} else {
+				key = null;
+				songId = "";
+				volume = 0;
+			}
 			Playing was = playing.get(p.getUUID());
-			// A jukebox song (its own sound and length), else a sound id with the length given.
-			net.minecraft.world.item.JukeboxSong song = a == null || a.loopSong.isEmpty() ? null : song(server, a.loopSong);
+			// A jukebox song (its own sound and length), else a sound id with the length given (set before songs).
+			net.minecraft.world.item.JukeboxSong song = songId.isEmpty() ? null : song(server, songId);
 			String sound = song != null ? song.soundEvent().value().location().toString()
-					: a == null || a.loopSound.isEmpty() || a.loopSeconds < 1 ? null : a.loopSound;
-			long length = song != null ? Math.max(20, song.lengthInTicks()) : a == null ? 0 : a.loopSeconds * 20L;
-			if (was != null && (sound == null || !sound.equals(was.sound()) || !a.id.equals(was.arena()))) {
+					: oldSound.isEmpty() || oldSeconds < 1 ? null : oldSound;
+			long length = song != null ? Math.max(20, song.lengthInTicks()) : oldSeconds * 20L;
+			// Left the game or the spectator area (or into another one): stopped at once, like /stopsound.
+			if (was != null && (sound == null || !sound.equals(was.sound()) || !key.equals(was.arena()))) {
 				stop(p, was.sound());
 				playing.remove(p.getUUID());
+				was = null;
+			}
+			// A respawn or another dimension makes a new player entity, which ends the song on the client: start it again.
+			if (was != null && was.entity() != body(p)) {
+				stop(p, was.sound());
 				was = null;
 			}
 			if (sound == null || was != null && tick < was.again()) continue;
 			Identifier id = Identifier.tryParse(sound.contains(":") ? sound : "minecraft:" + sound);
 			if (id == null) continue;
 			Holder<SoundEvent> event = song != null ? song.soundEvent() : Holder.direct(SoundEvent.createVariableRangeEvent(id));
-			p.connection.send(new ClientboundSoundEntityPacket(event, SoundSource.RECORDS, p, (float) a.loopVolume, 1f, p.getRandom().nextLong()));
-			playing.put(p.getUUID(), new Playing(a.id, sound, tick + length));
+			p.connection.send(new ClientboundSoundEntityPacket(event, SoundSource.RECORDS, p, (float) volume, 1f, p.getRandom().nextLong()));
+			playing.put(p.getUUID(), new Playing(key, sound, tick + length, body(p)));
 		}
 		for (Iterator<UUID> it = playing.keySet().iterator(); it.hasNext();) {
 			if (server.getPlayerList().getPlayer(it.next()) == null) it.remove();
 		}
+	}
+
+	/** The player's entity on the client: a respawn or a dimension change makes a new one (and ends sounds on the old). */
+	private static int body(ServerPlayer p) {
+		return p.getId() * 31 + p.level().dimension().hashCode();
+	}
+
+	/** The game whose spectator area (with spectator music) the player stands in; null = none. */
+	private static Arena watching(ServerPlayer p) {
+		String dim = p.level().dimension().identifier().toString();
+		for (Arena a : GameRuntime.settings().arenas) {
+			if (!a.enabled || a.spectateSong.isEmpty() || a.spectate == null) continue;
+			if (eu.explorerseden.nicecontrolcenter.Games.inSpectate(a, dim, p.getX(), p.getY(), p.getZ(), 1)) return a;
+		}
+		return null;
 	}
 
 	private static net.minecraft.world.item.JukeboxSong song(MinecraftServer server, String id) {

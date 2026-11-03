@@ -105,6 +105,7 @@ public final class HeadHunt {
 			Arena a = huntAt(level, pos);
 			if (a == null) return true;
 			if (admin(p) && p.isCreative()) {
+				a = fresh(a);
 				a.heads.removeIf(h -> h.dim.equals(dim(level)) && (int) h.x == pos.getX() && (int) h.y == pos.getY() && (int) h.z == pos.getZ());
 				GameRuntime.saveSettings();
 				p.sendSystemMessage(Words.lit(a.shown() + ": head removed (" + a.heads.size() + " left).").withStyle(ChatFormatting.YELLOW));
@@ -254,8 +255,16 @@ public final class HeadHunt {
 		}
 	}
 
+	/** The hunt as the file has it right now (a panel save a moment ago isn't overwritten by the change made next). */
+	private static Arena fresh(Arena a) {
+		GameRuntime.reloadNow();
+		Arena now = GameRuntime.settings().arena(a.id);
+		return now == null ? a : now;
+	}
+
 	/** Adds a head at pos to the hunt (false when it's in already). */
 	static boolean add(Arena a, Level level, BlockPos pos) {
+		a = fresh(a);
 		String k = key(level, pos);
 		for (Games.Pos h : a.heads) if (key(h).equals(k)) return false;
 		a.heads.add(new Games.Pos(dim(level), pos.getX(), pos.getY(), pos.getZ(), 0));
@@ -264,6 +273,7 @@ public final class HeadHunt {
 	}
 
 	static boolean remove(Arena a, Level level, BlockPos pos) {
+		a = fresh(a);
 		String k = key(level, pos);
 		boolean had = a.heads.removeIf(h -> key(h).equals(k));
 		if (had) GameRuntime.saveSettings();

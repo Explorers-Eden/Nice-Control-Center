@@ -82,6 +82,12 @@ public final class PointsStore {
 		});
 	}
 
+	/** Reads the file again right now (not up to 5 s late): commands change what the panel saved last, not an older copy. */
+	public static void reloadNow() {
+		eu.explorerseden.nicecontrolcenter.core.FileWatch.now(file());
+		reload();
+	}
+
 	public static void reload() {
 		long now;
 		try {

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.0
+- Games: music in the spectator area too (its own jukebox song and volume), for the queue, players who are out and visitors from a watch point; leaving the game or the area stops the music at once
+- Games: the song starts again after a respawn or a change of dimension (it used to stay quiet until its length had run out)
+- Games: one mob pool for every game with mobs: the maze's mobs are now the same one-per-line pool as wave fights, ghast deflect and colour floor (NBT and npc:<name> work everywhere); a maze's mob line and "mobs at once" move over by themselves
+- Fix: /npc, /points shop and /dungeon commands, and hiding or removing hunt heads, worked with the settings read up to 5 s earlier and wrote them back over a change just saved in the panel; they now read the file first
 ## 1.78.1
 - Fix: pregen paused for full memory only once the heap already was full: it read the old generation as of its last (rare) clean-up; it now counts what's there right now and pauses at 75 % (on again below 60 %)
 ## 1.78.0

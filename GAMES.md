@@ -32,8 +32,12 @@ in the panel under **Games**. `<name>` is the game's one-word name.
     the play area where a game uses one.
 11. **Music** (optional, every game but the head hunt): pick a jukebox song from the list (vanilla and datapack
     songs, with their length) and a volume; it loops for everyone in the game, only for them, on their
-    Jukebox/Note Blocks slider.
-12. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
+    Jukebox/Note Blocks slider. A second song can play in the **spectator area** (the queue, players who are out,
+    visitors from a watch point). Leaving the game or the area stops it at once.
+12. **Mobs** (wave fights, ghast deflect, colour floor, maze): one mob pool, the same everywhere, one line per mob
+    like `/summon`: `zombie`, `skeleton x2`, `husk {HandItems:[{id:"minecraft:iron_sword",count:1}]}`, or an NPC
+    `npc:knight`; plus how many at once and whether peaceful mobs fight.
+13. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
 
 Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
@@ -60,8 +64,8 @@ game-area options, including the game mode inside).
 **Maze** (`maze`): generated, rebuilt daily or after each run.
 - Created at its corner; `/game edit <name> size <cells>` (4–256) then `/game edit <name> build` (big ones take a
   few seconds). Panel: path width (1–5), wall, floor and ceiling blocks, height, light level of the paths, the blocks
-  under the goal, chests in dead ends (share and loot table), mobs roaming it while someone runs it (pool and how
-  many at once; they come out 12–32 blocks away and go when nobody runs it). Build again after changing the layout.
+  under the goal, chests in dead ends (share and loot table), mobs roaming it while someone runs it (the mob pool
+  and how many at once; they come out 12–32 blocks away and go when nobody runs it). Build again after changing the layout.
 - The goal has an exit ring and an "Exit" label in the game's colour.
 
 ## Wave fight (`waves`)
@@ -131,8 +135,8 @@ Panel: Community → NPCs; in game `/npc`.
 
 ## Points and reward shops
 - Points come from Rewards rules (the reward "Points") or `/points give <player> <n> [reason]`; own games built
-  with command blocks use `/points give|take|check`. Name and abbreviation: Games → Points.
+  with command blocks use `/points give|take|check`. Name and abbreviation: Rewards → Points.
 - A shop: `/points shop create <name>` where its NPC stands; `/points shop npc add <shop>` for more (they're NPCs:
   skin, lines and the rest under NPCs);
   hold an item, `/points shop item <shop> <price> <name>`. Skin, prices, limits, commands and other rewards:
-  Games → Reward shops.
+  Rewards → Reward shops.

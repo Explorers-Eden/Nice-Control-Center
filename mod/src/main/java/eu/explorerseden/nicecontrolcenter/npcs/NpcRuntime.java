@@ -224,6 +224,12 @@ public final class NpcRuntime {
 
 	// ---------------------------------------------------------------- settings
 
+	/** Reads the file again right now (not up to 5 s late): commands change what the panel saved last, not an older copy. */
+	public static void reloadNow() {
+		eu.explorerseden.nicecontrolcenter.core.FileWatch.now(file());
+		reload();
+	}
+
 	public static void reload() {
 		long now;
 		try {
@@ -283,6 +289,7 @@ public final class NpcRuntime {
 
 	/** An NPC for a shop where the player stands (from /points shop create and npc add). */
 	public static String addShopNpc(ServerPlayer p, Points.Shop shop) {
+		reloadNow();
 		Npc n = shopNpc(shop, spot(p));
 		settings.npcs.add(n);
 		settings.fill();
@@ -408,6 +415,7 @@ public final class NpcRuntime {
 			NiceControlCenter.LOGGER.info("NPCs: uploading the skin of {} through MineSkin", n.name);
 			MineSkin.upload(link, key).whenComplete((value, error) -> server.execute(() -> {
 				uploading.remove(id);
+				reloadNow();
 				Npc now = settings.npc(id);
 				if (now == null || !link.equals(now.skin)) return;
 				if (error == null) {
@@ -985,7 +993,10 @@ public final class NpcRuntime {
 		var admin = Permissions.require(PERMISSION, PermissionLevel.GAMEMASTERS);
 		var npcArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("npc", StringArgumentType.word())
 				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.npcs.stream().map(x -> x.name), b));
-		d.register(Commands.literal("npc").requires(admin)
+		d.register(Commands.literal("npc").requires(src -> {
+			reloadNow();
+			return admin.test(src);
+		})
 				.then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					String name = StringArgumentType.getString(ctx, "name");

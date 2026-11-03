@@ -412,7 +412,10 @@ public final class RewardShops {
 		var admin = Permissions.require(PointsStore.PERMISSION, PermissionLevel.GAMEMASTERS);
 		var shopArg = (java.util.function.Supplier<com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String>>) () -> Commands.argument("shop", StringArgumentType.word())
 				.suggests((ctx, b) -> SharedSuggestionProvider.suggest(PointsStore.settings().shops.stream().map(x -> x.name), b));
-		d.register(Commands.literal("points").then(Commands.literal("shop").requires(admin)
+		d.register(Commands.literal("points").then(Commands.literal("shop").requires(src -> {
+			PointsStore.reloadNow();
+			return admin.test(src);
+		})
 				.then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					String name = StringArgumentType.getString(ctx, "name");
@@ -424,7 +427,7 @@ public final class RewardShops {
 					PointsStore.settings().fill();
 					PointsStore.saveSettings();
 					String npc = eu.explorerseden.nicecontrolcenter.npcs.NpcRuntime.addShopNpc(p, s);
-					return saved(ctx, "Made the shop " + name + " with an NPC here (" + npc + ", Community → NPCs). Add rewards: hold an item and /points shop item " + name + " <price> <name>, or in the panel (Games → Reward shops), where its skin is set too.");
+					return saved(ctx, "Made the shop " + name + " with an NPC here (" + npc + ", Community → NPCs). Add rewards: hold an item and /points shop item " + name + " <price> <name>, or in the panel (Rewards → Reward shops); its look is set on the NPC (Community → NPCs).");
 				})))
 				.then(Commands.literal("delete").then(shopArg.get().executes(ctx -> {
 					Points.Shop s = shop(ctx);

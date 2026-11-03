@@ -17,7 +17,7 @@ import java.util.UUID;
 /**
  * Points: one balance per player, earned through Rewards rules (the "points" reward) and the /points commands (also
  * from command blocks, for games built by hand), spent at reward shops: NPCs placed in the world, each with its own
- * skin and list of rewards. Shops are kept in config/nicecontrolcenter-points.json (panel: Games → Reward shops),
+ * skin and list of rewards. Shops are kept in config/nicecontrolcenter-points.json (panel: Rewards → Reward shops),
  * balances by the mod in the world folder (nicecontrolcenter-points-data.json). Minecraft-free so both compile it.
  */
 public final class Points {

@@ -653,7 +653,7 @@ public final class GameRuntime {
 	}
 
 	/**
-	 * Maze mobs, every 3 s while someone runs it: up to mazeMobMax roam, each appearing in a cell 12–32 blocks from
+	 * Maze mobs, every 3 s while someone runs it: up to maxAlive from the pool roam, each appearing in a cell 12–32 blocks from
 	 * a runner (none closer than 12 to anyone), so they come out of the dark rather than next to you. Gone when
 	 * nobody runs it.
 	 */
@@ -672,7 +672,7 @@ public final class GameRuntime {
 			int w = a.mazeBlocks();
 			AABB box = new AABB(Math.floor(a.corner.x), a.corner.y - 2, Math.floor(a.corner.z), Math.floor(a.corner.x) + w, a.corner.y + 12, Math.floor(a.corner.z) + w);
 			List<LivingEntity> mobs = level.getEntitiesOfClass(LivingEntity.class, box.inflate(16), e -> e.isAlive() && e.entityTags().contains(tag));
-			if (runners.isEmpty() || a.mazeMobs.isBlank() || a.mazeMobMax == 0) {
+			if (runners.isEmpty() || a.pool.isEmpty()) {
 				mobs.forEach(Entity::discard);
 				continue;
 			}
@@ -682,8 +682,8 @@ public final class GameRuntime {
 					if (mob.getTarget() == null) mob.setTarget(runners.get(random.nextInt(runners.size())));
 				}
 			}
-			if (mobs.size() >= a.mazeMobMax || mazeBuilding(a)) continue;
-			List<MobLines.Entry> pool = MobLines.parseList(a.mazeMobs);
+			if (mobs.size() >= a.maxAlive || mazeBuilding(a)) continue;
+			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null).toList();
 			if (pool.isEmpty()) continue;
 			ServerPlayer near = runners.get(random.nextInt(runners.size()));
 			for (int tries = 0; tries < 24; tries++) {
@@ -1277,6 +1277,10 @@ public final class GameRuntime {
 			case "treasure" -> {
 				a.maxAlive = 8;
 				a.timeLimit = 60;
+			}
+			case "maze" -> {
+				a.pool = new ArrayList<>();
+				a.maxAlive = 6;
 			}
 			case "fishing" -> a.timeLimit = 120;
 			case "anvils" -> a.timeLimit = 300;
