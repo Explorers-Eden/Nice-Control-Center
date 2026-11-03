@@ -47,6 +47,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.AnvilBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
@@ -761,6 +762,12 @@ public final class QuickRuntime {
 
 	// ---------------------------------------------------------------- anvil rain
 
+	/** Nothing to bump into: air, light blocks, grass, flowers… */
+	private static boolean open(ServerLevel level, BlockPos pos) {
+		BlockState st = level.getBlockState(pos);
+		return st.isAir() || st.getCollisionShape(level, pos).isEmpty() && !(st.getBlock() instanceof AnvilBlock);
+	}
+
 	private static void anvils(ServerLevel level, Round r, List<ServerPlayer> alive) {
 		Arena a = r.arena;
 		AABB box = box(a);
@@ -796,12 +803,16 @@ public final class QuickRuntime {
 			}
 			x = Math.max(box.minX, Math.min(box.maxX - 0.01, x));
 			z = Math.max(box.minZ, Math.min(box.maxZ - 0.01, z));
-			// From the box's top down to the first open block: a roof inside the box (or a ceiling) is fine.
+			// From the box's top down to the first open block (air, or one you walk through like light blocks): a roof
+			// inside the box is fine too.
 			BlockPos at = BlockPos.containing(x, top, z);
 			int lowest = (int) Math.floor(box.minY) + 3;
-			while (at.getY() > lowest && !level.getBlockState(at).isAir()) at = at.below();
-			if (!level.getBlockState(at).isAir() || !level.getBlockState(at.below()).isAir()) continue;
+			while (at.getY() > lowest && !open(level, at)) at = at.below();
+			if (!open(level, at) || !open(level, at.below())) continue;
+			// fall() takes the block away where the anvil starts: a light block (or the like) there is put back.
+			BlockState was = level.getBlockState(at);
 			FallingBlockEntity f = FallingBlockEntity.fall(level, at, Blocks.ANVIL.defaultBlockState());
+			if (!was.isAir()) level.setBlock(at, was, 2);
 			f.setHurtsEntities(2f, 40);
 			f.disableDrop();
 			// Silent: no clang on landing (dozens a second get loud).

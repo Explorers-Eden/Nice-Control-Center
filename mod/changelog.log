@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.8
+- Fix: anvil rain dropped no anvils when the box's top layer had light blocks (or grass, flowers…): anvils only started in air. They now start in anything you can walk through, and the light block stays
 ## 1.79.7
 - Fix: anvil rain dropped no anvils when the box's top layer was a roof (anvils only started from the box's very top, and only in air); they now start from the first open block under it
 ## 1.79.6
