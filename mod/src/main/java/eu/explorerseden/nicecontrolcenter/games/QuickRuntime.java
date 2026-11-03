@@ -16,6 +16,9 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -35,6 +38,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
@@ -61,7 +68,8 @@ import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
 import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
 
 /**
- * Quick rounds (Games types ghasts, colorfloor, anvils, treasure, fishing): the first player on the start point opens a
+ * Quick rounds (Games types ghasts, colorfloor, anvils, treasure, fishing, moles, targets, gallery, chef, lava): the first
+ * player on the start point opens a
  * join window, everyone who steps on it before it closes plays the same round, each for their own score. Ghast deflect
  * (snowballs send fireballs back; a ghast killed by one scores), colour floor (a 3×3 grid of coloured platforms, one
  * colour vanishes at a time, refilled and faster every few colours, mobs now and then), anvil rain (survive the falling
@@ -113,6 +121,26 @@ public final class QuickRuntime {
 		final Map<ItemEntity, Long> shown = new HashMap<>();
 		/** Players whose action bar holds a message until then (ms): the score line waits. */
 		final Map<UUID, Long> holdBar = new HashMap<>();
+		// Whack-a-mole: heads up (hole spot above the hole block → until ms, points), when the next one pops up.
+		final Map<BlockPos, long[]> moles = new HashMap<>();
+		long nextMole;
+		// Target practice: targets up (→ until ms), when the next one comes.
+		final Map<BlockPos, Long> targets = new HashMap<>();
+		long nextTarget;
+		// Snowball gallery: mobs walking (entity → lane, how far along 0–1), when the next one starts, a counter for their tags.
+		final Map<UUID, double[]> walkers = new HashMap<>();
+		long nextWalker;
+		int walkerCount;
+		// Cauldron chef: each player's order, when it was given (ms), when the next comes (ms); the next restock.
+		final Map<UUID, Chef.Order> orders = new HashMap<>();
+		final Map<UUID, Long> orderSince = new HashMap<>();
+		final Map<UUID, Long> orderDue = new HashMap<>();
+		long restockAt;
+		// Rising lava: the next layer, when it comes, the seconds between two, the crash-safety key.
+		int lavaY;
+		long nextLava;
+		double lavaGap;
+		String lavaKey;
 
 		Round(Arena arena) {
 			this.arena = arena;
@@ -148,7 +176,10 @@ public final class QuickRuntime {
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			int t = server.getTickCount();
-			if (!rounds.isEmpty()) deflect(server);
+			if (!rounds.isEmpty()) {
+				deflect(server);
+				shots(server);
+			}
 			if (t % 2 == 0) {
 				pads(server);
 				for (Round r : List.copyOf(rounds.values())) tick(server, r);
@@ -166,6 +197,11 @@ public final class QuickRuntime {
 			p.sendOverlayMessage(Words.lit("+1 ghast · " + n).withStyle(ChatFormatting.GOLD));
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.6f);
 		});
+		// Whack-a-mole: hitting or right-clicking a head (adventure mode doesn't send hits on blocks); nobody breaks one.
+		AttackBlockCallback.EVENT.register((player, level, hand, pos, dir) -> player instanceof ServerPlayer p && !level.isClientSide() && Moles.hit(p, pos) ? InteractionResult.SUCCESS : InteractionResult.PASS);
+		UseBlockCallback.EVENT.register((player, level, hand, hit) -> hand == InteractionHand.MAIN_HAND && player instanceof ServerPlayer p && !level.isClientSide() && Moles.hit(p, hit.getBlockPos())
+				? InteractionResult.SUCCESS : InteractionResult.PASS);
+		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, be) -> !(level instanceof ServerLevel sl) || !Moles.isMole(sl, pos) && !Targets.isTarget(sl, pos));
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			ServerPlayer p = handler.player;
 			Round r = playing.get(p.getUUID());
@@ -210,6 +246,21 @@ public final class QuickRuntime {
 			if (playing.get(p.getUUID()) == r) out(server, r, p, "You were knocked out.", true);
 		});
 		return true;
+	}
+
+	/** From the NPC click: the cook of their chef round takes the order (true: handled, the NPC's own actions don't run). */
+	public static boolean serve(ServerPlayer p, String npcName) {
+		return Chef.serve(p, npcName);
+	}
+
+	/**
+	 * For claims: blocks a player in a round may use whatever the claim says: a mole's head, and in a chef round
+	 * everything in its kitchen (supply chests, crafting tables, furnaces).
+	 */
+	public static boolean freeUse(ServerPlayer p, Level level, BlockPos pos) {
+		if (level instanceof ServerLevel sl && Moles.isMole(sl, pos)) return true;
+		Round r = playing.get(p.getUUID());
+		return r != null && r.arena.type.equals("chef") && box(r.arena).inflate(2).contains(Vec3.atCenterOf(pos));
 	}
 
 	/** For the panel: players in the round (or waiting to start). */
@@ -364,7 +415,18 @@ public final class QuickRuntime {
 			return GameRuntime.levelOf(server, a.corner.dim) == null ? "That arena's dimension isn't there." : null;
 		}
 		if (a.spawn == null) return n + " has no player spawn yet (/game edit " + n + " spawn).";
-		if (a.areaMin == null || a.areaMax == null) return n + " has no play box yet (/game edit " + n + " corner1 / corner2).";
+		if (a.type.equals("moles")) {
+			String err = Moles.check(a);
+			if (err != null) return err;
+		} else if (a.areaMin == null || a.areaMax == null) return n + " has no play box yet (/game edit " + n + " corner1 / corner2).";
+		String own = switch (a.type) {
+			case "gallery" -> Gallery.check(a);
+			case "chef" -> Chef.check(a);
+			default -> null;
+		};
+		if (own != null) return own;
+		// Outside its box, players would be put back at the spawn over and over.
+		if (!box(a).inflate(1).contains(a.spawn.x, a.spawn.y, a.spawn.z)) return n + "'s player spawn is outside its play box (/game edit " + n + " spawn inside it, or new corners).";
 		if (a.type.equals("ghasts") && a.mobSpawns.isEmpty()) return n + " has no ghast spawns yet (/game edit " + n + " mobspawn add).";
 		if (a.type.equals("ghasts") && a.pool.isEmpty()) return n + " has no ghasts to send (mob pool in the panel).";
 		if (a.type.equals("treasure") && treasures(a).isEmpty()) return n + " has no treasure items (panel).";
@@ -400,6 +462,8 @@ public final class QuickRuntime {
 			buildGrid(level, r);
 			r.nextCallAt = r.started + 3000;
 		}
+		r.nextMole = r.nextTarget = r.nextWalker = r.started + 1500;
+		if (a.type.equals("lava")) Lava.start(level, r);
 		Games.Pos spawn = spawnOf(a);
 		for (ServerPlayer p : going) {
 			Cleanup.refresh(p);
@@ -416,6 +480,7 @@ public final class QuickRuntime {
 			p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");
 		}
+		if (a.type.equals("chef")) Chef.start(level, r);
 		level.playSound(null, spawn.x, spawn.y, spawn.z, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 1f, 2f);
 		NiceControlCenter.LOGGER.info("Games: quick round {} started with {}", a.name, String.join(", ", r.names.values()));
 	}
@@ -427,6 +492,11 @@ public final class QuickRuntime {
 			case "colorfloor" -> "The called colour vanishes. Stand on another one!";
 			case "anvils" -> "Dodge the falling anvils as long as you can.";
 			case "treasure" -> "Grab the glowing treasure" + (time.isEmpty() ? "." : " (" + time + ").");
+			case "moles" -> "Hit the heads as they pop up (right-click works too); some cost points" + (time.isEmpty() ? "." : " (" + time + ").");
+			case "targets" -> "Shoot the targets before they vanish: further away is worth more, a bullseye twice" + (time.isEmpty() ? "." : " (" + time + ").");
+			case "gallery" -> "Hit the mobs walking past with snowballs; leave the villagers alone" + (time.isEmpty() ? "." : " (" + time + ").");
+			case "chef" -> "Gather and cook what " + (a.chefNpc.isBlank() ? "the cook" : a.chefNpc) + " orders, then right-click " + (a.chefNpc.isBlank() ? "them" : a.chefNpc) + " to serve it" + (time.isEmpty() ? "." : " (" + time + ").");
+			case "lava" -> "The lava is rising: climb and stay out of it as long as you can.";
 			default -> "Catch as much as you can" + (time.isEmpty() ? "." : " (" + time + ").");
 		};
 	}
@@ -436,12 +506,42 @@ public final class QuickRuntime {
 		return switch (a.type) {
 			case "ghasts" -> List.of(new ItemStack(Items.SNOWBALL, 16));
 			case "fishing" -> List.of(new ItemStack(Items.FISHING_ROD));
+			case "targets" -> List.of(new ItemStack(Items.BOW), new ItemStack(Items.ARROW, 16));
+			case "gallery" -> List.of(new ItemStack(Items.SNOWBALL, 16));
 			default -> List.of();
 		};
 	}
 
-	private static boolean kit(Arena a) {
-		return "kit".equals(a.gear);
+	/** Their things put aside and the kit handed out (always for the chef: nothing may come in from outside). */
+	static boolean kit(Arena a) {
+		return "kit".equals(a.gear) || a.type.equals("chef");
+	}
+
+	/** Points for a player in a round (never below 0), shown on their action bar for a moment. */
+	static void add(Round r, ServerPlayer p, long delta, String why) {
+		long n = Math.max(0, r.score.getOrDefault(p.getUUID(), 0L) + delta);
+		r.score.put(p.getUUID(), n);
+		p.sendOverlayMessage(Words.lit((delta >= 0 ? "+" : "") + delta + (why == null ? "" : " " + why) + " · " + n + (n == 1 ? " point" : " points"))
+				.withStyle(delta >= 0 ? ChatFormatting.GOLD : ChatFormatting.RED));
+		r.holdBar.put(p.getUUID(), System.currentTimeMillis() + 1500);
+	}
+
+	/** A sound only this player hears (where they are). */
+	static void ding(ServerPlayer p, net.minecraft.sounds.SoundEvent sound, float volume, float pitch) {
+		p.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound), SoundSource.PLAYERS,
+				p.getX(), p.getY(), p.getZ(), volume, pitch, p.getRandom().nextLong()));
+	}
+
+	static java.util.Collection<Round> allRounds() {
+		return rounds.values();
+	}
+
+	static Round roundOf(ServerPlayer p) {
+		return playing.get(p.getUUID());
+	}
+
+	static Random random() {
+		return random;
 	}
 
 	// ---------------------------------------------------------------- the loop
@@ -493,6 +593,11 @@ public final class QuickRuntime {
 				out(server, r, p, "You fell!", true);
 				continue;
 			}
+			if (a.type.equals("lava") && (p.isInLava() || p.getY() < box(a).minY - 2)) {
+				p.clearFire();
+				out(server, r, p, "The lava got you!", true);
+				continue;
+			}
 			if (!box.inflate(1).contains(p.position())) {
 				if (survival) {
 					out(server, r, p, "You left the arena.", true);
@@ -504,7 +609,7 @@ public final class QuickRuntime {
 			}
 		}
 		alive = alive(server, r);
-		if (survival) for (ServerPlayer p : alive) r.score.put(p.getUUID(), a.type.equals("anvils") ? r.elapsed() / 1000 : (long) r.colours);
+		if (survival) for (ServerPlayer p : alive) r.score.put(p.getUUID(), a.type.equals("colorfloor") ? (long) r.colours : r.elapsed() / 1000);
 		if (alive.isEmpty()) {
 			end(server, r, null);
 			return;
@@ -533,6 +638,16 @@ public final class QuickRuntime {
 			case "anvils" -> anvils(level, r, alive);
 			case "treasure" -> treasure(level, r, alive);
 			case "fishing" -> fishing(level, r);
+			case "moles" -> Moles.tick(server, level, r, alive);
+			case "targets" -> Targets.tick(level, r, alive);
+			case "gallery" -> Gallery.tick(server, level, r, alive);
+			case "chef" -> Chef.tick(level, r, alive);
+			case "lava" -> {
+				if (Lava.tick(level, r, alive)) {
+					end(server, r, "The lava reached the top: you outlasted it!");
+					return;
+				}
+			}
 			default -> {
 			}
 		}
@@ -540,7 +655,7 @@ public final class QuickRuntime {
 	}
 
 	private static boolean survival(Arena a) {
-		return a.type.equals("colorfloor") || a.type.equals("anvils");
+		return a.type.equals("colorfloor") || a.type.equals("anvils") || a.type.equals("lava");
 	}
 
 	private static void hud(MinecraftServer server, Round r, List<ServerPlayer> alive) {
@@ -555,6 +670,10 @@ public final class QuickRuntime {
 		long now = System.currentTimeMillis();
 		for (ServerPlayer p : alive) {
 			if (r.holdBar.getOrDefault(p.getUUID(), 0L) > now) continue;
+			if (a.type.equals("chef")) {
+				p.sendOverlayMessage(Chef.line(r, p));
+				continue;
+			}
 			long mine = r.score.getOrDefault(p.getUUID(), 0L);
 			String leader = alive.size() > 1 && lead != null && !lead.equals(p.getUUID()) ? " · leader " + r.names.get(lead) + " " + r.score.getOrDefault(lead, 0L) : "";
 			p.sendOverlayMessage(Words.lit(Games.scoreText(a.type, mine, GameRuntime::clock) + leader).withStyle(ChatFormatting.AQUA));
@@ -1164,6 +1283,30 @@ public final class QuickRuntime {
 			r.landed.clear();
 		}
 		if (a.type.equals("colorfloor") && a.corner != null) buildGrid(level, r);
+		if (a.type.equals("moles")) Moles.clear(level, r);
+		if (a.type.equals("targets")) Targets.clear(level, r);
+		if (a.type.equals("lava")) Lava.end(level, r);
+		if (a.type.equals("chef")) Chef.clear(r);
+		r.walkers.clear();
+	}
+
+	/** Every tick: target practice and snowball gallery shots, checked against what they're about to hit. */
+	private static void shots(MinecraftServer server) {
+		for (Round r : rounds.values()) {
+			if (r.state != State.PLAYING || !r.arena.type.equals("targets") && !r.arena.type.equals("gallery")) continue;
+			ServerLevel level = level(server, r.arena);
+			if (level == null) continue;
+			AABB area = box(r.arena).inflate(48);
+			for (Projectile shot : level.getEntitiesOfClass(Projectile.class, area, e -> e.isAlive() && e.getOwner() instanceof ServerPlayer)) {
+				ServerPlayer p = (ServerPlayer) shot.getOwner();
+				if (!r.in(p.getUUID())) continue;
+				Vec3 from = shot.position();
+				Vec3 to = from.add(shot.getDeltaMovement());
+				boolean hit = r.arena.type.equals("targets") ? Targets.shot(level, r, p, shot, from, to) : Gallery.shot(level, r, p, shot, from, to);
+				// Arrows that stopped somewhere (a miss) go, so they don't pile up.
+				if (!hit && shot.tickCount > 5 && shot.getDeltaMovement().lengthSqr() < 1.0E-4) shot.discard();
+			}
+		}
 	}
 
 	// ---------------------------------------------------------------- helpers
@@ -1174,6 +1317,7 @@ public final class QuickRuntime {
 			int span = a.platformSize * 3 + a.platformGap * 2;
 			return new AABB(a.corner.x - 2, a.corner.y - 8, a.corner.z - 2, a.corner.x + span + 2, a.corner.y + 12, a.corner.z + span + 2);
 		}
+		if (a.type.equals("moles") && a.corner != null && (a.areaMin == null || a.areaMax == null)) return Moles.area(a);
 		if (a.areaMin == null || a.areaMax == null) return new AABB(0, 0, 0, 0, 0, 0);
 		return new AABB(Math.min(a.areaMin.x, a.areaMax.x), Math.min(a.areaMin.y, a.areaMax.y), Math.min(a.areaMin.z, a.areaMax.z),
 				Math.max(a.areaMin.x, a.areaMax.x) + 1, Math.max(a.areaMin.y, a.areaMax.y) + 1, Math.max(a.areaMin.z, a.areaMax.z) + 1);

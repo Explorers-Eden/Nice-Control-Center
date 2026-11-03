@@ -15,17 +15,18 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Mini-game arenas (templates: infinite parkour, race course, dropper, maze, wave fight, the quick rounds ghast
- * deflect, colour floor, anvil rain, treasure grab and fishing frenzy, and head hunts), kept in
+ * Mini-game arenas (templates: infinite parkour, race course, maze, wave fight, the quick rounds ghast
+ * deflect, colour floor, anvil rain, treasure grab, fishing frenzy, whack-a-mole, target practice, snowball gallery,
+ * cauldron chef and rising lava, and head hunts), kept in
  * config/nicecontrolcenter-games.json: made with /game in game, changed in the panel's Games page. Scores are kept
  * by the mod in the world folder (nicecontrolcenter-games-scores.json). Minecraft-free so both compile it.
  */
 public final class Games {
 	public static final String FILE = "nicecontrolcenter-games.json";
 	public static final String SCORES = "nicecontrolcenter-games-scores.json";
-	public static final List<String> TYPES = List.of("parkour", "race", "dropper", "maze", "waves", "ghasts", "colorfloor", "anvils", "treasure", "fishing", "heads");
+	public static final List<String> TYPES = List.of("parkour", "race", "maze", "waves", "ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava", "heads");
 	/** Quick rounds: everyone on the start pad during the join window plays the same round, each for their own score. */
-	public static final List<String> QUICK = List.of("ghasts", "colorfloor", "anvils", "treasure", "fishing");
+	public static final List<String> QUICK = List.of("ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava");
 
 	public static boolean quick(String type) {
 		return QUICK.contains(type);
@@ -75,6 +76,18 @@ public final class Games {
 		}
 	}
 
+	/** Snowball gallery: a lane mobs walk along, from one end to the other. */
+	public static final class Lane {
+		public Pos from;
+		public Pos to;
+	}
+
+	/** Cauldron chef: a supply chest and what it's filled with at each round (item JSON, like kits). */
+	public static final class Station {
+		public Pos pos;
+		public List<String> items = new ArrayList<>();
+	}
+
 	public static final class Arena {
 		public String id = "";
 		/** One word, for the commands (/game join <name>). */
@@ -119,7 +132,7 @@ public final class Games {
 		/** Jukebox songs the server knows (written by the mod on start for the panel). */
 		public static final String SONGS = "nicecontrolcenter-jukebox-songs.json";
 
-		/** parkour, race, dropper or maze. */
+		/** One of TYPES. */
 		public String type = "parkour";
 		public boolean enabled = true;
 		/** The start point: where the game begins (stepping on it starts a run; where /game join and the entrances bring players). */
@@ -137,10 +150,8 @@ public final class Games {
 		/** Race: run, boat or elytra; the checkpoints in order and the finish. */
 		public String mode = "run";
 		public List<Point> checkpoints = new ArrayList<>();
-		/** Race and dropper: where a run ends. */
+		/** Race: where a run ends. */
 		public Point finish;
-		/** Dropper: where players drop from. */
-		public Pos top;
 		/** Maze: the corner it's built from, cells per side (4–256), the blocks (comma-separated: mixed at random), and when it's made new ("run" or "daily"). */
 		public Pos corner;
 		public int size = 12;
@@ -182,8 +193,6 @@ public final class Games {
 		public int maxGap = 4;
 		/** Race: seconds before a run is over (0 = no limit). */
 		public int timeLimit;
-		/** Dropper: tries before a run is over (0 = as many as it takes). */
-		public int maxTries;
 		/** Seconds before a player can start this arena again. */
 		public int cooldown = 3;
 		/** Shown on start and when a run counts; {player}, {game}, {score}. Empty = the default line. */
@@ -245,7 +254,7 @@ public final class Games {
 		/** Shown when the party loses ({wave}: waves cleared). Empty = the default line. */
 		public String loseMessage = "";
 
-		// Quick rounds (ghasts, colorfloor, anvils, treasure, fishing); they also use spawn, the box, mobSpawns, pool,
+		// Quick rounds (ghasts, colorfloor, anvils, treasure, fishing, moles, targets, gallery, chef, lava); they also use spawn, the box, mobSpawns, pool,
 		// maxAlive, timeLimit (0 = until the last one is out), exitPads and gear/kit.
 		/** Seconds the start pad waits for more players once the first one stepped on it; most players in a round. */
 		public int joinSeconds = 10;
@@ -276,6 +285,34 @@ public final class Games {
 		public int rareFishPoints = 3;
 		public int treasurePoints = 5;
 		public int junkPoints = 0;
+		/** Whack-a-mole: holes per side of the grid (corner = the block under the admin's feet), the gap between, the hole block. */
+		public int moleSize = 4;
+		public int moleGap = 1;
+		public String moleHole = "minecraft:coarse_dirt";
+		/** Whack-a-mole: seconds a head stays up at the start (shorter as the round goes on, down to a third). */
+		public double moleSeconds = 1.5;
+		/** Whack-a-mole: "minecraft:zombie_head=1" (a head block, or a player head's skin: URL, hash or base64 = points; below 0 costs). */
+		public List<String> moleHeads = new ArrayList<>(List.of("minecraft:zombie_head=1", "minecraft:skeleton_skull=1", "minecraft:creeper_head=2",
+				"minecraft:piglin_head=3", "minecraft:wither_skeleton_skull=-3"));
+		/** Target practice: targets on the box's walls ("walls") or floating anywhere in it ("anywhere"); seconds each stays. */
+		public String targetMode = "walls";
+		public double targetSeconds = 5;
+		/** Snowball gallery: the lanes (set in game), how fast the mobs walk (blocks a second at the start), points per mob. */
+		public List<Lane> galleryLanes = new ArrayList<>();
+		public double gallerySpeed = 2;
+		/** Snowball gallery: "minecraft:villager=-5" (mob = points; mobs not listed give 1). */
+		public List<String> galleryScores = new ArrayList<>(List.of("minecraft:chicken=3", "minecraft:rabbit=4", "minecraft:villager=-5"));
+		/** Cauldron chef: the cook (an NPC's name), the supply chests (set in game), the orders and the wait between two. */
+		public String chefNpc = "";
+		public List<Station> chefStations = new ArrayList<>();
+		/** Cauldron chef: "bread x2, cookie x4 = 5" (items, then the points). */
+		public List<String> chefOrders = new ArrayList<>(List.of("bread x2 = 3", "baked_potato x2 = 3", "cooked_beef, baked_potato = 4", "cookie x8 = 5",
+				"mushroom_stew = 4", "pumpkin_pie = 6", "cake = 8"));
+		public int chefPause = 3;
+		/** Rising lava: seconds before the next layer at the start, how much faster each layer, and the fastest. */
+		public double lavaSeconds = 6;
+		public double lavaSpeedUp = 0.25;
+		public double lavaFastest = 2;
 
 		// Head hunt: player heads hidden in the world; right-click to find one.
 		/** The heads' skin: a textures.minecraft.net URL, its hash, or the base64 value. */
@@ -303,7 +340,8 @@ public final class Games {
 
 		public Settings fill() {
 			if (arenas == null) arenas = new ArrayList<>();
-			arenas.removeIf(a -> a == null);
+			// Droppers were taken out in 1.81.0: theirs go (rather than turning into another type).
+			arenas.removeIf(a -> a == null || "dropper".equals(a.type));
 			Set<String> ids = new HashSet<>();
 			for (Arena a : arenas) {
 				if (a.id == null || a.id.isBlank() || !ids.add(a.id)) {
@@ -361,7 +399,6 @@ public final class Games {
 				a.ahead = Math.max(1, Math.min(8, a.ahead));
 				a.maxGap = Math.max(2, Math.min(5, a.maxGap));
 				a.timeLimit = Math.max(0, Math.min(3600, a.timeLimit));
-				a.maxTries = Math.max(0, Math.min(999, a.maxTries));
 				a.cooldown = Math.max(0, Math.min(3600, a.cooldown));
 				if (a.startMessage == null) a.startMessage = "";
 				if (a.finishMessage == null) a.finishMessage = "";
@@ -413,6 +450,30 @@ public final class Games {
 				a.rareFishPoints = Math.max(0, Math.min(1000, a.rareFishPoints));
 				a.treasurePoints = Math.max(0, Math.min(1000, a.treasurePoints));
 				a.junkPoints = Math.max(0, Math.min(1000, a.junkPoints));
+				a.moleSize = Math.max(2, Math.min(9, a.moleSize));
+				a.moleGap = Math.max(0, Math.min(4, a.moleGap));
+				if (a.moleHole == null || a.moleHole.isBlank()) a.moleHole = "minecraft:coarse_dirt";
+				a.moleSeconds = Math.max(0.3, Math.min(10, a.moleSeconds == 0 ? 1.5 : a.moleSeconds));
+				if (a.moleHeads == null) a.moleHeads = new ArrayList<>();
+				a.moleHeads.removeIf(x -> x == null || x.isBlank());
+				if (!"anywhere".equals(a.targetMode)) a.targetMode = "walls";
+				a.targetSeconds = Math.max(1, Math.min(60, a.targetSeconds == 0 ? 5 : a.targetSeconds));
+				if (a.galleryLanes == null) a.galleryLanes = new ArrayList<>();
+				a.galleryLanes.removeIf(l -> l == null || l.from == null || l.from.dim == null);
+				a.gallerySpeed = Math.max(0.2, Math.min(20, a.gallerySpeed == 0 ? 2 : a.gallerySpeed));
+				if (a.galleryScores == null) a.galleryScores = new ArrayList<>();
+				a.galleryScores.removeIf(x -> x == null || x.isBlank());
+				if (a.chefNpc == null) a.chefNpc = "";
+				a.chefNpc = a.chefNpc.strip();
+				if (a.chefStations == null) a.chefStations = new ArrayList<>();
+				a.chefStations.removeIf(x -> x == null || x.pos == null || x.pos.dim == null);
+				for (Station st : a.chefStations) if (st.items == null) st.items = new ArrayList<>();
+				if (a.chefOrders == null) a.chefOrders = new ArrayList<>();
+				a.chefOrders.removeIf(x -> x == null || x.isBlank());
+				a.chefPause = Math.max(0, Math.min(60, a.chefPause));
+				a.lavaSeconds = Math.max(0.5, Math.min(120, a.lavaSeconds == 0 ? 6 : a.lavaSeconds));
+				a.lavaSpeedUp = Math.max(0, Math.min(30, a.lavaSpeedUp));
+				a.lavaFastest = Math.max(0.5, Math.min(a.lavaSeconds, a.lavaFastest == 0 ? 2 : a.lavaFastest));
 				if (a.headTexture == null) a.headTexture = "";
 				if (a.heads == null) a.heads = new ArrayList<>();
 				a.heads.removeIf(x -> x == null || x.dim == null);
@@ -456,8 +517,8 @@ public final class Games {
 			case "waves" -> score + (score == 1 ? " wave" : " waves");
 			case "ghasts" -> score + (score == 1 ? " ghast" : " ghasts");
 			case "colorfloor" -> score + (score == 1 ? " colour" : " colours");
-			case "anvils" -> clock(score * 1000);
-			case "treasure", "fishing" -> score + (score == 1 ? " point" : " points");
+			case "anvils", "lava" -> clock(score * 1000);
+			case "treasure", "fishing", "moles", "targets", "gallery", "chef" -> score + (score == 1 ? " point" : " points");
 			case "heads" -> score + (score == 1 ? " head" : " heads");
 			default -> clock.apply(score);
 		};

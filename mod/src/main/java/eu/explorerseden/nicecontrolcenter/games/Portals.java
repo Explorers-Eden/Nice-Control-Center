@@ -136,7 +136,7 @@ public final class Portals {
 		}
 		cameFrom.put(p.getUUID(), here);
 		switch (a.type) {
-			case "parkour", "dropper", "maze" -> {
+			case "parkour", "maze" -> {
 				String err = GameRuntime.start(server, p, a);
 				if (err != null) p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 			}

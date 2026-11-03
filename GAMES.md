@@ -20,7 +20,7 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 7. Points take `remove` (the nearest within 5 blocks) and `clear`, e.g. `/game edit <name> entrance remove`.
    The panel lists them all and can take them away too.
 8. **Start point / spawn**: where `create` was typed. Wave fights and quick rounds: that's the spawn, where players
-   appear (`/game edit <name> spawn` moves it). Parkour, race, dropper, maze: the start point
+   appear (`/game edit <name> spawn` moves it). Parkour, race, maze: the start point
    (`/game edit <name> start`).
 9. **Points** for a game: on its card, "Points when their score counts" (fixed) and "+ points per …" (per
    score; timed games only get the fixed amount). Commands can do sums: `{score*2}`, `{score/10}`, `{jumps*3}`,
@@ -34,7 +34,7 @@ in the panel under **Games**. `<name>` is the game's one-word name.
     songs, with their length) and a volume; it loops for everyone in the game, only for them, on their
     Jukebox/Note Blocks slider. A second song can play in the **spectator area** (the queue, players who are out,
     visitors from a watch point). Leaving the game or the area stops it at once.
-12. **Mobs** (wave fights, ghast deflect, colour floor, maze): one mob pool, the same everywhere, one line per mob
+12. **Mobs** (wave fights, ghast deflect, colour floor, snowball gallery, maze): one mob pool, the same everywhere, one line per mob
     like `/summon`: `zombie`, `skeleton x2`, `husk {equipment:{mainhand:{id:"minecraft:iron_sword",count:1}}}`, or an NPC
     `npc:knight`; plus how many at once and whether peaceful mobs fight.
 13. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
@@ -43,7 +43,7 @@ Block fields (parkour blocks, maze walls and floors, colour floor colours, claim
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
 
 Protect a build with a server claim when nobody is playing. Wave fights, quick rounds and dungeons put inventories
-aside themselves; parkour, race, dropper and maze don't, so give them a game claim if you want that (Claims page:
+aside themselves; parkour, race and maze don't, so give them a game claim if you want that (Claims page:
 game-area options, including the game mode inside).
 
 ## Solo games
@@ -57,9 +57,6 @@ game-area options, including the game mode inside).
 **Race** (`race`): checkpoints in order, then the finish; running, boat or elytra.
 - `/game edit <name> checkpoint add <radius>` at each checkpoint in order, then `/game edit <name> finish <radius>`.
 - Panel: mode, time limit, commands at each checkpoint (`{checkpoint}`).
-
-**Dropper** (`dropper`): fall from the top into the water at the bottom.
-- `/game edit <name> top` where they drop from, `/game edit <name> finish <radius>` in the water.
 
 **Maze** (`maze`): generated, rebuilt daily or after each run.
 - Created at its corner; `/game edit <name> size <cells>` (4–256) then `/game edit <name> build` (big ones take a
@@ -97,6 +94,39 @@ panel: items and their points (`minecraft:diamond=5`).
 **Fishing frenzy** (`fishing`): catches score points. Created at the spawn; `corner1` / `corner2` with water inside;
 panel: points per catch. Fish bite within a few seconds; bubbling spots come and go on the water, and a hook in one
 gets a bite almost at once.
+
+**Whack-a-mole** (`moles`): heads pop out of a grid of holes for a moment; hitting or right-clicking one scores it.
+- Created at the spawn. Stand where the grid's corner goes: `/game edit <name> grid` (lays the hole blocks toward
+  +X and +Z; again after changing the size). No box needed (it's around the grid).
+- Panel: holes per side, gap, hole block, how long a head stays up (down to a third by the end), heads at once,
+  and the heads with their points (`minecraft:zombie_head=1`, a skin URL/hash/base64 for a player head;
+  below 0 costs points, e.g. `minecraft:wither_skeleton_skull=-3`).
+
+**Target practice** (`targets`): target blocks appear in the box; shoot them before they vanish.
+- Created at the spawn (where they shoot from); `corner1` / `corner2`. Players get a bow and arrows (refilled).
+- A hit: 1 + a point per 10 blocks from the spawn, twice that for a bullseye. Panel: on the walls or floating
+  anywhere, seconds a target stays, targets at once. Targets only go where there's air.
+
+**Snowball gallery** (`gallery`): mobs walk past on lanes; hit them with snowballs.
+- Created at the spawn; `corner1` / `corner2` (where the players stay); lanes: `/game edit <name> lane add` at a
+  lane's start, `lane end` at its end (several; `lane clear`).
+- Panel: the mobs (the mob pool, not NPCs), how many walk at once, the walking speed (15 % faster every 15 s), and
+  points per mob (`minecraft:villager=-5`; mobs not listed give 1). They can't be hurt otherwise and don't fight.
+
+**Cauldron chef** (`chef`): the cook NPC orders food; gather and cook it, then right-click the cook to serve.
+- Created at the spawn; `corner1` / `corner2` (the kitchen). Fill chests with ingredients and
+  `/game edit <name> station add` looking at each (`station remove`, `station clear`): they're filled with that
+  again at each round and every 30 seconds. Put crafting tables, furnaces, smokers in the kitchen; players may use
+  everything in it whatever the claim says.
+- Panel: the cook (an NPC from Community → NPCs), the orders (`bread x2, cookie x4 = 5`), the wait between two.
+  Served within 20 seconds: +1. Their own things are always put aside.
+
+**Rising lava** (`lava`): lava fills the box from its floor up, a layer at a time and faster each layer.
+- Created at the spawn (at the bottom); `corner1` / `corner2` around the tower or cave. Touching the lava is out; when
+  it reaches the top, everyone still up made it. The score is how long they lasted.
+- The lava only goes where there's air and doesn't flow. Afterwards all lava and fire in and near the box go (also
+  after a crash), so build with blocks that don't burn and keep your own lava away from it.
+- Panel: seconds before the next layer at the start, how much faster each layer, the fastest.
 
 ## Head hunt (`heads`)
 Heads hidden in the world; players right-click them.

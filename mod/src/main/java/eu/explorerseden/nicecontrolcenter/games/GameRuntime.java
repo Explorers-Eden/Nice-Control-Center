@@ -66,7 +66,7 @@ import eu.explorerseden.nicecontrolcenter.rewards.RewardsControl;
  * Runs the mini-game arenas (see {@link Games}): stepping into an entrance, onto its start point or /game join starts a run, an
  * action-bar line shows how it goes, and the end keeps a personal best and fires the Rewards triggers
  * "Game finished" and "New personal best". Templates: infinite parkour (jumps made ahead of you, each player in their
- * own lane), race course (checkpoints in order; running, boat or elytra), dropper (fall into the water at the bottom)
+ * own lane), race course (checkpoints in order; running, boat or elytra)
  * and maze (generated; made new daily or after each run). Wave arenas (parties, mobs) run in {@link WaveRuntime}, quick
  * rounds (ghasts, colour floor, anvils, treasure, fishing) in {@link QuickRuntime}, head hunts in {@link HeadHunt}.
  */
@@ -78,7 +78,7 @@ public final class GameRuntime {
 		final UUID player;
 		final Arena arena;
 		final long started = System.currentTimeMillis();
-		/** Parkour: jumps; race: next checkpoint; dropper: tries. */
+		/** Parkour: jumps; race: next checkpoint. */
 		int progress;
 		/** Parkour: its lane and the blocks lying ahead (oldest first); in a box, the way the jumps go (0 +Z, 1 -X, 2 -Z, 3 +X). */
 		int lane = -1;
@@ -221,7 +221,6 @@ public final class GameRuntime {
 			switch (s.arena.type) {
 				case "parkour" -> parkour(server, p, s);
 				case "race" -> race(server, p, s);
-				case "dropper" -> dropper(server, p, s);
 				case "maze" -> maze(server, p, s);
 				default -> {
 				}
@@ -245,7 +244,6 @@ public final class GameRuntime {
 		String line = switch (s.arena.type) {
 			case "parkour" -> "Jumps: " + s.progress + " · level " + (parkourLevel(s.arena, s.progress) + 1) + best(s, " · best ");
 			case "race" -> clock(s.millis()) + " · checkpoint " + Math.min(s.progress, s.arena.checkpoints.size()) + "/" + s.arena.checkpoints.size() + best(s, " · best ");
-			case "dropper" -> clock(s.millis()) + (s.progress > 0 ? " · try " + (s.progress + 1) : "") + best(s, " · best ");
 			default -> clock(s.millis()) + best(s, " · best ");
 		};
 		p.sendOverlayMessage(Words.lit(s.arena.shown() + " · " + line).withStyle(st -> st.withColor(s.arena.rgb())));
@@ -280,11 +278,6 @@ public final class GameRuntime {
 				if (a.checkpoints.isEmpty() && a.finish == null) return "This race has no checkpoints or finish yet.";
 				sessions.put(p.getUUID(), s);
 			}
-			case "dropper" -> {
-				if (a.top == null || a.finish == null) return "This dropper needs a top and a finish (/game edit).";
-				sessions.put(p.getUUID(), s);
-				p.teleportTo(level, a.top.x, a.top.y, a.top.z, Set.of(), a.top.yaw, 0, true);
-			}
 			case "maze" -> {
 				if (a.corner == null) return "This maze has no corner yet.";
 				if (mazeBuilding(a)) return "The maze is being built; try again in a few seconds.";
@@ -304,7 +297,6 @@ public final class GameRuntime {
 		String hint = switch (a.type) {
 			case "parkour" -> "Jump as far as you can!";
 			case "race" -> "Pass the " + a.checkpoints.size() + " checkpoints in order, then the finish." + (a.timeLimit > 0 ? " You have " + clock(a.timeLimit * 1000L) + "." : "");
-			case "dropper" -> "Land in the water at the bottom." + (a.maxTries > 0 ? " " + a.maxTries + " tries." : "");
 			default -> "Find the way to the glowing corner.";
 		};
 		p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + " started. " + hint + " /game leave stops." : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
@@ -528,6 +520,29 @@ public final class GameRuntime {
 		placedDirty = true;
 	}
 
+	/** A block a quick round put up (a mole, a target): back to air on the next start if the server stops first. */
+	static void track(ServerLevel level, BlockPos pos) {
+		placed.add(level.dimension().identifier() + "|" + pos.getX() + "|" + pos.getY() + "|" + pos.getZ());
+		placedDirty = true;
+	}
+
+	/** Takes a tracked block away (air). */
+	static void untrack(ServerLevel level, BlockPos pos) {
+		unplace(level, pos);
+	}
+
+	/** Rising lava: its box, so lava and fire left in it by a crash go on the next start. */
+	static String trackLava(ServerLevel level, net.minecraft.world.phys.AABB box) {
+		String key = "lava|" + level.dimension().identifier() + "|" + (int) Math.floor(box.minX) + "|" + (int) Math.floor(box.minY) + "|" + (int) Math.floor(box.minZ)
+				+ "|" + ((int) Math.ceil(box.maxX) - 1) + "|" + ((int) Math.ceil(box.maxY) - 1) + "|" + ((int) Math.ceil(box.maxZ) - 1);
+		if (placed.add(key)) savePlaced();
+		return key;
+	}
+
+	static void untrackLava(String key) {
+		if (key != null && placed.remove(key)) placedDirty = true;
+	}
+
 	private static void parkour(MinecraftServer server, ServerPlayer p, Session s) {
 		ServerLevel level = (ServerLevel) p.level();
 		// Below the lowest block ahead: fell.
@@ -583,7 +598,7 @@ public final class GameRuntime {
 		RewardsControl.fireEvery(server, "parkourJumps", p, a.name, s.progress);
 	}
 
-	// ---------------------------------------------------------------- race, dropper, maze
+	// ---------------------------------------------------------------- race, maze
 
 	private static boolean inside(ServerPlayer p, Games.Point pt) {
 		double dx = p.getX() - pt.x, dy = p.getY() - pt.y, dz = p.getZ() - pt.z;
@@ -611,26 +626,6 @@ public final class GameRuntime {
 			return;
 		}
 		if (s.arena.finish == null || inside(p, s.arena.finish)) end(server, s, null, true);
-	}
-
-	private static void dropper(MinecraftServer server, ServerPlayer p, Session s) {
-		Arena a = s.arena;
-		if (p.isInWater() && inside(p, a.finish)) {
-			end(server, s, null, true);
-			return;
-		}
-		// Landed anywhere else (or fell out): back to the top.
-		boolean landed = p.onGround() && p.getY() < a.top.y - 2;
-		if (landed || p.getY() < a.finish.y - a.finish.radius - 20) {
-			s.progress++;
-			if (a.maxTries > 0 && s.progress >= a.maxTries) {
-				end(server, s, "Out of tries: run over.", false);
-				return;
-			}
-			p.teleportTo((ServerLevel) p.level(), a.top.x, a.top.y, a.top.z, Set.of(), a.top.yaw, 0, true);
-			p.resetFallDistance();
-			p.level().playSound(null, p.blockPosition(), SoundEvents.CHICKEN_EGG, SoundSource.PLAYERS, 0.6f, 1.6f);
-		}
 	}
 
 	private static void maze(MinecraftServer server, ServerPlayer p, Session s) {
@@ -1103,10 +1098,6 @@ public final class GameRuntime {
 							a.start = pos(p);
 							return "Start pad moved here.";
 						})))
-						.then(Commands.literal("top").executes(ctx -> edit(ctx, (a, p) -> {
-							a.top = pos(p);
-							return "Players drop from here now.";
-						})))
 						.then(Commands.literal("finish").then(Commands.argument("radius", DoubleArgumentType.doubleArg(1, 30)).executes(ctx -> edit(ctx, (a, p) -> {
 							a.finish = new Games.Point(p.getX(), p.getY(), p.getZ(), DoubleArgumentType.getDouble(ctx, "radius"));
 							return "Finish set here (radius " + a.finish.radius + ").";
@@ -1136,7 +1127,16 @@ public final class GameRuntime {
 						})))
 						// Colour floor: the grid's corner at their feet (platforms go +X and +Z, the floor at this height).
 						.then(Commands.literal("grid").executes(ctx -> edit(ctx, (a, p) -> {
-							if (!a.type.equals("colorfloor")) return "Only colour floors have a grid.";
+							if (a.type.equals("moles")) {
+								Games.Pos at = pos(p);
+								a.corner = new Games.Pos(at.dim, Math.floor(at.x), Math.floor(at.y) - 1, Math.floor(at.z), 0);
+								settings.fill();
+								Moles.build((ServerLevel) p.level(), a);
+								int span = (a.moleSize - 1) * (1 + a.moleGap) + 1;
+								return a.moleSize + " × " + a.moleSize + " holes laid out here (" + span + " × " + span + " blocks toward +X and +Z, in the block under your feet); heads pop up on top of them."
+										+ " After changing the size or gap in the panel: grid again.";
+							}
+							if (!a.type.equals("colorfloor")) return "Only colour floors and whack-a-moles have a grid.";
 							Games.Pos at = pos(p);
 							a.corner = new Games.Pos(at.dim, Math.floor(at.x), at.y - 1, Math.floor(at.z), 0);
 							// Players gather on the middle platform.
@@ -1145,6 +1145,53 @@ public final class GameRuntime {
 							int span = a.platformSize * 3 + a.platformGap * 2;
 							return "Grid built here: " + span + " × " + span + " blocks (+X and +Z, at the block under your feet). Keep the space below open: falling = out.";
 						})))
+						// Snowball gallery: lanes the mobs walk along.
+						.then(Commands.literal("lane")
+								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+									if (!a.type.equals("gallery")) return "Only snowball galleries have lanes.";
+									Games.Lane l = new Games.Lane();
+									l.from = pos(p);
+									a.galleryLanes.add(l);
+									return "Lane " + a.galleryLanes.size() + " starts here. Walk to where it ends and type /game edit " + a.name + " lane end.";
+								})))
+								.then(Commands.literal("end").executes(ctx -> edit(ctx, (a, p) -> {
+									Games.Lane open = a.galleryLanes.stream().filter(l -> l.to == null).reduce((x, y) -> y).orElse(null);
+									if (open == null) return "No lane waiting for its end: /game edit " + a.name + " lane add at its start first.";
+									Games.Pos here = pos(p);
+									if (!here.dim.equals(open.from.dim)) return "A lane ends in the dimension it starts in.";
+									open.to = here;
+									return "Lane " + (a.galleryLanes.indexOf(open) + 1) + " ends here (" + Math.round(Math.sqrt(open.from.distanceSq(here))) + " blocks long). Mobs walk it from start to end.";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									a.galleryLanes.clear();
+									return "All lanes removed.";
+								}))))
+						// Cauldron chef: supply chests, filled with what they hold now at each round.
+						.then(Commands.literal("station")
+								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+									if (!a.type.equals("chef")) return "Only cauldron chefs have supply chests.";
+									var hit = p.pick(6, 1f, false);
+									BlockPos at = hit instanceof net.minecraft.world.phys.BlockHitResult b && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK ? b.getBlockPos() : null;
+									if (at == null || !(p.level().getBlockEntity(at) instanceof net.minecraft.world.Container c)) return "Look at a chest or barrel (6 blocks at most); nothing changed.";
+									Games.Pos where = new Games.Pos(dim(p), at.getX(), at.getY(), at.getZ(), 0);
+									a.chefStations.removeIf(st -> st.pos.dim.equals(where.dim) && st.pos.distanceSq(where) < 0.5);
+									Games.Station st = new Games.Station();
+									st.pos = where;
+									st.items = Chef.snapshot((ServerLevel) p.level(), c);
+									a.chefStations.add(st);
+									return "Supply chest " + a.chefStations.size() + " at " + at.toShortString() + ": filled with these " + st.items.size() + " stacks at each round (and every 30 seconds).";
+								})))
+								.then(Commands.literal("remove").executes(ctx -> edit(ctx, (a, p) -> {
+									var hit = p.pick(6, 1f, false);
+									if (!(hit instanceof net.minecraft.world.phys.BlockHitResult b) || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) return "Look at the supply chest; nothing changed.";
+									BlockPos at = b.getBlockPos();
+									boolean gone = a.chefStations.removeIf(st -> st.pos.dim.equals(dim(p)) && BlockPos.containing(st.pos.x, st.pos.y, st.pos.z).equals(at));
+									return gone ? "Not a supply chest any more (" + a.chefStations.size() + " left)." : "That isn't a supply chest.";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									a.chefStations.clear();
+									return "All supply chests removed (the chests stay).";
+								}))))
 						// Ways in and out, placed anywhere (e.g. in the hub): particles and a label above each.
 						.then(points("entrance", a -> a.entrances, "Entrance", "stepping in for a second takes players to the game; its name and top 3 float above it"))
 						.then(points("watch", a -> a.watchEntrances, "Watch point", "stepping in takes players to the spectator area (/game edit … spectate)"))
@@ -1253,12 +1300,20 @@ public final class GameRuntime {
 			case "race" -> "This spot is the start. Add checkpoints in order with /game edit " + name + " checkpoint add <radius>, then /game edit " + name + " finish <radius>.";
 			case "waves" -> "Players appear here (the spawn; the party leader stands here to start). Then: corner1 / corner2 [x y z] (the fight box, height included),"
 					+ " mobspawn add (where mobs come from; several), optionally spectate [radius] and back add, and kit. Waves and rewards are set in the panel (Games).";
-			case "dropper" -> "This spot is the start point. Stand where players drop from: /game edit " + name + " top; then in the water at the bottom: /game edit " + name + " finish <radius>.";
 			case "ghasts" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the play box, height included),"
 					+ " mobspawn add (where ghasts appear, up high; several). Try it with /game try " + name + ".";
 			case "colorfloor" -> "Stand where the grid's corner goes and type /game edit " + name + " grid (it builds 3×3 platforms toward +X and +Z; players appear on the middle one). Colours, speed and mobs are set in the panel.";
 			case "anvils", "treasure", "fishing" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the play box, height included"
 					+ (type.equals("anvils") ? "; anvils fall from its top" : type.equals("fishing") ? "; put water in it" : "; treasure appears on its floor") + "). Try it with /game try " + name + ".";
+			case "moles" -> "Players appear here (the spawn). Stand where the grid's corner goes and type /game edit " + name + " grid (holes toward +X and +Z)."
+					+ " Heads and their points are set in the panel. Try it with /game try " + name + ".";
+			case "targets" -> "Players shoot from here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the box targets appear in, height included). Try it with /game try " + name + ".";
+			case "gallery" -> "Players throw from here (the spawn). Then: /game edit " + name + " corner1 / corner2 (where players stay), and lanes: /game edit " + name
+					+ " lane add at a lane's start, lane end at its end (several). Mobs and their points are set in the panel.";
+			case "chef" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the kitchen, height included), fill chests with ingredients and"
+					+ " /game edit " + name + " station add looking at each, and put an NPC there as the cook (its name goes in the panel). Orders are set in the panel.";
+			case "lava" -> "Players appear here (the spawn, at the bottom). Then: /game edit " + name + " corner1 / corner2 (the tower or cave the lava fills, height included;"
+					+ " build it of blocks that don't burn). Try it with /game try " + name + ".";
 			case "heads" -> "Set the heads' skin: /game edit " + name + " texture <url or value>, then /game edit " + name + " headitem gives you heads to hide (placing one adds it)."
 					+ " Rewards every few heads are set in the panel.";
 			default -> "The maze is built from this corner (" + a.mazeBlocks() + " blocks each way, +X and +Z). The start point is here too; move it with /game edit " + name + " start.";
@@ -1284,6 +1339,17 @@ public final class GameRuntime {
 			}
 			case "fishing" -> a.timeLimit = 120;
 			case "anvils" -> a.timeLimit = 300;
+			case "moles", "targets" -> {
+				a.maxAlive = 3;
+				a.timeLimit = 60;
+			}
+			case "gallery" -> {
+				a.pool = new ArrayList<>(List.of("zombie", "skeleton", "chicken", "rabbit", "villager"));
+				a.maxAlive = 6;
+				a.timeLimit = 90;
+			}
+			case "chef" -> a.timeLimit = 180;
+			case "lava" -> a.timeLimit = 0;
 			default -> {
 			}
 		}
@@ -1417,13 +1483,13 @@ public final class GameRuntime {
 				a.shown() + ": " + Games.scoreText(a.type, score, GameRuntime::clock));
 	}
 
-	/** The game of their parkour, race, dropper or maze run (null when none). */
+	/** The game of their parkour, race or maze run (null when none). */
 	public static Arena arenaOf(ServerPlayer p) {
 		Session s = sessions.get(p.getUUID());
 		return s == null ? null : s.arena;
 	}
 
-	/** In a parkour, race, dropper or maze run. */
+	/** In a parkour, race or maze run. */
 	public static boolean inRun(ServerPlayer p) {
 		return sessions.containsKey(p.getUUID());
 	}
@@ -1500,7 +1566,7 @@ public final class GameRuntime {
 		write(placedFile, Json.GSON.toJson(placed));
 	}
 
-	/** Parkour blocks left by a crash: gone. */
+	/** Parkour blocks, quick-round moles and targets, and rising lava left by a crash: gone. */
 	private static void clearLeftovers(MinecraftServer server) {
 		placed.clear();
 		try {
@@ -1509,6 +1575,11 @@ public final class GameRuntime {
 			if (list == null) return;
 			for (String key : list) {
 				String[] k = key.split("\\|");
+				if (k.length == 8 && k[0].equals("lava")) {
+					ServerLevel lv = level(server, k[1]);
+					if (lv != null) Lava.clear(lv, new BlockPos(Integer.parseInt(k[2]), Integer.parseInt(k[3]), Integer.parseInt(k[4])), new BlockPos(Integer.parseInt(k[5]), Integer.parseInt(k[6]), Integer.parseInt(k[7])));
+					continue;
+				}
 				ServerLevel level = k.length == 4 ? level(server, k[0]) : null;
 				if (level != null) level.setBlock(new BlockPos(Integer.parseInt(k[1]), Integer.parseInt(k[2]), Integer.parseInt(k[3])), Blocks.AIR.defaultBlockState(), 3);
 			}

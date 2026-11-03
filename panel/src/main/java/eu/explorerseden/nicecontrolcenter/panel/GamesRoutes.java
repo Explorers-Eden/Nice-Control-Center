@@ -98,7 +98,6 @@ final class GamesRoutes {
 				Games.Arena was = now.arenas.stream().filter(x -> x.id.equals(a.id)).findFirst().orElse(null);
 				if (was == null) continue;
 				a.start = was.start;
-				a.top = was.top;
 				a.finish = was.finish;
 				a.checkpoints = was.checkpoints;
 				a.corner = was.corner;
@@ -116,6 +115,8 @@ final class GamesRoutes {
 				a.watchEntrances = minus(was.watchEntrances, a.id, "watchEntrances", gone);
 				a.heads = minus(was.heads, a.id, "heads", gone);
 				a.kit = was.kit;
+				a.galleryLanes = was.galleryLanes;
+				a.chefStations = was.chefStations;
 			}
 			// Games made in game while the page was open stay (only the ones deleted on the page go).
 			java.util.Set<String> deleted = removed.of("arenas");

@@ -1,4 +1,13 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.81.0
+- Games: five new quick rounds, set up like the others (pad, join window, spectator area and queue, kit, exit pads, records, points and Rewards triggers):
+- Whack-a-mole (moles): heads pop out of a grid of holes (/game edit … grid) for a moment, shorter as the round goes on; hit or right-click them (works in adventure mode). Heads and points per line (mob heads or player-head skins; below 0 costs points)
+- Target practice (targets): target blocks appear on the box's walls (or anywhere in it) for a few seconds; a shot scores 1 + a point per 10 blocks from the spawn, twice for a bullseye. Bow and arrows handed out and refilled
+- Snowball gallery (gallery): mobs from the pool walk along lanes (/game edit … lane add / lane end), faster as it goes on; a snowball hit scores per mob (villagers cost points). They don't fight and can't be hurt otherwise
+- Cauldron chef (chef): an NPC cook orders food (orders per line, "bread x2, cake = 8"); players take ingredients from supply chests (/game edit … station add: refilled at each round and every 30 s), cook and serve by right-clicking the cook; +1 within 20 s. Their own things are always put aside; everything in the kitchen can be used whatever the claim says
+- Rising lava (lava): lava fills the box from its floor up, a layer at a time and faster each layer; touching it is out, the last one standing wins. It only goes where there was air, doesn't flow, and is all taken away afterwards (also after a crash)
+- Games: the dropper is gone; dropper games still in the file are removed
+- Quick rounds: one whose player spawn is outside its play box doesn't start ("…'s player spawn is outside its play box") instead of putting players back at the spawn over and over
 ## 1.80.8
 - Slot Machines: written with a capital M everywhere players and admins read it
 ## 1.80.7

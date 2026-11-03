@@ -103,6 +103,8 @@ public final class ClaimProtection {
 		if (eu.explorerseden.nicecontrolcenter.games.HeadHunt.isHuntHead(level, pos)) return InteractionResult.PASS;
 		// Slot machines: anyone pulls the lever, nobody changes the rest (SlotRuntime decides).
 		if (eu.explorerseden.nicecontrolcenter.games.SlotRuntime.isMachine(level, pos)) return InteractionResult.PASS;
+		// Whack-a-mole heads, and a chef round's kitchen (supply chests, crafting tables, furnaces) for its players.
+		if (eu.explorerseden.nicecontrolcenter.games.QuickRuntime.freeUse(player, level, pos)) return InteractionResult.PASS;
 		BlockState state = level.getBlockState(pos);
 		ItemStack held = player.getItemInHand(hand);
 		Role needed;

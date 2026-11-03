@@ -173,6 +173,8 @@ public final class NpcRuntime {
 			if (hand != InteractionHand.MAIN_HAND || entity.entityTags().contains(HOSTILE)) return InteractionResult.SUCCESS;
 			Npc n = npcOf(entity);
 			if (n == null || !settings.enabled) return InteractionResult.SUCCESS;
+			// The cook of a chef round takes the order (nothing else then).
+			if (eu.explorerseden.nicecontrolcenter.games.QuickRuntime.serve(p, n.name)) return InteractionResult.SUCCESS;
 			if (!ready(n, p)) return InteractionResult.SUCCESS;
 			run(p, n, n.onClick);
 			if (n.clickLines && !n.lines.isEmpty()) {

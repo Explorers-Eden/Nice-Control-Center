@@ -765,7 +765,7 @@ public final class GameClaims {
 		}
 	}
 
-	/** In a game being played right now: a quick round, a wave fight, a dungeon run, or a parkour, race, dropper or maze run (not just standing in a game area). */
+	/** In a game being played right now: a quick round, a wave fight, a dungeon run, or a parkour, race or maze run (not just standing in a game area). */
 	public static boolean playingNow(ServerPlayer p) {
 		return eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p)
 				|| eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p);
@@ -816,6 +816,29 @@ public final class GameClaims {
 		com.google.gson.JsonObject o = ItemStack.CODEC.encodeStart(p.registryAccess().createSerializationContext(JsonOps.INSTANCE), st).getOrThrow().getAsJsonObject();
 		o.addProperty("slot", slot);
 		return o.toString();
+	}
+
+	/** An item as JSON with the container slot it's in (a chef's supply chest). */
+	public static String itemJson(net.minecraft.core.HolderLookup.Provider registries, ItemStack st, int slot) {
+		com.google.gson.JsonObject o = ItemStack.CODEC.encodeStart(registries.createSerializationContext(JsonOps.INSTANCE), st).getOrThrow().getAsJsonObject();
+		o.addProperty("slot", slot);
+		return o.toString();
+	}
+
+	/** The item of {@link #itemJson} (empty when it can't be read). */
+	public static ItemStack itemFrom(net.minecraft.core.HolderLookup.Provider registries, String json) {
+		try {
+			var tree = JsonParser.parseString(json);
+			if (tree.isJsonObject() && tree.getAsJsonObject().has("slot")) tree.getAsJsonObject().remove("slot");
+			return ItemStack.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), tree).getOrThrow();
+		} catch (RuntimeException e) {
+			return ItemStack.EMPTY;
+		}
+	}
+
+	/** The slot of {@link #itemJson} (-1 when none). */
+	public static int itemSlot(String json) {
+		return slotOf(json);
 	}
 
 	/** The kit item's slot, or -1 (older kits, other items). */

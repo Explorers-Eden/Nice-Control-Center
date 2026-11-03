@@ -137,7 +137,7 @@
         { tab: 'market', label: 'Player market', perm: 'server.view', desc: 'The player market (/market): settings, what players sell and what sold.' },
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
-        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
+        { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
         { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
         { tab: 'slots', label: 'Slot Machines', perm: 'server.view', desc: 'Slot Machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
@@ -1943,13 +1943,16 @@
   /** Game cards start closed; the open ones are remembered (also across reloads). */
   const gmOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('pn-gm-open') || '[]'); } catch (e) { return []; } })());
   const gmKeepOpen = () => { try { localStorage.setItem('pn-gm-open', JSON.stringify([...gmOpen])); } catch (e) { /* private window */ } };
-  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', dropper: 'bi-arrow-down-circle', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded',
-    ghasts: 'bi-fire', colorfloor: 'bi-grid-3x3-gap', anvils: 'bi-cloud-hail', treasure: 'bi-gem', fishing: 'bi-water', heads: 'bi-person-bounding-box' };
-  const GAME_LABELS = { waves: 'wave fight', ghasts: 'ghast deflect', colorfloor: 'colour floor', anvils: 'anvil rain', treasure: 'treasure grab', fishing: 'fishing frenzy', heads: 'head hunt' };
-  const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing'];
-  const gmHigher = (type) => !['race', 'dropper', 'maze'].includes(type);
-  const gmWord = { parkour: ['jump', 'jumps'], waves: ['wave', 'waves'], ghasts: ['ghast', 'ghasts'], colorfloor: ['colour', 'colours'], treasure: ['point', 'points'], fishing: ['point', 'points'], heads: ['head', 'heads'] };
-  const gmScore = (type, v) => type === 'anvils' ? gmClock(v * 1000) : gmWord[type] ? `${v} ${gmWord[type][v === 1 ? 0 : 1]}` : gmClock(v);
+  const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded',
+    ghasts: 'bi-fire', colorfloor: 'bi-grid-3x3-gap', anvils: 'bi-cloud-hail', treasure: 'bi-gem', fishing: 'bi-water', heads: 'bi-person-bounding-box',
+    moles: 'bi-hammer', targets: 'bi-bullseye', gallery: 'bi-snow', chef: 'bi-cup-hot', lava: 'bi-thermometer-high' };
+  const GAME_LABELS = { waves: 'wave fight', ghasts: 'ghast deflect', colorfloor: 'colour floor', anvils: 'anvil rain', treasure: 'treasure grab', fishing: 'fishing frenzy', heads: 'head hunt',
+    moles: 'whack-a-mole', targets: 'target practice', gallery: 'snowball gallery', chef: 'cauldron chef', lava: 'rising lava' };
+  const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing', 'moles', 'targets', 'gallery', 'chef', 'lava'];
+  const gmHigher = (type) => !['race', 'maze'].includes(type);
+  const gmWord = { parkour: ['jump', 'jumps'], waves: ['wave', 'waves'], ghasts: ['ghast', 'ghasts'], colorfloor: ['colour', 'colours'], treasure: ['point', 'points'], fishing: ['point', 'points'], heads: ['head', 'heads'],
+    moles: ['point', 'points'], targets: ['point', 'points'], gallery: ['point', 'points'], chef: ['point', 'points'] };
+  const gmScore = (type, v) => type === 'anvils' || type === 'lava' ? gmClock(v * 1000) : gmWord[type] ? `${v} ${gmWord[type][v === 1 ? 0 : 1]}` : gmClock(v);
   /** A game time like the mod shows it (Games.clock): MM:SS, or HH:MM:SS from an hour on. */
   const gmClock = (ms) => { const s = Math.floor(Math.max(0, ms) / 1000); const p = (n) => String(n).padStart(2, '0'); return s >= 3600 ? `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}` : `${p(Math.floor(s / 60))}:${p(s % 60)}`; };
 
@@ -2019,7 +2022,6 @@
           + field('timeLimit', 'Time limit (seconds, 0 = none)', num('timeLimit', 0, 3600))
           + lines('checkpointCommands', 'Commands at each checkpoint ({checkpoint}, {player}, {game})')
           + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
-        dropper: field('maxTries', 'Tries (0 = as many as it takes)', num('maxTries', 0, 999)) + `<p class="pn-hint">${a.top ? 'Top set' : 'No top yet'} · ${a.finish ? 'finish set' : 'no finish yet'}. In game: <code>/game edit ${esc(a.name)} top</code> where they drop from, <code>… finish &lt;radius&gt;</code> in the water.</p>`,
         maze: field('size', `Cells per side (${a.size * ((a.mazePath || 1) + 1) + 1} × ${a.size * ((a.mazePath || 1) + 1) + 1} blocks)`, num('size', 4, 256))
           + field('mazePath', 'Path width (1–5)', num('mazePath', 1, 5))
           + field('wall', 'Wall blocks (mixed at random)', `<input type="text" data-g="wall" value="${esc(a.wall)}" placeholder="minecraft:stone_bricks, minecraft:mossy_stone_bricks">`)
@@ -2082,7 +2084,7 @@
         ${ways}
         <div class="pn-gm-body"><div class="pn-rw-grid">${allFields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
       </section>`;
-    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, dropper, maze, waves, ghasts, colorfloor, anvils, treasure, fishing, heads).</p>';
+    }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, maze, waves, ghasts, colorfloor, anvils, treasure, fishing, moles, targets, gallery, chef, lava, heads).</p>';
     $('pn-gm-list').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; });
     $('pn-gm-save').disabled = !edit;
   }
@@ -2158,7 +2160,7 @@
 
   /** The game's own reward points (Rewards → Points), and the sums commands can do. */
   function gmPoints(a, field) {
-    const timed = ['race', 'dropper', 'maze'].includes(a.type);
+    const timed = ['race', 'maze'].includes(a.type);
     const heads = a.type === 'heads';
     const num = (k, step) => `<input type="number" data-g="${k}" value="${a[k] || 0}" min="0" step="${step}">`;
     return field('pointsFixed', heads ? 'Points for finding them all' : timed ? 'Points for finishing' : 'Points when their score counts', num('pointsFixed', 1))
@@ -2166,7 +2168,7 @@
       + '<p class="pn-hint pn-field-wide">Commands can do sums too: <code>{score*2}</code>, <code>{score/10}</code>, <code>{jumps*3}</code>, <code>{wave+5}</code>, <code>{score*1.5}</code> (rounded to whole numbers), e.g. <code>points give {player} {score*2}</code>.</p>';
   }
 
-  /** A quick round's own fields (ghasts, colour floor, anvils, treasure, fishing), and what's still to set up in game. */
+  /** A quick round's own fields (ghasts, colour floor, anvils, treasure, fishing, moles, targets, gallery, chef, lava), and what's still to set up in game. */
   function gmQuickFields(a, field, num, lines) {
     const p = (pos) => pos ? `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}` : '';
     const n = esc(a.name);
@@ -2175,19 +2177,29 @@
       ? `${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}` : '';
     const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
     const span = a.platformSize * 3 + a.platformGap * 2;
+    const moles = a.type === 'moles';
+    const lanes = (a.galleryLanes || []).filter((l) => l.from && l.to).length;
+    const cook = (gm.npcs || []).some((x) => x.name.toLowerCase() === (a.chefNpc || '').toLowerCase());
+    const boxHow = { targets: ' (targets appear in it)', gallery: ' (where players stay)', chef: ' (the kitchen)', lava: ' (the lava fills it from its floor up)' }[a.type] || '';
     const steps = [
       floor ? ok(!!a.corner, a.corner ? `Grid ${span} × ${span} from ${p(a.corner)}` : 'Grid (stand where its corner goes):', a.corner ? '' : `/game edit ${n} grid`) : '',
+      moles ? ok(!!a.corner, a.corner ? `Grid of ${a.moleSize} × ${a.moleSize} holes from ${p(a.corner)} (grid again after changing the size)` : 'Grid (stand where its corner goes):', `/game edit ${n} grid`) : '',
       floor ? '' : ok(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
-      ok(!!box || floor, box ? `Play box ${box}` : floor ? 'Play box: around the grid (optional: corner1 / corner2)' : 'Play box (two corners, height included):', box || floor ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
+      ok(!!box || floor || moles, box ? `Play box ${box}${boxHow}` : floor ? 'Play box: around the grid (optional: corner1 / corner2)' : moles ? 'Play box: around the grid (optional: corner1 / corner2)' : `Play box (two corners, height included)${boxHow}:`, box || floor || moles ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
+      a.type === 'gallery' ? ok(lanes > 0, lanes ? `${lanes} lane${lanes === 1 ? '' : 's'}; more:` : 'Lanes (mobs walk them from start to end):', `/game edit ${n} lane add` + ' (at its start), then lane end (at its end)') : '',
+      a.type === 'chef' ? ok(cook, cook ? `The cook: ${esc(a.chefNpc)}` : 'The cook: an NPC (Community → NPCs) standing in the kitchen, picked below', '') : '',
+      a.type === 'chef' ? ok((a.chefStations || []).length > 0, (a.chefStations || []).length ? `${a.chefStations.length} supply chest${a.chefStations.length === 1 ? '' : 's'} (filled with what they held when set; again: station add)` : 'Supply chests (fill a chest with ingredients, look at it):', `/game edit ${n} station add`) : '',
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
       ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here`
         : 'Spectator area (optional; where the queue for the next round waits and players who are out watch):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
     ].join('');
-    const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)' }[a.type] || '';
+    const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)',
+      targets: ' (a bow and arrows are handed out, arrows refilled)', gallery: ' (snowballs are handed out and refilled anyway)' }[a.type] || '';
     const setup = `<ul class="pn-gm-setup">${steps}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (a round with only you).${floor ? ` After changing the size: <code>/game edit ${n} build</code>.` : ''}</p>`;
-    const survival = floor || a.type === 'anvils';
+    const survival = floor || a.type === 'anvils' || a.type === 'lava';
     const mobs = {
+      gallery: gmMobs(a, field, num, { label: 'Mobs walking the lanes', count: 'Mobs walking at once', peaceful: false, hint: 'They walk without fighting and can only be hit by shots. NPCs can\'t walk lanes.' }),
       ghasts: gmMobs(a, field, num, { label: 'Ghasts', nbt: '<code>{ExplosionPower:0}</code> keeps the arena whole', count: 'Ghasts at once', peaceful: false }),
       colorfloor: field('mobsEvery', 'A mob every … colours (0 = none)', num('mobsEvery', 0, 100))
         + gmMobs(a, field, num, { label: 'Mobs on the platforms', count: 'Mobs at most' }),
@@ -2205,6 +2217,22 @@
         + field('maxAlive', 'Treasure lying around at once', num('maxAlive', 1, 200)),
       fishing: field('fishPoints', 'Points: cod, salmon', num('fishPoints', 0, 1000)) + field('rareFishPoints', 'Points: pufferfish, tropical fish', num('rareFishPoints', 0, 1000))
         + field('treasurePoints', 'Points: treasure', num('treasurePoints', 0, 1000)) + field('junkPoints', 'Points: junk', num('junkPoints', 0, 1000)),
+      moles: field('moleSize', 'Holes per side', num('moleSize', 2, 9)) + field('moleGap', 'Blocks between holes', num('moleGap', 0, 4))
+        + field('moleHole', 'Hole block', `<input type="text" data-g="moleHole" value="${esc(a.moleHole || 'minecraft:coarse_dirt')}" placeholder="minecraft:coarse_dirt">`)
+        + field('moleSeconds', 'Seconds a head stays up (a third at the end)', num('moleSeconds', 0.3, 10, 0.1)) + field('maxAlive', 'Heads up at once', num('maxAlive', 1, 200))
+        + `<label class="pn-field pn-field-wide"><span>Heads (one per line: <code>head=points</code>; a mob head block, or a player head's skin as a textures.minecraft.net URL, hash or base64 value; below 0 costs points)</span><textarea data-g="moleHeads" data-lines="1" rows="4" spellcheck="false" placeholder="minecraft:zombie_head=1&#10;minecraft:wither_skeleton_skull=-3">${esc((a.moleHeads || []).join('\n'))}</textarea></label>`,
+      targets: field('targetMode', 'Targets appear', `<select data-g="targetMode"><option value="walls" ${a.targetMode !== 'anywhere' ? 'selected' : ''}>on the box's walls and floor</option><option value="anywhere" ${a.targetMode === 'anywhere' ? 'selected' : ''}>anywhere in it (floating)</option></select>`)
+        + field('targetSeconds', 'Seconds a target stays', num('targetSeconds', 1, 60, 0.5)) + field('maxAlive', 'Targets at once', num('maxAlive', 1, 200))
+        + '<p class="pn-hint pn-field-wide">A hit scores 1 + a point per 10 blocks from the spawn, a bullseye (the middle of the face) twice that. Targets only go where there is air and are taken away again.</p>',
+      gallery: field('gallerySpeed', 'Walking speed at the start (blocks a second; 15 % faster every 15 s)', num('gallerySpeed', 0.2, 20, 0.1))
+        + `<label class="pn-field pn-field-wide"><span>Points per mob (one per line: <code>mob=points</code>; mobs not listed give 1, below 0 costs)</span><textarea data-g="galleryScores" data-lines="1" rows="3" spellcheck="false" placeholder="minecraft:villager=-5">${esc((a.galleryScores || []).join('\n'))}</textarea></label>`,
+      chef: field('chefNpc', 'The cook (an NPC)', `<select data-g="chefNpc"><option value="">(pick one)</option>${(gm.npcs || []).map((x) => `<option value="${esc(x.name)}" ${x.name.toLowerCase() === (a.chefNpc || '').toLowerCase() ? 'selected' : ''}>${esc(x.title || x.name)}</option>`).join('')}${a.chefNpc && !cook ? `<option value="${esc(a.chefNpc)}" selected>${esc(a.chefNpc)} (no such NPC)</option>` : ''}</select>`)
+        + field('chefPause', 'Seconds before the next order', num('chefPause', 0, 60))
+        + `<label class="pn-field pn-field-wide"><span>Orders (one per line: <code>items = points</code>, items as <code>bread x2, cake</code>; picked at random; served within 20 seconds: +1)</span><textarea data-g="chefOrders" data-lines="1" rows="5" spellcheck="false" placeholder="bread x2, cookie x4 = 5">${esc((a.chefOrders || []).join('\n'))}</textarea></label>`
+        + '<p class="pn-hint pn-field-wide">Their own things are always put aside. Players take ingredients from the supply chests, craft or cook them in the kitchen and right-click the cook to serve. The chests are filled again at each round and every 30 seconds.</p>',
+      lava: field('lavaSeconds', 'Seconds before the next layer at the start', num('lavaSeconds', 0.5, 120, 0.5)) + field('lavaSpeedUp', 'Faster each layer (s)', num('lavaSpeedUp', 0, 30, 0.05))
+        + field('lavaFastest', 'Fastest (s)', num('lavaFastest', 0.5, 120, 0.5))
+        + '<p class="pn-hint pn-field-wide">The lava fills the play box from its floor up, a layer at a time, only where there is air, and doesn\'t flow. Touching it is out. When it reaches the top, everyone still up made it. Afterwards all lava and fire in and near the box go, so build it of blocks that don\'t burn and don\'t put your own lava near it.</p>',
     }[a.type] || '';
     const gear = `<select data-g="gear"><option value="kit" ${a.gear === 'kit' ? 'selected' : ''}>kit (their things are kept safe)</option><option value="own" ${a.gear === 'own' ? 'selected' : ''}>their own</option></select>`;
     return {
