@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.6
+- Treasure grab: one small sparkle over each treasure every two seconds instead of end rod particles every second
 ## 1.80.5
 - Games: Nice Actions teleports from the quick actions menu (home, spawn, back, random) and setting a home don't run while someone plays (a quick round, a wave fight, a dungeon run, or a parkour, race, dropper or maze run): "Not during a game". A teleport already counting down when the game starts is cancelled. In the hub and game areas outside a game they work as before
 ## 1.80.4

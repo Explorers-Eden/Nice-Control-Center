@@ -844,13 +844,14 @@ public final class QuickRuntime {
 
 	private static void treasure(ServerLevel level, Round r, List<ServerPlayer> alive) {
 		Arena a = r.arena;
-		// Easy to see: a sparkle over each one every second (and their glow set again).
+		// Glowing (set again each second), and a small sparkle over each one every two seconds.
 		if (level.getGameTime() % 20 == 0) {
+			boolean sparkle = level.getGameTime() % 40 == 0;
 			for (UUID id : r.treasure.keySet()) {
 				Entity item = level.getEntity(id);
 				if (item == null) continue;
 				item.setGlowingTag(true);
-				level.sendParticles(ParticleTypes.END_ROD, item.getX(), item.getY() + 0.6, item.getZ(), 3, 0.15, 0.25, 0.15, 0.01);
+				if (sparkle) level.sendParticles(ParticleTypes.GLOW, item.getX(), item.getY() + 0.5, item.getZ(), 1, 0.1, 0.1, 0.1, 0);
 			}
 		}
 		// Picked up: walking into one.
