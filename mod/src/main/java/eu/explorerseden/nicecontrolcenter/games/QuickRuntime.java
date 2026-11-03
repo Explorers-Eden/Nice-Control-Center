@@ -796,8 +796,11 @@ public final class QuickRuntime {
 			}
 			x = Math.max(box.minX, Math.min(box.maxX - 0.01, x));
 			z = Math.max(box.minZ, Math.min(box.maxZ - 0.01, z));
+			// From the box's top down to the first open block: a roof inside the box (or a ceiling) is fine.
 			BlockPos at = BlockPos.containing(x, top, z);
-			if (!level.getBlockState(at).isAir()) continue;
+			int lowest = (int) Math.floor(box.minY) + 3;
+			while (at.getY() > lowest && !level.getBlockState(at).isAir()) at = at.below();
+			if (!level.getBlockState(at).isAir() || !level.getBlockState(at.below()).isAir()) continue;
 			FallingBlockEntity f = FallingBlockEntity.fall(level, at, Blocks.ANVIL.defaultBlockState());
 			f.setHurtsEntities(2f, 40);
 			f.disableDrop();

@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.7
+- Fix: anvil rain dropped no anvils when the box's top layer was a roof (anvils only started from the box's very top, and only in air); they now start from the first open block under it
 ## 1.79.6
 - Quick rounds: the title (the game's name and its entrance line) shows when a player joins (steps on the start pad or into the queue), not when the round starts, where it was in the way
 ## 1.79.5
