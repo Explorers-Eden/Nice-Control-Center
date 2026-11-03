@@ -727,15 +727,29 @@ public final class GameClaims {
 
 	private static final String TRIGGER = "nice_actions.dialog_trigger";
 
-	/** Before the data packs' tick: set-home (5, 16) and back teleport (15) where they aren't allowed are cancelled. */
+	/**
+	 * Before the data packs' tick: Nice Actions teleports (3 random, 4 spawn, 6 home, 15 back) and set-home (5, 16) don't
+	 * run during a game (a countdown already going is cancelled); set-home and back where they aren't allowed neither.
+	 */
 	private static void triggers(MinecraftServer server) {
 		Objective obj = server.getScoreboard().getObjective(TRIGGER);
 		if (obj == null) return;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+			boolean playing = playingNow(p);
+			// A teleport counting down when the game started (or started meanwhile) is called off.
+			if (playing && p.entityTags().contains("nice_actions.warmup.active")) {
+				eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.quiet(server, "execute as " + p.getStringUUID() + " run function nice_actions:warmup/cancel");
+			}
 			var info = server.getScoreboard().getPlayerScoreInfo(p, obj);
 			if (info == null) continue;
 			int v = info.value();
 			String why = null;
+			// Teleports (random, spawn, home, back) and setting a home don't run while they play.
+			if (playing && (v == 3 || v == 4 || v == 6 || v == 15 || v == 5 || v == 16)) {
+				server.getScoreboard().getOrCreatePlayerScore(p, obj).set(0);
+				p.sendOverlayMessage(Component.literal("Not during a game").withStyle(ChatFormatting.RED));
+				continue;
+			}
 			if (v == 5 || v == 16) {
 				String dim = p.level().dimension().identifier().toString();
 				if (!homeAllowed(dim)) why = "Homes can't be set in this dimension.";
@@ -749,6 +763,12 @@ public final class GameClaims {
 			server.getScoreboard().getOrCreatePlayerScore(p, obj).set(0);
 			p.sendSystemMessage(Component.literal("▊ ").withColor(0xFF4A4A).append(Component.literal(why).withStyle(ChatFormatting.WHITE)));
 		}
+	}
+
+	/** In a game being played right now: a quick round, a wave fight, a dungeon run, or a parkour, race, dropper or maze run (not just standing in a game area). */
+	public static boolean playingNow(ServerPlayer p) {
+		return eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p)
+				|| eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p);
 	}
 
 	/** Nice Actions homes are allowed in this dimension (Tweaks.homes.dimensions; empty = everywhere). */

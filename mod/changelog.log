@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.5
+- Games: Nice Actions teleports from the quick actions menu (home, spawn, back, random) and setting a home don't run while someone plays (a quick round, a wave fight, a dungeon run, or a parkour, race, dropper or maze run): "Not during a game". A teleport already counting down when the game starts is cancelled. In the hub and game areas outside a game they work as before
 ## 1.80.4
 - Games: every time shows the same way, MM:SS, or HH:MM:SS from an hour on: race, dropper and maze times, anvil rain (was "120 s"), dungeon runs, time limits, the entrance top 3, /game top and the action bar ("0:57.9" is now "00:57")
 ## 1.80.3
