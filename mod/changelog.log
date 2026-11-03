@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.8
+- Slot Machines: written with a capital M everywhere players and admins read it
 ## 1.80.7
 - Fix: treasure grab's treasure stopped glowing half a second after it appeared: Enchantments Encore's Seeker turns the glow of all dropped items off unless someone with a Seeker helmet is near; the treasure now carries the tag it leaves alone (eden.technical)
 ## 1.80.6

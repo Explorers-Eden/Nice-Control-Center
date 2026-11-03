@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Slot machines (Games → Slot machines, /slots in game): machines placed from the built-in looks, each of a type with
+ * Slot Machines (Games → Slot Machines, /slots in game): machines placed from the built-in looks, each of a type with
  * its cost in points and a list of wins (three symbols, a chance, a payout). Pulling the lever costs the points, the
  * shelf above spins and stops on a row. Kept in config/nicecontrolcenter-slots.json. Minecraft-free so the mod and the
  * panel both compile it.

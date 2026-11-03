@@ -13,7 +13,7 @@ import java.util.Set;
 
 import static eu.explorerseden.nicecontrolcenter.panel.Web.*;
 
-/** Games → Slot machines: the types (cost, wins) and the machines placed in game (the mod picks changes up within five seconds). */
+/** Games → Slot Machines: the types (cost, wins) and the machines placed in game (the mod picks changes up within five seconds). */
 final class SlotRoutes {
 	private final Path serverDir;
 	private final Audit audit;

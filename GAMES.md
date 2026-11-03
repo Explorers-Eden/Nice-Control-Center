@@ -135,11 +135,11 @@ Panel: Community → NPCs; in game `/npc`.
   `/npc summon <name> <x y z>`. It fights with what it holds: sword or nothing melee, bow/crossbow shoots, trident throws.
   Panel: health, damage, speed, armor, a size range (random each time) and the loot table it drops.
 
-## Slot machines
+## Slot Machines
 
 Machines players spend points at, built from five looks (acacia, bamboo, mangrove, poplar, warped): a copper base
 with the lever on its side, the reel shelf on top of it, shelves behind and a trapdoor roof.
-- Panel (Games → Slot machines): **types**: what a pull costs, how long the reels spin, the **wins** (three symbols
+- Panel (Games → Slot Machines): **types**: what a pull costs, how long the reels spin, the **wins** (three symbols
   as item ids, one filled in = three of it; each with its chance per pull in %, its payout in points, optional
   commands, a message, and whether everyone is told) and extra symbols that only show on losing rows. The page shows
   the chance of any win and how much of what's put in comes back on average.

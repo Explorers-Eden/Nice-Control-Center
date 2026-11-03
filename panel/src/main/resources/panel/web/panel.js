@@ -139,7 +139,7 @@
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
         { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, droppers, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
         { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
-        { tab: 'slots', label: 'Slot machines', perm: 'server.view', desc: 'Slot machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
+        { tab: 'slots', label: 'Slot Machines', perm: 'server.view', desc: 'Slot Machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rules', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, play games, and at in-game times.' },
         { tab: 'points', label: 'Points', perm: 'server.view', desc: 'One points balance per player for all games: how they earn it, balances, giving and taking.' },
@@ -2525,7 +2525,7 @@
     }
   });
 
-  // ── Slot machines ───────────────────────────────────────────────────────
+  // ── Slot Machines ───────────────────────────────────────────────────────
 
   const sm = { settings: null, looks: [], icons: {}, points: { name: 'Points', enabled: true }, dirty: false, removed: { types: [], machines: [] } };
   const smOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('pn-sm-open') || '[]'); } catch (e) { return []; } })());

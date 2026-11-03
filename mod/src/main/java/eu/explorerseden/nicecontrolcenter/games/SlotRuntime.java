@@ -61,7 +61,7 @@ import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
 import eu.explorerseden.nicecontrolcenter.players.PointsStore;
 
 /**
- * Slot machines: placed from the built-in looks (/slots place), the lever costs points and spins the shelf above the
+ * Slot Machines: placed from the built-in looks (/slots place), the lever costs points and spins the shelf above the
  * base block (three reels, stopping one by one), a winning row pays out. The lever flicks back at once and works for
  * everyone (claims let anyone pull it); the machine's blocks can't be changed or broken (admins in creative can).
  */
@@ -248,10 +248,10 @@ public final class SlotRuntime {
 		Points.Settings ps = PointsStore.settings();
 		if (t.cost > 0) {
 			if (!ps.enabled) {
-				p.sendOverlayMessage(Words.lit("Slot machines need " + ps.name + ", which are off").withStyle(ChatFormatting.RED));
+				p.sendOverlayMessage(Words.lit("Slot Machines need " + ps.name + ", which are off").withStyle(ChatFormatting.RED));
 				return;
 			}
-			if (!PointsStore.take(p.getStringUUID(), p.getGameProfile().name(), t.cost, "Slot machine " + t.shown())) {
+			if (!PointsStore.take(p.getStringUUID(), p.getGameProfile().name(), t.cost, "Slot Machine " + t.shown())) {
 				p.sendOverlayMessage(Words.lit("A pull costs " + Points.amount(ps, t.cost) + "; you have " + Points.amount(ps, PointsStore.balance(p.getStringUUID())))
 						.withStyle(ChatFormatting.RED));
 				level.playSound(null, parts.lever(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 0.6f, 0.6f);
@@ -384,7 +384,7 @@ public final class SlotRuntime {
 		String row = w.symbols.get(0).equals(w.symbols.get(1)) && w.symbols.get(1).equals(w.symbols.get(2))
 				? "3× " + symbolName(w.symbols.get(0))
 				: String.join(" · ", w.symbols.stream().map(SlotRuntime::symbolName).toList());
-		if (w.payout > 0) PointsStore.add(s.player.toString(), s.name, w.payout, "Slot machine " + s.type.shown() + ": " + row);
+		if (w.payout > 0) PointsStore.add(s.player.toString(), s.name, w.payout, "Slot Machine " + s.type.shown() + ": " + row);
 		boolean big = s.type.cost > 0 && w.payout >= s.type.cost * 10;
 		level.playSound(null, at, big ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.PLAYER_LEVELUP, SoundSource.BLOCKS, 0.8f, 1f);
 		level.playSound(null, at, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 0.8f, 1.2f);
@@ -493,7 +493,7 @@ public final class SlotRuntime {
 			if (!level.addFreshEntity(entity)) v.shown.remove(entity);
 		}
 		Type t = settings.type(v.type);
-		var msg = Words.lit("Slot machine " + (t == null ? "" : t.shown()) + " (" + v.look + ")" + (inTheWay > 0 ? ": replaces " + inTheWay + " block" + (inTheWay == 1 ? "" : "s") : "") + "  ")
+		var msg = Words.lit("Slot Machine " + (t == null ? "" : t.shown()) + " (" + v.look + ")" + (inTheWay > 0 ? ": replaces " + inTheWay + " block" + (inTheWay == 1 ? "" : "s") : "") + "  ")
 				.withStyle(inTheWay > 0 ? ChatFormatting.YELLOW : ChatFormatting.GOLD);
 		msg.append(button("✔ Place", "/slots preview confirm", "Build it here", ChatFormatting.GREEN));
 		msg.append(button("⟳ Turn", "/slots preview turn", "A quarter turn clockwise", ChatFormatting.AQUA));
@@ -601,7 +601,7 @@ public final class SlotRuntime {
 					settings.machines.remove(m);
 					save();
 					takeAway(ctx.getSource().getServer(), m);
-					ctx.getSource().sendSuccess(() -> Component.literal("Slot machine removed."), true);
+					ctx.getSource().sendSuccess(() -> Component.literal("Slot Machine removed."), true);
 					return 1;
 				}))
 				.then(Commands.literal("type").then(Commands.argument("type", StringArgumentType.word())
@@ -611,7 +611,7 @@ public final class SlotRuntime {
 							Machine m = nearest(p);
 							if (m == null) return fail(ctx, "No slot machine within 6 blocks.");
 							Type t = settings.type(StringArgumentType.getString(ctx, "type"));
-							if (t == null) return fail(ctx, "No type called that (Games → Slot machines in the panel).");
+							if (t == null) return fail(ctx, "No type called that (Games → Slot Machines in the panel).");
 							m.type = t.id;
 							save();
 							ctx.getSource().sendSuccess(() -> Component.literal("That slot machine is now a " + t.shown() + "."), true);
@@ -619,7 +619,7 @@ public final class SlotRuntime {
 						})))
 				.then(Commands.literal("list").executes(ctx -> {
 					if (settings.machines.isEmpty()) {
-						ctx.getSource().sendSuccess(() -> Component.literal("No slot machines yet: /slots place <type> [look] (types are made in the panel, Games → Slot machines)."), false);
+						ctx.getSource().sendSuccess(() -> Component.literal("No slot machines yet: /slots place <type> [look] (types are made in the panel, Games → Slot Machines)."), false);
 						return 1;
 					}
 					StringBuilder out = new StringBuilder(settings.machines.size() + " slot machines:");
@@ -636,7 +636,7 @@ public final class SlotRuntime {
 	private static int place(CommandContext<CommandSourceStack> ctx, String look) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
 		Type t = settings.type(StringArgumentType.getString(ctx, "type"));
-		if (t == null) return fail(ctx, settings.types.isEmpty() ? "No slot machine types yet: make one in the panel (Games → Slot machines)." : "No type called that. Types: "
+		if (t == null) return fail(ctx, settings.types.isEmpty() ? "No slot machine types yet: make one in the panel (Games → Slot Machines)." : "No type called that. Types: "
 				+ String.join(", ", settings.types.stream().map(x -> x.name).toList()) + ".");
 		if (!Slots.LOOKS.contains(look)) return fail(ctx, "Looks: " + String.join(", ", Slots.LOOKS) + ".");
 		preview(p, t, look);
@@ -661,7 +661,7 @@ public final class SlotRuntime {
 		if (action.equals("confirm")) {
 			String err = confirm(server, p.getGameProfile().name(), v);
 			clearPreview(server, p.getUUID());
-			p.sendSystemMessage(Component.literal(err != null ? err : "Slot machine placed. /slots remove next to it takes it away.").withStyle(err != null ? ChatFormatting.RED : ChatFormatting.GREEN));
+			p.sendSystemMessage(Component.literal(err != null ? err : "Slot Machine placed. /slots remove next to it takes it away.").withStyle(err != null ? ChatFormatting.RED : ChatFormatting.GREEN));
 			return;
 		}
 		if (!v.dim.equals(p.level().dimension().identifier().toString())) {
