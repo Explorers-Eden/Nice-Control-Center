@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.1
+- Fix: the slot machine placing preview showed nothing (its block displays were taken for leftovers and removed at once)
+- Slot machines: the preview's buttons are answered by the server directly, so the game no longer asks to confirm a command
 ## 1.80.0
 - Slot machines: five looks to place anywhere, turned any way (/slots place <type> [look] with a glowing preview to place, turn, change the look, move or cancel). The lever costs points, flicks back at once and works for everyone, also in claims; the shelf above spins three reels that stop one by one, with sounds, and a win pays out (points, commands, a message, an announcement for big ones) with particles. Types with their cost and wins (symbols, chance, payout) are set in the panel; /slots type, remove and list in game
 ## 1.79.8

@@ -462,7 +462,9 @@ public final class SlotRuntime {
 			var entity = net.minecraft.world.entity.EntityType.loadEntityRecursive(BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse("minecraft:block_display")), tag, level,
 					net.minecraft.world.entity.EntitySpawnReason.COMMAND, net.minecraft.world.entity.EntityProcessor.NOP);
 			if (entity != null) entity.snapTo(b.getKey().getX(), b.getKey().getY(), b.getKey().getZ(), 0, 0);
-			if (entity != null && level.addFreshEntity(entity)) v.shown.add(entity);
+			if (entity == null) continue;
+			v.shown.add(entity);
+			if (!level.addFreshEntity(entity)) v.shown.remove(entity);
 		}
 		Type t = settings.type(v.type);
 		var msg = Words.lit("Slot machine " + (t == null ? "" : t.shown()) + " (" + v.look + ")" + (inTheWay > 0 ? ": replaces " + inTheWay + " block" + (inTheWay == 1 ? "" : "s") : "") + "  ")
@@ -471,14 +473,15 @@ public final class SlotRuntime {
 		msg.append(button("⟳ Turn", "/slots preview turn", "A quarter turn clockwise", ChatFormatting.AQUA));
 		msg.append(button("Look", "/slots preview look", "The next look (" + String.join(", ", Slots.LOOKS) + ")", ChatFormatting.AQUA));
 		msg.append(Component.literal("\n  Move: ").withStyle(ChatFormatting.GRAY));
-		for (String dir : List.of("forward", "back", "left", "right", "up", "down")) msg.append(button(dir, "/slots preview move " + dir, "One block " + dir + " (as you look now)", ChatFormatting.WHITE));
+		for (String dir : List.of("forward", "back", "left", "right", "up", "down")) msg.append(button(dir, "/slots preview " + dir, "One block " + dir + " (as you look now)", ChatFormatting.WHITE));
 		msg.append(button("✖ Cancel", "/slots preview cancel", "No machine", ChatFormatting.RED));
 		if (p != null) p.sendSystemMessage(msg);
 	}
 
 	private static Component button(String label, String command, String hover, ChatFormatting colour) {
+		String action = command.substring(command.lastIndexOf(' ') + 1);
 		return Component.literal("[" + label + "] ").withStyle(st -> st.withColor(colour)
-				.withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(command))
+				.withClickEvent(new net.minecraft.network.chat.ClickEvent.Custom(Identifier.fromNamespaceAndPath("nicecontrolcenter", "slots/" + action), java.util.Optional.empty()))
 				.withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal(hover))));
 	}
 
@@ -558,42 +561,12 @@ public final class SlotRuntime {
 						.executes(ctx -> place(ctx, Slots.LOOKS.get(0)))
 						.then(Commands.argument("look", StringArgumentType.word()).suggests((ctx, b) -> SharedSuggestionProvider.suggest(Slots.LOOKS, b))
 								.executes(ctx -> place(ctx, StringArgumentType.getString(ctx, "look").toLowerCase(Locale.ROOT))))))
-				.then(Commands.literal("preview")
-						.then(Commands.literal("confirm").executes(ctx -> {
-							ServerPlayer p = ctx.getSource().getPlayerOrException();
-							Preview v = previews.get(p.getUUID());
-							if (v == null) return fail(ctx, "No placement to confirm: /slots place <type> [look].");
-							String err = confirm(ctx.getSource().getServer(), p.getGameProfile().name(), v);
-							clearPreview(ctx.getSource().getServer(), p.getUUID());
-							if (err != null) return fail(ctx, err);
-							ctx.getSource().sendSuccess(() -> Component.literal("Slot machine placed. /slots remove next to it takes it away."), true);
+				.then(Commands.literal("preview").then(Commands.argument("action", StringArgumentType.word())
+						.suggests((ctx, b) -> SharedSuggestionProvider.suggest(List.of("confirm", "cancel", "turn", "look", "forward", "back", "left", "right", "up", "down"), b))
+						.executes(ctx -> {
+							previewAction(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx, "action"));
 							return 1;
-						}))
-						.then(Commands.literal("cancel").executes(ctx -> {
-							ServerPlayer p = ctx.getSource().getPlayerOrException();
-							clearPreview(ctx.getSource().getServer(), p.getUUID());
-							ctx.getSource().sendSuccess(() -> Component.literal("No slot machine placed."), false);
-							return 1;
-						}))
-						.then(Commands.literal("turn").executes(ctx -> changePreview(ctx, v -> v.turns = (v.turns + 1) % 4)))
-						.then(Commands.literal("look").executes(ctx -> changePreview(ctx, v -> v.look = Slots.LOOKS.get((Slots.LOOKS.indexOf(v.look) + 1) % Slots.LOOKS.size()))))
-						.then(Commands.literal("move").then(Commands.argument("dir", StringArgumentType.word())
-								.suggests((ctx, b) -> SharedSuggestionProvider.suggest(List.of("forward", "back", "left", "right", "up", "down"), b))
-								.executes(ctx -> {
-									ServerPlayer p = ctx.getSource().getPlayerOrException();
-									Direction f = p.getDirection();
-									Direction step = switch (StringArgumentType.getString(ctx, "dir")) {
-										case "forward" -> f;
-										case "back" -> f.getOpposite();
-										case "left" -> f.getCounterClockWise();
-										case "right" -> f.getClockWise();
-										case "up" -> Direction.UP;
-										case "down" -> Direction.DOWN;
-										default -> null;
-									};
-									if (step == null) return fail(ctx, "forward, back, left, right, up or down.");
-									return changePreview(ctx, v -> v.base = v.base.relative(step));
-								}))))
+						})))
 				.then(Commands.literal("remove").executes(ctx -> {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					Machine m = nearest(p);
@@ -651,14 +624,46 @@ public final class SlotRuntime {
 		return 1;
 	}
 
-	private static int changePreview(CommandContext<CommandSourceStack> ctx, java.util.function.Consumer<Preview> change) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-		ServerPlayer p = ctx.getSource().getPlayerOrException();
+	/** A preview button (a chat click, answered without a command, or /slots preview <action>). Server thread. */
+	public static void previewAction(ServerPlayer p, String action) {
+		if (!admin(p)) return;
+		reloadNow();
 		Preview v = previews.get(p.getUUID());
-		if (v == null) return fail(ctx, "No placement to change: /slots place <type> [look].");
-		if (!v.dim.equals(p.level().dimension().identifier().toString())) return fail(ctx, "The preview is in another dimension.");
-		change.accept(v);
+		if (v == null) {
+			p.sendSystemMessage(Component.literal("No placement going on: /slots place <type> [look].").withStyle(ChatFormatting.RED));
+			return;
+		}
+		MinecraftServer server = p.level().getServer();
+		if (action.equals("cancel")) {
+			clearPreview(server, p.getUUID());
+			p.sendSystemMessage(Component.literal("No slot machine placed.").withStyle(ChatFormatting.GRAY));
+			return;
+		}
+		if (action.equals("confirm")) {
+			String err = confirm(server, p.getGameProfile().name(), v);
+			clearPreview(server, p.getUUID());
+			p.sendSystemMessage(Component.literal(err != null ? err : "Slot machine placed. /slots remove next to it takes it away.").withStyle(err != null ? ChatFormatting.RED : ChatFormatting.GREEN));
+			return;
+		}
+		if (!v.dim.equals(p.level().dimension().identifier().toString())) {
+			p.sendSystemMessage(Component.literal("The preview is in another dimension.").withStyle(ChatFormatting.RED));
+			return;
+		}
+		Direction f = p.getDirection();
+		switch (action) {
+			case "turn" -> v.turns = (v.turns + 1) % 4;
+			case "look" -> v.look = Slots.LOOKS.get((Slots.LOOKS.indexOf(v.look) + 1) % Slots.LOOKS.size());
+			case "forward" -> v.base = v.base.relative(f);
+			case "back" -> v.base = v.base.relative(f.getOpposite());
+			case "left" -> v.base = v.base.relative(f.getCounterClockWise());
+			case "right" -> v.base = v.base.relative(f.getClockWise());
+			case "up" -> v.base = v.base.above();
+			case "down" -> v.base = v.base.below();
+			default -> {
+				return;
+			}
+		}
 		show((ServerLevel) p.level(), p, v);
-		return 1;
 	}
 
 	private static int fail(CommandContext<CommandSourceStack> ctx, String why) {
