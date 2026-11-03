@@ -79,6 +79,9 @@ public final class ClaimProtection {
 	}
 
 	private static void deny(ServerPlayer player, Claim c, Role needed) {
+		// Game claims (arenas, hubs): it's still not allowed, but nobody is told off for every thrown snowball.
+		Claim top = c.isSub() ? ClaimStore.byId(c.parent) : c;
+		if (c.admin != null && c.admin.active() || top != null && top.admin != null && top.admin.active()) return;
 		int tick = player.level().getServer().getTickCount();
 		Integer last = lastWarned.get(player.getUUID());
 		if (last != null && tick - last < 30) return;

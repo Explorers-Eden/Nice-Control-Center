@@ -402,7 +402,8 @@ public final class QuickRuntime {
 			p.resetFallDistance();
 			GameClaims.gameMode(p, false);
 			p.connection.send(new ClientboundSetTitleTextPacket(Words.lit(a.shown()).withStyle(st -> st.withColor(a.rgb()))));
-			p.connection.send(new ClientboundSetSubtitleTextPacket(Words.lit(goal(a)).withStyle(ChatFormatting.GRAY)));
+			// The game's name with the line its entrances show (the goal goes to chat): a short title that fits.
+			p.connection.send(new ClientboundSetSubtitleTextPacket(a.subtitle.isBlank() ? Component.empty() : Words.lit(a.subtitle.strip()).withStyle(ChatFormatting.GRAY)));
 			p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
 			commands(server, a.startCommands, a, p, "");
 		}
