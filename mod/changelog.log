@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.3
+- Game claims: no claim messages any more: no title when walking in (even with "announce" on), no "your things are kept safe" on the way in, no "your things are back" or "kit items are gone" on the way out. Things are still put aside and given back as before
 ## 1.79.2
 - Claims: no "You can't build here" line in game claims (arenas, hubs): a snowball thrown in ghast deflect hitting a block showed it every time. What isn't allowed there still isn't
 - Quick rounds: the start title is the game's name with its entrance line (the subtitle set in the panel, or nothing) instead of the long goal text; the goal is still in chat

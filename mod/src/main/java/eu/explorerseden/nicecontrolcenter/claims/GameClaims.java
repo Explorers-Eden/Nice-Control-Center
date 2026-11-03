@@ -288,7 +288,6 @@ public final class GameClaims {
 		}
 		if (o.kit != null) for (String json : o.kit) handOut(p, json, c.id);
 		p.inventoryMenu.broadcastChanges();
-		p.sendOverlayMessage(Component.literal(c.displayName() + (o.inventory ? ": your things are kept safe until you leave" : "")).withStyle(ChatFormatting.AQUA));
 	}
 
 	/** Leaving (c may be gone): game items are handled, then their own things come back. */
@@ -342,7 +341,6 @@ public final class GameClaims {
 		}
 		inbox(p, toInbox);
 		p.inventoryMenu.broadcastChanges();
-		if (swap) p.sendOverlayMessage(Component.literal("Your things are back").withStyle(ChatFormatting.GREEN));
 	}
 
 	/**
@@ -540,7 +538,6 @@ public final class GameClaims {
 		}
 		if (sweep && (removeKits(p.getInventory()) | removeKits(p.getEnderChestInventory()))) {
 			p.inventoryMenu.broadcastChanges();
-			p.sendOverlayMessage(Component.literal("Kit items from a game are gone").withStyle(ChatFormatting.GRAY));
 		}
 	}
 

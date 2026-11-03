@@ -60,7 +60,8 @@ public final class ClaimTitles {
 			if (titled) p.addTag(TAG);
 			else p.removeTag(TAG);
 			if (server.getTickCount() % 100 == 0) villages(p);
-			if (id == null || id.equals(was) || !c.announce) continue;
+			// Game claims (arenas, hubs) greet nobody: the game shows its own titles.
+			if (id == null || id.equals(was) || !c.announce || game(c)) continue;
 			Map<String, Long> times = greeted.computeIfAbsent(p.getUUID(), k -> new HashMap<>());
 			Long last = times.get(id);
 			if (last != null && now - last < AGAIN_MS) continue;
@@ -78,6 +79,12 @@ public final class ClaimTitles {
 			if (at != null && at.announce) stand.addTag(TAG);
 			else stand.removeTag(TAG);
 		}
+	}
+
+	/** A game claim, or a part of one. */
+	private static boolean game(Claim c) {
+		Claim top = c.isSub() ? ClaimStore.byId(c.parent) : c;
+		return c.admin != null && c.admin.active() || top != null && top.admin != null && top.admin.active();
 	}
 
 	private static void greet(ServerPlayer p, Claim c) {
