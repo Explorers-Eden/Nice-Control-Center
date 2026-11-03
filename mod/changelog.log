@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.79.5
+- Anvil rain: anvils land without their clang (switch it back on per game in the panel), and more of them come down right above a player: 70 % by default (was half, and more spread out), set per game
 ## 1.79.4
 - Games: points earned in a game come without a chat or action bar line (the game shows its own score): the game's points, "points give" in game commands, and reward rules or /reward that give only points (when the rule has no message of its own). Balances and their history are unchanged
 ## 1.79.3

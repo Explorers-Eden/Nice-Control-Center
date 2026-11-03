@@ -771,17 +771,17 @@ public final class QuickRuntime {
 			if (level.getBlockState(e.getKey()).getBlock() instanceof AnvilBlock) level.setBlock(e.getKey(), Blocks.AIR.defaultBlockState(), 3);
 			it.remove();
 		}
-		// More each 10 seconds; half of them aimed near a player.
+		// More each 10 seconds; the set share of them right above a player (within a block or two).
 		double rate = a.anvilRate * Math.pow(1 + a.anvilGrowth / 100.0, r.elapsed() / 10_000.0);
 		r.due += rate * 0.1;
 		int top = (int) Math.floor(box.maxY) - 1;
 		while (r.due >= 1) {
 			r.due -= 1;
 			double x, z;
-			if (!alive.isEmpty() && random.nextBoolean()) {
+			if (!alive.isEmpty() && random.nextInt(100) < a.anvilAim) {
 				ServerPlayer near = alive.get(random.nextInt(alive.size()));
-				x = near.getX() + random.nextGaussian() * 2;
-				z = near.getZ() + random.nextGaussian() * 2;
+				x = near.getX() + random.nextGaussian() * 1.2;
+				z = near.getZ() + random.nextGaussian() * 1.2;
 			} else {
 				x = box.minX + random.nextDouble() * (box.maxX - box.minX);
 				z = box.minZ + random.nextDouble() * (box.maxZ - box.minZ);
@@ -793,6 +793,8 @@ public final class QuickRuntime {
 			FallingBlockEntity f = FallingBlockEntity.fall(level, at, Blocks.ANVIL.defaultBlockState());
 			f.setHurtsEntities(2f, 40);
 			f.disableDrop();
+			// Silent: no clang on landing (dozens a second get loud).
+			if (!a.anvilSound) f.setSilent(true);
 			f.addTag(r.tag());
 			r.falling.add(f);
 		}

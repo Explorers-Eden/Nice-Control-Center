@@ -2196,7 +2196,9 @@
         + field('roundSeconds', 'Seconds before a colour vanishes', num('roundSeconds', 1, 60, 0.1)) + field('speedUp', 'Faster after each refill (s)', num('speedUp', 0, 30, 0.1))
         + field('minRoundSeconds', 'Fastest (s)', num('minRoundSeconds', 1, 60, 0.1)) + field('refillEvery', 'Colours before the grid refills', num('refillEvery', 1, 8))
         ,
-      anvils: field('anvilRate', 'Anvils a second at the start', num('anvilRate', 0.1, 50, 0.1)) + field('anvilGrowth', '% more every 10 seconds', num('anvilGrowth', 0, 500)),
+      anvils: field('anvilRate', 'Anvils a second at the start', num('anvilRate', 0.1, 50, 0.1)) + field('anvilGrowth', '% more every 10 seconds', num('anvilGrowth', 0, 500))
+        + field('anvilAim', 'Right above a player (%; the rest anywhere)', num('anvilAim', 0, 100))
+        + field('anvilSound', 'Landing sound', `<select data-g="anvilSound" data-bool="1"><option value="false" ${a.anvilSound ? '' : 'selected'}>off (quiet)</option><option value="true" ${a.anvilSound ? 'selected' : ''}>on</option></select>`),
       treasure: `<label class="pn-field pn-field-wide"><span>Treasure (one per line: <code>item=points</code>; the more it's worth, the rarer)</span><textarea data-g="treasureItems" data-lines="1" rows="3" spellcheck="false" placeholder="minecraft:diamond=5">${esc((a.treasureItems || []).join('\n'))}</textarea></label>`
         + field('maxAlive', 'Treasure lying around at once', num('maxAlive', 1, 200)),
       fishing: field('fishPoints', 'Points: cod, salmon', num('fishPoints', 0, 1000)) + field('rareFishPoints', 'Points: pufferfish, tropical fish', num('rareFishPoints', 0, 1000))

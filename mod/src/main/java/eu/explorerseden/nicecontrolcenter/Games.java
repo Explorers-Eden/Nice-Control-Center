@@ -267,6 +267,9 @@ public final class Games {
 		/** Anvil rain: anvils a second at the start, and % more every 10 seconds. */
 		public double anvilRate = 2;
 		public int anvilGrowth = 25;
+		/** Anvil rain: the share of anvils dropped right above a player (the rest anywhere in the box), and their landing clang. */
+		public int anvilAim = 70;
+		public boolean anvilSound = false;
 		/** Treasure grab: "minecraft:diamond=5" (item = points); rarer the more it's worth. */
 		public List<String> treasureItems = new ArrayList<>(List.of("minecraft:emerald=1", "minecraft:gold_ingot=2", "minecraft:diamond=5"));
 		/** Fishing frenzy: points for a fish, a pufferfish or tropical fish, a treasure, and junk. */
@@ -404,6 +407,7 @@ public final class Games {
 				a.mobsEvery = Math.max(0, Math.min(100, a.mobsEvery));
 				a.anvilRate = Math.max(0.1, Math.min(50, a.anvilRate));
 				a.anvilGrowth = Math.max(0, Math.min(500, a.anvilGrowth));
+				a.anvilAim = Math.max(0, Math.min(100, a.anvilAim));
 				if (a.treasureItems == null) a.treasureItems = new ArrayList<>();
 				a.treasureItems.removeIf(x -> x == null || x.isBlank());
 				a.fishPoints = Math.max(0, Math.min(1000, a.fishPoints));

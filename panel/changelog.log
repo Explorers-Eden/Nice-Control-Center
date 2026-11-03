@@ -1,3 +1,6 @@
+## 1.68.2
+- Games: anvil rain has "right above a player (%)" and a landing sound switch (mod 1.79.5)
+
 ## 1.68.1
 - Games: the mob pool example uses today's NBT (equipment:{mainhand:{…}}; HandItems no longer works in this Minecraft)
 
