@@ -444,13 +444,19 @@ public final class Games {
 	}
 
 	/** A score as words: "12 jumps", "5 waves", "3 ghasts", "47 s", or a time. */
+	/** A game time: MM:SS, or HH:MM:SS from an hour on (the same everywhere: races, mazes, anvil rain, dungeons…). */
+	public static String clock(long ms) {
+		long s = Math.max(0, ms) / 1000;
+		return s >= 3600 ? String.format(Locale.ROOT, "%02d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String.format(Locale.ROOT, "%02d:%02d", s / 60, s % 60);
+	}
+
 	public static String scoreText(String type, long score, java.util.function.LongFunction<String> clock) {
 		return switch (type) {
 			case "parkour" -> score + (score == 1 ? " jump" : " jumps");
 			case "waves" -> score + (score == 1 ? " wave" : " waves");
 			case "ghasts" -> score + (score == 1 ? " ghast" : " ghasts");
 			case "colorfloor" -> score + (score == 1 ? " colour" : " colours");
-			case "anvils" -> score + " s";
+			case "anvils" -> clock(score * 1000);
 			case "treasure", "fishing" -> score + (score == 1 ? " point" : " points");
 			case "heads" -> score + (score == 1 ? " head" : " heads");
 			default -> clock.apply(score);

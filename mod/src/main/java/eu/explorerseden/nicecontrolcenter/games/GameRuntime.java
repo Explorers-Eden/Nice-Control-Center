@@ -1459,8 +1459,7 @@ public final class GameRuntime {
 	}
 
 	public static String clock(long ms) {
-		long s = ms / 1000;
-		return String.format(Locale.ROOT, "%d:%02d.%d", s / 60, s % 60, (ms % 1000) / 100);
+		return Games.clock(ms);
 	}
 
 	private static Games.Pos pos(ServerPlayer p) {

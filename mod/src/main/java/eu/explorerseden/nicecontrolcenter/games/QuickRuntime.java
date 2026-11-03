@@ -421,7 +421,7 @@ public final class QuickRuntime {
 	}
 
 	private static String goal(Arena a) {
-		String time = a.timeLimit > 0 ? GameRuntime.clock(a.timeLimit * 1000L).replaceAll("\\.\\d$", "") : "";
+		String time = a.timeLimit > 0 ? GameRuntime.clock(a.timeLimit * 1000L) : "";
 		return switch (a.type) {
 			case "ghasts" -> "Hit the fireballs back with snowballs: every ghast they kill counts" + (time.isEmpty() ? "." : " (" + time + ").");
 			case "colorfloor" -> "The called colour vanishes. Stand on another one!";
@@ -547,7 +547,7 @@ public final class QuickRuntime {
 		Arena a = r.arena;
 		UUID lead = null;
 		for (ServerPlayer p : alive) if (lead == null || r.score.getOrDefault(p.getUUID(), 0L) > r.score.getOrDefault(lead, 0L)) lead = p.getUUID();
-		String time = a.timeLimit > 0 ? GameRuntime.clock(Math.max(0, a.timeLimit * 1000L - r.elapsed())).replaceAll("\\.\\d$", "") + " left" : GameRuntime.clock(r.elapsed()).replaceAll("\\.\\d$", "");
+		String time = a.timeLimit > 0 ? GameRuntime.clock(Math.max(0, a.timeLimit * 1000L - r.elapsed())) + " left" : GameRuntime.clock(r.elapsed());
 		float progress = a.timeLimit > 0 ? 1f - r.elapsed() / (a.timeLimit * 1000f) : 1f;
 		if (!a.type.equals("colorfloor") || r.called < 0) {
 			bar(server, r, Words.lit(time + " · " + alive.size() + (alive.size() == 1 ? " player" : " players")), progress, BossEvent.BossBarColor.BLUE);

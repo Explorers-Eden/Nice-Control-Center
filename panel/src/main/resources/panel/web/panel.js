@@ -1949,8 +1949,9 @@
   const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing'];
   const gmHigher = (type) => !['race', 'dropper', 'maze'].includes(type);
   const gmWord = { parkour: ['jump', 'jumps'], waves: ['wave', 'waves'], ghasts: ['ghast', 'ghasts'], colorfloor: ['colour', 'colours'], treasure: ['point', 'points'], fishing: ['point', 'points'], heads: ['head', 'heads'] };
-  const gmScore = (type, v) => type === 'anvils' ? `${v} s` : gmWord[type] ? `${v} ${gmWord[type][v === 1 ? 0 : 1]}` : gmClock(v);
-  const gmClock = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.${Math.floor((ms % 1000) / 100)}`; };
+  const gmScore = (type, v) => type === 'anvils' ? gmClock(v * 1000) : gmWord[type] ? `${v} ${gmWord[type][v === 1 ? 0 : 1]}` : gmClock(v);
+  /** A game time like the mod shows it (Games.clock): MM:SS, or HH:MM:SS from an hour on. */
+  const gmClock = (ms) => { const s = Math.floor(Math.max(0, ms) / 1000); const p = (n) => String(n).padStart(2, '0'); return s >= 3600 ? `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}` : `${p(Math.floor(s / 60))}:${p(s % 60)}`; };
 
   async function loadGames() {
     if (gm.dirty && gm.settings) { renderArenas(); return; }
