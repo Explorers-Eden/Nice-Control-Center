@@ -31,6 +31,8 @@ public final class Slots {
 		public boolean enabled = true;
 		public List<Type> types = new ArrayList<>();
 		public List<Machine> machines = new ArrayList<>();
+		/** Removed in the panel: the mod takes their blocks away (also after a restart), then empties this. */
+		public List<Machine> takeAway = new ArrayList<>();
 
 		public Type type(String idOrName) {
 			if (idOrName == null) return null;
@@ -41,6 +43,9 @@ public final class Slots {
 		public Settings fill() {
 			if (types == null) types = new ArrayList<>();
 			if (machines == null) machines = new ArrayList<>();
+			if (takeAway == null) takeAway = new ArrayList<>();
+			takeAway.removeIf(m -> m == null || m.base == null || m.base.dim == null);
+			for (Machine m : takeAway) m.rotation = Math.floorMod(m.rotation, 4);
 			types.removeIf(t -> t == null);
 			machines.removeIf(m -> m == null || m.base == null || m.base.dim == null);
 			Set<String> ids = new HashSet<>();

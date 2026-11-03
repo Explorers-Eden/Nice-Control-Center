@@ -2609,7 +2609,7 @@
       ? `<ul class="pn-gm-heads pn-sm-machines">${s.machines.map((m, mi) => `<li data-machine="${mi}"><span class="np-chip">${esc(m.look)}</span>
           <span>${esc(dimShort(m.base.dim))} · ${Math.round(m.base.x)}, ${Math.round(m.base.y)}, ${Math.round(m.base.z)}</span>
           <select data-mk="type">${typeOpts(m.type)}</select>
-          <button type="button" class="np-btn small danger" data-smact="mrm" title="Forget it (its blocks stay; /slots remove next to it takes them away too)"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
+          <button type="button" class="np-btn small danger" data-smact="mrm" title="Remove it (its blocks are taken away in game once saved)"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
       : '<p class="pn-hint">None placed yet: <code>/slots place &lt;type&gt;</code> in game.</p>';
     if (!sm.points.enabled) $('pn-sm-machines').innerHTML += `<p class="pn-hint pn-warn"><i class="bi bi-exclamation-triangle"></i> ${esc(pts)} are off (Rewards → Points): pulls that cost something don't work.</p>`;
     tabPanel('slots').querySelectorAll('#pn-sm-list input, #pn-sm-list select, #pn-sm-list textarea, #pn-sm-list button, #pn-sm-machines select, #pn-sm-machines button, #pn-sm-add, #pn-sm-enabled').forEach((el) => { el.disabled = !edit; });
@@ -2686,7 +2686,7 @@
     const b = e.target.closest('[data-smact="mrm"]');
     if (!b) return;
     const m = sm.settings.machines[+b.closest('[data-machine]').dataset.machine];
-    if (!confirm('Forget this machine? Its blocks stay in the world (in game, /slots remove next to it takes them away too).')) return;
+    if (!confirm('Remove this machine? Once saved, its blocks are taken away in game.')) return;
     sm.removed.machines.push(m.id);
     sm.settings.machines = sm.settings.machines.filter((x) => x !== m);
     smChanged(true);

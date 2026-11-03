@@ -145,7 +145,8 @@ with the lever on its side, the reel shelf on top of it, shelves behind and a tr
   the chance of any win and how much of what's put in comes back on average.
 - In game: `/slots place <type> [look]` shows a glowing preview two blocks ahead (front toward you); click Place,
   Turn, Look, move it a block (forward, back, left, right, up, down) or Cancel. `/slots type <type>` next to one
-  changes its type, `/slots remove` takes the nearest away, `/slots list`.
+  changes its type, `/slots remove` takes the nearest away (removing one in the panel takes its blocks away
+  too), `/slots list`.
 - Pulling the lever takes the cost, flicks back at once (it powers nothing) and spins the three shelf slots, which
   stop one after the other; a win pays out with a chime and sparkles (a burst for 10× the cost or more). Anyone can
   pull the lever, also in claims; nobody can take the shelves' items or break the machine (admins in creative can).

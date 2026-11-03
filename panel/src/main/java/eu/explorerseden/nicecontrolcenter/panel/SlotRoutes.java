@@ -68,6 +68,9 @@ final class SlotRoutes {
 				Slots.Machine mine = next.machines.stream().filter(x -> x.id.equals(was.id)).findFirst().orElse(null);
 				if (mine != null) was.type = mine.type;
 			}
+			// Removed ones: the mod takes their blocks away too.
+			next.takeAway = now.takeAway;
+			for (Slots.Machine m : now.machines) if (goneMachines.contains(m.id)) next.takeAway.add(m);
 			now.machines.removeIf(m -> goneMachines.contains(m.id));
 			next.machines = now.machines;
 			for (Slots.Type was : now.types) {

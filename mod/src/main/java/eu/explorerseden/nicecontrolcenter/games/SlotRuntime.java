@@ -100,10 +100,12 @@ public final class SlotRuntime {
 
 	public static void register() {
 		CommandRegistrationCallback.EVENT.register((d, access, env) -> commands(d));
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+		ServerLifecycleEvents.SERVER_STARTED.register(s -> {
+			server = s;
 			modified = -1;
 			reload();
 		});
+		ServerLifecycleEvents.SERVER_STOPPED.register(s -> server = null);
 		// Preview displays left from before a restart go as their chunk loads.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity.entityTags().contains(PREVIEW_TAG) && previews.values().stream().noneMatch(v -> v.shown.contains(entity))) entity.discard();
@@ -157,6 +159,25 @@ public final class SlotRuntime {
 		if (now == modified) return;
 		modified = now;
 		settings = Slots.read(file());
+		if (!settings.takeAway.isEmpty() && server != null) {
+			for (Machine m : settings.takeAway) takeAway(server, m);
+			NiceControlCenter.LOGGER.info("Slots: {} slot machine(s) removed in the panel taken away", settings.takeAway.size());
+			settings.takeAway.clear();
+			save();
+		}
+	}
+
+	private static MinecraftServer server;
+
+	/** The machine's blocks go (the shelves emptied first, so nothing drops); a spin on it stops. */
+	private static void takeAway(MinecraftServer server, Machine m) {
+		spinning.remove(m.id);
+		flickBack.remove(m.id);
+		ServerLevel level = GameRuntime.levelOf(server, m.base.dim);
+		if (level == null) return;
+		Parts parts = parts(m);
+		for (BlockPos b : parts.all()) if (level.getBlockEntity(b) instanceof ShelfBlockEntity shelf) shelf.getItems().clear();
+		for (BlockPos b : parts.all()) level.setBlock(b, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
 	}
 
 	/** Reads the file again right now: commands change what the panel saved last, not an older copy. */
@@ -571,17 +592,9 @@ public final class SlotRuntime {
 					ServerPlayer p = ctx.getSource().getPlayerOrException();
 					Machine m = nearest(p);
 					if (m == null) return fail(ctx, "No slot machine within 6 blocks.");
-					ServerLevel level = GameRuntime.levelOf(ctx.getSource().getServer(), m.base.dim);
-					spinning.remove(m.id);
-					flickBack.remove(m.id);
 					settings.machines.remove(m);
 					save();
-					// The blocks go too (shelves first, so their items don't drop).
-					if (level != null) {
-						Parts parts = parts(m);
-						for (BlockPos b : parts.all()) if (level.getBlockEntity(b) instanceof ShelfBlockEntity shelf) shelf.getItems().clear();
-						for (BlockPos b : parts.all()) level.setBlock(b, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
-					}
+					takeAway(ctx.getSource().getServer(), m);
 					ctx.getSource().sendSuccess(() -> Component.literal("Slot machine removed."), true);
 					return 1;
 				}))

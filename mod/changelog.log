@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.80.2
+- Slot machines removed in the panel are taken away in game too (blocks and all), also when removed while the server was off
 ## 1.80.1
 - Fix: the slot machine placing preview showed nothing (its block displays were taken for leftovers and removed at once)
 - Slot machines: the preview's buttons are answered by the server directly, so the game no longer asks to confirm a command
