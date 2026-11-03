@@ -3087,6 +3087,7 @@
           ${field('Cleared by', `<select data-d="clearOn">${opt('exit', d.clearOn, 'reaching an exit')}${opt('boss', d.clearOn, 'beating every boss')}</select>`)}
           ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
           ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}
+          <p class="pn-hint pn-field-wide">Items that must stay in the dungeon (a pickaxe in a chest, a key from a mob): give them <code>custom_data={ncc_game_only:1b}</code>, e.g. <code>minecraft:iron_pickaxe[custom_data={ncc_game_only:1b}]</code> in a loot table, chest or mob drop. They vanish when the player leaves, whatever is set here.</p>
           ${d.gear === 'kit' ? field('Kit', `<span class="pn-dg-kit">${(d.kit || []).length ? `${d.kit.length} stack${d.kit.length === 1 ? '' : 's'} <button type="button" class="np-btn small" data-dgkit="${i}">Clear</button>` : 'none'} <small>set in game: <code>/dungeon kit ${esc(d.name)}</code></small></span>`) : ''}
           ${field('Message on entering', text('enterMessage', '▶ {dungeon}: find the way out!'), true)}
           ${field('Boss bar while it\'s prepared', text('prepareMessage', 'Preparing your dungeon…'), true)}

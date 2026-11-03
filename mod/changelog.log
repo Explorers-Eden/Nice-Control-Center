@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.81.1
+- Games: game-only items: anything with custom_data={ncc_game_only:1b} (in chests, loot tables, mob drops, /give) is treated like kit: it vanishes when its player leaves a dungeon, wave fight, quick round or game area (also when found items go to the inbox) and anywhere outside a game; kept through a dungeon death with lives left
+- Games: kit items are no longer swept away while playing in a game area set to survival, or in a parkour, race or maze run
 ## 1.81.0
 - Games: five new quick rounds, set up like the others (pad, join window, spectator area and queue, kit, exit pads, records, points and Rewards triggers):
 - Whack-a-mole (moles): heads pop out of a grid of holes (/game edit … grid) for a moment, shorter as the round goes on; hit or right-click them (works in adventure mode). Heads and points per line (mob heads or player-head skins; below 0 costs points)

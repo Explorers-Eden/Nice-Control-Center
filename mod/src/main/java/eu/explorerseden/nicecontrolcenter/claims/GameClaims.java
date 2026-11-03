@@ -68,6 +68,12 @@ public final class GameClaims {
 	/** Custom-data marks on items: which claim they belong to and how they came (kit or pickup). */
 	public static final String MARK = "ncc_claim";
 	private static final String KIND = "ncc_claim_kind";
+	/**
+	 * Any item with this in its custom data (custom_data={ncc_game_only:1b}: loot tables, chests, mob drops, /give)
+	 * is a game item like a kit: it vanishes when its player leaves the dungeon, wave game, quick round or game area,
+	 * and anywhere outside one.
+	 */
+	public static final String GAME_ONLY = "ncc_game_only";
 
 	/** What a player had before entering a game claim. */
 	static final class Stash {
@@ -536,7 +542,9 @@ public final class GameClaims {
 			}
 			saveAdventure();
 		}
-		if (sweep && (removeKits(p.getInventory()) | removeKits(p.getEnderChestInventory()))) {
+		// (Not in a game area played in survival, nor in a parkour, race or maze run: they're still in the game there.)
+		if (sweep && gameClaimFor(p) == null && !eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p)
+				&& (removeKits(p.getInventory()) | removeKits(p.getEnderChestInventory()))) {
 			p.inventoryMenu.broadcastChanges();
 		}
 	}
@@ -636,7 +644,8 @@ public final class GameClaims {
 			ItemStack st = inv.getItem(i);
 			if (st.isEmpty()) continue;
 			inv.setItem(i, ItemStack.EMPTY);
-			if (keep && !"kit".equals(kind(st))) held.add(st);
+			// Found inside (game-only items too, they were found there); the kit is handed out again anyway.
+			if (keep && (!"kit".equals(kind(st)) || gameOnly(st))) held.add(st);
 		}
 		if (!held.isEmpty()) keptOnDeath.put(p.getUUID(), new Kept(null, held));
 		p.setExperienceLevels(0);
@@ -691,7 +700,14 @@ public final class GameClaims {
 		CustomData d = st.get(DataComponents.CUSTOM_DATA);
 		if (d == null) return null;
 		CompoundTag t = d.copyTag();
+		if (t.contains(GAME_ONLY)) return "kit";
 		return t.contains(MARK) ? t.getStringOr(KIND, "pickup") : null;
+	}
+
+	/** Tagged to stay in the game (see {@link #GAME_ONLY}). */
+	private static boolean gameOnly(ItemStack st) {
+		CustomData d = st.get(DataComponents.CUSTOM_DATA);
+		return d != null && d.copyTag().contains(GAME_ONLY);
 	}
 
 	private static ItemStack unmark(ItemStack st) {

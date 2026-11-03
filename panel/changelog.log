@@ -1,3 +1,6 @@
+## 1.70.1
+- Dungeons: a hint on game-only items (custom_data={ncc_game_only:1b}) next to the gear settings (mod 1.81.1)
+
 ## 1.70.0
 - Games: whack-a-mole, target practice, snowball gallery, cauldron chef and rising lava, with their own fields, setup checklists and templates (mod 1.81.0)
 - Games: the dropper is gone
