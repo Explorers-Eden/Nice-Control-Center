@@ -269,7 +269,7 @@ public final class RewardActions {
 			try {
 				String line = give(server, w.id(), w.name(), online, a, ctx.getSource().getTextName());
 				done++;
-				if (online != null && !type.equals("fly") && !type.equals("pet")) online.sendSystemMessage(Component.literal("Reward: " + line).withStyle(ChatFormatting.GOLD));
+				if (online != null && !type.equals("fly") && !type.equals("pet") && !(type.equals("points") && eu.explorerseden.nicecontrolcenter.players.PointsStore.playing(online))) online.sendSystemMessage(Component.literal("Reward: " + line).withStyle(ChatFormatting.GOLD));
 				ctx.getSource().sendSuccess(() -> Component.literal(w.name() + ": " + line), true);
 			} catch (Refused r) {
 				ctx.getSource().sendFailure(Component.literal(w.name() + ": " + r.getMessage()));

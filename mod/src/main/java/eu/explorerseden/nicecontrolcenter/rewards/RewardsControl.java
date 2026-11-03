@@ -355,7 +355,10 @@ public final class RewardsControl {
 		}
 		String rewards = String.join(", ", got);
 		run(server, p, r.commands, value, "Reward \"" + r.name + "\"");
-		String message = r.message.isBlank() && !got.isEmpty() ? "§6You got: {rewards}" : r.message;
+		// The default line is left out for points only, given in a game (its own score shows them).
+		boolean onlyPoints = !r.actions.isEmpty() && r.actions.stream().allMatch(a -> "points".equals(a.type));
+		boolean quiet = onlyPoints && p != null && eu.explorerseden.nicecontrolcenter.players.PointsStore.playing(p);
+		String message = r.message.isBlank() && !got.isEmpty() && !quiet ? "§6You got: {rewards}" : r.message;
 		if (message.isBlank()) return;
 		Component msg = Component.literal(fill(server, message.replace("{rewards}", rewards), p, value));
 		if (r.messageEveryone || p == null) server.getPlayerList().broadcastSystemMessage(msg, false);

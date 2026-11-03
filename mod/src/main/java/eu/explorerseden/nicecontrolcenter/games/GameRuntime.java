@@ -1412,10 +1412,9 @@ public final class GameRuntime {
 	static void points(ServerPlayer p, Arena a, long score, boolean timed) {
 		long n = a.pointsFixed + (timed ? 0 : Math.round(a.pointsPerScore * score));
 		if (n <= 0 || !eu.explorerseden.nicecontrolcenter.players.PointsStore.settings().enabled) return;
-		long now = eu.explorerseden.nicecontrolcenter.players.PointsStore.add(p.getStringUUID(), p.getGameProfile().name(), n,
+		// Quietly: the game shows its own score (the balance and its history say where they came from).
+		eu.explorerseden.nicecontrolcenter.players.PointsStore.add(p.getStringUUID(), p.getGameProfile().name(), n,
 				a.shown() + ": " + Games.scoreText(a.type, score, GameRuntime::clock));
-		var ps = eu.explorerseden.nicecontrolcenter.players.PointsStore.settings();
-		p.sendSystemMessage(Words.lit("+" + eu.explorerseden.nicecontrolcenter.Points.amount(ps, n) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
 	}
 
 	/** The game of their parkour, race, dropper or maze run (null when none). */

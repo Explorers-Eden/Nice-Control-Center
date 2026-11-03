@@ -269,13 +269,19 @@ public final class PointsStore {
 		return reason.isBlank() ? "from " + ctx.getSource().getTextName() : reason;
 	}
 
+	/** In a game (area, round or run): points given there go without a line of their own. */
+	public static boolean playing(ServerPlayer p) {
+		return eu.explorerseden.nicecontrolcenter.claims.GameClaims.inGame(p) || eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p);
+	}
+
 	private static int give(CommandContext<CommandSourceStack> ctx, String reason) throws CommandSyntaxException {
 		int amount = IntegerArgumentType.getInteger(ctx, "amount");
 		int done = 0;
 		for (NameAndId w : profiles(ctx)) {
 			long now = add(w.id().toString(), w.name(), amount, why(ctx, reason));
 			ServerPlayer online = ctx.getSource().getServer().getPlayerList().getPlayer(w.id());
-			if (online != null) online.sendOverlayMessage(Component.literal("+" + Points.shortAmount(settings, amount) + (reason.isBlank() ? "" : " · " + reason) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
+			// Only outside games: in one, its own score line would hide it anyway (game commands like "points give {player} {score}").
+			if (online != null && !playing(online)) online.sendOverlayMessage(Component.literal("+" + Points.shortAmount(settings, amount) + (reason.isBlank() ? "" : " · " + reason) + " (" + String.format(Locale.ROOT, "%,d", now) + ")").withStyle(ChatFormatting.GOLD));
 			done++;
 			ctx.getSource().sendSuccess(() -> Component.literal(w.name() + ": +" + Points.amount(settings, amount) + ", now " + String.format(Locale.ROOT, "%,d", now) + "."), false);
 		}
