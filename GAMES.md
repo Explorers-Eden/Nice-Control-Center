@@ -219,8 +219,11 @@ Panel: Community → NPCs; in game `/npc`.
   The panel picks how: round and round, back and forth, or to random checkpoints (a different one each time).
 - Panel: actions on a right-click and on a hit (`say: Hello {player}!`, `player: spawn`, or a command as the server),
   a reward shop, talking lines (now and then, or one per click), the hostile stats.
+- **Sounds:** pick a mob (e.g. `husk`) and the NPC uses its sounds: the idle sound now and then (also when it talks or is
+  right-clicked), the hurt sound on a hit, the death sound when a hostile one dies, steps while walking; pitch 0.5–2 and
+  volume in the panel. Empty = silent.
 - **Hostiles:** `npc:<name>` in any mob pool (wave fights, dungeon markers `mob:npc:knight x2`, maze mobs), or
-  `/npc summon <name> <x y z>`. It fights with what it holds: sword or nothing melee, bow/crossbow shoots, trident throws.
+  `/npc summon <name> <x y z>`. It fights with what it holds: sword or nothing melee, spears charge, bow/crossbow shoots, trident throws.
   Panel: health, damage, speed, armor, a size range (random each time) and the loot table it drops.
 
 ## Slot Machines

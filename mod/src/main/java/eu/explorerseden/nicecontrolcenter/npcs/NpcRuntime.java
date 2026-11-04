@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.Random;
 import java.util.UUID;
 
@@ -57,6 +58,7 @@ import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.sounds.SoundSource;
 
 import eu.explorerseden.nicecontrolcenter.Games;
 import eu.explorerseden.nicecontrolcenter.Json;
@@ -153,6 +155,8 @@ public final class NpcRuntime {
 			if (server.getTickCount() % 5 == 0) walk();
 			if (server.getTickCount() % 4 == 0) guard();
 			if (server.getTickCount() % 20 == 0) talk(server);
+			if (server.getTickCount() % 20 == 0) idle(server);
+			if (server.getTickCount() % 5 == 0) steps();
 		});
 		ServerEntityEvents.ENTITY_LOAD.register((e, level) -> {
 			String pair = tag(e, PAIR);
@@ -177,6 +181,8 @@ public final class NpcRuntime {
 			if (eu.explorerseden.nicecontrolcenter.games.QuickRuntime.serve(p, n.name)) return InteractionResult.SUCCESS;
 			if (!ready(n, p)) return InteractionResult.SUCCESS;
 			run(p, n, n.onClick);
+			// A talking line plays it in say().
+			if (!n.clickLines || n.lines.isEmpty()) voice(n, entity, "ambient");
 			if (n.clickLines && !n.lines.isEmpty()) {
 				Placed st = placed.computeIfAbsent(n.id, k -> new Placed());
 				String line = n.lines.get(st.clickLine++ % n.lines.size());
@@ -198,6 +204,7 @@ public final class NpcRuntime {
 				return InteractionResult.FAIL;
 			}
 			Npc n = npcOf(entity);
+			if (n != null && settings.enabled && hurtReady(entity)) voice(n, entity, "hurt");
 			if (n != null && settings.enabled && !n.onHit.isEmpty() && ready(n, p)) run(p, n, n.onHit);
 			return InteractionResult.FAIL;
 		});
@@ -221,6 +228,8 @@ public final class NpcRuntime {
 			Puppet pp = puppets.get(tag(entity, PAIR));
 			if (pp == null || pp.body == null || !(pp.body.level() instanceof ServerLevel l)) return;
 			l.broadcastDamageEvent(pp.body, source);
+			Npc n = npcOf(pp.body);
+			if (n != null) voice(n, pp.body, "hurt");
 		});
 	}
 
@@ -344,6 +353,15 @@ public final class NpcRuntime {
 
 	/** Every five seconds: placed NPCs where they should be (once their chunk is loaded), outdated ones gone. */
 	public static void keep(MinecraftServer server) {
+		// Hostiles of an NPC that was removed go too (not when the file just couldn't be read).
+		if (settings.readOk) {
+			for (Puppet p : puppets.values()) {
+				Entity any = p.body != null ? p.body : p.driver;
+				if (any == null || any.isRemoved() || !any.entityTags().contains(HOSTILE) || npcOf(any) != null) continue;
+				if (p.driver != null) p.driver.discard();
+				if (p.body != null) p.body.discard();
+			}
+		}
 		Map<String, LivingEntity> bodies = new HashMap<>();
 		Map<String, Mob> drivers = new HashMap<>();
 		Map<String, Entity> seats = new HashMap<>();
@@ -636,6 +654,8 @@ public final class NpcRuntime {
 			if (d != null && (d.isRemoved() || d.isDeadOrDying())) {
 				Entity.RemovalReason why = d.getRemovalReason();
 				if (b != null && !b.isRemoved() && (d.isDeadOrDying() || why != null && why.shouldDestroy())) {
+					Npc dying = npcOf(b);
+					if (dying != null && d.isDeadOrDying()) voice(dying, b, "death");
 					if (b.level() instanceof ServerLevel l) l.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF, b.getX(), b.getY() + 1, b.getZ(), 12, 0.3, 0.6, 0.3, 0.02);
 					b.discard();
 				}
@@ -679,6 +699,7 @@ public final class NpcRuntime {
 				b.setCustomNameVisible(false);
 				b.setCustomName(null);
 			}
+			// Drawing, aiming, raising, charging (a spear's charge hits nothing on the body: KineticNoDamageMixin).
 			if (d.isUsingItem() && !b.isUsingItem()) b.startUsingItem(d.getUsedItemHand());
 			else if (!d.isUsingItem() && b.isUsingItem()) b.stopUsingItem();
 		}
@@ -942,6 +963,70 @@ public final class NpcRuntime {
 		}
 	}
 
+	// ---------------------------------------------------------------- voice (a mob's sounds)
+
+	/** Mobs that use another one's sounds. */
+	private static final Map<String, String> SOUNDS_OF = Map.of("mooshroom", "cow", "trader_llama", "llama", "giant", "zombie");
+	private static final Map<Entity, Vec3> lastStep = new java.util.WeakHashMap<>();
+	private static final Map<Entity, Long> lastHurt = new java.util.WeakHashMap<>();
+
+	/** The NPC's voice mob's sound for the event (ambient, hurt, death, step) at the entity; nothing without one. */
+	static void voice(Npc n, Entity at, String event) {
+		if (n.voice.isEmpty() || !(at.level() instanceof ServerLevel level)) return;
+		Identifier type = Identifier.tryParse(n.voice);
+		if (type == null) return;
+		String path = SOUNDS_OF.getOrDefault(type.getPath(), type.getPath());
+		Identifier id = Identifier.tryParse(type.getNamespace() + ":entity." + path + "." + event);
+		var sound = id == null ? java.util.Optional.<net.minecraft.sounds.SoundEvent>empty() : BuiltInRegistries.SOUND_EVENT.getOptional(id);
+		if (sound.isEmpty()) return;
+		float pitch = (float) (n.voicePitch * (1 + (random.nextFloat() - random.nextFloat()) * 0.2));
+		float volume = (float) (n.voiceVolume * (event.equals("step") ? 0.15 : 1));
+		boolean hostile = at.entityTags().contains(HOSTILE);
+		level.playSound(null, at.getX(), at.getY(), at.getZ(), sound.get(), hostile ? SoundSource.HOSTILE : SoundSource.NEUTRAL, volume, pitch);
+	}
+
+	/** Hits on a placed NPC sound at most every 0.4 s (like a mob that just got hurt). */
+	private static boolean hurtReady(Entity e) {
+		long now = System.currentTimeMillis();
+		if (lastHurt.getOrDefault(e, 0L) > now - 400) return false;
+		lastHurt.put(e, now);
+		return true;
+	}
+
+	/** Now and then (about every 8 s) the idle sound, with players close by. */
+	private static void idle(MinecraftServer server) {
+		if (!settings.enabled) return;
+		Set<LivingEntity> bodies = new java.util.HashSet<>();
+		for (Placed st : placed.values()) if (st.body != null && !st.body.isRemoved()) bodies.add(st.body);
+		for (Puppet p : puppets.values()) if (p.body != null && !p.body.isRemoved()) bodies.add(p.body);
+		for (LivingEntity b : bodies) {
+			if (random.nextInt(8) != 0) continue;
+			Npc n = npcOf(b);
+			if (n == null || n.voice.isEmpty()) continue;
+			if (b.level().getNearestPlayer(b, 16) == null) continue;
+			voice(n, b, "ambient");
+		}
+	}
+
+	/** Walking and fighting NPCs: a step sound every couple of blocks. */
+	private static void steps() {
+		for (Puppet p : puppets.values()) {
+			LivingEntity b = p.body;
+			if (b == null || b.isRemoved() || p.driver == null || !p.driver.onGround()) continue;
+			Npc n = npcOf(b);
+			if (n == null || n.voice.isEmpty()) continue;
+			Vec3 was = lastStep.get(b), now = b.position();
+			if (was == null || was.distanceToSqr(now) > 100) {
+				lastStep.put(b, now);
+				continue;
+			}
+			double dx = now.x - was.x, dz = now.z - was.z;
+			if (dx * dx + dz * dz < 1.6 * 1.6) continue;
+			lastStep.put(b, now);
+			voice(n, b, "step");
+		}
+	}
+
 	/** Now and then a line to the players close by; the line under the name goes back afterwards. */
 	private static void talk(MinecraftServer server) {
 		long now = System.currentTimeMillis();
@@ -973,6 +1058,7 @@ public final class NpcRuntime {
 	private static void say(Npc n, Placed st, String line, List<ServerPlayer> to) {
 		for (ServerPlayer p : to) p.sendSystemMessage(chatName(n).append(Component.literal(line).withStyle(ChatFormatting.WHITE)));
 		if (st.body != null && !st.body.isRemoved()) {
+			voice(n, st.body, "ambient");
 			describe(st.body, line);
 			st.talkUntil = System.currentTimeMillis() + 5_000;
 		}

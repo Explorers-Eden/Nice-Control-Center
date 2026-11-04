@@ -30,6 +30,8 @@ public final class Npcs {
 		public List<Npc> npcs = new ArrayList<>();
 		/** Reward shop NPCs were moved over (once). */
 		public boolean shopsMigrated = false;
+		/** False when the file couldn't be read (nothing is removed for missing NPCs then); not saved. */
+		public transient boolean readOk = true;
 		/** For skins from any PNG link (mineskin.org, free); empty = none set. */
 		public String mineskinKey = "";
 
@@ -105,6 +107,13 @@ public final class Npcs {
 		/** Size: each time it's made it gets a random size between these (1 = a player's size). */
 		public double scaleMin = 1;
 		public double scaleMax = 1;
+		/** Sounds like this mob (e.g. minecraft:husk): its idle, hurt, death and step sounds; empty = silent. */
+		public String voice = "";
+		/** 0.5–2 (1 = the mob's own); a little random around it, like mobs. */
+		public double voicePitch = 1;
+		/** 0.1–3 (1 = the mob's own). */
+		public double voiceVolume = 1;
+
 		/** As a hostile: what it drops when killed (a loot table id, e.g. minecraft:entities/zombie); empty = nothing. */
 		public String lootTable = "";
 
@@ -160,6 +169,11 @@ public final class Npcs {
 			lineEverySeconds = Math.max(5, Math.min(3600, lineEverySeconds));
 			scaleMin = Math.max(0.1, Math.min(5, scaleMin == 0 ? 1 : scaleMin));
 			scaleMax = Math.max(scaleMin, Math.min(5, scaleMax == 0 ? 1 : scaleMax));
+			voice = voice == null ? "" : voice.strip().toLowerCase(Locale.ROOT).replace(' ', '_');
+			if (!voice.isEmpty() && !voice.contains(":")) voice = "minecraft:" + voice;
+			if (!voice.matches("([a-z0-9_.-]+:[a-z0-9_./-]+)?")) voice = "";
+			voicePitch = Math.max(0.5, Math.min(2, voicePitch == 0 ? 1 : voicePitch));
+			voiceVolume = Math.max(0.1, Math.min(3, voiceVolume == 0 ? 1 : voiceVolume));
 			lootTable = lootTable == null ? "" : lootTable.strip().toLowerCase(java.util.Locale.ROOT);
 			if (hostile == null) hostile = new Hostile();
 			hostile.health = Math.max(1, Math.min(2048, hostile.health));
@@ -227,11 +241,18 @@ public final class Npcs {
 		try {
 			if (!Files.exists(file)) return new Settings().fill();
 			Settings s = Json.GSON.fromJson(Files.readString(file), Settings.class);
-			if (s == null || validate(s) != null) return new Settings().fill();
+			if (s == null || validate(s) != null) return broken();
+			s.readOk = true;
 			return s;
 		} catch (IOException | RuntimeException e) {
-			return new Settings().fill();
+			return broken();
 		}
+	}
+
+	private static Settings broken() {
+		Settings s = new Settings().fill();
+		s.readOk = false;
+		return s;
 	}
 
 	public static void write(Path file, Settings settings) throws IOException {

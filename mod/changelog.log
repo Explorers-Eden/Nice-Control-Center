@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.83.0
+- NPCs: a voice: pick a mob (e.g. husk) and the NPC makes its sounds: now and then its idle sound (and when it talks or is right-clicked), the hurt sound when hit, the death sound when a hostile one dies, and steps while walking; with its own pitch and volume (panel: NPCs → Sounds)
+- Fix: a hostile NPC holding a spear crashed the server when its fighter charged (the mannequin showing the charge has no attack damage); the charge now shows on the NPC and only the fighter behind it hits
+- Fix: parched from mob pools come with their bow, like skeletons, strays and bogged
 ## 1.82.2
 - Games: with claim admin bypass on (/claim admin bypass), pads no longer pull you into games: entrances, watch and exit pads, wave and quick-round start points and dungeon pads leave you alone (standing on one says so), and a party leader starting a game doesn't bring you along
 ## 1.82.1

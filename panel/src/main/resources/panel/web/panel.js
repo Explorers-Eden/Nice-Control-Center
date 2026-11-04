@@ -2404,6 +2404,11 @@
     return `<div class="pn-kit-inv"><div class="pn-kit-row">${cell(39, 'head')}${cell(38, 'chest')}${cell(37, 'legs')}${cell(36, 'feet')}<span class="pn-kit-gap"></span>${cell(0, 'mainhand')}${cell(40, 'offhand')}</div></div>`;
   }
 
+  /** Mobs to pick a voice from (any other mob id works too). */
+  const NC_VOICES = ['villager', 'wandering_trader', 'pillager', 'vindicator', 'evoker', 'witch', 'piglin', 'piglin_brute', 'zombified_piglin', 'zombie', 'husk', 'drowned',
+    'zombie_villager', 'skeleton', 'stray', 'bogged', 'parched', 'wither_skeleton', 'creeper', 'spider', 'enderman', 'blaze', 'ghast', 'iron_golem', 'snow_golem', 'allay',
+    'fox', 'cat', 'pig', 'cow', 'sheep', 'chicken', 'goat', 'llama', 'panda', 'parrot', 'bee', 'frog', 'sniffer', 'camel', 'warden', 'ravager'];
+
   function renderNpcs() {
     const edit = can('settings.server');
     const s = nc.settings;
@@ -2464,6 +2469,10 @@
           ${field('Lines', `<select data-n="clickLines" data-bool="1">${opt(false, n.clickLines, 'now and then to players close by')}${opt(true, n.clickLines, 'the next one on each right-click')}</select>`)}
           ${field('Close by (blocks)', num('lineRadius', 2, 32, 1, n.lineRadius))}
           ${field('About every (seconds)', num('lineEverySeconds', 5, 3600, 1, n.lineEverySeconds))}
+          <h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-volume-up"></i> Sounds</h4>
+          ${field('Sounds like (a mob: its idle, hurt, death and step sounds; empty = silent)', `<input type="text" data-n="voice" value="${esc((n.voice || '').replace(/^minecraft:/, ''))}" list="pn-nc-voices" placeholder="husk">`)}
+          ${field('Pitch (0.5–2; 1 = the mob\'s own)', num('voicePitch', 0.5, 2, 0.05, n.voicePitch || 1))}
+          ${field('Volume (0.1–3)', num('voiceVolume', 0.1, 3, 0.1, n.voiceVolume || 1))}
           <h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-lightning"></i> As a hostile (<code>npc:${esc(n.name)}</code> in mob pools)</h4>
           ${field('Health', hnum('health', 1, 2048))}
           ${field('Damage', hnum('damage', 0, 200, 0.5))}
@@ -2474,6 +2483,7 @@
         </div>
       </section>`;
     }).join('') || '<p class="np-empty">No NPCs yet. Stand where one should be in game and type <code>/npc create Guide</code>, or <code>/npc adopt Guide</code> next to a mannequin you made before.</p>';
+    $('pn-nc-list').insertAdjacentHTML('beforeend', `<datalist id="pn-nc-voices">${NC_VOICES.map((v) => `<option value="${v}">`).join('')}</datalist>`);
     $('pn-nc-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
     $('pn-nc-save').disabled = !edit;
   }
@@ -2537,7 +2547,7 @@
     let name = 'npc';
     for (let k = 2; nc.settings.npcs.some((x) => x.name.toLowerCase() === name.toLowerCase()); k++) name = 'npc' + k;
     nc.settings.npcs.push({ id: '', name, title: name, description: '', skin: '', pose: 'standing', mainHand: 'right', equipment: [], spot: null, lookAtPlayers: true,
-      nameColor: '', path: [], pathMode: 'loop', walkSpeed: 0.25, scaleMin: 1, scaleMax: 1, lootTable: '', onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false,
+      nameColor: '', path: [], pathMode: 'loop', walkSpeed: 0.25, scaleMin: 1, scaleMax: 1, lootTable: '', onClick: [], onHit: [], cooldownSeconds: 1, shop: '', lines: [], lineRadius: 8, lineEverySeconds: 20, clickLines: false, voice: '', voicePitch: 1, voiceVolume: 1,
       hostile: { health: 20, damage: 3, speed: 0.25, armor: 0, followRange: 32 } });
     ncOpen.add('new' + (nc.settings.npcs.length - 1));
     ncChanged(true);

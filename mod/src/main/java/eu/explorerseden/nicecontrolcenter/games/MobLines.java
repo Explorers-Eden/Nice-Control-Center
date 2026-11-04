@@ -109,7 +109,7 @@ public final class MobLines {
 	/** The weapon a mob spawns with in the wild (null = none or not always). */
 	static String weapon(String id) {
 		return switch (id) {
-			case "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:illusioner" -> "minecraft:bow";
+			case "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:parched", "minecraft:illusioner" -> "minecraft:bow";
 			case "minecraft:wither_skeleton" -> "minecraft:stone_sword";
 			case "minecraft:pillager" -> "minecraft:crossbow";
 			case "minecraft:vindicator" -> "minecraft:iron_axe";
