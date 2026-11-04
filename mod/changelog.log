@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.82.0
+- Parties: a general party system instead of the dungeon one: /party opens a menu (create, invite someone from a list, remove, leave, disband); /party create, invite, accept, leave, disband, kick and list still work. Up to 8 players; the party stays (even with only the leader) until the leader disbands it, logs out or leaves the game worlds (Flying Fair, the dungeons, the game hub's dimension); members leave the same way or with /party leave
+- Parties only exist in Flying Fair, the dungeons and the game hub's dimension
+- Parties too big for a game take turns: wave fights play with the first ones and queue the rest in the spectator area for the next game; full quick rounds put the rest in the spectator area for the next round; dungeons send the party in groups, each in its own copy. Everyone is told who plays now and who next
+- Game entrances bring the leader's party along to quick rounds too (not only wave fights)
+- Entrances: the player line always reads "1–X Players" (quick rounds: players at most; wave fights: party size; parkour: lanes; races and mazes: "1+ Players")
 ## 1.81.2
 - Games: entrances show a line under the subtitle with how many can play and who's waiting: "1–8 Players · Round On · 3 In Queue" for quick rounds, "Party Of 1–4 · Fight On · 1 Party In Queue" for wave fights, "Solo · 2 Running" for parkour, races and mazes (updated every two seconds)
 ## 1.81.1

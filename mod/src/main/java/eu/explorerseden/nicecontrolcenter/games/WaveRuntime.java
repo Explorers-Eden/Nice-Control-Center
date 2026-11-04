@@ -244,7 +244,10 @@ public final class WaveRuntime {
 				continue;
 			}
 			List<ServerPlayer> party = partyNear(server, p, a);
-			if (party.size() < a.minParty || party.size() > a.maxParty) {
+			// Too many for one game: the first ones play, the rest the game after (see below).
+			List<ServerPlayer> rest = party.size() > a.maxParty ? new ArrayList<>(party.subList(a.maxParty, party.size())) : List.of();
+			if (!rest.isEmpty()) party = new ArrayList<>(party.subList(0, a.maxParty));
+			if (party.size() < a.minParty) {
 				if (onPad.merge(p.getUUID(), 2, Integer::sum) % 40 == 2) {
 					p.sendOverlayMessage(Words.lit(a.shown() + " is for " + (a.minParty == a.maxParty ? a.minParty : a.minParty + "–" + a.maxParty) + " player" + (a.maxParty == 1 ? "" : "s")
 							+ " (your party here: " + party.size() + ")").withStyle(ChatFormatting.RED));
@@ -256,7 +259,7 @@ public final class WaveRuntime {
 				if (ticks % 20 == 2) {
 					Game busy = games.get(a.id);
 					String who = party.size() == 1 ? "" : " with " + String.join(", ", party.subList(1, party.size()).stream().map(x -> x.getGameProfile().name()).toList());
-					String what = busy == null ? a.shown() + who + " starts" : "Queueing for " + a.shown() + who;
+					String what = (busy == null ? a.shown() + who + " starts" : "Queueing for " + a.shown() + who) + (rest.isEmpty() ? "" : " (" + rest.size() + " next game)");
 					p.sendOverlayMessage(Words.lit(what + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.GOLD));
 					p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.6f, 0.8f);
 				}
@@ -264,12 +267,21 @@ public final class WaveRuntime {
 			}
 			onPad.remove(p.getUUID());
 			cooldown.put(p.getUUID(), now + 5000);
+			if (!rest.isEmpty()) {
+				// Everyone hears who plays now and who next; the rest wait in the spectator area (queued right after).
+				String now1 = String.join(", ", party.stream().map(x -> x.getGameProfile().name()).toList());
+				String later = String.join(", ", rest.stream().map(x -> x.getGameProfile().name()).toList());
+				for (ServerPlayer m : party) m.sendSystemMessage(Words.lit("[Party] " + a.shown() + " takes " + a.maxParty + ": " + now1 + " play now, " + later + " the next game.").withStyle(ChatFormatting.LIGHT_PURPLE));
+				for (ServerPlayer m : rest) m.sendSystemMessage(Words.lit("[Party] " + a.shown() + " takes " + a.maxParty + ": " + now1 + " play now, you the next game.").withStyle(ChatFormatting.LIGHT_PURPLE));
+			}
 			if (games.containsKey(a.id) || !queues.getOrDefault(a.id, new ArrayDeque<>()).isEmpty()) {
 				queue(server, a, party);
+				if (!rest.isEmpty() && rest.size() >= a.minParty) queue(server, a, rest);
 				continue;
 			}
 			String err = start(server, a, party);
 			if (err != null) p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
+			else if (!rest.isEmpty() && rest.size() >= a.minParty) queue(server, a, rest);
 		}
 	}
 

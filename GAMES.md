@@ -66,7 +66,7 @@ game-area options, including the game mode inside).
 - The goal has an exit ring and an "Exit" label in the game's colour.
 
 ## Wave fight (`waves`)
-A party of 1–4 (`/party invite <player>`) fights waves of mobs.
+A party of 1–4 (see Parties) fights waves of mobs.
 - Create it where players should appear (the spawn; move it with `/game edit <name> spawn`), then `corner1` / `corner2` (the fight box),
   `mobspawn add` (several), optional `spectate [radius]`, `back add` (exit pads inside: 5 s on one leaves),
   `kit` (what you carry becomes the kit).
@@ -134,6 +134,21 @@ Heads hidden in the world; players right-click them.
   (each joins the hunt). `head add` / `head remove` for a head you look at. Break one in creative to take it out.
 - Panel: reward every … heads (`{found}`, `{total}`), all found; where every head is.
 - Rewards trigger "Finds hidden heads".
+
+## Parties
+Players who play together, in Flying Fair and the dungeons (and the game hub's dimension).
+- `/party` opens the party menu (create, invite someone from a list, remove players, leave, disband). The commands
+  work too: `/party create`, `/party invite <player>`, `/party accept`, `/party leave`, `/party disband`,
+  `/party kick <player>`, `/party list`.
+- The leader makes it (create, or just invite someone); up to 8 players. It stays, even with only the leader, until
+  the leader disbands it, logs out or leaves Flying Fair and the dungeons. Others can leave any time; going to
+  another dimension or logging out leaves too.
+- Dungeons and wave fights start for the party from the leader on the pad (party members within 16 blocks come
+  along); game entrances bring the party with the leader, quick rounds included.
+- Too many for a game: everyone is told who plays now and who next. Wave fights: the first ones play, the rest
+  queue in the spectator area for the next game. Quick rounds: once the round is full, the rest wait in the spectator
+  area and play the next round (without a spectator area they're told it's full). Dungeons: the party goes in
+  groups, each in a copy of its own (or the queue when every copy is in use).
 
 ## Dungeons
 Built anywhere in the world, copied fresh for every party into the dungeon dimension and wiped again when they're

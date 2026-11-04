@@ -722,6 +722,26 @@ public final class DungeonRuntime {
 			cooldown.put(p.getUUID(), now + 5000);
 			List<UUID> missing = new ArrayList<>(Parties.members(p.getUUID()));
 			party.forEach(x -> missing.remove(x.getUUID()));
+			// More than any dungeon of the pool takes: the party splits into groups, each in a copy of its own.
+			int most = poolMax(pad.pool);
+			if (most > 0 && party.size() > most) {
+				List<List<ServerPlayer>> groups = new ArrayList<>();
+				for (int i = 0; i < party.size(); i += most) groups.add(new ArrayList<>(party.subList(i, Math.min(party.size(), i + most))));
+				for (ServerPlayer m : party) {
+					m.sendSystemMessage(Words.lit("[Party] These dungeons take " + most + " at most: you go in " + groups.size() + " groups ("
+							+ String.join(" / ", groups.stream().map(g -> String.join(", ", g.stream().map(x -> x.getGameProfile().name()).toList())).toList()) + ").").withStyle(ChatFormatting.LIGHT_PURPLE));
+				}
+				Games.Pos wait = settings.waiting.get(pad.pool);
+				for (List<ServerPlayer> g : groups) {
+					if (wait != null && (freeSlot() < 0 || !queues.getOrDefault(pad.pool, new java.util.ArrayDeque<>()).isEmpty())) {
+						queue(server, pad.pool, wait, g);
+						continue;
+					}
+					String err = start(server, g, pad.pool);
+					if (err != null) for (ServerPlayer m : g) m.sendSystemMessage(Words.lit(err + " Try again once a dungeon is free.").withStyle(ChatFormatting.RED));
+				}
+				continue;
+			}
 			// Every copy in use (or others waiting already) and the pool has a waiting area: the party queues there.
 			Games.Pos area = settings.waiting.get(pad.pool);
 			if (area != null && (freeSlot() < 0 || !queues.getOrDefault(pad.pool, new java.util.ArrayDeque<>()).isEmpty())) {
@@ -845,6 +865,13 @@ public final class DungeonRuntime {
 				level.sendParticles(ParticleTypes.WITCH, pad.pos.x + Math.cos(a) * 0.8, pad.pos.y + 0.15, pad.pos.z + Math.sin(a) * 0.8, 1, 0, 0, 0, 0);
 			}
 		}
+	}
+
+	/** The most players any ready dungeon of the pool takes (0 = none ready). */
+	private static int poolMax(String pool) {
+		int most = 0;
+		for (Dungeon d : settings.dungeons) if (d.enabled && d.saved() && d.pool.equals(pool) && d.hasMarker("start")) most = Math.max(most, d.maxParty);
+		return most;
 	}
 
 	/** Starts a run for these players with a random dungeon of the pool; returns why not, or null. */

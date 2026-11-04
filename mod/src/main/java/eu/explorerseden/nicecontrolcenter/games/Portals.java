@@ -148,7 +148,7 @@ public final class Portals {
 			default -> {
 				// Wave games and quick rounds start from their start point: the party (within 8 blocks) comes along.
 				List<ServerPlayer> going = new ArrayList<>(List.of(p));
-				if (a.type.equals("waves") && Parties.isLeader(p.getUUID())) {
+				if ((a.type.equals("waves") || Games.quick(a.type)) && Parties.isLeader(p.getUUID())) {
 					for (UUID m : Parties.members(p.getUUID())) {
 						ServerPlayer mp = server.getPlayerList().getPlayer(m);
 						if (mp != null && mp != p && mp.level() == p.level() && mp.distanceToSqr(p) < 64 && !WaveRuntime.inGame(mp)) going.add(mp);
@@ -305,7 +305,7 @@ public final class Portals {
 		return t;
 	}
 
-	/** How many play it and who's waiting: "1–8 players · round on · 3 in queue", "Party of 1–4", "Solo · 2 running". */
+	/** How many play it and who's waiting: "1–8 players · round on · 3 in queue", "1–4 players · 1 party in queue", "1+ players · 2 running". */
 	private static String whoLine(Arena a) {
 		if (a.type.equals("heads")) return "";
 		if (Games.quick(a.type)) {
@@ -313,7 +313,7 @@ public final class Portals {
 			long playing = live.get("playing") instanceof Number n ? n.longValue() : 0;
 			long queued = live.get("queued") instanceof Number n ? n.longValue() : 0;
 			boolean joining = Boolean.TRUE.equals(live.get("waiting"));
-			String line = a.maxPlayers <= 1 ? "1 player" : "1–" + a.maxPlayers + " players";
+			String line = "1–" + a.maxPlayers + " players";
 			if (joining && playing > 0) line += " · " + playing + " joining";
 			else if (playing > 0) line += " · round on";
 			if (queued > 0) line += " · " + queued + " in queue";
@@ -323,13 +323,14 @@ public final class Portals {
 			Map<String, Object> live = WaveRuntime.live(a.id);
 			long playing = live.get("playing") instanceof Number n ? n.longValue() : 0;
 			long queued = live.get("queued") instanceof Number n ? n.longValue() : 0;
-			String line = a.minParty == a.maxParty ? "Party of " + a.maxParty : "Party of " + a.minParty + "–" + a.maxParty;
+			String line = "1–" + a.maxParty + " players";
 			if (playing > 0) line += " · fight on";
 			if (queued > 0) line += " · " + queued + (queued == 1 ? " party" : " parties") + " in queue";
 			return line;
 		}
 		int running = GameRuntime.running(a.id);
-		return "Solo" + (running > 0 ? " · " + running + " running" : "");
+		// Parkour: a lane each; races and mazes take any number.
+		return (a.type.equals("parkour") ? "1–" + a.lanes + " players" : "1+ players") + (running > 0 ? " · " + running + " running" : "");
 	}
 
 	private static Component watchText(Arena a) {

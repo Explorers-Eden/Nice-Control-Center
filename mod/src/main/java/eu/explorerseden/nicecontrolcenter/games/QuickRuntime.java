@@ -355,7 +355,15 @@ public final class QuickRuntime {
 				rounds.put(a.id, r);
 			}
 			if (r.players.size() >= a.maxPlayers) {
-				if (server.getTickCount() % 40 == 0) p.sendOverlayMessage(Words.lit(a.shown() + " is full (" + a.maxPlayers + "); the next round starts after it").withStyle(ChatFormatting.RED));
+				// Full: with a spectator area they wait there and play the next round (a big party takes turns).
+				if (a.spectate != null && !r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && toSpectate(server, a, p)) {
+					r.next.add(p.getUUID());
+					r.names.putIfAbsent(p.getUUID(), p.getGameProfile().name());
+					title(p, a);
+					p.sendSystemMessage(Words.lit(a.shown() + " takes " + a.maxPlayers + " players and this round is full: you play the next one (" + r.next.size() + " in the queue). Wait here.").withStyle(ChatFormatting.GOLD));
+				} else if (server.getTickCount() % 40 == 0) {
+					p.sendOverlayMessage(Words.lit(a.shown() + " is full (" + a.maxPlayers + "); the next round starts after it").withStyle(ChatFormatting.RED));
+				}
 				continue;
 			}
 			r.players.add(p.getUUID());
