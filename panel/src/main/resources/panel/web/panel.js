@@ -2405,9 +2405,11 @@
   }
 
   /** Mobs to pick a voice from (any other mob id works too). */
-  const NC_VOICES = ['villager', 'wandering_trader', 'pillager', 'vindicator', 'evoker', 'witch', 'piglin', 'piglin_brute', 'zombified_piglin', 'zombie', 'husk', 'drowned',
-    'zombie_villager', 'skeleton', 'stray', 'bogged', 'parched', 'wither_skeleton', 'creeper', 'spider', 'enderman', 'blaze', 'ghast', 'iron_golem', 'snow_golem', 'allay',
-    'fox', 'cat', 'pig', 'cow', 'sheep', 'chicken', 'goat', 'llama', 'panda', 'parrot', 'bee', 'frog', 'sniffer', 'camel', 'warden', 'ravager'];
+  const NC_VOICES = [
+    'allay', 'bee', 'blaze', 'bogged', 'camel', 'cat', 'chicken', 'cow', 'creeper', 'drowned', 'enderman', 'evoker', 'fox', 'frog', 'ghast', 'goat',
+    'husk', 'iron_golem', 'llama', 'panda', 'parched', 'parrot', 'pig', 'piglin', 'piglin_brute', 'pillager', 'ravager', 'sheep', 'skeleton',
+    'sniffer', 'snow_golem', 'spider', 'stray', 'villager', 'vindicator', 'wandering_trader', 'warden', 'witch', 'wither_skeleton', 'zombie',
+    'zombie_villager', 'zombified_piglin'];
 
   function renderNpcs() {
     const edit = can('settings.server');
