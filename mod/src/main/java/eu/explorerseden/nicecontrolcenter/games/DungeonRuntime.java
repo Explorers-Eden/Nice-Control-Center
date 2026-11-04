@@ -700,7 +700,7 @@ public final class DungeonRuntime {
 		long now = System.currentTimeMillis();
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			Dungeons.Pad pad = padUnder(p);
-			if (pad == null || playing.containsKey(p.getUUID()) || queued(p.getUUID()) || p.isSpectator() || cooldown.getOrDefault(p.getUUID(), 0L) > now) {
+			if (pad == null || playing.containsKey(p.getUUID()) || queued(p.getUUID()) || p.isSpectator() || cooldown.getOrDefault(p.getUUID(), 0L) > now || Portals.ignored(p, true)) {
 				onPad.remove(p.getUUID());
 				continue;
 			}
@@ -840,7 +840,7 @@ public final class DungeonRuntime {
 		for (UUID id : Parties.members(leader.getUUID())) {
 			if (id.equals(leader.getUUID())) continue;
 			ServerPlayer m = server.getPlayerList().getPlayer(id);
-			if (m == null || m.level() != leader.level() || playing.containsKey(id) || m.isSpectator() || cooldown.getOrDefault(id, 0L) > now) continue;
+			if (m == null || m.level() != leader.level() || playing.containsKey(id) || m.isSpectator() || cooldown.getOrDefault(id, 0L) > now || Portals.ignored(m, false)) continue;
 			if (m.distanceToSqr(pad.pos.x, pad.pos.y, pad.pos.z) <= PARTY_RANGE * PARTY_RANGE) out.add(m);
 		}
 		return out;

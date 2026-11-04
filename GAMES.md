@@ -149,6 +149,8 @@ Players who play together, in Flying Fair and the dungeons (and the game hub's d
   queue in the spectator area for the next game. Quick rounds: once the round is full, the rest wait in the spectator
   area and play the next round (without a spectator area they're told it's full). Dungeons: the party goes in
   groups, each in a copy of its own (or the queue when every copy is in use).
+- Admins with claim bypass on (`/claim admin bypass`) are left alone by every pad (entrances, start points, dungeon
+  pads, exit pads) and aren't brought along with a party, so they can walk around the games while building.
 
 ## Dungeons
 Built anywhere in the world, copied fresh for every party into the dungeon dimension and wiped again when they're

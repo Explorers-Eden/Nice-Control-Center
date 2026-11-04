@@ -328,7 +328,7 @@ public final class QuickRuntime {
 				continue;
 			}
 			Arena a = startPad(p);
-			if (a == null || p.isSpectator() || cooldown.getOrDefault(p.getUUID(), 0L) > now || WaveRuntime.inGame(p) || GameRuntime.inRun(p)) continue;
+			if (a == null || p.isSpectator() || cooldown.getOrDefault(p.getUUID(), 0L) > now || WaveRuntime.inGame(p) || GameRuntime.inRun(p) || Portals.ignored(p, true)) continue;
 			if (!GameRuntime.settings().enabled) continue;
 			Round r = rounds.get(a.id);
 			if (r != null && r.players.contains(p.getUUID())) continue;

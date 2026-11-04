@@ -72,6 +72,16 @@ public final class Portals {
 
 	// ---------------------------------------------------------------- stepping in
 
+	/**
+	 * Admins with claim bypass on (/claim admin bypass) aren't pulled into games by pads (entrances, start points,
+	 * dungeon pads) or along with their party; standing on one tells them so now and then.
+	 */
+	public static boolean ignored(ServerPlayer p, boolean onPad) {
+		if (!eu.explorerseden.nicecontrolcenter.claims.ClaimTool.bypassing(p)) return false;
+		if (onPad && p.level().getGameTime() % 40 < 2) p.sendOverlayMessage(Words.lit("Claim bypass is on: pads leave you alone").withStyle(ChatFormatting.GRAY));
+		return true;
+	}
+
 	private static boolean on(ServerPlayer p, Games.Pos pad) {
 		if (pad == null || !pad.dim.equals(dim(p))) return false;
 		double dx = p.getX() - pad.x, dz = p.getZ() - pad.z, dy = p.getY() - pad.y;
@@ -92,7 +102,7 @@ public final class Portals {
 				if (!WaveRuntime.inGame(p) && !QuickRuntime.inGame(p)) for (Games.Pos b : a.exitPads) if (on(p, b)) { hit = a; kind = Kind.BACK; }
 				if (hit != null) break;
 			}
-			if (hit == null || p.isSpectator()) {
+			if (hit == null || p.isSpectator() || ignored(p, true)) {
 				stepOffFirst.remove(id);
 				holding.remove(id);
 				continue;
@@ -151,7 +161,7 @@ public final class Portals {
 				if ((a.type.equals("waves") || Games.quick(a.type)) && Parties.isLeader(p.getUUID())) {
 					for (UUID m : Parties.members(p.getUUID())) {
 						ServerPlayer mp = server.getPlayerList().getPlayer(m);
-						if (mp != null && mp != p && mp.level() == p.level() && mp.distanceToSqr(p) < 64 && !WaveRuntime.inGame(mp)) going.add(mp);
+						if (mp != null && mp != p && mp.level() == p.level() && mp.distanceToSqr(p) < 64 && !WaveRuntime.inGame(mp) && !ignored(mp, false)) going.add(mp);
 					}
 				}
 				for (ServerPlayer g : going) {

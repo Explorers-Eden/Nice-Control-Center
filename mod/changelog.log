@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.82.2
+- Games: with claim admin bypass on (/claim admin bypass), pads no longer pull you into games: entrances, watch and exit pads, wave and quick-round start points and dungeon pads leave you alone (standing on one says so), and a party leader starting a game doesn't bring you along
 ## 1.82.1
 - Players page: online players in a party show it: a chip in the list (who leads it and how many are in it, the members on hover) and a line on their card with everyone in the party
 ## 1.82.0
