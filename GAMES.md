@@ -42,6 +42,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
 
+Every game starts with full health and the hunger bar at 17 without saturation (one short of where health comes
+back by itself): players heal by eating, not just by having a full bar.
+
 Protect a build with a server claim when nobody is playing. Wave fights, quick rounds and dungeons put inventories
 aside themselves; parkour, race and maze don't, so give them a game claim if you want that (Claims page:
 game-area options, including the game mode inside).
@@ -64,6 +67,9 @@ game-area options, including the game mode inside).
   under the goal, chests in dead ends (share and loot table), mobs roaming it while someone runs it (the mob pool
   and how many at once; they come out 12–32 blocks away and go when nobody runs it). Build again after changing the layout.
 - The goal has an exit ring and an "Exit" label in the game's colour.
+- Layout: corridors turn more often than they go straight and never run more than 3 cells straight while they could
+  turn; crossroads (panel, 12 % by default, up to 50 %) knock out extra inner walls, so ways meet, cross and loop and
+  there's more than one way through.
 
 ## Wave fight (`waves`)
 A party of 1–4 (see Parties) fights waves of mobs.

@@ -697,33 +697,68 @@ public final class GameRuntime {
 	 * A maze of size × size cells (each mazePath blocks wide, walls of one block between), path from the corner
 	 * to the far corner; optionally a ceiling, chests in some dead ends.
 	 */
+	/** Maze: the most cells a corridor goes straight while it could turn. */
+	private static final int MAZE_STRAIGHT = 3;
+
 	static void buildMaze(ServerLevel level, Arena a) {
 		int n = a.size;
 		int w = n * 2 + 1;
 		BlockPos o = BlockPos.containing(a.corner.x, a.corner.y, a.corner.z);
 		boolean[][] open = new boolean[w][w];
 		boolean[][] seen = new boolean[n][n];
+		// Cells as {x, z, the way it came: dx, dz, cells gone straight that way}.
 		Deque<int[]> stack = new ArrayDeque<>();
-		stack.push(new int[] { 0, 0 });
+		stack.push(new int[] { 0, 0, 0, 0, 0 });
 		seen[0][0] = true;
 		open[1][1] = true;
 		int[][] dirs = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+		// A turn is three times as likely as going on straight, and no more than MAZE_STRAIGHT cells straight while a
+		// turn is possible: no long straight corridors.
+		int straightWeight = 1, turnWeight = 3;
 		while (!stack.isEmpty()) {
 			int[] c = stack.peek();
 			List<int[]> next = new ArrayList<>();
+			boolean canTurn = false;
 			for (int[] d : dirs) {
 				int x = c[0] + d[0], z = c[1] + d[1];
-				if (x >= 0 && z >= 0 && x < n && z < n && !seen[x][z]) next.add(new int[] { x, z });
+				if (x < 0 || z < 0 || x >= n || z >= n || seen[x][z]) continue;
+				boolean straight = d[0] == c[2] && d[1] == c[3];
+				canTurn |= !straight;
+				next.add(new int[] { x, z, d[0], d[1], straight ? straightWeight : turnWeight, straight ? c[4] + 1 : 1 });
 			}
 			if (next.isEmpty()) {
 				stack.pop();
 				continue;
 			}
-			int[] to = next.get(random.nextInt(next.size()));
+			if (canTurn) next.removeIf(t -> t[5] > MAZE_STRAIGHT);
+			int total = 0;
+			for (int[] t : next) total += t[4];
+			int pick = random.nextInt(total);
+			int[] to = next.get(next.size() - 1);
+			for (int[] t : next) {
+				if ((pick -= t[4]) < 0) {
+					to = t;
+					break;
+				}
+			}
 			seen[to[0]][to[1]] = true;
 			open[c[0] + to[0] + 1][c[1] + to[1] + 1] = true;
 			open[to[0] * 2 + 1][to[1] * 2 + 1] = true;
-			stack.push(to);
+			stack.push(new int[] { to[0], to[1], to[2], to[3], to[5] });
+		}
+		// Crossings: some of the inner walls between two cells go, so ways meet, cross and loop (more than one way through).
+		if (a.mazeCrossings > 0) {
+			for (int x = 1; x < w - 1; x++) {
+				for (int z = 1; z < w - 1; z++) {
+					// A wall between two cells: one coordinate odd (in a cell row), the other even (between two cells).
+					if (open[x][z] || (x % 2 == 1) == (z % 2 == 1) || random.nextInt(100) >= a.mazeCrossings) continue;
+					// Not when it would join two corridors into one long straight one.
+					int dx = x % 2 == 0 ? 1 : 0, dz = 1 - dx, run = 1;
+					for (int k = 1; x + dx * k < w && z + dz * k < w && open[x + dx * k][z + dz * k]; k++) run++;
+					for (int k = 1; x - dx * k >= 0 && z - dz * k >= 0 && open[x - dx * k][z - dz * k]; k++) run++;
+					if (run <= 2 * (MAZE_STRAIGHT + 1) + 1) open[x][z] = true;
+				}
+			}
 		}
 		// Dead ends (one way out) get a chest now and then; not the start or the goal.
 		List<int[]> chests = new ArrayList<>();
@@ -1495,6 +1530,16 @@ public final class GameRuntime {
 	}
 
 	/** In a parkour, race or maze run. */
+	/** The game they're playing (a run, a wave game or a quick round); null when none. */
+	public static Arena playingIn(ServerPlayer p) {
+		Session s = sessions.get(p.getUUID());
+		if (s != null) return s.arena;
+		Arena w = WaveRuntime.arenaOf(p);
+		if (w != null) return w;
+		QuickRuntime.Round r = QuickRuntime.roundOf(p);
+		return r == null ? null : r.arena;
+	}
+
 	public static boolean inRun(ServerPlayer p) {
 		return sessions.containsKey(p.getUUID());
 	}

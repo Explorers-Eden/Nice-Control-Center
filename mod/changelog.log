@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.84.0
+- Games: players start with full health and the hunger bar at 17 without saturation instead of a full bar and saturation, so health no longer comes back by itself all game (it does by eating); for every game and dungeon
+- Mazes: fewer long straight corridors (turns are three times as likely as going straight, at most 3 cells straight while a turn is possible) and crossroads: a share of extra openings (panel, 12 % by default) so ways cross and loop; existing mazes get it when they're built next (daily, after a run, or /game edit <name> build)
 ## 1.83.0
 - NPCs: a voice: pick a mob (e.g. husk) and the NPC makes its sounds: now and then its idle sound (and when it talks or is right-clicked), the hurt sound when hit, the death sound when a hostile one dies, and steps while walking; with its own pitch and volume (panel: NPCs → Sounds)
 - Fix: a hostile NPC holding a spear crashed the server when its fighter charged (the mannequin showing the charge has no attack damage); the charge now shows on the NPC and only the fighter behind it hits

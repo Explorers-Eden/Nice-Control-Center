@@ -170,6 +170,8 @@ public final class Games {
 		public String mazeGoal = "minecraft:sea_lantern";
 		/** Maze: the share of dead ends with a chest (0–100 %), filled from this loot table. */
 		public int mazeChests = 0;
+		/** Maze: extra openings so ways cross and loop (0–50 % of the inner walls that could go). */
+		public int mazeCrossings = 12;
 		public String mazeLoot = "minecraft:chests/simple_dungeon";
 		/** Before 1.79: the maze's mobs as one comma line and how many at once; moved into pool and maxAlive (null once moved). */
 		public String mazeMobs;
@@ -385,6 +387,7 @@ public final class Games {
 				if (a.mazeCeiling == null) a.mazeCeiling = "";
 				if (a.mazeGoal == null || a.mazeGoal.isBlank()) a.mazeGoal = "minecraft:sea_lantern";
 				a.mazeChests = Math.max(0, Math.min(100, a.mazeChests));
+				a.mazeCrossings = Math.max(0, Math.min(50, a.mazeCrossings));
 				if (a.mazeLoot == null || a.mazeLoot.isBlank()) a.mazeLoot = "minecraft:chests/simple_dungeon";
 				// Mazes kept their mobs in a line of their own; now the same pool (one per line) as every other game.
 				if (a.mazeMobs != null) {

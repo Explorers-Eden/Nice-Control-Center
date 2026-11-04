@@ -2030,10 +2030,11 @@
           + field('mazeLight', 'Light of the paths (0–15)', num('mazeLight', 0, 15))
           + field('mazeCeiling', 'Ceiling blocks (empty = open sky)', `<input type="text" data-g="mazeCeiling" value="${esc(a.mazeCeiling || '')}" placeholder="minecraft:deepslate_tiles">`)
           + field('mazeGoal', 'Blocks under the goal', `<input type="text" data-g="mazeGoal" value="${esc(a.mazeGoal || 'minecraft:sea_lantern')}" placeholder="minecraft:sea_lantern">`)
+          + field('mazeCrossings', 'Crossroads: extra openings (%, 0–50)', num('mazeCrossings', 0, 50))
           + field('mazeChests', 'Dead ends with a chest (%)', num('mazeChests', 0, 100))
           + field('mazeLoot', 'Chest loot table', `<input type="text" data-g="mazeLoot" value="${esc(a.mazeLoot || 'minecraft:chests/simple_dungeon')}" placeholder="minecraft:chests/simple_dungeon">`)
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
-          + `<p class="pn-hint pn-field-wide">Blocks: ids or #tags, comma-separated; one named twice comes twice as often. After changing the size, path width, blocks, light or chests: <code>/game edit ${esc(a.name)} build</code> in game. The goal has an exit ring in the game's colour.</p>`,
+          + `<p class="pn-hint pn-field-wide">Blocks: ids or #tags, comma-separated; one named twice comes twice as often. After changing the size, path width, crossroads, blocks, light or chests: <code>/game edit ${esc(a.name)} build</code> in game. The goal has an exit ring in the game's colour.</p>`,
         waves: gmWaveFields(a, field, num, text, lines),
         heads: gmHeadFields(a, field, num, lines),
       }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
