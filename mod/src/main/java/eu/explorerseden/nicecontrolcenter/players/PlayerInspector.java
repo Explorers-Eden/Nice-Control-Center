@@ -173,6 +173,8 @@ public final class PlayerInspector {
 		p.put("dimension", dimension(player.level().dimension().identifier().toString()));
 		p.put("ping", player.connection.latency());
 		p.put("client", ClientInfo.brandLabel(player.getUUID()));
+		Map<String, Object> party = eu.explorerseden.nicecontrolcenter.games.Parties.view(player.level().getServer(), player.getUUID());
+		if (party != null) p.put("party", party);
 		// Live mining statistics; judged later off the server thread (the comparison reads files).
 		p.put("_counts", XrayCheck.counts(player));
 		return p;

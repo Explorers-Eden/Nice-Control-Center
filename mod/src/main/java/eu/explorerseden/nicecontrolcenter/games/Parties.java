@@ -115,6 +115,18 @@ public final class Parties {
 		return leader == null || leader.equals(player);
 	}
 
+	/** For the dashboard: the party's leader and members by name (leader first), or null without a party. */
+	public static Map<String, Object> view(MinecraftServer server, UUID player) {
+		UUID leader = leaderOf.get(player);
+		Set<UUID> all = leader == null ? null : parties.get(leader);
+		if (all == null) return null;
+		Map<String, Object> m = new java.util.LinkedHashMap<>();
+		m.put("leader", name(server, leader));
+		m.put("lead", leader.equals(player));
+		m.put("members", all.stream().map(id -> name(server, id)).toList());
+		return m;
+	}
+
 	public static boolean inParty(UUID player) {
 		return leaderOf.containsKey(player);
 	}
