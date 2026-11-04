@@ -697,6 +697,46 @@ public final class GameRuntime {
 	 * A maze of size × size cells (each mazePath blocks wide, walls of one block between), path from the corner
 	 * to the far corner; optionally a ceiling, chests in some dead ends.
 	 */
+	/** Maze: the open ways out of a cell. */
+	private static int mazeWays(boolean[][] open, int x, int z) {
+		return (open[x + 1][z] ? 1 : 0) + (open[x - 1][z] ? 1 : 0) + (open[x][z + 1] ? 1 : 0) + (open[x][z - 1] ? 1 : 0);
+	}
+
+	/** Maze: the walls still joined to a post (the outer wall counts). */
+	private static int mazeWalls(boolean[][] open, int w, int x, int z) {
+		int n = 0;
+		for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+			int px = x + d[0], pz = z + d[1];
+			if (px >= 0 && pz >= 0 && px < w && pz < w && !open[px][pz]) n++;
+		}
+		return n;
+	}
+
+	/**
+	 * Building a maze: mobs, vehicles, items and the like in it go (not players, NPCs, pets or named mobs); players in
+	 * it go to its start so nobody ends up in a wall.
+	 */
+	private static void clearMazeEntities(ServerLevel level, Arena a, boolean movePlayers) {
+		AABB box = mazeArea(a);
+		if (box == null) return;
+		for (Entity e : level.getEntitiesOfClass(Entity.class, box, Entity::isAlive)) {
+			if (e instanceof ServerPlayer p) {
+				if (!movePlayers) continue;
+				double in = Math.floor(a.corner.x) + 1 + a.mazePath / 2.0, inZ = Math.floor(a.corner.z) + 1 + a.mazePath / 2.0;
+				p.teleportTo(level, in, a.corner.y + 1, inZ, Set.of(), p.getYRot(), p.getXRot(), true);
+				continue;
+			}
+			if (e.hasCustomName() || e.isPassenger() && e.getVehicle() instanceof ServerPlayer) continue;
+			// Decorations, labels and markers stay (entrance labels, claim titles, …).
+			if (e instanceof net.minecraft.world.entity.decoration.ArmorStand || e instanceof net.minecraft.world.entity.decoration.HangingEntity
+					|| e instanceof net.minecraft.world.entity.Display || e instanceof net.minecraft.world.entity.Interaction || e instanceof net.minecraft.world.entity.Marker) continue;
+			if (e.entityTags().stream().anyMatch(t -> t.startsWith("ncc_npc") || t.startsWith("ncc_shop") || t.startsWith("nicecontrolcenter_"))) continue;
+			if (e instanceof net.minecraft.world.entity.OwnableEntity o && o.getOwnerReference() != null) continue;
+			if (e.hasExactlyOnePlayerPassenger() || e.getPassengers().stream().anyMatch(x -> x instanceof ServerPlayer)) continue;
+			e.discard();
+		}
+	}
+
 	/** Maze: the most cells a corridor goes straight while it could turn. */
 	private static final int MAZE_STRAIGHT = 3;
 
@@ -756,7 +796,12 @@ public final class GameRuntime {
 					int dx = x % 2 == 0 ? 1 : 0, dz = 1 - dx, run = 1;
 					for (int k = 1; x + dx * k < w && z + dz * k < w && open[x + dx * k][z + dz * k]; k++) run++;
 					for (int k = 1; x - dx * k >= 0 && z - dz * k >= 0 && open[x - dx * k][z - dz * k]; k++) run++;
-					if (run <= 2 * (MAZE_STRAIGHT + 1) + 1) open[x][z] = true;
+					if (run > 2 * (MAZE_STRAIGHT + 1) + 1) continue;
+					// Not when a cell it joins already has three ways (no open squares), nor when a post at its ends would
+					// stand alone (rows of lone posts let you see far across the maze).
+					if (mazeWays(open, x - dx, z - dz) >= 3 || mazeWays(open, x + dx, z + dz) >= 3) continue;
+					if (mazeWalls(open, w, x - dz, z - dx) <= 1 || mazeWalls(open, w, x + dz, z + dx) <= 1) continue;
+					open[x][z] = true;
 				}
 			}
 		}
@@ -771,14 +816,16 @@ public final class GameRuntime {
 			}
 		}
 		// Placed over the next ticks (a big maze is millions of blocks): see stepMazes.
-		// What earlier runs left lying around goes with the old maze.
+		// What earlier runs left lying around goes with the old maze, and whatever wandered in.
 		Cleanup.items(level, mazeArea(a));
+		clearMazeEntities(level, a, true);
 		MazeBuild b = new MazeBuild(level, o, a.mazePath, open, blocks(a.wall), blocks(a.floor), a.wallHeight, a.mazeLight);
 		b.ceiling = a.mazeCeiling.isBlank() ? List.of() : blocks(a.mazeCeiling);
 		b.goal = eu.explorerseden.nicecontrolcenter.core.BlockLists.of(a.mazeGoal, Blocks.SEA_LANTERN).stream().map(Block::defaultBlockState).toList();
 		b.chests = chests;
 		b.loot = a.mazeLoot;
 		b.area = mazeArea(a);
+		b.arena = a;
 		// Built bigger (or elsewhere) before: what the new one doesn't cover goes.
 		MazeSpot was = mazesBuilt.get(a.id);
 		ServerLevel wasLevel = was == null ? null : levelOf(level.getServer(), was.dim);
@@ -838,6 +885,8 @@ public final class GameRuntime {
 		String loot = "";
 		/** The maze and a little around it, cleared of what lies around. */
 		AABB area;
+		/** Its game (what's in it goes again at the end). */
+		Arena arena;
 		/** The last build's footprint where it isn't covered by this one: cleared first (null = nothing to clear). */
 		ServerLevel oldLevel;
 		BlockPos oldOrigin;
@@ -926,8 +975,9 @@ public final class GameRuntime {
 					for (int z = 0; z < b.path; z++) b.level.setBlock(b.origin.offset(g + x, 0, g + z), b.goal.get(random.nextInt(b.goal.size())), 2);
 				}
 				placeChests(b);
-				// Once more at the end: anything that came loose while it was being placed.
+				// Once more at the end: anything that came loose or wandered in while it was being placed.
 				Cleanup.items(b.level, b.area);
+				if (b.arena != null) clearMazeEntities(b.level, b.arena, false);
 				it.remove();
 			}
 		}

@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.84.1
+- Mazes: crossroads no longer open up squares: a crossing never joins a cell that already has three ways, and never leaves a wall corner standing alone (rows of lone corners let you see far across the maze diagonally)
+- Mazes: building one (/game edit <name> build, daily, after a run) also clears the mobs, vehicles and the like inside (not players, NPCs, pets, named mobs, armor stands, frames or labels), at the start and again when it's done; players inside go to its start so nobody ends up in a wall
 ## 1.84.0
 - Games: players start with full health and the hunger bar at 17 without saturation instead of a full bar and saturation, so health no longer comes back by itself all game (it does by eating); for every game and dungeon
 - Mazes: fewer long straight corridors (turns are three times as likely as going straight, at most 3 cells straight while a turn is possible) and crossroads: a share of extra openings (panel, 12 % by default) so ways cross and loop; existing mazes get it when they're built next (daily, after a run, or /game edit <name> build)

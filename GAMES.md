@@ -69,7 +69,10 @@ game-area options, including the game mode inside).
 - The goal has an exit ring and an "Exit" label in the game's colour.
 - Layout: corridors turn more often than they go straight and never run more than 3 cells straight while they could
   turn; crossroads (panel, 12 % by default, up to 50 %) knock out extra inner walls, so ways meet, cross and loop and
-  there's more than one way through.
+  there's more than one way through. A crossing never opens a cell up on all sides or leaves a wall corner standing
+  alone, so there are no open squares to look across.
+- Building it clears the mobs, vehicles and items inside (not players, NPCs, pets, named mobs, armor stands, frames
+  or labels); players inside go to its start.
 
 ## Wave fight (`waves`)
 A party of 1–4 (see Parties) fights waves of mobs.
