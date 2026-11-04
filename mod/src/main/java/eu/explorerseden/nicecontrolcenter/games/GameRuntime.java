@@ -1489,6 +1489,11 @@ public final class GameRuntime {
 		return s == null ? null : s.arena;
 	}
 
+	/** Players running this arena now (parkour, race, maze). */
+	public static int running(String arenaId) {
+		return (int) sessions.values().stream().filter(s -> s.arena.id.equals(arenaId)).count();
+	}
+
 	/** In a parkour, race or maze run. */
 	public static boolean inRun(ServerPlayer p) {
 		return sessions.containsKey(p.getUUID());

@@ -291,6 +291,8 @@ public final class Portals {
 		MutableComponent t = Words.lit(a.shown()).withStyle(st -> st.withColor(a.rgb()).withBold(true));
 		// The game's own line under its name (panel), when it has one.
 		if (!a.subtitle.isBlank()) t.append(Words.lit("\n" + a.subtitle.strip()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
+		String who = whoLine(a);
+		if (!who.isEmpty()) t.append(Words.lit("\n" + who).withStyle(st -> st.withBold(false).withColor(ChatFormatting.AQUA)));
 		List<Games.Score> top = GameRuntime.top(a, 3);
 		String[] medal = { "1st", "2nd", "3rd" };
 		for (int i = 0; i < top.size(); i++) {
@@ -301,6 +303,33 @@ public final class Portals {
 		}
 		if (top.isEmpty()) t.append(Words.lit("\nNo best yet: be the first!").withStyle(st -> st.withBold(false).withColor(ChatFormatting.DARK_GRAY)));
 		return t;
+	}
+
+	/** How many play it and who's waiting: "1–8 players · round on · 3 in queue", "Party of 1–4", "Solo · 2 running". */
+	private static String whoLine(Arena a) {
+		if (a.type.equals("heads")) return "";
+		if (Games.quick(a.type)) {
+			Map<String, Object> live = QuickRuntime.live(a.id);
+			long playing = live.get("playing") instanceof Number n ? n.longValue() : 0;
+			long queued = live.get("queued") instanceof Number n ? n.longValue() : 0;
+			boolean joining = Boolean.TRUE.equals(live.get("waiting"));
+			String line = a.maxPlayers <= 1 ? "1 player" : "1–" + a.maxPlayers + " players";
+			if (joining && playing > 0) line += " · " + playing + " joining";
+			else if (playing > 0) line += " · round on";
+			if (queued > 0) line += " · " + queued + " in queue";
+			return line;
+		}
+		if (a.type.equals("waves")) {
+			Map<String, Object> live = WaveRuntime.live(a.id);
+			long playing = live.get("playing") instanceof Number n ? n.longValue() : 0;
+			long queued = live.get("queued") instanceof Number n ? n.longValue() : 0;
+			String line = a.minParty == a.maxParty ? "Party of " + a.maxParty : "Party of " + a.minParty + "–" + a.maxParty;
+			if (playing > 0) line += " · fight on";
+			if (queued > 0) line += " · " + queued + (queued == 1 ? " party" : " parties") + " in queue";
+			return line;
+		}
+		int running = GameRuntime.running(a.id);
+		return "Solo" + (running > 0 ? " · " + running + " running" : "");
 	}
 
 	private static Component watchText(Arena a) {

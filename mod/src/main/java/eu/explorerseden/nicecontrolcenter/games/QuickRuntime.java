@@ -269,6 +269,7 @@ public final class QuickRuntime {
 		Round r = rounds.get(arenaId);
 		m.put("playing", r == null ? 0 : r.players.stream().filter(r::in).count());
 		m.put("waiting", r != null && r.state == State.LOBBY);
+		m.put("queued", r == null ? 0 : r.next.size());
 		return m;
 	}
 

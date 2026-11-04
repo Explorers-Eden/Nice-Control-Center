@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.81.2
+- Games: entrances show a line under the subtitle with how many can play and who's waiting: "1–8 Players · Round On · 3 In Queue" for quick rounds, "Party Of 1–4 · Fight On · 1 Party In Queue" for wave fights, "Solo · 2 Running" for parkour, races and mazes (updated every two seconds)
 ## 1.81.1
 - Games: game-only items: anything with custom_data={ncc_game_only:1b} (in chests, loot tables, mob drops, /give) is treated like kit: it vanishes when its player leaves a dungeon, wave fight, quick round or game area (also when found items go to the inbox) and anywhere outside a game; kept through a dungeon death with lives left
 - Games: kit items are no longer swept away while playing in a game area set to survival, or in a parkour, race or maze run
