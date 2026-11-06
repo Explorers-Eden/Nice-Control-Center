@@ -1,3 +1,5 @@
+## 1.75.0
+- Games, whack-a-mole: the hole block is a dropdown (redstone lamp, copper bulbs); mace in the kit yes/no
 ## 1.74.1
 - Disk tile: shows the backups folder too (it is outside the server folder, so "server" never included it)
 

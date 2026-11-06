@@ -59,6 +59,7 @@
 		"KineticNoDamageMixin",
 		"MannequinInvoker",
 		"MobGoalsAccessor",
+		"MoleSwingMixin",
 		"WeatherPacketMixin",
 		"GameClaimPickupMixin",
 		"GameClaimSpawnMixin",

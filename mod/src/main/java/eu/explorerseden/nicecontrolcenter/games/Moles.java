@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -14,7 +15,17 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.CopperBulbBlock;
+import net.minecraft.world.level.block.RedstoneLampBlock;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.AbstractSkullBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -32,7 +43,7 @@ import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
  * /game edit … grid). Heads pop up out of them for a moment (shorter as the round goes on); hitting or right-clicking one
  * scores its points (bad heads cost some). The first to hit it gets it.
  */
-final class Moles {
+public final class Moles {
 	/** A head: a mob head block, or a player head with a skin (texture value), and what it's worth. */
 	record Kind(Block block, String texture, int points) {
 	}
@@ -69,6 +80,29 @@ final class Moles {
 		return out;
 	}
 
+	/**
+	 * The mace to hit with: a stick that looks like a mace, so no smash attack and no durability; no damage, and it
+	 * swings as fast as a fist.
+	 */
+	static ItemStack mace() {
+		ItemStack st = new ItemStack(Items.STICK);
+		st.set(DataComponents.ITEM_MODEL, BuiltInRegistries.ITEM.getKey(Items.MACE));
+		st.set(DataComponents.ITEM_NAME, Words.lit("Mace"));
+		st.set(DataComponents.MAX_STACK_SIZE, 1);
+		st.set(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.builder()
+				.add(Attributes.ATTACK_DAMAGE, new AttributeModifier(Item.BASE_ATTACK_DAMAGE_ID, -1, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
+				.build());
+		return st;
+	}
+
+	/** A redstone lamp or copper bulb as the hole block: lit while its head is up. */
+	private static void lamp(ServerLevel level, BlockPos hole, boolean on) {
+		BlockState st = level.getBlockState(hole);
+		if (!(st.getBlock() instanceof RedstoneLampBlock || st.getBlock() instanceof CopperBulbBlock) || !st.hasProperty(BlockStateProperties.LIT)) return;
+		// Flag 2: no neighbour updates (a lamp without power would switch itself off again).
+		if (st.getValue(BlockStateProperties.LIT) != on) level.setBlock(hole, st.setValue(BlockStateProperties.LIT, on), 2);
+	}
+
 	/** Hole i, j: the hole block (the head pops up on top of it). */
 	static BlockPos hole(Arena a, int i, int j) {
 		int step = 1 + a.moleGap;
@@ -88,7 +122,7 @@ final class Moles {
 	static void build(ServerLevel level, Arena a) {
 		Identifier id = Identifier.tryParse(a.moleHole);
 		Block b = id == null ? null : BuiltInRegistries.BLOCK.getValue(id);
-		if (b == null || b == Blocks.AIR) b = Blocks.COARSE_DIRT;
+		if (b == null || b == Blocks.AIR) b = Blocks.REDSTONE_LAMP;
 		for (int i = 0; i < a.moleSize; i++) {
 			for (int j = 0; j < a.moleSize; j++) {
 				BlockPos h = hole(a, i, j);
@@ -103,7 +137,11 @@ final class Moles {
 		long now = System.currentTimeMillis();
 		for (Iterator<Map.Entry<BlockPos, long[]>> it = r.moles.entrySet().iterator(); it.hasNext();) {
 			Map.Entry<BlockPos, long[]> e = it.next();
-			if (now < e.getValue()[0]) continue;
+			if (now < e.getValue()[0]) {
+				// A lamp something switched off again comes back on while its head is up.
+				lamp(level, e.getKey().below(), true);
+				continue;
+			}
 			down(level, e.getKey(), false);
 			it.remove();
 		}
@@ -118,7 +156,7 @@ final class Moles {
 		for (int i = 0; i < a.moleSize; i++) {
 			for (int j = 0; j < a.moleSize; j++) {
 				BlockPos up = hole(a, i, j).above();
-				if (!r.moles.containsKey(up) && level.getBlockState(up).isAir()) free.add(up);
+				if (!r.moles.containsKey(up) && level.getBlockState(up).isAir() && level.getEntitiesOfClass(ServerPlayer.class, new AABB(up)).isEmpty()) free.add(up);
 			}
 		}
 		if (free.isEmpty()) return;
@@ -137,11 +175,8 @@ final class Moles {
 					+ " {profile:{properties:[{name:\"textures\",value:\"" + k.texture() + "\"}]}}");
 		}
 		r.moles.put(at, new long[] { now + stay, k.points() });
-		// A block update at the hole block (and around it), so redstone or other blocks there can react to the head.
-		BlockPos hole = at.below();
-		BlockState holeState = level.getBlockState(hole);
-		level.neighborChanged(hole, holeState.getBlock(), null);
-		level.updateNeighborsAt(hole, holeState.getBlock());
+		// The lamp under it lights up while the head is up.
+		lamp(level, at.below(), true);
 		level.sendParticles(ParticleTypes.POOF, at.getX() + 0.5, at.getY() + 0.1, at.getZ() + 0.5, 4, 0.2, 0.05, 0.2, 0.01);
 		level.playSound(null, at, SoundEvents.ROOTED_DIRT_BREAK, SoundSource.BLOCKS, 0.6f, 1.4f);
 	}
@@ -149,12 +184,16 @@ final class Moles {
 	/** A head goes back down (hit or not). */
 	private static void down(ServerLevel level, BlockPos at, boolean hit) {
 		GameRuntime.untrack(level, at);
+		lamp(level, at.below(), false);
 		if (!hit) level.sendParticles(ParticleTypes.SMOKE, at.getX() + 0.5, at.getY() + 0.2, at.getZ() + 0.5, 3, 0.15, 0.05, 0.15, 0.01);
 	}
 
 	/** Every head still up gone (round over). */
 	static void clear(ServerLevel level, QuickRuntime.Round r) {
-		for (BlockPos at : r.moles.keySet()) GameRuntime.untrack(level, at);
+		for (BlockPos at : r.moles.keySet()) {
+			GameRuntime.untrack(level, at);
+			lamp(level, at.below(), false);
+		}
 		r.moles.clear();
 	}
 
@@ -186,6 +225,14 @@ final class Moles {
 			QuickRuntime.ding(p, SoundEvents.VILLAGER_NO, 0.8f, 1.0f);
 		}
 		return true;
+	}
+
+	/** An arm swing (left click) in a whack-a-mole round: the head looked at, within reach, is hit. */
+	public static void swing(ServerPlayer p) {
+		QuickRuntime.Round r = QuickRuntime.roundOf(p);
+		if (r == null || !r.arena.type.equals("moles") || r.moles.isEmpty()) return;
+		if (p.pick(p.blockInteractionRange(), 1f, false) instanceof net.minecraft.world.phys.BlockHitResult bh && bh.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK)
+			hit(p, bh.getBlockPos());
 	}
 
 	private static String dimOf(Arena a) {

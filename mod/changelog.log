@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.86.0
+- Whack-a-mole: hitting a head works now (adventure mode never sends hits on blocks; the punch is checked instead)
+- Whack-a-mole: a mace in the kit (setting, on by default): no damage, swings as fast as a fist, no smash attack
+- Whack-a-mole: the hole block is a redstone lamp or a copper bulb (any age, waxed), lit while its head is up; other hole blocks become a redstone lamp (lay the grid again)
+- Whack-a-mole: heads never pop up where a player stands
+- Quick rounds: players who would appear inside a block (the spawn on the grid) are put on top of it
 ## 1.85.2
 - Quick rounds: players no longer drop out of the join window for walking away from the pad, or out of the queue for leaving the spectator area (game areas are closed off); only logging out or /game leave takes them out
 - Dungeons: the queue no longer drops players who walk out of the waiting area

@@ -481,7 +481,8 @@ public final class QuickRuntime {
 				GameClaims.giveKit(p, a.kit, "quick");
 				for (ItemStack st : starter(a)) GameClaims.giveKitItem(p, st, "quick");
 			}
-			p.teleportTo(level, spawn.x + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), spawn.y, spawn.z + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), Set.of(), spawn.yaw, 0, true);
+			double sx = spawn.x + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), sz = spawn.z + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0);
+			p.teleportTo(level, sx, freeY(level, p, sx, spawn.y, sz), sz, Set.of(), spawn.yaw, 0, true);
 			p.resetFallDistance();
 			GameClaims.gameMode(p, false);
 			p.sendSystemMessage(Words.lit(a.startMessage.isBlank() ? "▶ " + a.shown() + ": " + goal(a) + (a.exitPads.isEmpty() ? " /game leave stops." : " Exit pads or /game leave stop.") : fill(a.startMessage, a, p, "")).withStyle(ChatFormatting.GREEN));
@@ -515,6 +516,7 @@ public final class QuickRuntime {
 			case "fishing" -> List.of(new ItemStack(Items.FISHING_ROD));
 			case "targets" -> List.of(new ItemStack(Items.BOW), new ItemStack(Items.ARROW, 16));
 			case "gallery" -> List.of(new ItemStack(Items.SNOWBALL, 16));
+			case "moles" -> a.moleMace ? List.of(Moles.mace()) : List.of();
 			default -> List.of();
 		};
 	}
@@ -545,6 +547,14 @@ public final class QuickRuntime {
 
 	static Round roundOf(ServerPlayer p) {
 		return playing.get(p.getUUID());
+	}
+
+	/** The spawn's height, or higher when that's inside a block (a grid built where the spawn is): the first free spot, up to 8 blocks up. */
+	private static double freeY(ServerLevel level, ServerPlayer p, double x, double y, double z) {
+		for (int up = 0; up <= 8; up++) {
+			if (level.noCollision(p, p.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(x, y + up, z))) return y + up;
+		}
+		return y;
 	}
 
 	static Random random() {
@@ -610,7 +620,7 @@ public final class QuickRuntime {
 					continue;
 				}
 				Games.Pos s = spawnOf(a);
-				p.teleportTo(level, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);
+				p.teleportTo(level, s.x, freeY(level, p, s.x, s.y, s.z), s.z, Set.of(), s.yaw, 0, true);
 				p.sendOverlayMessage(Words.lit("Stay in the arena (exit pads or /game leave take you out)").withStyle(ChatFormatting.RED));
 			}
 		}

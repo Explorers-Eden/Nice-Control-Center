@@ -109,9 +109,11 @@ gets a bite almost at once.
 **Whack-a-mole** (`moles`): heads pop out of a grid of holes for a moment; hitting or right-clicking one scores it.
 - Created at the spawn. Stand where the grid's corner goes: `/game edit <name> grid` (lays the hole blocks toward
   +X and +Z; again after changing the size). No box needed (it's around the grid).
-- Panel: holes per side, gap, hole block, how long a head stays up (down to a third by the end), heads at once,
-  and the heads with their points (`minecraft:zombie_head=1`, a skin URL/hash/base64 for a player head;
+- Panel: holes per side, gap, hole block (a redstone lamp or copper bulb that lights up while its head is up), how
+  long a head stays up (down to a third by the end), heads at once, the mace (in the kit: no damage, swings like a
+  fist), and the heads with their points (`minecraft:zombie_head=1`, a skin URL/hash/base64 for a player head;
   below 0 costs points, e.g. `minecraft:wither_skeleton_skull=-3`).
+- Heads never pop up where a player stands; players who'd appear inside a block are put on top of it.
 
 **Target practice** (`targets`): target blocks appear in the box; shoot them before they vanish.
 - Created at the spawn (where they shoot from); `corner1` / `corner2`. Players get a bow and arrows (refilled).

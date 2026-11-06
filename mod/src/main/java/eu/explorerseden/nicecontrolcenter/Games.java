@@ -26,6 +26,9 @@ public final class Games {
 	public static final String SCORES = "nicecontrolcenter-games-scores.json";
 	public static final List<String> TYPES = List.of("parkour", "race", "maze", "waves", "ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava", "heads");
 	/** Quick rounds: everyone on the start pad during the join window plays the same round, each for their own score. */
+	/** Whack-a-mole hole blocks: lamps that light up while a head is up (waxed bulbs: they never age). */
+	public static final List<String> MOLE_HOLES = List.of("minecraft:redstone_lamp", "minecraft:waxed_copper_bulb", "minecraft:waxed_exposed_copper_bulb",
+			"minecraft:waxed_weathered_copper_bulb", "minecraft:waxed_oxidized_copper_bulb");
 	public static final List<String> QUICK = List.of("ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava");
 
 	public static boolean quick(String type) {
@@ -290,9 +293,12 @@ public final class Games {
 		/** Whack-a-mole: holes per side of the grid (corner = the block under the admin's feet), the gap between, the hole block. */
 		public int moleSize = 4;
 		public int moleGap = 1;
-		public String moleHole = "minecraft:coarse_dirt";
+		/** The hole block: a redstone lamp or a (waxed) copper bulb, lit while its head is up. */
+		public String moleHole = "minecraft:redstone_lamp";
 		/** Whack-a-mole: seconds a head stays up at the start (shorter as the round goes on, down to a third). */
 		public double moleSeconds = 1.5;
+		/** Whack-a-mole: a mace in the kit to hit with (no damage, swings as fast as a fist). */
+		public boolean moleMace = true;
 		/** Whack-a-mole: "minecraft:zombie_head=1" (a head block, or a player head's skin: URL, hash or base64 = points; below 0 costs). */
 		public List<String> moleHeads = new ArrayList<>(List.of("minecraft:zombie_head=1", "minecraft:skeleton_skull=1", "minecraft:creeper_head=2",
 				"minecraft:piglin_head=3", "minecraft:wither_skeleton_skull=-3"));
@@ -455,7 +461,7 @@ public final class Games {
 				a.junkPoints = Math.max(0, Math.min(1000, a.junkPoints));
 				a.moleSize = Math.max(2, Math.min(9, a.moleSize));
 				a.moleGap = Math.max(0, Math.min(4, a.moleGap));
-				if (a.moleHole == null || a.moleHole.isBlank()) a.moleHole = "minecraft:coarse_dirt";
+				if (a.moleHole == null || !MOLE_HOLES.contains(a.moleHole)) a.moleHole = "minecraft:redstone_lamp";
 				a.moleSeconds = Math.max(0.3, Math.min(10, a.moleSeconds == 0 ? 1.5 : a.moleSeconds));
 				if (a.moleHeads == null) a.moleHeads = new ArrayList<>();
 				a.moleHeads.removeIf(x -> x == null || x.isBlank());
