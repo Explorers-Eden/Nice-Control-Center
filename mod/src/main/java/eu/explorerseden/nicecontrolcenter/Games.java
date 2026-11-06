@@ -238,9 +238,13 @@ public final class Games {
 		public int perWave = 2;
 		/** % more mobs per player beyond the first. */
 		public int perPlayer = 50;
-		/** A boss every this many waves (0 = never), and which. */
+		/** A boss every this many waves (0 = never), and which: one pool line each, picked at random or in order. */
 		public int bossEvery = 5;
-		public String boss = "ravager";
+		public List<String> bosses = new ArrayList<>(List.of("ravager"));
+		/** "random" or "order" (the first boss wave gets the first line, the next the second, then round again). */
+		public String bossOrder = "random";
+		/** Before 1.88: the one boss line; moved into bosses (blank once moved). */
+		public String boss = "";
 		/** % more health and damage per wave after the first. */
 		public int toughness = 10;
 		/** Peaceful and neutral mobs (cows, villagers, iron golems, llamas, bees…) attack players too (waves, colour floor). */
@@ -428,7 +432,11 @@ public final class Games {
 				a.perWave = Math.max(0, Math.min(100, a.perWave));
 				a.perPlayer = Math.max(0, Math.min(500, a.perPlayer));
 				a.bossEvery = Math.max(0, Math.min(1000, a.bossEvery));
-				if (a.boss == null) a.boss = "";
+				if (a.bosses == null) a.bosses = new ArrayList<>();
+				if (a.boss != null && !a.boss.isBlank() && a.bosses.stream().noneMatch(x -> x.strip().equals(a.boss.strip()))) a.bosses.add(0, a.boss.strip());
+				a.boss = "";
+				a.bosses.removeIf(x -> x == null || x.isBlank());
+				if (!"order".equals(a.bossOrder)) a.bossOrder = "random";
 				a.toughness = Math.max(0, Math.min(500, a.toughness));
 				a.maxAlive = Math.max(1, Math.min(200, a.maxAlive));
 				if (a.waveLines == null) a.waveLines = new LinkedHashMap<>();

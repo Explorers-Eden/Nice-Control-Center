@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.88.0
+- Wave arenas: a list of bosses instead of one line, picked at random or in order (the n-th boss wave gets the n-th line, then round again); the old boss line moves into the list
 ## 1.87.0
 - Games: no ender pearls in games (game areas, dungeon runs, wave games, quick rounds, parkour, race, maze)
 - Games: the wait before a pad takes a player again (after a round or run, or after leaving a pad or queue) is 1 second for every game; the wait settings are gone

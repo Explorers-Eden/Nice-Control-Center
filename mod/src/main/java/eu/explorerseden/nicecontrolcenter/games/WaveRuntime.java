@@ -611,7 +611,13 @@ public final class WaveRuntime {
 				for (int i = 0; i < e.count() && g.toSpawn.size() < want; i++) g.toSpawn.add(e);
 			}
 			// The boss comes last; a negative count marks it.
-			MobLines.Entry boss = a.bossEvery > 0 && g.wave % a.bossEvery == 0 ? MobLines.parse(a.boss) : null;
+			MobLines.Entry boss = null;
+			List<String> bosses = a.bosses.stream().filter(x -> MobLines.parse(x) != null).toList();
+			if (a.bossEvery > 0 && g.wave % a.bossEvery == 0 && !bosses.isEmpty()) {
+				// In order: the n-th boss wave gets the n-th line (round again after the last); else one at random.
+				int i = "order".equals(a.bossOrder) ? (g.wave / a.bossEvery - 1) % bosses.size() : random.nextInt(bosses.size());
+				boss = MobLines.parse(bosses.get(i));
+			}
 			if (boss != null) g.toSpawn.add(new MobLines.Entry(boss.id(), -1, boss.nbt()));
 		}
 		if (g.toSpawn.isEmpty()) g.toSpawn.add(new MobLines.Entry("minecraft:zombie", 1, ""));

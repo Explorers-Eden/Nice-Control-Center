@@ -2121,7 +2121,9 @@
         + field('firstWave', 'Mobs in wave 1', num('firstWave', 1, 200)) + field('perWave', 'More each wave', num('perWave', 0, 100))
         + field('perPlayer', '% more per extra player', num('perPlayer', 0, 500))
         + field('toughness', '% more health and damage per wave', num('toughness', 0, 500))
-        + field('bossEvery', 'A boss every … waves (0 = never)', num('bossEvery', 0, 1000)) + text('boss', 'Boss (one pool line)', 'ravager {CustomName:…}')
+        + field('bossEvery', 'A boss every … waves (0 = never)', num('bossEvery', 0, 1000))
+        + field('bossOrder', 'Which boss', sel('bossOrder', [['random', 'a random one from the list'], ['order', 'in order (then round again)']]))
+        + `<label class="pn-field pn-field-wide"><span>Bosses (one pool line each: <code>mob {data}</code>)</span><textarea data-g="bosses" data-lines="1" rows="3" spellcheck="false" placeholder="ravager&#10;wither_skeleton {CustomName:'Bone King'}">${esc((a.bosses || []).join('\n'))}</textarea></label>`
         + `<label class="pn-field pn-field-wide"><span>Hand-written waves (replace the generated ones), one per line: <code>5: husk x6, skeleton x2</code></span><textarea data-g="waveLines" rows="3" spellcheck="false" placeholder="10: wither_skeleton x4, blaze x2">${esc(overrides)}</textarea></label>`,
       rewards: `<label class="pn-field pn-field-wide"><span>Commands after each cleared wave ({wave}, {player}, {game}): wave rewards</span><textarea data-g="waveCommands" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a.waveCommands || []).join('\n'))}</textarea></label>`
         + text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line')
