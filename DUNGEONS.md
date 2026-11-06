@@ -104,6 +104,12 @@ fills them with random rooms you built separately.
 - **A spot that gets a room** opens up (becomes the doorway). **A spot that stays empty** turns into the block you
   chose for it, e.g. stone bricks, so it looks like a wall.
 - Rooms can have spots of their own, so rooms grow out of rooms (up to the dungeon's "Rooms inside rooms, levels").
+- **Above and below works too.** A spot facing up gets a room whose door faces down, placed on top of it, and the
+  other way round: stairwells, shafts, a crypt under the hall. The jigsaw's front follows how you place it (against
+  a floor or ceiling, or looking up or down). Rooms only turn around the vertical axis, so a vertical spot only takes
+  rooms with a matching vertical door. Leave enough height in the dungeon's box.
+- **Turning**: the tool blocks use the "rollable" joint, so a room can come in any of the 4 turns. Set a jigsaw's
+  joint to "aligned" by hand to keep the turn its "top" direction gives (e.g. so stairs line up).
 - **Rooms always stay inside the dungeon's box** and never overlap. So make the box big enough: leave empty space
   around the main build where rooms can go. A spot that has no room to fit stays empty.
 
