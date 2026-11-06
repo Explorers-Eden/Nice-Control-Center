@@ -526,6 +526,14 @@ public final class GameRuntime {
 		placedDirty = true;
 	}
 
+	/** The height, or higher when that's inside a block (a grid built where the spawn is): the first free spot, up to 8 blocks up. */
+	public static double freeY(ServerLevel level, ServerPlayer p, double x, double y, double z) {
+		for (int up = 0; up <= 8; up++) {
+			if (level.noCollision(p, p.getDimensions(net.minecraft.world.entity.Pose.STANDING).makeBoundingBox(x, y + up, z))) return y + up;
+		}
+		return y;
+	}
+
 	/** Takes a tracked block away (air). */
 	static void untrack(ServerLevel level, BlockPos pos) {
 		unplace(level, pos);

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.86.1
+- Whack-a-mole: the mace is a real mace again (no stick dressed up; Litematica and other tools see a mace), with no damage, fist speed and no wear
+- Whack-a-mole: players appear in the middle of the grid, on top of it; heads face the middle
+- Games: joining through an entrance never puts players inside a block (a start point where a grid was laid out later): they land on top of it
 ## 1.86.0
 - Whack-a-mole: hitting a head works now (adventure mode never sends hits on blocks; the punch is checked instead)
 - Whack-a-mole: a mace in the kit (setting, on by default): no damage, swings as fast as a fist, no smash attack

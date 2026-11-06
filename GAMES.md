@@ -113,7 +113,8 @@ gets a bite almost at once.
   long a head stays up (down to a third by the end), heads at once, the mace (in the kit: no damage, swings like a
   fist), and the heads with their points (`minecraft:zombie_head=1`, a skin URL/hash/base64 for a player head;
   below 0 costs points, e.g. `minecraft:wither_skeleton_skull=-3`).
-- Heads never pop up where a player stands; players who'd appear inside a block are put on top of it.
+- Players appear in the middle of the grid, on top of it. Heads never pop up where a player stands; players who'd
+  appear inside a block are put on top of it.
 
 **Target practice** (`targets`): target blocks appear in the box; shoot them before they vanish.
 - Created at the spawn (where they shoot from); `corner1` / `corner2`. Players get a bow and arrows (refilled).

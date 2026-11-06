@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RotationSegment;
 import net.minecraft.world.phys.AABB;
 
+import eu.explorerseden.nicecontrolcenter.Games;
 import eu.explorerseden.nicecontrolcenter.Games.Arena;
 import eu.explorerseden.nicecontrolcenter.Pets;
 import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
@@ -81,18 +82,23 @@ public final class Moles {
 	}
 
 	/**
-	 * The mace to hit with: a stick that looks like a mace, so no smash attack and no durability; no damage, and it
-	 * swings as fast as a fist.
+	 * The mace to hit with: a real mace (no stick, so tools like Litematica see a mace) that does no damage, swings as
+	 * fast as a fist and never wears out.
 	 */
 	static ItemStack mace() {
-		ItemStack st = new ItemStack(Items.STICK);
-		st.set(DataComponents.ITEM_MODEL, BuiltInRegistries.ITEM.getKey(Items.MACE));
-		st.set(DataComponents.ITEM_NAME, Words.lit("Mace"));
-		st.set(DataComponents.MAX_STACK_SIZE, 1);
+		ItemStack st = new ItemStack(Items.MACE);
+		st.set(DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
 		st.set(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.builder()
 				.add(Attributes.ATTACK_DAMAGE, new AttributeModifier(Item.BASE_ATTACK_DAMAGE_ID, -1, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
+				.add(Attributes.ATTACK_SPEED, new AttributeModifier(Item.BASE_ATTACK_SPEED_ID, 0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
 				.build());
 		return st;
+	}
+
+	/** Where players appear: the middle of the grid, on top of it (facing as the spawn was set). */
+	static Games.Pos center(Arena a) {
+		double half = ((a.moleSize - 1) * (1 + a.moleGap) + 1) / 2.0;
+		return new Games.Pos(a.corner.dim, a.corner.x + half, a.corner.y + 1, a.corner.z + half, a.spawn != null ? a.spawn.yaw : 0);
 	}
 
 	/** A redstone lamp or copper bulb as the hole block: lit while its head is up. */
@@ -163,9 +169,10 @@ public final class Moles {
 		BlockPos at = free.get(random.nextInt(free.size()));
 		Kind k = kinds.get(random.nextInt(kinds.size()));
 		BlockState state = k.block().defaultBlockState();
-		// Facing the players' spawn.
-		if (state.hasProperty(SkullBlock.ROTATION) && a.spawn != null) {
-			float yaw = (float) Math.toDegrees(Math.atan2(-(a.spawn.x - (at.getX() + 0.5)), a.spawn.z - (at.getZ() + 0.5)));
+		// Facing the middle (where the players stand).
+		if (state.hasProperty(SkullBlock.ROTATION)) {
+			Games.Pos c = center(a);
+			float yaw = (float) Math.toDegrees(Math.atan2(-(c.x - (at.getX() + 0.5)), c.z - (at.getZ() + 0.5)));
 			state = state.setValue(SkullBlock.ROTATION, RotationSegment.convertToSegment(yaw));
 		}
 		level.setBlock(at, state, 3);

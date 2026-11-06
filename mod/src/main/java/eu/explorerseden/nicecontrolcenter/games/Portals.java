@@ -210,7 +210,8 @@ public final class Portals {
 	private static boolean to(MinecraftServer server, ServerPlayer p, Games.Pos at) {
 		ServerLevel level = GameRuntime.levelOf(server, at.dim);
 		if (level == null) return false;
-		p.teleportTo(level, at.x, at.y, at.z, Set.of(), at.yaw, 0, true);
+		// Never inside a block (a start point where a grid was laid out later).
+		p.teleportTo(level, at.x, GameRuntime.freeY(level, p, at.x, at.y, at.z), at.z, Set.of(), at.yaw, 0, true);
 		p.resetFallDistance();
 		return true;
 	}
