@@ -26,6 +26,24 @@ import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
  */
 public final class KatterBosses {
 	public static final List<String> KEYS = List.of("arachne", "raj", "rusta", "tenku", "theron");
+	/** NCC's own bosses ("ncc:frost_warden"…). */
+	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest");
+	/** Every boss as written in lists and markers. */
+	public static List<String> all() {
+		List<String> out = new ArrayList<>();
+		for (String k : KEYS) out.add("katters:" + k);
+		for (String k : NCC) out.add("ncc:" + k);
+		return out;
+	}
+
+	/** A name as typed in /game boss: the full "ncc:tempest" or just "tempest" (when only one set has it). */
+	public static String resolve(String typed) {
+		String s = typed == null ? "" : typed.strip().toLowerCase(Locale.ROOT);
+		if (key(s) != null) return s;
+		if (KEYS.contains(s)) return "katters:" + s;
+		if (NCC.contains(s)) return "ncc:" + s;
+		return null;
+	}
 
 	private static final List<BossFight> fights = new ArrayList<>();
 	private static final Map<UUID, BossFight> owner = new HashMap<>();
@@ -38,12 +56,13 @@ public final class KatterBosses {
 		return key(id) != null;
 	}
 
+	/** "katters:theron" → "theron", "ncc:tempest" → "ncc_tempest"; null when it's no boss of ours. */
 	private static String key(String id) {
 		if (id == null) return null;
 		String s = id.strip().toLowerCase(Locale.ROOT);
-		if (!s.startsWith("katters:")) return null;
-		String k = s.substring(8);
-		return KEYS.contains(k) ? k : null;
+		if (s.startsWith("katters:")) return KEYS.contains(s.substring(8)) ? s.substring(8) : null;
+		if (s.startsWith("ncc:")) return NCC.contains(s.substring(4)) ? "ncc_" + s.substring(4) : null;
+		return null;
 	}
 
 	public static void register() {
@@ -116,6 +135,10 @@ public final class KatterBosses {
 			case "raj" -> new RajFight(level, tags, bossTag, bar, x, y, z);
 			case "rusta" -> new RustaFight(level, tags, bossTag, bar, x, y, z);
 			case "tenku" -> new TenkuFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_frost_warden" -> new FrostWardenFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_hive_queen" -> new HiveQueenFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_ember_colossus" -> new EmberColossusFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_tempest" -> new TempestFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 		f.viewers = viewers;
@@ -133,6 +156,10 @@ public final class KatterBosses {
 			case "raj" -> "Raj Raksha";
 			case "rusta" -> "Rústa, Chieftain of the Ravaged Lands";
 			case "tenku" -> "Tenkū Mizu Gami";
+			case "ncc_frost_warden" -> "The Frost Warden";
+			case "ncc_hive_queen" -> "The Hive Queen";
+			case "ncc_ember_colossus" -> "The Ember Colossus";
+			case "ncc_tempest" -> "The Tempest";
 			default -> "Magus Theron the Betrayer";
 		};
 	}

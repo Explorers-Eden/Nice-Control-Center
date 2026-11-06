@@ -19,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
  * Tenkū Mizu Gami (Katters Structures, by Katter): a giant turtle circled by eight dolphins (one leaves for every
  * 50 health it loses). The dolphins shoot beams that leave clouds (nausea and a blast, hunger, poison, slowness,
  * wither), tridents and potions fall on players further away, helpers come for those close by, and now and then it
- * throws the nearest player back. Out of water it hovers towards the players (in water it swims).
+ * throws the nearest player back. Out of water it hovers at range (14–20 blocks) from the players; in water it swims.
  */
 final class TenkuFight extends BossFight {
 	private static final String NBT = "{DeathLootTable:\"minecraft:empty\",PersistenceRequired:1b,Health:500f,Age:2,CustomName:{bold:false,color:\"#93FF87\",italic:false,text:\"Tenkū Mizu Gami\"},"
@@ -40,6 +40,8 @@ final class TenkuFight extends BossFight {
 	private long pushReady;
 	/** The beams' blasts to come: the TNT (looks like a conduit) goes off without breaking blocks. */
 	private final List<PrimedTnt> blasts = new ArrayList<>();
+	/** Helpers: a guardian and the drowned riding it. */
+	private final List<Entity[]> helpers = new ArrayList<>();
 
 	TenkuFight(ServerLevel level, List<String> tags, String bossTag, boolean bar, double x, double y, double z) {
 		super(level, tags, bossTag, bar);
@@ -101,7 +103,11 @@ final class TenkuFight extends BossFight {
 		}
 		if (random.nextInt(10) == 0) {
 			// Helpers for those close by.
-			for (ServerPlayer p : near(at, 12)) if (random.nextInt(100) < 5) spawn("minecraft:guardian", p.getX(), p.getY(), p.getZ(), HELPER, false, false);
+			for (ServerPlayer p : near(at, 12)) {
+				if (random.nextInt(100) >= 5) continue;
+				Entity g = spawn("minecraft:guardian", p.getX(), p.getY(), p.getZ(), HELPER, false, false);
+				if (g != null && g.getFirstPassenger() != null) helpers.add(new Entity[] { g, g.getFirstPassenger() });
+			}
 		}
 		if (random.nextInt(10) == 0) {
 			// Beams at those further away.
@@ -111,14 +117,13 @@ final class TenkuFight extends BossFight {
 				if (d != null && !d.isRemoved()) beam(d, p, random.nextInt(5));
 			}
 		}
-		// Helpers without their rider (or far from Tenkū) go.
-		if (ticks % 20 == 0) {
-			for (Entity e : parts) {
-				if (e.isRemoved() || !net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals("guardian")) continue;
-				if (e.getPassengers().isEmpty() || e.distanceToSqr(turtle) > 64 * 64) {
-					for (Entity r : e.getPassengers()) r.discard();
-					e.discard();
-				}
+		// A helper pair goes together: when the guardian or its drowned is down (or they're far from Tenkū), the other too.
+		if (ticks % 5 == 0) {
+			for (Entity[] h : List.copyOf(helpers)) {
+				boolean gone = dead(h[0]) || dead(h[1]) || h[1].getVehicle() != h[0] || h[0].distanceToSqr(turtle) > 64 * 64;
+				if (!gone) continue;
+				for (Entity e : h) if (!dead(e)) e.discard();
+				helpers.remove(h);
 			}
 		}
 	}
@@ -148,7 +153,7 @@ final class TenkuFight extends BossFight {
 		}
 	}
 
-	/** Out of water: it floats towards the nearest player, about three blocks above the ground. */
+	/** Out of water: it floats at range from the nearest player, about three blocks above the ground. */
 	private void hover() {
 		if (turtle.isInWater()) {
 			if (turtle.isNoGravity()) turtle.setNoGravity(false);
@@ -163,8 +168,11 @@ final class TenkuFight extends BossFight {
 		for (int i = 0; i < 16 && level.getBlockState(below.below()).isAir(); i++) below = below.below();
 		double ground = below.getY();
 		double wantY = Math.max(ground, floor) + 3;
+		// It fights from afar (its beams and falling tridents only reach players 12+ blocks away): it keeps 14–20 blocks
+		// from the nearest player, closing in when further, backing off when closer.
 		Vec3 dir = new Vec3(target.x - turtle.getX(), 0, target.z - turtle.getZ());
-		Vec3 move = dir.lengthSqr() > 9 ? dir.normalize().scale(0.12) : Vec3.ZERO;
+		double dist = Math.sqrt(dir.lengthSqr());
+		Vec3 move = dist > 20 ? dir.normalize().scale(0.12) : dist < 14 && dist > 0.01 ? dir.normalize().scale(-0.12) : Vec3.ZERO;
 		turtle.setDeltaMovement(move.x, Math.max(-0.1, Math.min(0.1, (wantY - turtle.getY()) * 0.1)), move.z);
 		if (dir.lengthSqr() > 0.01) turtle.setYRot((float) (Math.toDegrees(Math.atan2(dir.z, dir.x)) - 90));
 	}

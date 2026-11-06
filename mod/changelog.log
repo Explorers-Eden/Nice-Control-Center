@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.91.0
+- New NCC bosses for wave arenas and dungeons: ncc:frost_warden (giant stray: freezing aura, icicles, powder snow, strays and a blizzard at half health), ncc:hive_queen (huge bee: heals while her swarm lives, poison dives, honey slows, a second swarm below 40 %), ncc:ember_colossus (giant magma cube: bursts into burning shards at two thirds and one third, fire rings, lava splashes, water hurts it) and ncc:tempest (big breeze: wind bursts, lifts players, a whirlwind that pulls everyone in and throws them out). No drops, their own health, temporary blocks taken away again
+- Bosses: their chat lines only go to the game's players (Theron too), not to everyone within 30 blocks
+- /game boss takes ncc:… and katters:… names (or just the name), suggests all of them
+- Tenkū: out of water it keeps 14–20 blocks from the players, so its beams and falling tridents and potions (which only reach players 12+ blocks away) are used; its helpers go as a pair (when the guardian or its drowned is down, the other goes too)
 ## 1.90.2
 - Slot Machines: removing a machine no longer leaves its lever lying around as an item (the lever goes first, nothing drops)
 - Mazes and dungeons: taking away old maze blocks and dungeon markers drops nothing either (a torch or lever on them stayed as an item)

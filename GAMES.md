@@ -87,6 +87,12 @@ A party of 1–4 (see Parties) fights waves of mobs.
   peaceful and neutral mobs attacking too (on by default), commands after each wave (`{wave}`).
 - The fight box is put back as it was at the start after every wave and when the game ends: cobwebs, fire, placed or
   broken blocks, water and lava are gone (boxes up to 4 million blocks). Game ravagers don't break leaves.
+- **NCC bosses** (built into the mod): `ncc:frost_warden` (a giant stray: freezing aura, icicles, powder snow, at half
+  health strays and a blizzard), `ncc:hive_queen` (a huge bee that heals while her swarm lives, dives with a poison
+  sting, honey slows), `ncc:ember_colossus` (a giant magma cube that bursts into burning shards at two thirds and one
+  third; fire rings, lava splashes; water hurts it) and `ncc:tempest` (a big breeze: wind bursts, lifts players, a
+  whirlwind that pulls everyone in and throws them out; it turns arrows away). Same rules as the Katters bosses below;
+  their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
   `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron` to the bosses (the panel has a picker), or put
   them in a hand-written wave. They fight with their own attacks (Theron's phases and minions, Rústa's forms, Raj's

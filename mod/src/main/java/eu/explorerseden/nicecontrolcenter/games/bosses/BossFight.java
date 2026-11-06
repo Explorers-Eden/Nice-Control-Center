@@ -52,6 +52,10 @@ public abstract class BossFight {
 	final List<Entity> parts = new ArrayList<>();
 	/** Cobwebs its attacks spun: gone again when the fight ends. */
 	final Set<BlockPos> webs = new HashSet<>();
+	/** Blocks its attacks put down for a while (powder snow, honey, fire, walls): when they go, and what was there. */
+	private final java.util.Map<BlockPos, Object[]> temp = new java.util.HashMap<>();
+	/** Things to do later (the second half of a warned attack): tick → what. */
+	private final List<Object[]> later = new ArrayList<>();
 	private ServerBossEvent bar;
 	/** Who sees its bar: the game's players (null: anyone within 48 blocks). */
 	java.util.function.Predicate<ServerPlayer> viewers;
@@ -91,6 +95,20 @@ public abstract class BossFight {
 	final void step() {
 		ticks++;
 		tick();
+		// Delayed parts of attacks.
+		for (Object[] l : List.copyOf(later)) {
+			if ((long) l[0] > ticks) continue;
+			later.remove(l);
+			((Runnable) l[1]).run();
+		}
+		// Temporary blocks whose time is up.
+		if (!temp.isEmpty() && ticks % 5 == 0) {
+			for (java.util.Map.Entry<BlockPos, Object[]> e : List.copyOf(temp.entrySet())) {
+				if ((long) e.getValue()[0] > ticks) continue;
+				untemp(e.getKey(), e.getValue());
+				temp.remove(e.getKey());
+			}
+		}
 		if (bar != null && ticks % 10 == 0) {
 			LivingEntity b = body();
 			if (b != null && b.isAlive()) {
@@ -112,6 +130,9 @@ public abstract class BossFight {
 		if (bar != null) bar.removeAllPlayers();
 		for (Entity e : parts) if (!e.isRemoved() && e.entityTags().contains(ASSET)) e.discard();
 		for (BlockPos b : webs) if (level.getBlockState(b).is(Blocks.COBWEB)) level.removeBlock(b, false);
+		for (java.util.Map.Entry<BlockPos, Object[]> e : temp.entrySet()) untemp(e.getKey(), e.getValue());
+		temp.clear();
+		later.clear();
 		NiceControlCenter.LOGGER.info("Games: boss {} gone", name());
 	}
 
@@ -184,9 +205,81 @@ public abstract class BossFight {
 		spawn("minecraft:lightning_bolt", at.x, at.y, at.z, "{}", false, true);
 	}
 
-	/** To players within {@code range} of the spot. */
+	/** To the game's players (in a game), else to players within {@code range} of the spot. */
 	void say(Vec3 at, double range, Component line) {
+		if (viewers != null) {
+			for (ServerPlayer p : level.players()) if (viewers.test(p)) p.sendSystemMessage(line);
+			return;
+		}
 		for (ServerPlayer p : near(at, range)) p.sendSystemMessage(line);
+	}
+
+	// ---------------------------------------------------------------- attack helpers
+
+	/** Runs {@code what} in {@code ticks} ticks (while the fight is on). */
+	void later(int ticks, Runnable what) {
+		later.add(new Object[] { this.ticks + ticks, what });
+	}
+
+	/**
+	 * A block put down for {@code ticks} (only where there's air or something replaceable, like grass): taken away
+	 * again after that, or when the fight ends.
+	 */
+	boolean tempBlock(BlockPos pos, net.minecraft.world.level.block.state.BlockState state, int ticks) {
+		BlockPos p = pos.immutable();
+		net.minecraft.world.level.block.state.BlockState was = level.getBlockState(p);
+		if (temp.containsKey(p)) {
+			temp.get(p)[0] = this.ticks + ticks;
+			level.setBlock(p, state, 3);
+			return true;
+		}
+		if (!was.isAir() && !was.canBeReplaced()) return false;
+		level.setBlock(p, state, 3);
+		temp.put(p, new Object[] { this.ticks + ticks, was, state.getBlock() });
+		return true;
+	}
+
+	private void untemp(BlockPos p, Object[] t) {
+		// Only when it's still ours (a player or the fight may have changed it since).
+		if (level.getBlockState(p).is((net.minecraft.world.level.block.Block) t[2]) || level.getBlockState(p).is(Blocks.FIRE))
+			level.setBlock(p, (net.minecraft.world.level.block.state.BlockState) t[1], net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS);
+	}
+
+	/** The ground under a spot (the first solid block at or below it, up to 12 down), one above it. */
+	BlockPos groundAt(Vec3 at) {
+		BlockPos b = BlockPos.containing(at);
+		for (int i = 0; i < 12 && level.getBlockState(b.below()).getCollisionShape(level, b.below()).isEmpty(); i++) b = b.below();
+		return b;
+	}
+
+	/** A ring of particles on the ground: where something is about to land. */
+	void telegraph(Vec3 at, double radius, net.minecraft.core.particles.ParticleOptions particle) {
+		int n = Math.max(8, (int) (radius * 8));
+		for (int i = 0; i < n; i++) {
+			double a = Math.PI * 2 * i / n;
+			level.sendParticles(particle, at.x + Math.cos(a) * radius, at.y + 0.1, at.z + Math.sin(a) * radius, 1, 0, 0, 0, 0);
+		}
+	}
+
+	/** Players within {@code radius} take {@code damage} from the boss and are thrown away from the middle (and up). */
+	void shockwave(LivingEntity from, Vec3 at, double radius, float damage, double strength, double up) {
+		for (int r = 1; r <= (int) radius; r++) telegraph(at, r, net.minecraft.core.particles.ParticleTypes.CLOUD);
+		for (ServerPlayer p : near(at, radius)) {
+			if (damage > 0) p.hurtServer(level, level.damageSources().mobAttack(from), damage);
+			Vec3 away = p.position().subtract(at).multiply(1, 0, 1);
+			away = away.lengthSqr() < 0.01 ? new Vec3(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5).normalize() : away.normalize();
+			push(p, new Vec3(away.x * strength, up, away.z * strength));
+		}
+	}
+
+	/** An explosion that hurts but breaks nothing. */
+	void blast(Entity from, Vec3 at, float power) {
+		level.explode(from, at.x, at.y, at.z, power, net.minecraft.world.level.Level.ExplosionInteraction.NONE);
+	}
+
+	/** Health share of a body (0–1). */
+	static float share(LivingEntity e) {
+		return e == null ? 0 : e.getHealth() / e.getMaxHealth();
 	}
 
 	void sound(Vec3 at, SoundEvent sound, float volume, float pitch) {

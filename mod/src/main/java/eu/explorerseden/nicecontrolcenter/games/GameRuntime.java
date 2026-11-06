@@ -1227,14 +1227,16 @@ public final class GameRuntime {
 							ctx.getSource().sendSuccess(() -> Words.lit(gone + " boss pieces taken away."), true);
 							return gone;
 						}))
-						.then(Commands.argument("boss", StringArgumentType.word())
-								.suggests((ctx, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.KEYS, b)).executes(ctx -> {
-									String k = StringArgumentType.getString(ctx, "boss");
+						.then(Commands.argument("boss", StringArgumentType.greedyString())
+								.suggests((ctx, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.all(), b)).executes(ctx -> {
+									String typed = StringArgumentType.getString(ctx, "boss");
+									String k = eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.resolve(typed);
+									if (k == null) return fail(ctx, "No such boss: " + typed + " (" + String.join(", ", eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.all()) + ").");
 									net.minecraft.world.phys.Vec3 at = ctx.getSource().getPosition();
 									String dim = ctx.getSource().getLevel().dimension().identifier().toString();
-									var f = eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(ctx.getSource().getServer(), "katters:" + k, dim, at.x, at.y, at.z, List.of(BOSS_TRY), null, true);
-									if (f == null) return fail(ctx, "No such boss: " + k + " (" + String.join(", ", eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.KEYS) + ").");
-									ctx.getSource().sendSuccess(() -> Words.lit(eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.title("katters:" + k) + " is here. /game boss clear takes it away."), true);
+									var f = eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(ctx.getSource().getServer(), k, dim, at.x, at.y, at.z, List.of(BOSS_TRY), null, true);
+									if (f == null) return fail(ctx, "That boss can't be summoned here.");
+									ctx.getSource().sendSuccess(() -> Words.lit(eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.title(k) + " is here. /game boss clear takes it away."), true);
 									return 1;
 								})))
 				.then(Commands.literal("try").requires(admin).then(arenaArg.get().executes(ctx -> {
