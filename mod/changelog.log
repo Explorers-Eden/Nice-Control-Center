@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.85.2
+- Quick rounds: players no longer drop out of the join window for walking away from the pad, or out of the queue for leaving the spectator area (game areas are closed off); only logging out or /game leave takes them out
+- Dungeons: the queue no longer drops players who walk out of the waiting area
+- Whack-a-mole: a head popping up sends a block update to the hole block under it (and around it), so redstone there can react
 ## 1.85.1
 - Whack-a-mole: a player head given as a base64 skin without points (ending in "=" padding) now pops up worth 1 point instead of being skipped
 ## 1.85.0

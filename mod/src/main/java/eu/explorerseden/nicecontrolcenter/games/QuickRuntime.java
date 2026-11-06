@@ -160,7 +160,6 @@ public final class QuickRuntime {
 	}
 
 	private static final int EXIT_TICKS = 100;
-	private static final double LOBBY_RANGE = 12;
 	/** arena id → its round (waiting for players or playing). */
 	private static final Map<String, Round> rounds = new HashMap<>();
 	/** Players in a round being played (not out). */
@@ -449,9 +448,8 @@ public final class QuickRuntime {
 		List<ServerPlayer> going = new ArrayList<>();
 		for (UUID id : List.copyOf(r.players)) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
-			boolean near = p != null && nearPad(a, p);
-			// (/game try puts the admin in from anywhere.)
-			if (p != null && p.isAlive() && (near || r.players.size() == 1 && r.startsAt == 0)) going.add(p);
+			// Wherever they wandered during the join window, they're in (game areas are closed off).
+			if (p != null && p.isAlive()) going.add(p);
 			else {
 				r.players.remove(id);
 				r.names.remove(id);
@@ -561,9 +559,8 @@ public final class QuickRuntime {
 		if (r.state == State.LOBBY) {
 			r.players.removeIf(id -> {
 				ServerPlayer p = server.getPlayerList().getPlayer(id);
-				boolean gone = p == null || !nearPad(a, p);
-				if (gone && p != null) p.sendSystemMessage(Words.lit("You walked away from " + a.shown() + ": not in the next round.").withStyle(ChatFormatting.GRAY));
-				return gone;
+				// Only logging out drops them: walking off the pad doesn't (game areas are closed off; /game leave takes them out).
+				return p == null;
 			});
 			if (r.players.isEmpty()) {
 				rounds.remove(a.id);
@@ -585,8 +582,8 @@ public final class QuickRuntime {
 		// The queue for the next round stays in the spectator area.
 		r.next.removeIf(id -> {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
-			boolean gone = p == null || a.spectate == null || !inSpectate(a, p, 3);
-			if (gone && p != null) p.sendSystemMessage(Words.lit("You left the spectator area: out of the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
+			// Only logging out drops them from the queue, not walking out of the spectator area.
+			boolean gone = p == null;
 			if (!gone && server.getTickCount() % 40 == 0) p.sendOverlayMessage(Words.lit(a.shown() + ": you're next (" + (r.next.indexOf(id) + 1) + " in the queue)").withStyle(ChatFormatting.GOLD));
 			return gone;
 		});
@@ -1330,12 +1327,6 @@ public final class QuickRuntime {
 		if (a.areaMin == null || a.areaMax == null) return new AABB(0, 0, 0, 0, 0, 0);
 		return new AABB(Math.min(a.areaMin.x, a.areaMax.x), Math.min(a.areaMin.y, a.areaMax.y), Math.min(a.areaMin.z, a.areaMax.z),
 				Math.max(a.areaMin.x, a.areaMax.x) + 1, Math.max(a.areaMin.y, a.areaMax.y) + 1, Math.max(a.areaMin.z, a.areaMax.z) + 1);
-	}
-
-	/** Close to the start point, or in the spectator area (where the queue waits). */
-	private static boolean nearPad(Arena a, ServerPlayer p) {
-		if (a.start != null && dim(p).equals(a.start.dim) && p.distanceToSqr(a.start.x, a.start.y, a.start.z) <= LOBBY_RANGE * LOBBY_RANGE) return true;
-		return a.spectate != null && inSpectate(a, p, 3);
 	}
 
 	private static boolean inSpectate(Arena a, ServerPlayer p, double slack) {

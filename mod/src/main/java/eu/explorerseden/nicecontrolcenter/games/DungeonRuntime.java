@@ -814,16 +814,16 @@ public final class DungeonRuntime {
 		NiceControlCenter.LOGGER.info("Dungeons: {} queued for the {} pool ({} waiting)", String.join(", ", party.stream().map(x -> x.getGameProfile().name()).toList()), pool, q.size());
 	}
 
-	/** Every second: players who left the waiting area drop out; the first party starts once a copy is free. */
+	/** Every second: players who logged out drop out of the queue; the first party starts once a copy is free. */
 	private static void queues(MinecraftServer server) {
 		for (Map.Entry<String, java.util.Deque<List<UUID>>> e : queues.entrySet()) {
 			Games.Pos area = settings.waiting.get(e.getKey());
-			double r = settings.waitRadius + 3;
 			for (List<UUID> party : e.getValue()) {
 				party.removeIf(id -> {
 					ServerPlayer p = server.getPlayerList().getPlayer(id);
-					boolean gone = p == null || area == null || !p.level().dimension().identifier().toString().equals(area.dim) || p.distanceToSqr(area.x, area.y, area.z) > r * r;
-					if (gone && p != null) p.sendSystemMessage(Words.lit("You left the waiting area: out of the dungeon queue.").withStyle(ChatFormatting.GRAY));
+					// Only logging out drops them (or the waiting area being removed); walking out of it doesn't (game areas are closed off).
+					boolean gone = p == null || area == null;
+					if (gone && p != null) p.sendSystemMessage(Words.lit("The waiting area is gone: out of the dungeon queue.").withStyle(ChatFormatting.GRAY));
 					return gone;
 				});
 			}

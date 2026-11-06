@@ -137,6 +137,11 @@ final class Moles {
 					+ " {profile:{properties:[{name:\"textures\",value:\"" + k.texture() + "\"}]}}");
 		}
 		r.moles.put(at, new long[] { now + stay, k.points() });
+		// A block update at the hole block (and around it), so redstone or other blocks there can react to the head.
+		BlockPos hole = at.below();
+		BlockState holeState = level.getBlockState(hole);
+		level.neighborChanged(hole, holeState.getBlock(), null);
+		level.updateNeighborsAt(hole, holeState.getBlock());
 		level.sendParticles(ParticleTypes.POOF, at.getX() + 0.5, at.getY() + 0.1, at.getZ() + 0.5, 4, 0.2, 0.05, 0.2, 0.01);
 		level.playSound(null, at, SoundEvents.ROOTED_DIRT_BREAK, SoundSource.BLOCKS, 0.6f, 1.4f);
 	}
