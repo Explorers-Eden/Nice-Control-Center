@@ -530,13 +530,6 @@ public final class DungeonRuntime {
 		if (t % 2 == 0 && settings.enabled) pads(server);
 		if (t % 20 == 0) queues(server);
 		if (t % 20 == 0) padParticles(server);
-		// Nice Mob Manager leaves everything in the dungeon dimension alone (mobs saved with a dungeon, spawned, or wandered in).
-		if (t % 20 == 10) {
-			ServerLevel dl = level(server);
-			if (dl != null) for (net.minecraft.world.entity.Entity e : dl.getAllEntities()) {
-				if (e != null && !(e instanceof net.minecraft.world.entity.player.Player) && !e.entityTags().contains(MobLines.NMM_EXCLUDE)) e.addTag(MobLines.NMM_EXCLUDE);
-			}
-		}
 		if (t % 10 == 0) outlines(server);
 		if (t % 1200 == 0) noGraveUntil.values().removeIf(until -> until < System.currentTimeMillis());
 	}
@@ -1043,6 +1036,11 @@ public final class DungeonRuntime {
 	private static void spawn(MinecraftServer server, Run r, BlockPos at, String arg, boolean boss) {
 		MobLines.Entry e = MobLines.parse(arg);
 		if (e == null) return;
+		// A Katters boss (katters:theron…): the whole fight; its bodies get the run's boss tag.
+		if (eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.is(e.id())) {
+			eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(server, e.id(), Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(), boss ? r.bossTag() : null, !boss);
+			return;
+		}
 		int count = boss ? 1 : e.count();
 		for (int i = 0; i < count; i++) {
 			double ox = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0, oz = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0;

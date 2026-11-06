@@ -105,6 +105,20 @@ public final class MobLines {
 
 	/** Nice Mob Manager leaves mobs with this tag alone. */
 	public static final String NMM_EXCLUDE = "mob_manager.settings.exclude";
+	/** Where Nice Mob Manager changes nothing at all: the game dimension and the dungeons. */
+	private static final java.util.Set<String> NO_MOB_MANAGER = java.util.Set.of("eden:flying_fair", eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION);
+
+	/**
+	 * Every entity in Flying Fair and the dungeon dimension gets Nice Mob Manager's exclude tag the moment it's there
+	 * (spawned, loaded with its chunk, or come through a portal), before the datapack's next look: no new health, speed,
+	 * size or loot for game mobs, decoration or anything else there.
+	 */
+	public static void register() {
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof net.minecraft.world.entity.player.Player || entity.entityTags().contains(NMM_EXCLUDE)) return;
+			if (NO_MOB_MANAGER.contains(level.dimension().identifier().toString())) entity.addTag(NMM_EXCLUDE);
+		});
+	}
 
 	/** The weapon a mob spawns with in the wild (null = none or not always). */
 	static String weapon(String id) {

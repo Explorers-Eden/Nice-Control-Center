@@ -103,6 +103,8 @@ public final class GameRuntime {
 	private static final Map<UUID, Session> sessions = new HashMap<>();
 	/** After a run ends, the start point waits a moment before starting the next one. */
 	private static final Map<UUID, Long> cooldown = new HashMap<>();
+	/** On bosses summoned with /game boss. */
+	private static final String BOSS_TRY = "ncc_boss_try";
 	/** The wait after a round or run (and after leaving a pad or queue) before a pad takes the player again: the same for every game. */
 	public static final long WAIT_AFTER = 1000;
 	private static Map<String, Map<String, Games.Score>> scores = new LinkedHashMap<>();
@@ -1176,6 +1178,32 @@ public final class GameRuntime {
 					ctx.getSource().sendSuccess(() -> Words.lit("Removed " + a.shown() + " (the blocks it built stay)."), true);
 					return 1;
 				})))
+				// A Katters boss right here, to see it fight (gone again with /game boss clear, or the next restart).
+				.then(Commands.literal("boss").requires(admin)
+						.then(Commands.literal("clear").executes(ctx -> {
+							int n = 0;
+							for (ServerLevel l : ctx.getSource().getServer().getAllLevels()) {
+								for (net.minecraft.world.entity.Entity e : l.getAllEntities()) {
+									if (e.entityTags().contains(BOSS_TRY)) {
+										e.discard();
+										n++;
+									}
+								}
+							}
+							int gone = n;
+							ctx.getSource().sendSuccess(() -> Words.lit(gone + " boss pieces taken away."), true);
+							return gone;
+						}))
+						.then(Commands.argument("boss", StringArgumentType.word())
+								.suggests((ctx, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.KEYS, b)).executes(ctx -> {
+									String k = StringArgumentType.getString(ctx, "boss");
+									net.minecraft.world.phys.Vec3 at = ctx.getSource().getPosition();
+									String dim = ctx.getSource().getLevel().dimension().identifier().toString();
+									var f = eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(ctx.getSource().getServer(), "katters:" + k, dim, at.x, at.y, at.z, List.of(BOSS_TRY), null, true);
+									if (f == null) return fail(ctx, "No such boss: " + k + " (" + String.join(", ", eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.KEYS) + ").");
+									ctx.getSource().sendSuccess(() -> Words.lit(eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.title("katters:" + k) + " is here. /game boss clear takes it away."), true);
+									return 1;
+								})))
 				.then(Commands.literal("try").requires(admin).then(arenaArg.get().executes(ctx -> {
 					Arena a = arena(ctx);
 					if (a != null && Games.quick(a.type)) {

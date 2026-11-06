@@ -45,6 +45,8 @@ import net.minecraft.world.phys.AABB;
 
 import eu.explorerseden.nicecontrolcenter.Games;
 import eu.explorerseden.nicecontrolcenter.Games.Arena;
+import eu.explorerseden.nicecontrolcenter.games.bosses.BossFight;
+import eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import eu.explorerseden.nicecontrolcenter.claims.GameClaims;
 import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
@@ -512,7 +514,8 @@ public final class WaveRuntime {
 		if (g.state != State.FIGHT) return;
 		List<LivingEntity> mobs = mobs(level, g);
 		for (LivingEntity m : mobs) {
-			if (!m.entityTags().contains(SCALED)) toughen(g, m);
+			// (Katters bosses keep their own health: their phases go by it.)
+			if (!m.entityTags().contains(SCALED) && !m.entityTags().contains(BossFight.TAG)) toughen(g, m);
 			// Peaceful and neutral mobs fight too (3 damage, tougher each wave like the rest).
 			if (m instanceof Mob mob && (g.arena.peacefulFight || Aggro.landShy(mob))) Aggro.make(mob, 3f * (1 + g.arena.toughness / 100f * (g.wave - 1)));
 		}
@@ -525,13 +528,14 @@ public final class WaveRuntime {
 			Games.Pos at = g.arena.mobSpawns.get(random.nextInt(g.arena.mobSpawns.size()));
 			boolean boss = e.count() < 0;
 			MobLines.Entry one = new MobLines.Entry(e.id(), 1, e.nbt());
-			MobLines.summon(server, at.dim, at.x + (random.nextDouble() - 0.5), at.y, at.z + (random.nextDouble() - 0.5), one,
-					"Tags:[\"" + g.tag() + "\"" + (boss ? ",\"" + BOSS + "\"" : "") + "]");
+			double sx = at.x + (random.nextDouble() - 0.5), sz = at.z + (random.nextDouble() - 0.5);
+			if (KatterBosses.is(e.id())) KatterBosses.spawn(server, e.id(), at.dim, sx, at.y, sz, boss ? List.of(g.tag(), BOSS) : List.of(g.tag()), null, true);
+			else MobLines.summon(server, at.dim, sx, at.y, sz, one, "Tags:[\"" + g.tag() + "\"" + (boss ? ",\"" + BOSS + "\"" : "") + "]");
 		}
 		if (server.getTickCount() % 20 == 0) {
 			for (LivingEntity m : mobs) {
-				// Back into the box; after a minute the last few glow.
-				if (!box.inflate(2).contains(m.position())) {
+				// Back into the box (riders go with their mount; a boss out of reach on purpose stays); after a minute the last few glow.
+				if (!box.inflate(2).contains(m.position()) && !m.isPassenger() && !m.isInvulnerable()) {
 					Games.Pos at = g.arena.mobSpawns.get(random.nextInt(g.arena.mobSpawns.size()));
 					m.teleportTo(at.x, at.y, at.z);
 				}
@@ -562,7 +566,8 @@ public final class WaveRuntime {
 	}
 
 	private static List<LivingEntity> mobs(ServerLevel level, Game g) {
-		return level.getEntitiesOfClass(LivingEntity.class, box(g.arena).inflate(48), e -> e.isAlive() && e.entityTags().contains(g.tag()));
+		// (A boss's pieces that are no enemy, like Tenkū's dolphins, don't count.)
+		return level.getEntitiesOfClass(LivingEntity.class, box(g.arena).inflate(48), e -> e.isAlive() && e.entityTags().contains(g.tag()) && !e.entityTags().contains(BossFight.ASSET));
 	}
 
 	/** The fight box: both corners' blocks included, their height too. */
@@ -783,7 +788,9 @@ public final class WaveRuntime {
 		AABB box = box(g.arena);
 		for (Entity e : level.getEntitiesOfClass(Entity.class, box.inflate(48), e -> e.entityTags().contains(g.tag()))) e.discard();
 		ConsoleRunner.quiet(server, "kill @e[tag=" + g.tag() + "]");
+		int left = Cleanup.leftovers(level, box.inflate(2));
 		Cleanup.items(level, box.inflate(2));
+		if (left > 0) NiceControlCenter.LOGGER.info("Games: wave arena {}: {} untagged leftovers removed", g.arena.name, left);
 	}
 
 	// ---------------------------------------------------------------- helpers

@@ -85,6 +85,12 @@ A party of 1–4 (see Parties) fights waves of mobs.
   `kit` (what you carry becomes the kit).
 - Panel: waves to clear (0 = endless), mob pool, wave sizes, bosses (every … waves; a list, picked at random or in order), toughness, hand-written waves, team lives,
   peaceful and neutral mobs attacking too (on by default), commands after each wave (`{wave}`).
+- **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
+  `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron` to the bosses (the panel has a picker), or put
+  them in a hand-written wave. They fight with their own attacks (Theron's phases and minions, Rústa's forms, Raj's
+  lightning, Arachne's webs and brood, Tenkū's dolphins and beams; Tenkū hovers when it's out of water), keep their
+  own health (no "% more per wave") and drop nothing. Try one where you stand: `/game boss <name>`; `/game boss clear`
+  takes them away again.
 
 ## Quick rounds
 Everyone who steps in during the join window (10 s) plays the same round, each for their own score. Nobody dies:

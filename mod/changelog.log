@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.89.0
+- Wave arenas and dungeons: the five Katters Structures bosses (designed by Katter), built into the mod without the datapack's functions: katters:arachne, katters:raj, katters:rusta, katters:tenku, katters:theron (in the bosses list, a hand-written wave or a dungeon boss: marker). Their own attacks and phases, their own health (no wave toughness), no drops; Tenkū hovers out of water
+- /game boss <name> summons one where you stand to try it, /game boss clear takes them away
+- Nice Mob Manager changes nothing in Flying Fair and the dungeon dimension any more: every entity there gets its exclude tag the moment it appears (before only game mobs, NPCs and, once a second, the dungeons)
+- Wave arenas and quick rounds: the end of a round also clears what the game's mobs left behind without its tag (vexes, slime splits, reinforcements, potion clouds, fireballs, primed TNT); NPCs and mobs without AI stay
+- Wave arenas: riders and untouchable bosses are no longer teleported back into the box on their own
 ## 1.88.1
 - Quick rounds: stepping on the pad during a round queues for the next one without a spectator area too (they wait where they are); a queued player who went into another game meanwhile isn't pulled out of it
 - Wave arenas: queued parties no longer drop out for leaving the spectator area or the pad's surroundings; at the start, every member still online comes along

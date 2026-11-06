@@ -2124,6 +2124,8 @@
         + field('bossEvery', 'A boss every … waves (0 = never)', num('bossEvery', 0, 1000))
         + field('bossOrder', 'Which boss', sel('bossOrder', [['random', 'a random one from the list'], ['order', 'in order (then round again)']]))
         + `<label class="pn-field pn-field-wide"><span>Bosses (one pool line each: <code>mob {data}</code>)</span><textarea data-g="bosses" data-lines="1" rows="3" spellcheck="false" placeholder="ravager&#10;wither_skeleton {CustomName:'Bone King'}">${esc((a.bosses || []).join('\n'))}</textarea></label>`
+        + field('katters', 'Add a Katters Structures boss', `<select data-katters="1"><option value="">(pick one to add it)</option>${[['arachne', 'Arachne, Mother of Spiders'], ['raj', 'Raj Raksha'], ['rusta', 'Rústa, Chieftain of the Ravaged Lands'], ['tenku', 'Tenkū Mizu Gami (hovers on land)'], ['theron', 'Magus Theron the Betrayer']].map(([k, l]) => `<option value="katters:${k}">${l}</option>`).join('')}</select>`)
+        + '<p class="pn-hint pn-field-wide">Katters bosses (by Katter, Katters Structures) fight with their own attacks, keep their own health (no "% more per wave") and drop nothing. Try one where you stand: <code>/game boss &lt;name&gt;</code>, gone again with <code>/game boss clear</code>.</p>'
         + `<label class="pn-field pn-field-wide"><span>Hand-written waves (replace the generated ones), one per line: <code>5: husk x6, skeleton x2</code></span><textarea data-g="waveLines" rows="3" spellcheck="false" placeholder="10: wither_skeleton x4, blaze x2">${esc(overrides)}</textarea></label>`,
       rewards: `<label class="pn-field pn-field-wide"><span>Commands after each cleared wave ({wave}, {player}, {game}): wave rewards</span><textarea data-g="waveCommands" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a.waveCommands || []).join('\n'))}</textarea></label>`
         + text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line')
@@ -2282,6 +2284,16 @@
     formMsg('pn-gm-msg', 'Not saved yet.', true);
     if (rerender) renderArenas();
   }
+
+  // Katters boss picker: adds its line to the bosses list (and that counts as a change).
+  $('pn-gm-list').addEventListener('change', (e) => {
+    if (!e.target.dataset.katters || !e.target.value) return;
+    const box = e.target.closest('[data-arena]')?.querySelector('textarea[data-g="bosses"]');
+    if (!box) return;
+    box.value = (box.value.trim() ? box.value.trimEnd() + '\n' : '') + e.target.value;
+    e.target.value = '';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 
   $('pn-gm-list').addEventListener('input', (e) => {
     const card = e.target.closest('[data-arena]');

@@ -25,6 +25,30 @@ final class Cleanup {
 		p.setAirSupply(p.getMaxAirSupply());
 	}
 
+	/**
+	 * What the game's mobs left behind without the game's tag (an evoker's vexes, split slimes, zombie reinforcements,
+	 * potion clouds, fireballs, primed TNT…): monsters with AI, projectiles and the like in the box go. NPCs and
+	 * decoration (mobs without AI) stay.
+	 */
+	static int leftovers(ServerLevel level, AABB box) {
+		if (level == null || box == null) return 0;
+		int n = 0;
+		for (Entity e : level.getEntitiesOfClass(Entity.class, box, Cleanup::leftover)) {
+			e.discard();
+			n++;
+		}
+		return n;
+	}
+
+	private static boolean leftover(Entity e) {
+		if (e instanceof net.minecraft.world.entity.player.Player) return false;
+		if (e.entityTags().stream().anyMatch(t -> t.startsWith("ncc_npc"))) return false;
+		if (e instanceof net.minecraft.world.entity.Mob m) return m instanceof net.minecraft.world.entity.monster.Enemy && !m.isNoAi();
+		return e instanceof net.minecraft.world.entity.projectile.Projectile || e instanceof net.minecraft.world.entity.AreaEffectCloud
+				|| e instanceof net.minecraft.world.entity.item.PrimedTnt || e instanceof net.minecraft.world.entity.item.FallingBlockEntity
+				|| e instanceof net.minecraft.world.entity.projectile.EvokerFangs;
+	}
+
 	/** Gone from the box; how many. */
 	static int items(ServerLevel level, AABB box) {
 		if (level == null || box == null) return 0;

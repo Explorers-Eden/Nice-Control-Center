@@ -48,6 +48,7 @@ field). The easiest way to get one is `/dungeon tool marker <text>`, which hands
 | `checkpoint` | Players with lives left come back here after dying. |
 | `mob:zombie x3` | Spawns 3 zombies here when the copy is made. Any mob works, also NPCs: `mob:npc:knight x2`. |
 | `boss:wither_skeleton {CustomName:'"Warden of Bones"'}` | Like `mob:`, but it counts as a boss: shows a boss bar, and with "clear when every boss is dead" the run ends when all bosses are dead. |
+| `boss:katters:theron` | A Katters Structures boss (by Katter, built into the mod): `katters:arachne`, `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron`, with all its attacks and phases; it drops nothing. As `mob:` it fights the same but doesn't count as a boss. |
 
 ---
 
