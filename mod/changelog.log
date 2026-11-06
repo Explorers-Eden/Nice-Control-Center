@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.90.1
+- Wave arenas: the fight box is noted at the start and put back after every wave and at the end: cobwebs (Arachne, weaving), fire, placed or broken blocks, water and lava are gone (boxes up to 4 million blocks)
+- Games: ravagers of the games (and in Flying Fair and the dungeons) don't break leaves any more, so nothing hanging on them (a lever) drops
 ## 1.90.0
 - Wave arenas: "every … waves" makes boss waves: the boss comes alone, without the wave's other mobs (hand-written waves stay as written)
 - Katters bosses: their boss bar shows only to the players of their game (the wave arena's players, the dungeon run's party); /game boss still shows it to anyone close by

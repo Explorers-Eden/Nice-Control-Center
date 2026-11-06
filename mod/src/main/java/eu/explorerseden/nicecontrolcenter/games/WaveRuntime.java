@@ -65,6 +65,8 @@ public final class WaveRuntime {
 
 	static final class Game {
 		final Arena arena;
+		/** The arena's blocks at the start: put back after each wave and at the end. */
+		ArenaSnapshot blocks;
 		final List<UUID> players = new ArrayList<>();
 		final Map<UUID, String> names = new LinkedHashMap<>();
 		/** Died this wave: back at the next one. */
@@ -204,6 +206,7 @@ public final class WaveRuntime {
 		g.nextAt = System.currentTimeMillis() + 3000;
 		games.put(a.id, g);
 		clearBox(server, g);
+		g.blocks = ArenaSnapshot.take(GameRuntime.levelOf(server, a.spawn.dim), box(a), a.name);
 		NiceControlCenter.LOGGER.info("Games: wave arena {} tried from the console: wave 1 in 3 seconds, ends in 3 minutes", a.name);
 		return null;
 	}
@@ -430,6 +433,7 @@ public final class WaveRuntime {
 		Game g = new Game(a, false);
 		games.put(a.id, g);
 		clearBox(server, g);
+		g.blocks = ArenaSnapshot.take(GameRuntime.levelOf(server, a.spawn.dim), box(a), a.name);
 		for (ServerPlayer p : party) {
 			Cleanup.refresh(p);
 			g.players.add(p.getUUID());
@@ -632,6 +636,7 @@ public final class WaveRuntime {
 	private static void waveCleared(MinecraftServer server, Game g, ServerLevel level) {
 		Arena a = g.arena;
 		g.cleared = g.wave;
+		restoreBlocks(g);
 		String wave = String.valueOf(g.wave);
 		for (UUID id : g.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
@@ -750,6 +755,7 @@ public final class WaveRuntime {
 		games.remove(g.arena.id);
 		Arena a = g.arena;
 		clearBox(server, g);
+		restoreBlocks(g);
 		if (g.bar != null) g.bar.removeAllPlayers();
 		// Endless games end by losing: that's their finish.
 		boolean finished = won || a.rounds == 0;
@@ -781,6 +787,13 @@ public final class WaveRuntime {
 			else afterRespawn.put(id, a);
 		}
 		NiceControlCenter.LOGGER.info("Games: wave arena {} ended ({}) after {} waves: {}", a.name, won ? "cleared" : why == null ? "over" : why, g.cleared, String.join(", ", g.names.values()));
+	}
+
+	/** The arena's blocks as they were at the start (cobwebs, fire, placed or broken blocks). */
+	private static void restoreBlocks(Game g) {
+		if (g.blocks == null) return;
+		int n = g.blocks.restore();
+		if (n > 0) NiceControlCenter.LOGGER.info("Games: wave arena {}: {} blocks put back as built", g.arena.name, n);
 	}
 
 	/** Mobs of the game (and anything left lying in the box) gone. */
