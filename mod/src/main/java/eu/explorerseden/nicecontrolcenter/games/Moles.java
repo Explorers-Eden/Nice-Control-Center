@@ -31,7 +31,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SkullBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.RotationSegment;
 import net.minecraft.world.phys.AABB;
 
 import eu.explorerseden.nicecontrolcenter.Games;
@@ -93,6 +92,14 @@ public final class Moles {
 				.add(Attributes.ATTACK_SPEED, new AttributeModifier(Item.BASE_ATTACK_SPEED_ID, 0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
 				.build());
 		return st;
+	}
+
+	/** A point inside a solid block (a hole laid out where it was): moved on top of it. */
+	static Games.Pos onTop(ServerLevel level, Games.Pos at) {
+		if (at == null || !at.dim.equals(level.dimension().identifier().toString())) return at;
+		BlockPos b = BlockPos.containing(at.x, at.y, at.z);
+		if (level.getBlockState(b).getCollisionShape(level, b).isEmpty()) return at;
+		return new Games.Pos(at.dim, at.x, b.getY() + 1, at.z, at.yaw);
 	}
 
 	/** Where players appear: the middle of the grid, on top of it (facing as the spawn was set). */
@@ -169,12 +176,8 @@ public final class Moles {
 		BlockPos at = free.get(random.nextInt(free.size()));
 		Kind k = kinds.get(random.nextInt(kinds.size()));
 		BlockState state = k.block().defaultBlockState();
-		// Facing the middle (where the players stand).
-		if (state.hasProperty(SkullBlock.ROTATION)) {
-			Games.Pos c = center(a);
-			float yaw = (float) Math.toDegrees(Math.atan2(-(c.x - (at.getX() + 0.5)), c.z - (at.getZ() + 0.5)));
-			state = state.setValue(SkullBlock.ROTATION, RotationSegment.convertToSegment(yaw));
-		}
+		// Facing a random way.
+		if (state.hasProperty(SkullBlock.ROTATION)) state = state.setValue(SkullBlock.ROTATION, random.nextInt(16));
 		level.setBlock(at, state, 3);
 		GameRuntime.track(level, at);
 		if (k.texture() != null) {

@@ -326,7 +326,7 @@ public final class GameRuntime {
 			else if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
 			// To the game hub spawn, else the start point (not after dying: the respawn does that; not when they left for another dimension).
 			if (p.isAlive() && (why == null || !why.startsWith("You left the arena"))) {
-				if (!Portals.returnTo(server, p, s.arena) && level != null) p.teleportTo(level, s.arena.start.x, s.arena.start.y, s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
+				if (!Portals.returnTo(server, p, s.arena) && level != null) p.teleportTo(level, s.arena.start.x, freeY(level, p, s.arena.start.x, s.arena.start.y, s.arena.start.z), s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
 				cooldown.put(s.player, System.currentTimeMillis() + Math.max(3, s.arena.cooldown) * 1000L);
 			}
 			if (finished) {
@@ -1107,13 +1107,13 @@ public final class GameRuntime {
 					}
 					if (Games.quick(a.type)) {
 						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
-						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+						p.teleportTo(level, a.start.x, freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 						ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": you're on the pad; the round starts once the join window closes."), false);
 						return 1;
 					}
 					if (a.type.equals("waves")) {
 						if (sessions.containsKey(p.getUUID()) || WaveRuntime.inGame(p) || QuickRuntime.inGame(p)) return fail(ctx, "You're already in a game: /game leave first.");
-						p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+						p.teleportTo(level, a.start.x, freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 						ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": the party leader stands on the pad to start (or queue up)."), false);
 						return 1;
 					}
@@ -1282,6 +1282,9 @@ public final class GameRuntime {
 								a.corner = new Games.Pos(at.dim, Math.floor(at.x), Math.floor(at.y) - 1, Math.floor(at.z), 0);
 								settings.fill();
 								Moles.build((ServerLevel) p.level(), a);
+								// A start point (or spawn) now inside a hole block goes on top of it.
+								a.start = Moles.onTop((ServerLevel) p.level(), a.start);
+								a.spawn = Moles.onTop((ServerLevel) p.level(), a.spawn);
 								int span = (a.moleSize - 1) * (1 + a.moleGap) + 1;
 								return a.moleSize + " × " + a.moleSize + " holes laid out here (" + span + " × " + span + " blocks toward +X and +Z, in the block under your feet); heads pop up on top of them."
 										+ " After changing the size or gap in the panel: grid again.";

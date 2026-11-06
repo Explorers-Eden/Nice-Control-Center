@@ -735,7 +735,7 @@ public final class WaveRuntime {
 		}
 		ServerLevel level = a.start == null ? null : GameRuntime.levelOf(server, a.start.dim);
 		// To the game hub spawn (else the start point).
-		if (!Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+		if (!Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, GameRuntime.freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 		p.resetFallDistance();
 		cooldown.put(p.getUUID(), System.currentTimeMillis() + 5000);
 		GameClaims.gameMode(p, false);

@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.86.2
+- Games: /game join and the way back to the start point never put players inside a block either (they land on top of it)
+- Whack-a-mole: laying out the grid moves a start point or spawn that ends up inside a hole block on top of it
+- Whack-a-mole: heads face a random way
 ## 1.86.1
 - Whack-a-mole: the mace is a real mace again (no stick dressed up; Litematica and other tools see a mace), with no damage, fist speed and no wear
 - Whack-a-mole: players appear in the middle of the grid, on top of it; heads face the middle

@@ -1180,7 +1180,7 @@ public final class QuickRuntime {
 		if (kit(a)) GameClaims.restoreFor(p, true);
 		ServerLevel level = a.start == null ? null : GameRuntime.levelOf(server, a.start.dim);
 		// To the game hub spawn (else the start point).
-		if (p.isAlive() && !Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+		if (p.isAlive() && !Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, GameRuntime.freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 		p.resetFallDistance();
 		cooldown.put(p.getUUID(), System.currentTimeMillis() + Math.max(5, a.cooldown) * 1000L);
 		GameClaims.gameMode(p, false);
@@ -1219,7 +1219,7 @@ public final class QuickRuntime {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p == null || r.next.contains(id) || !inSpectate(a, p, 3)) continue;
 			ServerLevel level = a.start == null ? null : GameRuntime.levelOf(server, a.start.dim);
-			if (!Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, a.start.y, a.start.z, Set.of(), a.start.yaw, 0, true);
+			if (!Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, GameRuntime.freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 		}
 		// The queue becomes the next round's join window.
 		if (wasPlaying && !r.next.isEmpty() && GameRuntime.settings().enabled && a.enabled) {
