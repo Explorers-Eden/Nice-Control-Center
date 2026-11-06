@@ -144,6 +144,38 @@ public final class GameRuntime {
 		return true;
 	}
 
+	/** Respawned players to check again: when something else moved them after the hub teleport, they go back. */
+	private static final Map<UUID, Long> hubCheck = new HashMap<>();
+
+	/**
+	 * After a death that the hub spawn covers: to the hub spawn now, and once more a few ticks later if they aren't
+	 * there (another mod, a datapack or the respawn itself moved them on).
+	 */
+	public static void toHubAfterRespawn(MinecraftServer server, ServerPlayer p) {
+		boolean ok = toHub(server, p);
+		Games.Pos hub = settings.hub;
+		NiceControlCenter.LOGGER.info("Games: {} respawned: {}", p.getGameProfile().name(),
+				ok ? "to the hub spawn in " + hub.dim : "no hub spawn to go to (none set, or its dimension is missing)");
+		if (ok) hubCheck.put(p.getUUID(), (long) server.getTickCount() + 5);
+	}
+
+	private static void checkHub(MinecraftServer server) {
+		if (hubCheck.isEmpty()) return;
+		long now = server.getTickCount();
+		for (Map.Entry<UUID, Long> e : List.copyOf(hubCheck.entrySet())) {
+			if (e.getValue() > now) continue;
+			hubCheck.remove(e.getKey());
+			ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
+			Games.Pos hub = settings.hub;
+			if (p == null || hub == null || !p.isAlive()) continue;
+			boolean there = dim(p).equals(hub.dim) && p.distanceToSqr(hub.x, hub.y, hub.z) <= 4 * 4;
+			if (there) continue;
+			NiceControlCenter.LOGGER.info("Games: {} was moved away from the hub spawn after respawning (now in {} at {} {} {}): sent back", p.getGameProfile().name(), dim(p),
+					Math.round(p.getX()), Math.round(p.getY()), Math.round(p.getZ()));
+			toHub(server, p);
+		}
+	}
+
 	public static void register() {
 		CommandRegistrationCallback.EVENT.register((d, access, env) -> commands(d));
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
@@ -164,6 +196,7 @@ public final class GameRuntime {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % 100 == 0) reload();
 			if (server.getTickCount() % 2 == 0) tick(server);
+			checkHub(server);
 			stepMazes();
 			if (server.getTickCount() % 60 == 0) mazeMobs(server);
 			if (server.getTickCount() % 1200 == 0) dailyMazes(server);

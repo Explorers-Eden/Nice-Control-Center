@@ -130,7 +130,13 @@ public final class GameClaims {
 			if (entity instanceof ServerPlayer p && eu.explorerseden.nicecontrolcenter.games.QuickRuntime.knockOut(p)) return false;
 			if (entity instanceof ServerPlayer p) {
 				// (Not while a dungeon brings them back to its checkpoint.)
-				if (GameRuntime.hubCovers(p) && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p) && !eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) && !eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) toHubOnRespawn.add(p.getUUID());
+				if (GameRuntime.hubCovers(p) && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p) && !eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) && !eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) {
+					toHubOnRespawn.add(p.getUUID());
+					NiceControlCenter.LOGGER.info("Games: {} died in {}: respawns at the hub spawn", p.getGameProfile().name(), p.level().dimension().identifier());
+				} else if (GameRuntime.hubCovers(p)) {
+					NiceControlCenter.LOGGER.info("Games: {} died in {}: their game brings them back ({})", p.getGameProfile().name(), p.level().dimension().identifier(),
+							eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p) ? "dungeon checkpoint" : eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) ? "wave arena" : "quick round");
+				}
 				died(p);
 			}
 			return true;
@@ -144,7 +150,7 @@ public final class GameClaims {
 				if (!toHubOnRespawn.contains(now.getUUID()) && at != null && at.id.equals(kept.claim())) giveBackKept(now);
 				else forgetKept(now);
 			}
-			if (toHubOnRespawn.remove(now.getUUID()) && !alive) GameRuntime.toHub(now.level().getServer(), now);
+			if (toHubOnRespawn.remove(now.getUUID()) && !alive) GameRuntime.toHubAfterRespawn(now.level().getServer(), now);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> loggedOut(server, handler.player));
 		// No ender pearls in games: they'd throw players out of the game or over its walls.
