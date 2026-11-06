@@ -44,13 +44,17 @@ final class Moles {
 	static List<Kind> kinds(Arena a) {
 		List<Kind> out = new ArrayList<>();
 		for (String line : a.moleHeads) {
+			// Points after the last "=", when it's a number (a base64 value without points may end in "=" padding).
 			int eq = line.lastIndexOf('=');
-			String what = (eq < 0 ? line : line.substring(0, eq)).strip();
+			String what = line.strip();
 			int points = 1;
-			try {
-				if (eq >= 0) points = Integer.parseInt(line.substring(eq + 1).strip());
-			} catch (NumberFormatException e) {
-				points = 1;
+			if (eq >= 0) {
+				try {
+					points = Integer.parseInt(line.substring(eq + 1).strip());
+					what = line.substring(0, eq).strip();
+				} catch (NumberFormatException e) {
+					points = 1;
+				}
 			}
 			if (what.isEmpty() || points == 0) continue;
 			Identifier id = what.length() < 64 ? Identifier.tryParse(what.contains(":") ? what : "minecraft:" + what) : null;

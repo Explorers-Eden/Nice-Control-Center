@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.85.1
+- Whack-a-mole: a player head given as a base64 skin without points (ending in "=" padding) now pops up worth 1 point instead of being skipped
 ## 1.85.0
 - Rewards: new dungeon triggers: "Reaches a checkpoint in a dungeon" (from checkpoint … of the run, each checkpoint counts once per run), "Defeats a boss in a dungeon" (from boss … of the run) and "Defeats every boss in a dungeon" (within … seconds); for everyone of the run who's still in
 ## 1.84.2
