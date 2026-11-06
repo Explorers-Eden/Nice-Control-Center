@@ -956,6 +956,7 @@
     $('pn-sub').textContent = parts.join(' · ');
     $('pn-sub').hidden = !parts.length;
     $('pn-sub').className = 'pn-state-note ' + dot;
+    backupBytes = st.backupBytes;
     serverRunning = st.state === 'RUNNING';
     if (!serverRunning) serverPaused = false;
     if (serverRunning && !liveTimer && can('dashboard.view')) pollLive();
@@ -980,6 +981,8 @@
   // ── Navbar: stat tiles and game clock (from the mod's live data) ───────
 
   let serverRunning = false;
+  /** The backup folder's size (from the panel; outside the server folder the mod measures). */
+  let backupBytes = null;
   /** Players online from the last live reading: the sidebar's Players count. */
   let liveOnline = 0;
   let liveTimer = null;
@@ -1050,7 +1053,7 @@
     ];
     if (d.disk) {
       const freePct = d.disk.total ? d.disk.free / d.disk.total * 100 : 100;
-      tiles.push(['Disk', null, null, sizes([['world', d.disk.world, ''], ['server', d.disk.server, ''], ['free', d.disk.free, freePct < 5 ? 'poor' : freePct < 10 ? 'warn' : 'good']])]);
+      tiles.push(['Disk', null, null, sizes([['world', d.disk.world, ''], ['server', d.disk.server, ''], ...(backupBytes != null ? [['backups', backupBytes, '']] : []), ['free', d.disk.free, freePct < 5 ? 'poor' : freePct < 10 ? 'warn' : 'good']])]);
     }
     tiles.push(
       ['GC', showBusy ? `<span class="${gcClass}">${fixed(bg, 0)}%</span><small> busy</small>` : `<span class="${gcClass}">${fixed(gcPct, 1)}%</span><small> paused</small>`,
@@ -1066,7 +1069,7 @@
     );
     // Each tile a fixed base width that fits its usual content, growing in proportion on wider screens: the widths
     // never follow the values shown, so nothing shifts when a number gets longer.
-    const BASIS = { TPS: 70, MSPT: 178, CPU: 98, Memory: 196, Disk: 188, GC: 114, Loaded: 174, Distances: 78, 'Mob cap': 70, Players: 86 };
+    const BASIS = { TPS: 70, MSPT: 178, CPU: 98, Memory: 196, Disk: 236, GC: 114, Loaded: 174, Distances: 78, 'Mob cap': 70, Players: 86 };
     $('pn-stats').innerHTML = tiles.map(([label, value, sub, extra]) => `<div class="np-stat-card" style="flex: ${(BASIS[label] || 90) / 100} 0 ${BASIS[label] || 90}px">
       <span class="np-stat-label">${label}</span>${value == null ? '' : `<span class="np-stat-value">${value}</span>`}${extra || ''}${sub == null ? '' : `<span class="np-stat-sub">${esc(sub)}</span>`}</div>`).join('');
     $('pn-stats').hidden = false;

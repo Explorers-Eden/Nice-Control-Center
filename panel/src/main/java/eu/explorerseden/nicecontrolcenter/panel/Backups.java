@@ -475,6 +475,24 @@ public final class Backups {
 		return deleted;
 	}
 
+	/** Bytes in the backup folder: finished backups, their notes and a backup being written. */
+	public long folderBytes() {
+		if (!Files.isDirectory(backupDir)) return 0;
+		long total = 0;
+		try (Stream<Path> files = Files.list(backupDir)) {
+			for (Path f : files.toList()) {
+				try {
+					if (Files.isRegularFile(f)) total += Files.size(f);
+				} catch (IOException e) {
+					// Gone meanwhile.
+				}
+			}
+		} catch (IOException e) {
+			// What was counted.
+		}
+		return total;
+	}
+
 	public boolean exists(String name) {
 		return name != null && NAME.matcher(name).matches() && Files.isRegularFile(backupDir.resolve(name));
 	}

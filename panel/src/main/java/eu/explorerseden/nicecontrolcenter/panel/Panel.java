@@ -251,6 +251,8 @@ public final class Panel {
 			routes.get("/api/server", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 				Map<String, Object> out = new LinkedHashMap<>(server.status());
 				out.put("eula", server.eulaAccepted());
+				// The backups sit outside the server folder, so the mod's disk tile can't see them.
+				out.put("backupBytes", backups.folderBytes());
 				if (ctx.queryParam("memory") != null) out.put("memory", MemoryInfo.read(out.get("pid") instanceof Long pid ? pid : null));
 				json(ctx, out);
 			}));

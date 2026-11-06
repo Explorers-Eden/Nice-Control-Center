@@ -1,3 +1,6 @@
+## 1.74.1
+- Disk tile: shows the backups folder too (it is outside the server folder, so "server" never included it)
+
 ## 1.74.0
 - Rewards: new dungeon triggers "Reaches a checkpoint in a dungeon", "Defeats a boss in a dungeon" and "Defeats every boss in a dungeon" (mod 1.85.0)
 - Dungeons: the setup steps on the Dungeons page are a short 5-step list, with a link to the full guide (DUNGEONS.md)
