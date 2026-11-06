@@ -83,7 +83,7 @@ A party of 1–4 (see Parties) fights waves of mobs.
 - Create it where players should appear (the spawn; move it with `/game edit <name> spawn`), then `corner1` / `corner2` (the fight box),
   `mobspawn add` (several), optional `spectate [radius]`, `back add` (exit pads inside: 5 s on one leaves),
   `kit` (what you carry becomes the kit).
-- Panel: waves to clear (0 = endless), mob pool, wave sizes, bosses (every … waves; a list, picked at random or in order), toughness, hand-written waves, team lives,
+- Panel: waves to clear (0 = endless), mob pool, wave sizes, boss waves (every … waves the boss comes alone; a list, picked at random or in order), toughness, hand-written waves, team lives,
   peaceful and neutral mobs attacking too (on by default), commands after each wave (`{wave}`).
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
   `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron` to the bosses (the panel has a picker), or put

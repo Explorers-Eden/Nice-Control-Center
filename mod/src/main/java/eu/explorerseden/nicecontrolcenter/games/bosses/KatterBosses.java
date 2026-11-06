@@ -102,6 +102,12 @@ public final class KatterBosses {
 	 * is gone.
 	 */
 	public static BossFight spawn(MinecraftServer server, String id, String dim, double x, double y, double z, List<String> tags, String bossTag, boolean bar) {
+		return spawn(server, id, dim, x, y, z, tags, bossTag, bar, null);
+	}
+
+	/** The same, its bar only for {@code viewers} (the game's players; null: anyone within 48 blocks). */
+	public static BossFight spawn(MinecraftServer server, String id, String dim, double x, double y, double z, List<String> tags, String bossTag, boolean bar,
+			java.util.function.Predicate<ServerPlayer> viewers) {
 		String k = key(id);
 		ServerLevel level = eu.explorerseden.nicecontrolcenter.games.GameRuntime.levelOf(server, dim);
 		if (k == null || level == null) return null;
@@ -112,6 +118,7 @@ public final class KatterBosses {
 			case "tenku" -> new TenkuFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
+		f.viewers = viewers;
 		fights.add(f);
 		NiceControlCenter.LOGGER.info("Games: boss {} summoned in {} at {} {} {}", f.name(), dim, Math.round(x), Math.round(y), Math.round(z));
 		return f;

@@ -53,6 +53,8 @@ public abstract class BossFight {
 	/** Cobwebs its attacks spun: gone again when the fight ends. */
 	final Set<BlockPos> webs = new HashSet<>();
 	private ServerBossEvent bar;
+	/** Who sees its bar: the game's players (null: anyone within 48 blocks). */
+	java.util.function.Predicate<ServerPlayer> viewers;
 	long ticks;
 	boolean over;
 
@@ -94,8 +96,9 @@ public abstract class BossFight {
 			if (b != null && b.isAlive()) {
 				bar.setName(b.getDisplayName());
 				bar.setProgress(Math.max(0f, Math.min(1f, b.getHealth() / b.getMaxHealth())));
-				for (ServerPlayer p : level.players()) {
-					if (p.distanceToSqr(b) <= 48 * 48) bar.addPlayer(p);
+				for (ServerPlayer p : level.getServer().getPlayerList().getPlayers()) {
+					boolean sees = p.level() == level && (viewers != null ? viewers.test(p) : p.distanceToSqr(b) <= 48 * 48);
+					if (sees) bar.addPlayer(p);
 					else bar.removePlayer(p);
 				}
 			}

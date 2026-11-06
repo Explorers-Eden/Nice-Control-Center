@@ -529,7 +529,8 @@ public final class WaveRuntime {
 			boolean boss = e.count() < 0;
 			MobLines.Entry one = new MobLines.Entry(e.id(), 1, e.nbt());
 			double sx = at.x + (random.nextDouble() - 0.5), sz = at.z + (random.nextDouble() - 0.5);
-			if (KatterBosses.is(e.id())) KatterBosses.spawn(server, e.id(), at.dim, sx, at.y, sz, boss ? List.of(g.tag(), BOSS) : List.of(g.tag()), null, true);
+			// (Its bar only for this game's players.)
+			if (KatterBosses.is(e.id())) KatterBosses.spawn(server, e.id(), at.dim, sx, at.y, sz, boss ? List.of(g.tag(), BOSS) : List.of(g.tag()), null, true, p -> g.players.contains(p.getUUID()));
 			else MobLines.summon(server, at.dim, sx, at.y, sz, one, "Tags:[\"" + g.tag() + "\"" + (boss ? ",\"" + BOSS + "\"" : "") + "]");
 		}
 		if (server.getTickCount() % 20 == 0) {
@@ -596,15 +597,8 @@ public final class WaveRuntime {
 		String written = a.waveLines.get(String.valueOf(g.wave));
 		if (written != null) {
 			for (MobLines.Entry e : MobLines.parseList(written)) for (int i = 0; i < e.count(); i++) g.toSpawn.add(e);
-		} else if (!a.pool.isEmpty()) {
-			int size = Math.max(1, (int) g.players.stream().filter(g::in).count());
-			int want = (int) Math.round((a.firstWave + a.perWave * (g.wave - 1)) * (1 + a.perPlayer / 100.0 * (size - 1)));
-			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null).toList();
-			while (g.toSpawn.size() < want && !pool.isEmpty()) {
-				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
-				for (int i = 0; i < e.count() && g.toSpawn.size() < want; i++) g.toSpawn.add(e);
-			}
-			// The boss comes last; a negative count marks it.
+		} else if (!a.pool.isEmpty() || !a.bosses.isEmpty()) {
+			// A boss wave (every … waves): the boss alone, no other mobs.
 			MobLines.Entry boss = null;
 			List<String> bosses = a.bosses.stream().filter(x -> MobLines.parse(x) != null).toList();
 			if (a.bossEvery > 0 && g.wave % a.bossEvery == 0 && !bosses.isEmpty()) {
@@ -612,7 +606,15 @@ public final class WaveRuntime {
 				int i = "order".equals(a.bossOrder) ? (g.wave / a.bossEvery - 1) % bosses.size() : random.nextInt(bosses.size());
 				boss = MobLines.parse(bosses.get(i));
 			}
+			// (A negative count marks the boss.)
 			if (boss != null) g.toSpawn.add(new MobLines.Entry(boss.id(), -1, boss.nbt()));
+			int size = Math.max(1, (int) g.players.stream().filter(g::in).count());
+			int want = (int) Math.round((a.firstWave + a.perWave * (g.wave - 1)) * (1 + a.perPlayer / 100.0 * (size - 1)));
+			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null).toList();
+			while (boss == null && g.toSpawn.size() < want && !pool.isEmpty()) {
+				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+				for (int i = 0; i < e.count() && g.toSpawn.size() < want; i++) g.toSpawn.add(e);
+			}
 		}
 		if (g.toSpawn.isEmpty()) g.toSpawn.add(new MobLines.Entry("minecraft:zombie", 1, ""));
 		g.waveSize = g.toSpawn.size();

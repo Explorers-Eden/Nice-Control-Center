@@ -2121,7 +2121,7 @@
         + field('firstWave', 'Mobs in wave 1', num('firstWave', 1, 200)) + field('perWave', 'More each wave', num('perWave', 0, 100))
         + field('perPlayer', '% more per extra player', num('perPlayer', 0, 500))
         + field('toughness', '% more health and damage per wave', num('toughness', 0, 500))
-        + field('bossEvery', 'A boss every … waves (0 = never)', num('bossEvery', 0, 1000))
+        + field('bossEvery', 'Boss wave every … waves: the boss alone (0 = never)', num('bossEvery', 0, 1000))
         + field('bossOrder', 'Which boss', sel('bossOrder', [['random', 'a random one from the list'], ['order', 'in order (then round again)']]))
         + `<label class="pn-field pn-field-wide"><span>Bosses (one pool line each: <code>mob {data}</code>)</span><textarea data-g="bosses" data-lines="1" rows="3" spellcheck="false" placeholder="ravager&#10;wither_skeleton {CustomName:'Bone King'}">${esc((a.bosses || []).join('\n'))}</textarea></label>`
         + field('katters', 'Add a Katters Structures boss', `<select data-katters="1"><option value="">(pick one to add it)</option>${[['arachne', 'Arachne, Mother of Spiders'], ['raj', 'Raj Raksha'], ['rusta', 'Rústa, Chieftain of the Ravaged Lands'], ['tenku', 'Tenkū Mizu Gami (hovers on land)'], ['theron', 'Magus Theron the Betrayer']].map(([k, l]) => `<option value="katters:${k}">${l}</option>`).join('')}</select>`)
