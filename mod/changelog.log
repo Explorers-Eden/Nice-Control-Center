@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.90.2
+- Slot Machines: removing a machine no longer leaves its lever lying around as an item (the lever goes first, nothing drops)
+- Mazes and dungeons: taking away old maze blocks and dungeon markers drops nothing either (a torch or lever on them stayed as an item)
 ## 1.90.1
 - Wave arenas: the fight box is noted at the start and put back after every wave and at the end: cobwebs (Arachne, weaving), fire, placed or broken blocks, water and lava are gone (boxes up to 4 million blocks)
 - Games: ravagers of the games (and in Flying Fair and the dungeons) don't break leaves any more, so nothing hanging on them (a lever) drops

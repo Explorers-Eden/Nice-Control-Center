@@ -1042,7 +1042,7 @@ public final class GameRuntime {
 					var be = b.oldLevel.getBlockEntity(at);
 					if (be instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity r) r.setLootTable(null);
 					if (be instanceof net.minecraft.world.Container c) c.clearContent();
-					if (!b.oldLevel.getBlockState(at).isAir()) b.oldLevel.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
+					if (!b.oldLevel.getBlockState(at).isAir()) b.oldLevel.setBlock(at, Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE | net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS);
 				}
 			}
 			if (b.oldLevel != null && b.oldNext < b.oldWidth * b.oldWidth) continue;

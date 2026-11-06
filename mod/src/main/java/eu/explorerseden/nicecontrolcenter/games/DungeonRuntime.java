@@ -966,7 +966,7 @@ public final class DungeonRuntime {
 		markers.addAll(r.layout.markers());
 		for (Dungeons.Marker m : markers) {
 			BlockPos at = r.min.offset(m.x, m.y, m.z);
-			level.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
+			level.setBlock(at, Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE | net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS);
 			switch (m.type) {
 				case "start" -> {
 					if (r.start == null) r.start = at;

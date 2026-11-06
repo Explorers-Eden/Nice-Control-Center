@@ -180,7 +180,10 @@ public final class SlotRuntime {
 		if (level == null) return;
 		Parts parts = parts(m);
 		for (BlockPos b : parts.all()) if (level.getBlockEntity(b) instanceof ShelfBlockEntity shelf) shelf.getItems().clear();
-		for (BlockPos b : parts.all()) level.setBlock(b, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+		// The lever first, and no shape updates or drops: otherwise the lever pops off its block as an item.
+		int quiet = net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE | net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS;
+		level.setBlock(parts.lever(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), quiet);
+		for (BlockPos b : parts.all()) level.setBlock(b, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), quiet);
 	}
 
 	/** Reads the file again right now: commands change what the panel saved last, not an older copy. */
