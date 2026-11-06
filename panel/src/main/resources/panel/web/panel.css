@@ -1094,6 +1094,9 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-gm-howto dd { margin: 0; color: var(--muted); }
 .pn-gm-howto code { white-space: nowrap; }
 @media (max-width: 600px) { .pn-gm-howto { grid-template-columns: 1fr; gap: 2px; } .pn-gm-howto dd { margin-bottom: 6px; } }
+.pn-dg-steps { margin: 0 0 8px; padding-left: 22px; font-size: var(--fs-sm); color: var(--muted); display: grid; gap: 6px; }
+.pn-dg-steps b { color: var(--text); }
+.pn-dg-steps code { white-space: nowrap; }
 /* Lines, messages and commands take a whole row of the field grid. */
 .pn-rw-grid > .pn-field-wide { grid-column: 1 / -1; margin: 4px 0; }
 .pn-field-wide textarea { min-height: 52px; resize: vertical; }

@@ -165,53 +165,8 @@ Players who play together, in Flying Fair and the dungeons (and the game hub's d
 
 ## Dungeons
 Built anywhere in the world, copied fresh for every party into the dungeon dimension and wiped again when they're
-done, so every run starts from the same dungeon.
-
-**Building and saving**
-- `/dungeon create <name>` at one corner, `/dungeon corner2` at the other (height included), then
-  `/dungeon save <name>`. Save again after every change to the build; the panel can save it too.
-- Markers are data structure blocks inside the build (their "name" field):
-  - `start`: where the party appears (needed);
-  - `exit`: stepping on it clears the dungeon (when it's cleared on reaching an exit);
-  - `checkpoint`: where players with lives left come back after a death;
-  - `mob:zombie x3`, `mob:npc:knight`: mobs from the mob pool lines, spawned when the copy is made;
-  - `boss:…`: like `mob:`, but these count as bosses (for "cleared when every boss is dead" and the boss bar).
-- In the copy, markers become air and jigsaw blocks become their "turns into" block.
-
-**Random rooms**
-- `/dungeon room create <name>` + corner2 + `/dungeon room save <name>`: a room that can be copied into spots.
-- Spots and doors are jigsaw blocks: a jigsaw's target pool is the room group (e.g. `crypt`), and rooms of that group
-  fill it, joined at a matching jigsaw. A room can have spots of its own (rooms inside rooms, up to the set depth).
-- Panel (Dungeons tab): per room how often it's picked (weight), the chance it's considered at all, at most so many
-  per copy; per group the chance a spot gets a room at all and from which depth; per dungeon the depth, the most
-  rooms in one copy and per-spot chances.
-
-**Pads and parties**
-- `/dungeon pad add <pool>` where parties start: a pad hands out a random dungeon from its pool. Parties of 1–4
-  (`/party invite <player>`); the leader steps on the pad, the party within 16 blocks comes along.
-- `/dungeon pad wait <pool> [radius]`: a waiting area for when every copy is in use; the party starts once one
-  is free. Afterwards everyone goes to the game hub spawn (else their respawn point).
-
-**Gear and items**
-- Gear "kit": their things are put aside on entering and come back afterwards; `/dungeon kit <name>` makes what you
-  carry the kit. "Items found inside" decides what happens to everything else they carry at the end: it vanishes,
-  or it goes to their inbox.
-- Gear "own": they bring their own things; what they carry comes back after a death inside.
-- **Game-only items**: give an item `custom_data={ncc_game_only:1b}` and it stays in the game, whatever the
-  settings: it vanishes when its player leaves the dungeon (also with "go to their inbox"), and anywhere outside a
-  game. It's kept through a death with lives left. Put it in chests or loot tables (`set_custom_data`), mob
-  equipment or drops, or a `/give`, e.g.
-  `/give @p minecraft:iron_pickaxe[custom_data={ncc_game_only:1b}]` (use `/item replace` or a loot table for
-  chests, since a tagged item in your own inventory vanishes within a second outside a game). The same tag works
-  in wave fights, quick rounds and game areas.
-
-**Rules and rewards (panel)**
-- Lives (0 = out on the first death, else back at the last checkpoint), out players watching as spectators, a time
-  limit, peaceful and neutral mobs attacking too (on by default), cleared on reaching an exit or when every boss is
-  dead.
-- Messages on entering, while it's being prepared, when cleared and when failed (`{player}`, `{party}`,
-  `{dungeon}`, `{time}`), commands on entering and when leaving, and Rewards rules on clearing or failing a dungeon.
-- Inside, the market, inbox, pets, homes and Nice Actions teleports don't work.
+done. The full setup guide (markers, pads and parties, gear, random rooms, all commands) is in
+[DUNGEONS.md](DUNGEONS.md).
 
 ## Game worlds
 Performance → per-dimension tuning (the Flying Fair preset sets these): no pet perks, and **random looks**: mobs

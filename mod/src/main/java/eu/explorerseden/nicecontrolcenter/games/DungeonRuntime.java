@@ -116,6 +116,11 @@ public final class DungeonRuntime {
 		final List<BlockPos> exits = new ArrayList<>();
 		final List<BlockPos> checkpoints = new ArrayList<>();
 		int bosses;
+		/** Bosses alive when they were first counted, and how many are down since (for the boss rewards). */
+		int bossTotal;
+		int bossesDown;
+		/** Checkpoints reached at least once this run (going back to one doesn't count again). */
+		final Set<BlockPos> reached = new java.util.HashSet<>();
 		float bossHealth;
 		int deaths;
 		long startedAt;
@@ -598,6 +603,7 @@ public final class DungeonRuntime {
 					r.checkpoint = c;
 					tellRun(server, r, Words.lit("✦ Checkpoint reached by " + p.getGameProfile().name()).withStyle(ChatFormatting.GOLD));
 					level.playSound(null, c, SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.7f, 1.4f);
+					if (r.reached.add(c)) rewardInside(server, r, "dungeonCheckpoint", r.reached.size(), false);
 				}
 			}
 			if ("exit".equals(r.dungeon.clearOn)) {
@@ -651,6 +657,12 @@ public final class DungeonRuntime {
 		List<LivingEntity> alive = level.getEntitiesOfClass(LivingEntity.class, box, e -> e.isAlive() && e.entityTags().contains(r.bossTag()));
 		if (r.bossHealth <= 0) {
 			for (LivingEntity e : alive) r.bossHealth += e.getMaxHealth();
+			r.bossTotal = alive.size();
+		}
+		// Each boss that went down since the last look (rewards "dungeonBoss", counted from the first).
+		while (r.bossesDown < r.bossTotal - alive.size()) {
+			r.bossesDown++;
+			rewardInside(server, r, "dungeonBoss", r.bossesDown, false);
 		}
 		float now = 0;
 		for (LivingEntity e : alive) now += e.getHealth();
@@ -668,8 +680,18 @@ public final class DungeonRuntime {
 			r.bosses = 0;
 			if (r.bar != null) r.bar.removeAllPlayers();
 			r.bar = null;
+			rewardInside(server, r, "dungeonBosses", System.currentTimeMillis() - r.startedAt, true);
 			if ("boss".equals(r.dungeon.clearOn)) clear(server, r);
 			else tellRun(server, r, Words.lit("The boss is down!").withStyle(ChatFormatting.GOLD));
+		}
+	}
+
+	/** A Rewards trigger for everyone of the run who's still in (not out, still online). */
+	private static void rewardInside(MinecraftServer server, Run r, String trigger, long score, boolean timed) {
+		for (UUID id : List.copyOf(r.players)) {
+			if (r.out.contains(id)) continue;
+			ServerPlayer p = server.getPlayerList().getPlayer(id);
+			if (p != null) RewardsControl.fireGame(server, trigger, p, r.dungeon.name, score, timed);
 		}
 	}
 

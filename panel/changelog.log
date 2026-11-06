@@ -1,3 +1,7 @@
+## 1.74.0
+- Rewards: new dungeon triggers "Reaches a checkpoint in a dungeon", "Defeats a boss in a dungeon" and "Defeats every boss in a dungeon" (mod 1.85.0)
+- Dungeons: the setup steps on the Dungeons page are a short 5-step list, with a link to the full guide (DUNGEONS.md)
+
 ## 1.73.0
 - Backups: a half-written backup (.partial) left behind when the panel stopped mid-backup is removed on start and before the next backup
 - Backups: heap dumps (nicecontrolcenter/heapdumps) are left out of backups
