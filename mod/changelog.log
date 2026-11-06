@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.89.2
+- Hub spawn: a server restart now does what logging out does for everyone online (out of game areas, things back, to the hub spawn when they were in its dimension) before they're saved; the shutdown skipped the logout before, so players came back where they stood
+- Hub spawn: joining anywhere in the hub's dimension away from the hub spawn (after a crash, say) sends the player there
 ## 1.89.1
 - Hub spawn: a player who died where the hub spawn covers them is checked again 5 ticks after respawning and sent back to it if something else (another mod, a datapack, a respawn anchor) moved them on
 - Hub spawn: the log says for every death in its dimension whether the player respawns at the hub spawn or which game brings them back, and where they were sent

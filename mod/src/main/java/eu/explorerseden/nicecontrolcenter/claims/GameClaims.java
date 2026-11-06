@@ -153,6 +153,25 @@ public final class GameClaims {
 			if (toHubOnRespawn.remove(now.getUUID()) && !alive) GameRuntime.toHubAfterRespawn(now.level().getServer(), now);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> loggedOut(server, handler.player));
+		// A restart kicks everyone without the usual logout: the same happens for them here, before they're saved.
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			for (ServerPlayer p : List.copyOf(server.getPlayerList().getPlayers())) {
+				try {
+					loggedOut(server, p);
+				} catch (RuntimeException e) {
+					NiceControlCenter.LOGGER.warn("Games: {} couldn't be moved out at the shutdown: {}", p.getGameProfile().name(), e.toString());
+				}
+			}
+		});
+		// Back in the hub's dimension (after a crash, or anything that skipped the logout): to the hub spawn.
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> server.execute(() -> {
+			ServerPlayer p = handler.player;
+			eu.explorerseden.nicecontrolcenter.Games.Pos hub = GameRuntime.settings().hub;
+			if (hub == null || !p.isAlive() || !p.level().dimension().identifier().toString().equals(hub.dim)) return;
+			if (p.distanceToSqr(hub.x, hub.y, hub.z) <= 4 * 4) return;
+			NiceControlCenter.LOGGER.info("Games: {} joined in {} away from the hub spawn: sent there", p.getGameProfile().name(), hub.dim);
+			GameRuntime.toHub(server, p);
+		}));
 		// No ender pearls in games: they'd throw players out of the game or over its walls.
 		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
 			if (!(player instanceof ServerPlayer p) || !player.getItemInHand(hand).is(net.minecraft.world.item.Items.ENDER_PEARL) || !inAnyGame(p)) return net.minecraft.world.InteractionResult.PASS;
