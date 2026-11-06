@@ -2103,7 +2103,7 @@
       ok(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
       ok(!!box, box ? `Fight box ${box} (${p(a.areaMin)} → ${p(a.areaMax)})` : 'Fight box (two corners, height included):', box ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
       ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Mob spawns:', `/game edit ${n} mobspawn add`),
-      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}` : 'Spectator area (optional; without it the dead watch a teammate):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}` : 'Spectator area (optional; without it the dead watch a teammate), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
       ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit`),
     ].join('')}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (wave 1 with nobody in it).</p>`;
@@ -2197,7 +2197,7 @@
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
       ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here`
-        : 'Spectator area (optional; where the queue for the next round waits and players who are out watch):', a.spectate ? '' : `/game edit ${n} spectate [radius]`),
+        : 'Spectator area (optional; where the queue for the next round waits and players who are out watch), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
     ].join('');
     const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)',
       targets: ' (a bow and arrows are handed out, arrows refilled)', gallery: ' (snowballs are handed out and refilled anyway)' }[a.type] || '';
