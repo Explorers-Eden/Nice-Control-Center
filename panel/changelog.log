@@ -1,3 +1,5 @@
+## 1.76.0
+- Games: "Wait after a round" / "Wait between runs" and the dungeons' "Wait after a run" are gone (always 1 second now)
 ## 1.75.0
 - Games, whack-a-mole: the hole block is a dropdown (redstone lamp, copper bulbs); mace in the kit yes/no
 ## 1.74.1

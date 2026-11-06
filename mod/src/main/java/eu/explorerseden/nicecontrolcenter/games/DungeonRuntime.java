@@ -318,8 +318,22 @@ public final class DungeonRuntime {
 	/** /dungeon tool …: a vanilla block with its fields filled in (an op places it in creative and the data comes along). */
 	private static int tool(CommandContext<CommandSourceStack> ctx, String item, String data, String title, String lore) throws CommandSyntaxException {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
-		String cmd = "give " + p.getStringUUID() + " " + item + "[block_entity_data={" + data + "},custom_name=" + snbt(title) + ",lore=[" + snbt(lore) + "]]";
-		ConsoleRunner.quiet(ctx.getSource().getServer(), cmd);
+		// Built here and handed over (a /give through the console failed without a word).
+		net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.parse(item);
+		net.minecraft.world.item.ItemStack st = new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(id));
+		net.minecraft.world.level.block.entity.BlockEntityType<?> type = net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE.getValue(id);
+		net.minecraft.nbt.CompoundTag tag;
+		try {
+			tag = net.minecraft.nbt.TagParser.parseCompoundFully("{" + data + "}");
+		} catch (CommandSyntaxException e) {
+			return fail(ctx, "That text doesn't work in a block: " + e.getMessage());
+		}
+		tag.remove("id");
+		if (st.isEmpty() || type == null) return fail(ctx, "No such block: " + item);
+		st.set(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA, net.minecraft.world.item.component.TypedEntityData.of(type, tag));
+		st.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(title).withStyle(ChatFormatting.LIGHT_PURPLE));
+		st.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(Component.literal(lore).withStyle(ChatFormatting.GRAY))));
+		if (!p.getInventory().add(st)) p.level().addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(p.level(), p.getX(), p.getY(), p.getZ(), st));
 		ctx.getSource().sendSuccess(() -> Words.lit("Here's " + title + ". Place it in creative (as an op) and its settings come along.").withStyle(ChatFormatting.LIGHT_PURPLE), false);
 		return 1;
 	}
@@ -741,7 +755,7 @@ public final class DungeonRuntime {
 				continue;
 			}
 			onPad.remove(p.getUUID());
-			cooldown.put(p.getUUID(), now + 5000);
+			cooldown.put(p.getUUID(), now + GameRuntime.WAIT_AFTER);
 			List<UUID> missing = new ArrayList<>(Parties.members(p.getUUID()));
 			party.forEach(x -> missing.remove(x.getUUID()));
 			// More than any dungeon of the pool takes: the party splits into groups, each in a copy of its own.
@@ -1057,7 +1071,7 @@ public final class DungeonRuntime {
 		}
 		// Out: they watch (when others are still in) or go back once they've respawned.
 		r.out.add(p.getUUID());
-		cooldown.put(p.getUUID(), System.currentTimeMillis() + settings.cooldown * 1000L);
+		cooldown.put(p.getUUID(), System.currentTimeMillis() + GameRuntime.WAIT_AFTER);
 		commands(server, r.dungeon.exitCommands, r, p);
 		if (inside) {
 			r.respawnInside.add(p.getUUID());
@@ -1129,7 +1143,7 @@ public final class DungeonRuntime {
 		r.out.add(p.getUUID());
 		r.respawnInside.remove(p.getUUID());
 		if (!wasOut) {
-			cooldown.put(p.getUUID(), System.currentTimeMillis() + settings.cooldown * 1000L);
+			cooldown.put(p.getUUID(), System.currentTimeMillis() + GameRuntime.WAIT_AFTER);
 			commands(server, r.dungeon.exitCommands, r, p);
 		}
 		if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
@@ -1206,7 +1220,7 @@ public final class DungeonRuntime {
 			p.sendSystemMessage(Words.lit(fill(message, r, p)).withStyle(color));
 			if (!r.out.contains(id)) {
 				commands(server, r.dungeon.exitCommands, r, p);
-				cooldown.put(id, System.currentTimeMillis() + settings.cooldown * 1000L);
+				cooldown.put(id, System.currentTimeMillis() + GameRuntime.WAIT_AFTER);
 			}
 			if (r.cleared) p.level().playSound(null, p.blockPosition(), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 0.8f, 1f);
 		}

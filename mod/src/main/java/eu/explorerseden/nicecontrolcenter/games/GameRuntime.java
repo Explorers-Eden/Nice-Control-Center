@@ -103,6 +103,8 @@ public final class GameRuntime {
 	private static final Map<UUID, Session> sessions = new HashMap<>();
 	/** After a run ends, the start point waits a moment before starting the next one. */
 	private static final Map<UUID, Long> cooldown = new HashMap<>();
+	/** The wait after a round or run (and after leaving a pad or queue) before a pad takes the player again: the same for every game. */
+	public static final long WAIT_AFTER = 1000;
 	private static Map<String, Map<String, Games.Score>> scores = new LinkedHashMap<>();
 	private static Path scoresFile;
 	/** Parkour blocks placed and not yet removed (cleared on start-up after a crash): "dim|x|y|z". */
@@ -307,7 +309,7 @@ public final class GameRuntime {
 	/** Ends a run: finished = it counts (score kept, rewards). */
 	static void end(MinecraftServer server, Session s, String why, boolean finished) {
 		sessions.remove(s.player);
-		cooldown.put(s.player, System.currentTimeMillis() + s.arena.cooldown * 1000L);
+		cooldown.put(s.player, System.currentTimeMillis() + WAIT_AFTER);
 		ServerPlayer p = server.getPlayerList().getPlayer(s.player);
 		ServerLevel level = level(server, s.arena.start.dim);
 		if (level != null) for (BlockPos b : s.blocks) unplace(level, b);
@@ -327,7 +329,7 @@ public final class GameRuntime {
 			// To the game hub spawn, else the start point (not after dying: the respawn does that; not when they left for another dimension).
 			if (p.isAlive() && (why == null || !why.startsWith("You left the arena"))) {
 				if (!Portals.returnTo(server, p, s.arena) && level != null) p.teleportTo(level, s.arena.start.x, freeY(level, p, s.arena.start.x, s.arena.start.y, s.arena.start.z), s.arena.start.z, Set.of(), s.arena.start.yaw, 0, true);
-				cooldown.put(s.player, System.currentTimeMillis() + Math.max(3, s.arena.cooldown) * 1000L);
+				cooldown.put(s.player, System.currentTimeMillis() + WAIT_AFTER);
 			}
 			if (finished) {
 				RewardsControl.fireGame(server, "gameFinished", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));

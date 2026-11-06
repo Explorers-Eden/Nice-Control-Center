@@ -99,6 +99,8 @@ public final class QuickRuntime {
 		long startsAt;
 		long started;
 		int startedWith;
+		/** A survival round with two or more down to its last player (told once). */
+		boolean lastOne;
 		ServerBossEvent bar;
 		// Colour floor: each platform's colour (index into arena.colors), which are gone, the called colour.
 		final int[] platform = new int[9];
@@ -288,7 +290,7 @@ public final class QuickRuntime {
 		for (Round lobby : rounds.values()) {
 			if (lobby.state == State.LOBBY && lobby.players.remove(p.getUUID())) {
 				lobby.names.remove(p.getUUID());
-				cooldown.put(p.getUUID(), System.currentTimeMillis() + 5000);
+				cooldown.put(p.getUUID(), System.currentTimeMillis() + GameRuntime.WAIT_AFTER);
 				p.sendSystemMessage(Words.lit("You left the queue for " + lobby.arena.shown() + ".").withStyle(ChatFormatting.GRAY));
 				return true;
 			}
@@ -622,9 +624,12 @@ public final class QuickRuntime {
 			end(server, r, null);
 			return;
 		}
-		if (survival && r.startedWith > 1 && alive.size() == 1) {
-			end(server, r, null);
-			return;
+		// The last one standing keeps going (for a better score) until they're out too.
+		if (survival && r.startedWith > 1 && alive.size() == 1 && !r.lastOne) {
+			r.lastOne = true;
+			ServerPlayer w = alive.get(0);
+			w.connection.send(new ClientboundSetTitleTextPacket(Words.lit("Last one standing!").withStyle(ChatFormatting.GOLD)));
+			w.sendSystemMessage(Words.lit("You're the last one standing: keep going for a better score.").withStyle(ChatFormatting.GOLD));
 		}
 		if (a.timeLimit > 0) Countdown.tick("quick:" + a.id, a.timeLimit * 1000L - r.elapsed(), alive);
 		if (a.timeLimit > 0 && r.elapsed() >= a.timeLimit * 1000L) {
@@ -643,7 +648,14 @@ public final class QuickRuntime {
 					}
 				}
 			}
-			case "anvils" -> anvils(level, r, alive);
+			case "anvils" -> {
+				// Anvil rain: hunger and saturation always full.
+				for (ServerPlayer p : alive) {
+					p.getFoodData().setFoodLevel(20);
+					p.getFoodData().setSaturation(20);
+				}
+				anvils(level, r, alive);
+			}
 			case "treasure" -> treasure(level, r, alive);
 			case "fishing" -> fishing(level, r);
 			case "moles" -> Moles.tick(server, level, r, alive);
@@ -1182,7 +1194,7 @@ public final class QuickRuntime {
 		// To the game hub spawn (else the start point).
 		if (p.isAlive() && !Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, GameRuntime.freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 		p.resetFallDistance();
-		cooldown.put(p.getUUID(), System.currentTimeMillis() + Math.max(5, a.cooldown) * 1000L);
+		cooldown.put(p.getUUID(), System.currentTimeMillis() + GameRuntime.WAIT_AFTER);
 		GameClaims.gameMode(p, false);
 	}
 

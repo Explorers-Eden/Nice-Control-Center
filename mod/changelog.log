@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.87.0
+- Games: no ender pearls in games (game areas, dungeon runs, wave games, quick rounds, parkour, race, maze)
+- Games: the wait before a pad takes a player again (after a round or run, or after leaving a pad or queue) is 1 second for every game; the wait settings are gone
+- Quick rounds: survival rounds (anvil rain, colour floor, rising lava) with two or more players no longer end when one is left: the last one standing is told and keeps going for a better score
+- Anvil rain: hunger and saturation stay full
+- Dungeons: /dungeon tool marker, door and spot hand the block over directly (the /give behind them failed without a word)
 ## 1.86.2
 - Games: /game join and the way back to the start point never put players inside a block either (they land on top of it)
 - Whack-a-mole: laying out the grid moves a start point or spawn that ends up inside a hole block on top of it

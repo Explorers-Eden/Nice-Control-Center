@@ -43,7 +43,9 @@ Block fields (parkour blocks, maze walls and floors, colour floor colours, claim
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
 
 Every game starts with full health and the hunger bar at 17 without saturation (one short of where health comes
-back by itself): players heal by eating, not just by having a full bar.
+back by itself): players heal by eating, not just by having a full bar. Anvil rain keeps hunger and saturation full.
+
+Ender pearls don't work in games. After a round or run, a pad takes the player again after 1 second (every game).
 
 Protect a build with a server claim when nobody is playing. Wave fights, quick rounds and dungeons put inventories
 aside themselves; parkour, race and maze don't, so give them a game claim if you want that (Claims page:

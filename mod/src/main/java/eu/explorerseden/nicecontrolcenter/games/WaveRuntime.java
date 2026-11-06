@@ -266,7 +266,7 @@ public final class WaveRuntime {
 				continue;
 			}
 			onPad.remove(p.getUUID());
-			cooldown.put(p.getUUID(), now + 5000);
+			cooldown.put(p.getUUID(), now + GameRuntime.WAIT_AFTER);
 			if (!rest.isEmpty()) {
 				// Everyone hears who plays now and who next; the rest wait in the spectator area (queued right after).
 				String now1 = String.join(", ", party.stream().map(x -> x.getGameProfile().name()).toList());
@@ -737,7 +737,7 @@ public final class WaveRuntime {
 		// To the game hub spawn (else the start point).
 		if (!Portals.returnTo(server, p, a) && level != null) p.teleportTo(level, a.start.x, GameRuntime.freeY(level, p, a.start.x, a.start.y, a.start.z), a.start.z, Set.of(), a.start.yaw, 0, true);
 		p.resetFallDistance();
-		cooldown.put(p.getUUID(), System.currentTimeMillis() + 5000);
+		cooldown.put(p.getUUID(), System.currentTimeMillis() + GameRuntime.WAIT_AFTER);
 		GameClaims.gameMode(p, false);
 	}
 

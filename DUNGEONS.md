@@ -186,7 +186,7 @@ Per dungeon on the panel's Dungeons page:
   run, also when players come back to it later. `{game}` is the dungeon's name.
 
 Server-wide settings at the top of the Dungeons tab: copies at once, players per party, how fast copies are built
-(pieces per tick), and the wait after a run.
+(pieces per tick). After a run, players can use a pad again after 1 second.
 
 Inside a dungeon the market, inbox, pets, homes and Nice Actions teleports don't work.
 

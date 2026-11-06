@@ -147,6 +147,12 @@ public final class GameClaims {
 			if (toHubOnRespawn.remove(now.getUUID()) && !alive) GameRuntime.toHub(now.level().getServer(), now);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> loggedOut(server, handler.player));
+		// No ender pearls in games: they'd throw players out of the game or over its walls.
+		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
+			if (!(player instanceof ServerPlayer p) || !player.getItemInHand(hand).is(net.minecraft.world.item.Items.ENDER_PEARL) || !inAnyGame(p)) return net.minecraft.world.InteractionResult.PASS;
+			p.sendOverlayMessage(Component.literal("No ender pearls in games").withStyle(ChatFormatting.RED));
+			return net.minecraft.world.InteractionResult.FAIL;
+		});
 		// No ender chests where things are put aside: they'd carry game items out (or own things in).
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
 			if (!(player instanceof ServerPlayer p) || !(world.getBlockState(hit.getBlockPos()).getBlock() instanceof net.minecraft.world.level.block.EnderChestBlock)) {
@@ -236,7 +242,8 @@ public final class GameClaims {
 	private static void tick(MinecraftServer server) {
 		boolean sweep = server.getTickCount() % 20 == 0;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			if (p.isAlive()) gameMode(p, sweep);
+			if (!p.isAlive()) continue;
+			gameMode(p, sweep);
 		}
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
 			// Dungeon runs, wave games and quick rounds put things aside and give them back themselves.
@@ -492,6 +499,11 @@ public final class GameClaims {
 	// ---------------------------------------------------------------- adventure mode, kit leftovers
 
 	/** In a game claim, or in a dungeon run inside the dungeon (not while waiting on the pad). */
+	/** In a game of any kind: a game area, a dungeon run, a wave game, a quick round, or a parkour, race or maze run. */
+	public static boolean inAnyGame(ServerPlayer p) {
+		return playing(p) || gameClaimFor(p) != null || eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p);
+	}
+
 	private static boolean playing(ServerPlayer p) {
 		return playMode(p) != null;
 	}

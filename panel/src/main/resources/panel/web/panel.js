@@ -2002,8 +2002,7 @@
       const own = heads
         ? text('finishMessage', 'Message when all heads are found', 'default line')
           + lines('finishCommands', 'Commands when all heads are found ({player}, {found}, {total})')
-        : (waves ? '' : field('cooldown', quick ? 'Wait after a round (seconds)' : 'Wait between runs (seconds)', num('cooldown', 0, 3600)))
-        + text('startMessage', 'Start message', 'default line')
+        : text('startMessage', 'Start message', 'default line')
         + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : quick ? 'Message when their score counts ({score})' : 'Finish message ({score})', 'default line')
         + lines('startCommands', 'Commands on start ({player}, {game})')
         + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards'
@@ -3060,8 +3059,7 @@
     $('pn-dg-slots').value = s.maxSlots;
     $('pn-dg-party').value = s.maxParty;
     $('pn-dg-pieces').value = s.piecesPerTick;
-    $('pn-dg-cooldown').value = s.cooldown;
-    ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces', 'pn-dg-cooldown'].forEach((id) => { $(id).disabled = !edit; });
+    ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces'].forEach((id) => { $(id).disabled = !edit; });
     $('pn-dg-save').disabled = !edit;
 
     $('pn-dg-runs').innerHTML = dg.runs.length ? `<ul class="pn-dg-runs">${dg.runs.map((r) => `<li>
@@ -3197,7 +3195,7 @@
     if (rerender) renderDungeons();
   }
 
-  const DG_GLOBAL = { 'pn-dg-slots': 'maxSlots', 'pn-dg-party': 'maxParty', 'pn-dg-pieces': 'piecesPerTick', 'pn-dg-cooldown': 'cooldown' };
+  const DG_GLOBAL = { 'pn-dg-slots': 'maxSlots', 'pn-dg-party': 'maxParty', 'pn-dg-pieces': 'piecesPerTick' };
   Object.entries(DG_GLOBAL).forEach(([id, k]) => $(id).addEventListener('input', (e) => { dg.settings[k] = Number(e.target.value) || 0; dgChanged(false); }));
   $('pn-dg-enabled').addEventListener('change', (e) => { dg.settings.enabled = e.target.checked; dgChanged(false); });
   $('pn-dg-list').addEventListener('input', (e) => {
