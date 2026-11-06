@@ -68,9 +68,11 @@ game-area options, including the game mode inside).
   and how many at once; they come out 12–32 blocks away and go when nobody runs it). Build again after changing the layout.
 - The goal has an exit ring and an "Exit" label in the game's colour.
 - Layout: corridors turn more often than they go straight and never run more than 3 cells straight while they could
-  turn; crossroads (panel, 12 % by default, up to 50 %) knock out extra inner walls, so ways meet, cross and loop and
-  there's more than one way through. A crossing never opens a cell up on all sides or leaves a wall corner standing
-  alone, so there are no open squares to look across.
+  turn; crossroads (panel, 12 % by default, up to 50 %) knock out extra inner walls (that % of half the cells), so ways
+  meet and loop and there's more than one way through. Crossings first open dead ends into a passing corridor (a T on
+  one side only), then join two corridors, but never next to another junction. A crossing never opens a cell up on all
+  sides, leaves a wall corner standing alone or a short piece of wall standing free, so there are no open spaces to
+  look across. Past about 30 % there's little room left for more.
 - Building it clears the mobs, vehicles and items inside (not players, NPCs, pets, named mobs, armor stands, frames
   or labels); players inside go to its start.
 

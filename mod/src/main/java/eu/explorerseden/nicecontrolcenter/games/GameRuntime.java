@@ -702,6 +702,41 @@ public final class GameRuntime {
 		return (open[x + 1][z] ? 1 : 0) + (open[x - 1][z] ? 1 : 0) + (open[x][z + 1] ? 1 : 0) + (open[x][z - 1] ? 1 : 0);
 	}
 
+	/** Maze: a cell next to one of the two a wall joins, open to it, already branches three ways. */
+	private static boolean mazeNearJunction(boolean[][] open, int x, int z, int dx, int dz) {
+		int w = open.length;
+		for (int side = -1; side <= 1; side += 2) {
+			int cx = x + dx * side, cz = z + dz * side;
+			for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+				int nx = cx + 2 * d[0], nz = cz + 2 * d[1];
+				if (nx <= 0 || nz <= 0 || nx >= w - 1 || nz >= w - 1 || !open[cx + d[0]][cz + d[1]]) continue;
+				if (mazeWays(open, nx, nz) >= 3) return true;
+			}
+		}
+		return false;
+	}
+
+	/** Maze: the most wall blocks a free-standing piece may have before it counts as big enough. */
+	private static final int MAZE_ISLAND = 9;
+
+	/** Maze: the wall at this post still reaches the outer wall, or is a big enough piece of its own. */
+	private static boolean mazeWallHolds(boolean[][] open, int w, int x, int z) {
+		if (open[x][z]) return true;
+		Deque<int[]> todo = new ArrayDeque<>();
+		java.util.Set<Long> seen = new java.util.HashSet<>();
+		todo.push(new int[] { x, z });
+		seen.add((long) x * w + z);
+		while (!todo.isEmpty()) {
+			int[] c = todo.pop();
+			if (c[0] == 0 || c[1] == 0 || c[0] == w - 1 || c[1] == w - 1 || seen.size() >= MAZE_ISLAND) return true;
+			for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+				int px = c[0] + d[0], pz = c[1] + d[1];
+				if (!open[px][pz] && seen.add((long) px * w + pz)) todo.push(new int[] { px, pz });
+			}
+		}
+		return false;
+	}
+
 	/** Maze: the walls still joined to a post (the outer wall counts). */
 	private static int mazeWalls(boolean[][] open, int w, int x, int z) {
 		int n = 0;
@@ -786,22 +821,44 @@ public final class GameRuntime {
 			open[to[0] * 2 + 1][to[1] * 2 + 1] = true;
 			stack.push(new int[] { to[0], to[1], to[2], to[3], to[5] });
 		}
-		// Crossings: some of the inner walls between two cells go, so ways meet, cross and loop (more than one way through).
-		if (a.mazeCrossings > 0) {
+		// Crossings: some of the inner walls between two cells go, so ways meet and loop (more than one way through).
+		// mazeCrossings % of half the cells; first where a wall closes off a dead end (the dead end goes on, the other
+		// side gets a T), then between two corridors but away from other junctions, so they don't pile up into open
+		// spaces. Never a fourth way out of a cell, a long straight, or a wall standing on its own.
+		int target = n * n * a.mazeCrossings / 200;
+		if (target > 0) {
+			List<int[]> walls = new ArrayList<>();
 			for (int x = 1; x < w - 1; x++) {
 				for (int z = 1; z < w - 1; z++) {
 					// A wall between two cells: one coordinate odd (in a cell row), the other even (between two cells).
-					if (open[x][z] || (x % 2 == 1) == (z % 2 == 1) || random.nextInt(100) >= a.mazeCrossings) continue;
+					if (!open[x][z] && (x % 2 == 1) != (z % 2 == 1)) walls.add(new int[] { x, z });
+				}
+			}
+			java.util.Collections.shuffle(walls, random);
+			int made = 0;
+			for (int phase = 0; phase < 2 && made < target; phase++) {
+				for (int[] c : walls) {
+					if (made >= target) break;
+					int x = c[0], z = c[1];
+					if (open[x][z]) continue;
+					int dx = x % 2 == 0 ? 1 : 0, dz = 1 - dx;
+					int left = mazeWays(open, x - dx, z - dz), right = mazeWays(open, x + dx, z + dz);
+					if (left >= 3 || right >= 3) continue;
+					if (phase == 0 ? Math.min(left, right) != 1 : mazeNearJunction(open, x, z, dx, dz)) continue;
 					// Not when it would join two corridors into one long straight one.
-					int dx = x % 2 == 0 ? 1 : 0, dz = 1 - dx, run = 1;
+					int run = 1;
 					for (int k = 1; x + dx * k < w && z + dz * k < w && open[x + dx * k][z + dz * k]; k++) run++;
 					for (int k = 1; x - dx * k >= 0 && z - dz * k >= 0 && open[x - dx * k][z - dz * k]; k++) run++;
 					if (run > 2 * (MAZE_STRAIGHT + 1) + 1) continue;
-					// Not when a cell it joins already has three ways (no open squares), nor when a post at its ends would
-					// stand alone (rows of lone posts let you see far across the maze).
-					if (mazeWays(open, x - dx, z - dz) >= 3 || mazeWays(open, x + dx, z + dz) >= 3) continue;
+					// Not when a post at its ends would stand alone (rows of lone posts let you see far across the maze).
 					if (mazeWalls(open, w, x - dz, z - dx) <= 1 || mazeWalls(open, w, x + dz, z + dx) <= 1) continue;
 					open[x][z] = true;
+					// Nor when what's left of the wall on either side would stand free as a short piece.
+					if (!mazeWallHolds(open, w, x - dz, z - dx) || !mazeWallHolds(open, w, x + dz, z + dx)) {
+						open[x][z] = false;
+						continue;
+					}
+					made++;
 				}
 			}
 		}

@@ -1,3 +1,11 @@
+## 1.73.0
+- Backups: a half-written backup (.partial) left behind when the panel stopped mid-backup is removed on start and before the next backup
+- Backups: heap dumps (nicecontrolcenter/heapdumps) are left out of backups
+- Backups: a warning when the disk has no room for as many backups as are kept
+- Files: heap dumps and files of 1 GB or more are deleted right away instead of going to the trash
+- Files: shows the trash size, with an Empty trash button
+- Games: the maze Crossroads field says they're mostly T-junctions (mod 1.84.2)
+
 ## 1.72.0
 - Games: mazes have a Crossroads field (extra openings, 0–50 %) (mod 1.84.0)
 

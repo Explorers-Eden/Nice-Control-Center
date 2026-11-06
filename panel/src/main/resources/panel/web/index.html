@@ -301,7 +301,11 @@
 						</table></div>
 						<div class="pn-drop-hint">Drop files here to upload them into this folder</div>
 					</div>
-					<p class="np-card-intro pn-hint">Deleted files go to <code>.panel-trash</code> for 7 days. While the server runs, the world folder can't be changed. SFTP: port 2022 with your panel login.</p>
+					<p class="np-card-intro pn-hint">Deleted files go to <code>.panel-trash</code> for 7 days; heap dumps and files of 1 GB or more are deleted right away. While the server runs, the world folder can't be changed. SFTP: port 2022 with your panel login.</p>
+					<div class="np-form-actions" data-perm="files.write">
+						<span class="pn-hint" id="pn-trash-size"></span>
+						<button type="button" class="np-btn small danger" id="pn-trash-empty" hidden><i class="bi bi-trash3"></i> Empty trash</button>
+					</div>
 				</section>
 				<section class="np-card" data-perm="files.write">
 					<h3 class="np-card-title"><i class="bi bi-trash3"></i> Log cleanup</h3>

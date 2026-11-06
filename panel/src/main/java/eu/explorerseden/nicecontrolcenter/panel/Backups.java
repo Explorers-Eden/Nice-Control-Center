@@ -50,7 +50,7 @@ public final class Backups {
 	/** Settings in /data/panel/backups.json. */
 	public static final class Settings {
 		public List<String> exclude = new ArrayList<>(List.of("logs/**", "crash-reports/**", "debug/**", ".fabric/**", "libraries/**",
-				"versions/**", "**/session.lock", "mods/.nice-control-center.download", DISTANT_HORIZONS, RESOURCE_PACKS));
+				"versions/**", "**/session.lock", "mods/.nice-control-center.download", DISTANT_HORIZONS, RESOURCE_PACKS, HEAP_DUMPS));
 		/** Which one-time changes to the defaults this file has had; null for files from before 1.14.0. */
 		public Integer revision = REVISION;
 		/** How many backups to keep (pinned ones and those an update still needs come on top). */
@@ -72,7 +72,9 @@ public final class Backups {
 	static final String DISTANT_HORIZONS = "**/DistantHorizons.sqlite*";
 	/** The mod's copies of the server resource pack that the panel hands out; downloaded again when missing. */
 	static final String RESOURCE_PACKS = "nicecontrolcenter/resourcepack/**";
-	private static final int REVISION = 3;
+	/** The mod's /ncc heap dumps: several GB each and only useful right after they're taken. */
+	static final String HEAP_DUMPS = "nicecontrolcenter/heapdumps/**";
+	private static final int REVISION = 4;
 	/** Bigger region files than this (never seen in practice) are stored as they are. */
 	private static final long PACK_MAX = 64L << 20;
 
@@ -112,12 +114,13 @@ public final class Backups {
 		}
 		if (loaded != null && (loaded.revision == null || loaded.revision < REVISION)) {
 			// Left out of backups once each (they can be taken out of the list again): Distant Horizons' data
-			// (1.14.0) and the resource pack copies (1.15.0).
+			// (1.14.0), the resource pack copies (1.15.0) and heap dumps (1.72.1).
 			if (loaded.exclude == null) loaded.exclude = new ArrayList<>();
 			loaded.exclude = new ArrayList<>(loaded.exclude);
 			int from = loaded.revision == null ? 0 : loaded.revision;
 			if (from < 2 && !loaded.exclude.contains(DISTANT_HORIZONS)) loaded.exclude.add(DISTANT_HORIZONS);
 			if (from < 3 && !loaded.exclude.contains(RESOURCE_PACKS)) loaded.exclude.add(RESOURCE_PACKS);
+			if (from < 4 && !loaded.exclude.contains(HEAP_DUMPS)) loaded.exclude.add(HEAP_DUMPS);
 			loaded.revision = REVISION;
 			try {
 				Files.writeString(settingsFile, Json.GSON.toJson(loaded), StandardCharsets.UTF_8);
@@ -126,6 +129,29 @@ public final class Backups {
 			}
 		}
 		settings = loaded != null ? loaded : new Settings();
+		removeStrayPartials();
+	}
+
+	/**
+	 * A backup is written as name.zip.partial and renamed when done. When the panel stops in the middle
+	 * (container restart, update), the half-written file stays behind, as big as a backup and listed
+	 * nowhere. No backup runs while this is called (panel start, or right before a new one starts).
+	 */
+	private void removeStrayPartials() {
+		if (!Files.isDirectory(backupDir)) return;
+		try (Stream<Path> files = Files.list(backupDir)) {
+			for (Path f : files.filter(f -> f.getFileName().toString().endsWith(".partial")).toList()) {
+				try {
+					long size = Files.size(f);
+					Files.deleteIfExists(f);
+					server.note("Backup: removed " + f.getFileName() + " (" + human(size) + "), left over from a backup that didn't finish");
+				} catch (IOException e) {
+					System.err.println("Could not remove " + f + ": " + e.getMessage());
+				}
+			}
+		} catch (IOException e) {
+			// Next time.
+		}
 	}
 
 	public Settings settings() {
@@ -227,6 +253,7 @@ public final class Backups {
 		Path tmp = null;
 		try {
 			Files.createDirectories(backupDir);
+			removeStrayPartials();
 			String slug = label == null ? "" : label.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
 			if (slug.length() > 40) slug = slug.substring(0, 40);
 			String name = "backup-" + LocalDateTime.now(zone).format(NAME_TIME) + (slug.isEmpty() ? "" : "-" + slug) + ".zip";

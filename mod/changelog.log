@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.84.2
+- Mazes: crossroads are mostly T-junctions now: a crossing first opens a dead end into a passing corridor, and joins two corridors (a T on both sides) only away from other junctions, so junctions no longer pile up into open spaces
+- Mazes: a crossing never leaves a short piece of wall standing free
+- Mazes: the crossroads % now counts against the number of cells, so it gives about as many crossings as before
 ## 1.84.1
 - Mazes: crossroads no longer open up squares: a crossing never joins a cell that already has three ways, and never leaves a wall corner standing alone (rows of lone corners let you see far across the maze diagonally)
 - Mazes: building one (/game edit <name> build, daily, after a run) also clears the mobs, vehicles and the like inside (not players, NPCs, pets, named mobs, armor stands, frames or labels), at the start and again when it's done; players inside go to its start so nobody ends up in a wall

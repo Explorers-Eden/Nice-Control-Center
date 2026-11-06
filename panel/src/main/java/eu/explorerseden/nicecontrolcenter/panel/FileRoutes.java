@@ -205,9 +205,22 @@ final class FileRoutes {
 			if (paths == null || paths.isEmpty()) throw new IOException("Nothing chosen.");
 			List<Path> resolved = new ArrayList<>();
 			for (String rel : paths) resolved.add(path(ctx, me, rel, true));
-			for (Path p : resolved) files.trash(p);
-			audit.log(me.name(), "files.delete", String.join(", ", paths) + " (to .panel-trash, kept 7 days)", clientIp(ctx));
-			json(ctx, Map.of("ok", true));
+			List<String> trashed = new ArrayList<>();
+			List<String> gone = new ArrayList<>();
+			for (int i = 0; i < resolved.size(); i++) (files.trash(resolved.get(i)) ? trashed : gone).add(paths.get(i));
+			if (!trashed.isEmpty()) audit.log(me.name(), "files.delete", String.join(", ", trashed) + " (to .panel-trash, kept 7 days)", clientIp(ctx));
+			if (!gone.isEmpty()) audit.log(me.name(), "files.delete", String.join(", ", gone) + " (deleted for good)", clientIp(ctx));
+			json(ctx, Map.of("ok", true, "deletedForGood", gone));
+		}));
+
+		routes.get("/api/files/trash", action((ctx, me) -> json(ctx, Map.of("bytes", files.trashSize()))));
+
+		routes.post("/api/files/trash/empty", action((ctx, me) -> {
+			if (!me.can(Permissions.FILES_WRITE)) throw new SecurityException("Your account isn't allowed to empty the trash.");
+			long bytes = files.trashSize();
+			files.emptyOldTrash(0);
+			audit.log(me.name(), "files.trash", "emptied the trash (" + Backups.human(bytes) + ")", clientIp(ctx));
+			json(ctx, Map.of("ok", true, "bytes", files.trashSize()));
 		}));
 
 		routes.post("/api/files/unzip", action((ctx, me) -> {

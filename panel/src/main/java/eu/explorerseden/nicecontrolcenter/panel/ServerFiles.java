@@ -174,22 +174,60 @@ public final class ServerFiles {
 		});
 	}
 
-	/** Moves to .panel-trash/<time>/<path>, emptied after 7 days. */
-	public void trash(Path p) throws IOException {
+	/** Files at least this big skip the trash: keeping them 7 days fills the disk (heap dumps, stray zips). */
+	public static final long TRASH_MAX = 1L << 30;
+
+	/**
+	 * Moves to .panel-trash/<time>/<path>, emptied after 7 days. Heap dumps and single files of
+	 * {@link #TRASH_MAX} or more are deleted right away. Returns true when it went to the trash.
+	 */
+	public boolean trash(Path p) throws IOException {
 		checkWritable(p);
-		if (!Files.exists(p, LinkOption.NOFOLLOW_LINKS)) return;
+		if (!Files.exists(p, LinkOption.NOFOLLOW_LINKS)) return false;
 		Path trashRoot = root.resolve(TRASH);
-		if (p.startsWith(trashRoot)) {
+		if (p.startsWith(trashRoot) || skipsTrash(p)) {
 			deleteRecursively(p);
-			return;
+			return false;
 		}
 		Path target = trashRoot.resolve(LocalDateTime.now().format(TRASH_TIME)).resolve(rel(p));
 		Files.createDirectories(target.getParent());
 		Path free = target;
 		for (int i = 2; Files.exists(free, LinkOption.NOFOLLOW_LINKS); i++) free = target.resolveSibling(target.getFileName() + " (" + i + ")");
 		Files.move(p, free);
+		return true;
 	}
 
+	private static boolean skipsTrash(Path p) throws IOException {
+		if (!Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) return false;
+		String name = p.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+		return name.endsWith(".hprof") || name.endsWith(".hprof.gz") || Files.size(p) >= TRASH_MAX;
+	}
+
+	/** Bytes in .panel-trash. */
+	public long trashSize() {
+		Path trashRoot = root.resolve(TRASH);
+		if (!Files.isDirectory(trashRoot)) return 0;
+		long[] total = { 0 };
+		try {
+			Files.walkFileTree(trashRoot, new SimpleFileVisitor<>() {
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+					total[0] += attrs.size();
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFileFailed(Path file, IOException e) {
+					return FileVisitResult.CONTINUE;
+				}
+			});
+		} catch (IOException e) {
+			// What was counted.
+		}
+		return total[0];
+	}
+
+	/** days = 0 empties all of it. */
 	public int emptyOldTrash(int days) {
 		Path trashRoot = root.resolve(TRASH);
 		if (!Files.isDirectory(trashRoot)) return 0;
@@ -197,7 +235,7 @@ public final class ServerFiles {
 		int removed = 0;
 		try (Stream<Path> batches = Files.list(trashRoot)) {
 			for (Path batch : batches.toList()) {
-				if (Files.getLastModifiedTime(batch).toInstant().isBefore(cutoff)) {
+				if (days <= 0 || Files.getLastModifiedTime(batch).toInstant().isBefore(cutoff)) {
 					deleteRecursively(batch);
 					removed++;
 				}

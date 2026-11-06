@@ -623,7 +623,7 @@
     if (panel === 'dashboard') showDashboard(tab.slice(4));
     if (tab === 'backups') loadBackups();
     if (tab === 'java') loadMemory();
-    if (tab === 'files') { loadFiles(); loadCleanup(); }
+    if (tab === 'files') { loadFiles(); loadCleanup(); loadTrash(); }
     if (tab === 'configs') loadConfigs();
     if (tab === 'versions') loadVersions(true);
     if (tab === 'discord') loadDiscord();
@@ -2030,7 +2030,7 @@
           + field('mazeLight', 'Light of the paths (0–15)', num('mazeLight', 0, 15))
           + field('mazeCeiling', 'Ceiling blocks (empty = open sky)', `<input type="text" data-g="mazeCeiling" value="${esc(a.mazeCeiling || '')}" placeholder="minecraft:deepslate_tiles">`)
           + field('mazeGoal', 'Blocks under the goal', `<input type="text" data-g="mazeGoal" value="${esc(a.mazeGoal || 'minecraft:sea_lantern')}" placeholder="minecraft:sea_lantern">`)
-          + field('mazeCrossings', 'Crossroads: extra openings (%, 0–50)', num('mazeCrossings', 0, 50))
+          + field('mazeCrossings', 'Crossroads: extra openings, mostly T-junctions (%, 0–50)', num('mazeCrossings', 0, 50))
           + field('mazeChests', 'Dead ends with a chest (%)', num('mazeChests', 0, 100))
           + field('mazeLoot', 'Chest loot table', `<input type="text" data-g="mazeLoot" value="${esc(a.mazeLoot || 'minecraft:chests/simple_dungeon')}" placeholder="minecraft:chests/simple_dungeon">`)
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
@@ -3690,6 +3690,16 @@
       parts.push('Last: ' + esc(st.lastResult));
     }
     if (st.freeBytes) parts.push(`${bytes(st.freeBytes)} free on the backup disk`);
+    // Each backup is about as big as the newest one, and one more is written next to them before retention runs.
+    const list = backupData.backups;
+    const newest = list.length ? list[0].size : 0;
+    if (newest && st.freeBytes && !st.running) {
+      const unpinned = list.filter((b) => !b.pinned).length;
+      const more = Math.max(0, backupData.settings.keepLast - unpinned);
+      const room = Math.floor(st.freeBytes / newest);
+      if (room < 1) parts.push(`<span class="np-form-msg error">Not enough room for the next backup (about ${bytes(newest)})</span>`);
+      else if (room <= more) parts.push(`<span class="np-form-msg error">Room for about ${room} more backup${room === 1 ? '' : 's'}, but ${backupData.settings.keepLast} are kept: lower "Backups to keep"</span>`);
+    }
     $('pn-backup-status').innerHTML = parts.join(' · ');
     const manage = can('backup.manage');
     $('pn-backup-rows').innerHTML = backupData.backups.map((b) => `<tr data-backup="${esc(b.name)}">
@@ -4277,8 +4287,9 @@
           filesNote(`Copied “${path}”.`, true);
           return;
         case 'delete':
-          if (!confirm(`Delete ${name}? It stays in .panel-trash for 7 days.`)) return;
+          if (!confirm(`Delete ${name}? It stays in .panel-trash for 7 days (heap dumps and files of 1 GB or more are deleted for good).`)) return;
           await api('api/files/delete', { paths: [path] });
+          loadTrash();
           break;
         default:
           return;
@@ -4376,12 +4387,34 @@
     }
   });
 
+  async function loadTrash() {
+    if (!can('files.write')) return;
+    try {
+      const { bytes: size } = await api('api/files/trash');
+      $('pn-trash-size').textContent = size ? `Trash: ${bytes(size)}` : 'The trash is empty.';
+      $('pn-trash-empty').hidden = !size;
+    } catch (err) {
+      $('pn-trash-size').textContent = err.message;
+    }
+  }
+  $('pn-trash-empty').addEventListener('click', async () => {
+    if (!confirm(`Delete everything in .panel-trash for good? (${$('pn-trash-size').textContent.replace('Trash: ', '')})`)) return;
+    try {
+      await api('api/files/trash/empty', {});
+      filesNote('Trash emptied.', true);
+    } catch (err) {
+      filesNote(err.message, false);
+    }
+    loadTrash();
+  });
+
   $('pn-delete-selected').addEventListener('click', async () => {
     const paths = selected();
-    if (!confirm(`Delete ${paths.length} item${paths.length === 1 ? '' : 's'}? They stay in .panel-trash for 7 days.`)) return;
+    if (!confirm(`Delete ${paths.length} item${paths.length === 1 ? '' : 's'}? They stay in .panel-trash for 7 days (heap dumps and files of 1 GB or more are deleted for good).`)) return;
     try {
       await api('api/files/delete', { paths });
       loadFiles();
+      loadTrash();
     } catch (err) {
       filesNote(err.message, false);
     }
