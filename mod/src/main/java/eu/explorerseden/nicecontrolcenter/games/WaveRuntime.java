@@ -324,7 +324,7 @@ public final class WaveRuntime {
 		for (ServerPlayer m : party) {
 			if (level != null) m.teleportTo(level, a.spectate.x, a.spectate.y, a.spectate.z, Set.of(), a.spectate.yaw, 0, true);
 			m.sendSystemMessage(Words.lit("A game is running in " + a.shown() + ": you're number " + q.size() + " in the queue"
-					+ (level != null ? ". Wait here (leaving the area leaves the queue)." : ". Stay near the pad.") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
+					+ (level != null ? ". Wait here." : ".") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
 		}
 	}
 
@@ -361,13 +361,9 @@ public final class WaveRuntime {
 				q.clear();
 				continue;
 			}
-			// Leaders who went away (or logged out) take their party out of the queue.
+			// Leaders who logged out take their party out of the queue (walking around doesn't: game areas are closed off).
 			for (List<UUID> party : List.copyOf(q)) {
-				ServerPlayer leader = server.getPlayerList().getPlayer(party.get(0));
-				if (leader == null || !waiting(a, leader)) {
-					q.remove(party);
-					if (leader != null) leader.sendSystemMessage(Words.lit("You left the queue for " + a.shown() + ".").withStyle(ChatFormatting.GRAY));
-				}
+				if (server.getPlayerList().getPlayer(party.get(0)) == null) q.remove(party);
 			}
 			Game g = games.get(a.id);
 			int i = 0;
@@ -400,22 +396,15 @@ public final class WaveRuntime {
 			List<ServerPlayer> party = new ArrayList<>();
 			for (UUID id : first) {
 				ServerPlayer m = server.getPlayerList().getPlayer(id);
-				if (m != null && !playing.containsKey(id) && waiting(a, m)) party.add(m);
+				if (m != null && m.isAlive() && !playing.containsKey(id)) party.add(m);
 			}
 			if (party.size() < a.minParty || party.size() > a.maxParty) {
-				for (ServerPlayer m : party) m.sendSystemMessage(Words.lit("Not enough of your party is here for " + a.shown() + ": left the queue.").withStyle(ChatFormatting.RED));
+				for (ServerPlayer m : party) m.sendSystemMessage(Words.lit("Not enough of your party is online for " + a.shown() + ": left the queue.").withStyle(ChatFormatting.RED));
 				continue;
 			}
 			String err = start(server, a, party);
 			if (err != null) for (ServerPlayer m : party) m.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 		}
-	}
-
-	/** Still waiting for the arena: in the spectator area, or near the pad when there's none. */
-	private static boolean waiting(Arena a, ServerPlayer p) {
-		if (a.spectate != null) return Games.inSpectate(a, dim(p), p.getX(), p.getY(), p.getZ(), 4);
-		Games.Pos at = a.start;
-		return at != null && dim(p).equals(at.dim) && p.distanceToSqr(at.x, at.y, at.z) <= 24 * 24;
 	}
 
 	// ---------------------------------------------------------------- start

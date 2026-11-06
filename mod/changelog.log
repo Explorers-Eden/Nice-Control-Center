@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.88.1
+- Quick rounds: stepping on the pad during a round queues for the next one without a spectator area too (they wait where they are); a queued player who went into another game meanwhile isn't pulled out of it
+- Wave arenas: queued parties no longer drop out for leaving the spectator area or the pad's surroundings; at the start, every member still online comes along
 ## 1.88.0
 - Wave arenas: a list of bosses instead of one line, picked at random or in order (the n-th boss wave gets the n-th line, then round again); the old boss line moves into the list
 ## 1.87.0

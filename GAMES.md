@@ -88,7 +88,8 @@ A party of 1–4 (see Parties) fights waves of mobs.
 
 ## Quick rounds
 Everyone who steps in during the join window (10 s) plays the same round, each for their own score. Nobody dies:
-a deadly hit knocks them out. A spectator area also queues players for the next round.
+a deadly hit knocks them out. Players who step on the pad during a round are queued for the next one (in the
+spectator area when there is one). Only logging out or `/game leave` takes anyone out of a queue.
 
 **Ghast deflect** (`ghasts`): hit the fireballs back with snowballs.
 - Created where players appear (the spawn). `corner1` / `corner2`, `mobspawn add` up high (several).
@@ -163,7 +164,7 @@ Players who play together, in Flying Fair and the dungeons (and the game hub's d
   along); game entrances bring the party with the leader, quick rounds included.
 - Too many for a game: everyone is told who plays now and who next. Wave fights: the first ones play, the rest
   queue in the spectator area for the next game. Quick rounds: once the round is full, the rest wait in the spectator
-  area and play the next round (without a spectator area they're told it's full). Dungeons: the party goes in
+  area and play the next round (without a spectator area they wait wherever they like). Dungeons: the party goes in
   groups, each in a copy of its own (or the queue when every copy is in use).
 - Admins with claim bypass on (`/claim admin bypass`) are left alone by every pad (entrances, start points, dungeon
   pads, exit pads) and aren't brought along with a party, so they can walk around the games while building.

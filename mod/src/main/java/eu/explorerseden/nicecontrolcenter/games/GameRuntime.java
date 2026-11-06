@@ -1230,8 +1230,8 @@ public final class GameRuntime {
 									a.spectate = null;
 									a.spectateMin = null;
 									a.spectateMax = null;
-									return Games.quick(a.type) ? "No spectator area: players who step on the pad during a round try again after it, players who are out go back to the pad."
-										: "No spectator area: the dead watch a teammate, queued parties wait at the pad.";
+									return Games.quick(a.type) ? "No spectator area: players who step on the pad during a round are queued for the next one where they are, players who are out go back to the pad."
+										: "No spectator area: the dead watch a teammate, queued parties wait where they are.";
 								}))))
 						.then(Commands.literal("exitpad")
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {

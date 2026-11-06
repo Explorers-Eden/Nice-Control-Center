@@ -334,12 +334,13 @@ public final class QuickRuntime {
 			Round r = rounds.get(a.id);
 			if (r != null && r.players.contains(p.getUUID())) continue;
 			if (r != null && r.state != State.LOBBY) {
-				if (a.spectate != null && !r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && toSpectate(server, a, p)) {
+				// Queued for the next round: in the spectator area when there is one, else where they are.
+				if (!r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && (a.spectate == null || toSpectate(server, a, p))) {
 					r.next.add(p.getUUID());
 					r.names.putIfAbsent(p.getUUID(), p.getGameProfile().name());
 					title(p, a);
-					p.sendSystemMessage(Words.lit("A round of " + a.shown() + " is on: you're in the queue for the next one (" + r.next.size() + "). Wait here; walking away leaves the queue.").withStyle(ChatFormatting.GOLD));
-				} else if (server.getTickCount() % 40 == 0) {
+					p.sendSystemMessage(Words.lit("A round of " + a.shown() + " is on: you're in the queue for the next one (" + r.next.size() + ")." + (a.spectate != null ? " Wait here." : "") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
+				} else if (!r.next.contains(p.getUUID()) && server.getTickCount() % 40 == 0) {
 					p.sendOverlayMessage(Words.lit("A round of " + a.shown() + " is on; the next one starts after it").withStyle(ChatFormatting.GRAY));
 				}
 				continue;
@@ -357,12 +358,12 @@ public final class QuickRuntime {
 			}
 			if (r.players.size() >= a.maxPlayers) {
 				// Full: with a spectator area they wait there and play the next round (a big party takes turns).
-				if (a.spectate != null && !r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && toSpectate(server, a, p)) {
+				if (!r.next.contains(p.getUUID()) && r.next.size() < a.maxPlayers && (a.spectate == null || toSpectate(server, a, p))) {
 					r.next.add(p.getUUID());
 					r.names.putIfAbsent(p.getUUID(), p.getGameProfile().name());
 					title(p, a);
-					p.sendSystemMessage(Words.lit(a.shown() + " takes " + a.maxPlayers + " players and this round is full: you play the next one (" + r.next.size() + " in the queue). Wait here.").withStyle(ChatFormatting.GOLD));
-				} else if (server.getTickCount() % 40 == 0) {
+					p.sendSystemMessage(Words.lit(a.shown() + " takes " + a.maxPlayers + " players and this round is full: you play the next one (" + r.next.size() + " in the queue)." + (a.spectate != null ? " Wait here." : "") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
+				} else if (!r.next.contains(p.getUUID()) && server.getTickCount() % 40 == 0) {
 					p.sendOverlayMessage(Words.lit(a.shown() + " is full (" + a.maxPlayers + "); the next round starts after it").withStyle(ChatFormatting.RED));
 				}
 				continue;
@@ -451,7 +452,8 @@ public final class QuickRuntime {
 		for (UUID id : List.copyOf(r.players)) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			// Wherever they wandered during the join window, they're in (game areas are closed off).
-			if (p != null && p.isAlive()) going.add(p);
+			// (Not when they went into another game meanwhile.)
+			if (p != null && p.isAlive() && !playing.containsKey(id) && !WaveRuntime.inGame(p) && !GameRuntime.inRun(p) && !DungeonRuntime.inRun(p)) going.add(p);
 			else {
 				r.players.remove(id);
 				r.names.remove(id);
