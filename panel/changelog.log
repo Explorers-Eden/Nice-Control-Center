@@ -1,3 +1,5 @@
+## 1.81.1
+- Dungeons: the guide link points to docs/DUNGEONS.md (the guides moved into docs/)
 ## 1.81.0
 - Games, Dungeons, Claims: kits show how many more kits there are (a random one each), Clear removes them all
 ## 1.80.0
