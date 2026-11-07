@@ -172,15 +172,9 @@
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
         { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-games (parkour, races, mazes, quick rounds, head hunts): settings and the best players; games on/off and the hub spawn.' },
+        { tab: 'arenas', label: 'Arenas', perm: 'server.view', desc: 'Wave fight arenas and their pools: waves, bosses, kits, lives, spawns, rewards and the best parties.' },
+        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
         { tab: 'slots', label: 'Slot Machines', perm: 'server.view', desc: 'Slot Machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
-      { id: 'arenas', hue: '#ff6b6b', label: 'Arenas', icon: 'bi-shield-shaded', subs: [
-        { tab: 'arenas', label: 'Arenas', perm: 'server.view', desc: 'Wave fight arenas: waves, bosses, kits, lives, spawns and rewards, and the best parties.' },
-        { tab: 'arenapools', label: 'Pools', perm: 'server.view', desc: 'Arena pools: entrances that start whichever arena of the pool is free, and the queue when all are busy.' }] },
-      { id: 'dungeons', hue: '#c38bff', label: 'Dungeons', icon: 'bi-door-closed', subs: [
-        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party; lives, time limit, kits and messages.' },
-        { tab: 'dungeonrooms', label: 'Rooms', perm: 'server.view', desc: 'Rooms and room groups that random dungeon layouts are made of.' },
-        { tab: 'dungeonpads', label: 'Pads & queues', perm: 'server.view', desc: 'Where runs start (pads and their pools) and where parties wait when every copy is in use.' },
-        { tab: 'dungeonruns', label: 'Running now', perm: 'server.view', desc: 'The dungeon runs going on right now; close one if it\'s stuck.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rules', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, play games, and at in-game times.' },
         { tab: 'points', label: 'Points', perm: 'server.view', desc: 'One points balance per player for all games: how they earn it, balances, giving and taking.' },
@@ -235,7 +229,9 @@
     'tweaks': 'tweaks', 'tweaks/gameplay': 'tweaks', 'tweaks/trees-veins': 'felling', 'tweaks/trees-nature': 'felling', 'tweaks/market': 'market',
     'performance/tuning': 'tuning', 'settings/game': 'mod:server', 'settings/startup-java': 'java', 'settings/server-list': 'serverlist', 'settings/public-info': 'info',
     'files/all-files': 'files', 'files/mod-configs': 'configs', 'files/data-pack-settings': 'mod:packs', 'appearance': 'appearance', 'commands': 'commands',
-    'games/points': 'points', 'games/reward-shops': 'rewardshops', 'games/dungeons': 'dungeons',
+    'games/points': 'points', 'games/reward-shops': 'rewardshops',
+    'arenas': 'arenas', 'arenas/arenas': 'arenas', 'arenas/pools': 'arenas',
+    'dungeons': 'dungeons', 'dungeons/dungeons': 'dungeons', 'dungeons/rooms': 'dungeons', 'dungeons/pads-queues': 'dungeons', 'dungeons/running-now': 'dungeons',
     'players/maintenance': 'maintenance', 'performance/reports': 'mod:reports', 'users': 'users', 'audit': 'audit', 'world/map': 'map',
   };
   /** Pages outside the sidebar (the user menu). */
@@ -645,8 +641,8 @@
     if (tab === 'serverlist') loadServerList();
     if (tab === 'conduct') loadConduct();
     if (tab === 'rewards') loadRewards();
-    if (['games', 'arenas', 'arenapools'].includes(tab)) loadGames();
-    if (['dungeons', 'dungeonrooms', 'dungeonpads', 'dungeonruns'].includes(tab)) loadDungeons();
+    if (tab === 'games' || tab === 'arenas') loadGames();
+    if (tab === 'dungeons') loadDungeons();
     if (tab === 'points' || tab === 'rewardshops') loadPoints();
     if (tab === 'npcs') loadNpcs();
     if (tab === 'slots') loadSlots();
@@ -2068,9 +2064,9 @@
   // ── Games ──────────────────────────────────────────────────────────────
 
   const gm = { settings: null, live: null, scores: null, headSkins: {}, dirty: false, removed: { arenas: [], points: [] } };
-  /** Games, Arenas (wave arenas) and Pools: one set of game settings, a save bar on each page. */
-  const GM_TABS = ['games', 'arenas', 'arenapools'];
-  const GM_SAVES = [['pn-gm-save', 'pn-gm-msg'], ['pn-ar-save', 'pn-ar-msg'], ['pn-ap-save', 'pn-ap-msg']];
+  /** Games and Arenas (wave arenas and their pools): one set of game settings, a save bar on each tab. */
+  const GM_TABS = ['games', 'arenas'];
+  const GM_SAVES = [['pn-gm-save', 'pn-gm-msg'], ['pn-ar-save', 'pn-ar-msg']];
   /** The lists that hold game cards (the same handlers on both). */
   const GM_LISTS = ['pn-gm-list', 'pn-ar-list'];
   const gmOn = (ev, fn) => GM_LISTS.forEach((id) => $(id).addEventListener(ev, fn));
@@ -2247,7 +2243,7 @@
         <small>${arenas.map((a) => `${esc(a.title || a.name)}${a.enabled ? '' : ' (off)'}`).join(', ') || 'No arena in it yet.'}</small>
         ${pads.length ? `<ul class="pn-gm-heads">${pads.map(({ p, i }) => `<li><span>${esc(dimShort(p.pos.dim))} · ${Math.round(p.pos.x)}, ${Math.round(p.pos.y)}, ${Math.round(p.pos.z)}</span><button type="button" class="np-btn small danger" data-poolrm="${i}" title="Take it away" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>` : `<small>Entrance: <code>/game pool ${esc(n)} entrance add</code></small>`}
       </div>`;
-    }).join('') || '<p class="pn-hint">No pools yet: give wave arenas the same "Arena pool" (Arenas page), then place an entrance with <code>/game pool &lt;pool&gt; entrance add</code>.</p>';
+    }).join('') || '<p class="pn-hint">No pools yet: give wave arenas the same "Arena pool" (on their cards below), then place an entrance with <code>/game pool &lt;pool&gt; entrance add</code>.</p>';
   }
   $('pn-gm-pools').addEventListener('click', (e) => {
     const b = e.target.closest('[data-poolrm]');
@@ -3218,11 +3214,9 @@
   // ── Dungeons ───────────────────────────────────────────────────────────
 
   const dg = { settings: null, runs: [], scores: {}, dirty: false, removed: { dungeons: [], rooms: [], pads: [], waiting: [] } };
-  /** The Dungeons sub-tabs with a save bar (one shared set of settings), and their messages. */
-  const DG_TABS = ['dungeons', 'dungeonrooms', 'dungeonpads'];
-  const DG_SAVES = [['pn-dg-save', 'pn-dg-msg'], ['pn-dg-save-rooms', 'pn-dg-msg-rooms'], ['pn-dg-save-pads', 'pn-dg-msg-pads']];
-  /** A note shown on every Dungeons sub-tab (resaving, closing runs, errors). */
-  const dgNote = (text, ok) => ['pn-dg-note', 'pn-dg-note-rooms', 'pn-dg-note-runs'].forEach((id) => formMsg(id, text, ok));
+  const DG_TABS = ['dungeons'];
+  const DG_SAVES = [['pn-dg-save', 'pn-dg-msg']];
+  const dgNote = (text, ok) => formMsg('pn-dg-note', text, ok);
 
   async function loadDungeons() {
     try {
@@ -3502,7 +3496,6 @@
     }
   });
   $('pn-dg-refresh').addEventListener('click', loadDungeons);
-  $('pn-dg-refresh-runs').addEventListener('click', loadDungeons);
   DG_SAVES.forEach(([b, msg]) => $(b).addEventListener('click', async () => {
     try {
       await api('api/dungeons', { ...dg.settings, removed: dg.removed });

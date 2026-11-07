@@ -1,3 +1,5 @@
+## 1.85.0
+- Games: wave arenas are a tab of their own inside Games (Games, Arenas, Dungeons, Slot Machines), with the arena pools card on top; Dungeons is one tab inside Games again, as before. The separate Arenas and Dungeons sidebar entries from 1.83.0 and 1.84.0 are gone (their links still land on the right tab)
 ## 1.84.0
 - Wave arenas have their own sidebar entry, Arenas, with sub-tabs Arenas (the wave arena cards) and Pools (the arena pools card); the Games page keeps the other games, games on/off and the hub spawn
 ## 1.83.0
