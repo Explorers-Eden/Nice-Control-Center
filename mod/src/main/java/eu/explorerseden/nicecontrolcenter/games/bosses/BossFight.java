@@ -88,6 +88,11 @@ public abstract class BossFight {
 	void hurt(LivingEntity piece, net.minecraft.world.damagesource.DamageSource source) {
 	}
 
+	/** One of its pieces took {@code amount} damage (calls {@link #hurt} too). */
+	void damaged(LivingEntity piece, net.minecraft.world.damagesource.DamageSource source, float amount) {
+		hurt(piece, source);
+	}
+
 	/** One of its pieces hurt a player. */
 	void hit(ServerPlayer victim, Entity attacker) {
 	}

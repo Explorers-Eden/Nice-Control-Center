@@ -91,7 +91,11 @@ A party of 1–4 (see Parties) fights waves of mobs.
   health strays and a blizzard), `ncc:hive_queen` (a huge bee that heals while her swarm lives, dives with a poison
   sting, honey slows), `ncc:ember_colossus` (a giant magma cube that bursts into burning shards at two thirds and one
   third; fire rings, lava splashes; water hurts it) and `ncc:tempest` (a big breeze: wind bursts, lifts players, a
-  whirlwind that pulls everyone in and throws them out; it turns arrows away). Same rules as the Katters bosses below;
+  whirlwind that pulls everyone in and throws them out; it turns arrows away), `ncc:drowned_admiral` (trident volleys,
+  a tidal push, a drowned crew; heals in water), `ncc:bone_architect` (bone walls around players, arrow rain, skeletons
+  rising from the ground), `ncc:creeper_king` (creeperlings, stomps, and a countdown at a quarter of its health: 30
+  damage in 10 seconds stops it, else a huge blast that breaks nothing) and `ncc:echo_shepherd` (darkness, a marked
+  sonic beam to step out of, hunts by sound: sneaking players are only found close by). Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
   `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron` to the bosses (the panel has a picker), or put

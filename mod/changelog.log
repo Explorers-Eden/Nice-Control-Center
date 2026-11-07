@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.92.0
+- New NCC bosses: ncc:drowned_admiral (trident volleys, a tidal push, a drowned crew at two thirds and one third, heals in water), ncc:bone_architect (bone walls around players, arrow rain, skeletons rising from the ground), ncc:creeper_king (creeperlings whose blasts break nothing, stomps, a countdown at a quarter of its health: 30 damage in 10 s stops it, else a huge blast and it's gone) and ncc:echo_shepherd (darkness, a marked sonic beam to step out of, hunts by sound: sneaking players only found within 6 blocks, sculk where it walks)
+- Wave arenas: built-in bosses pick their own targets (the arena no longer turns them to the nearest player)
 ## 1.91.0
 - New NCC bosses for wave arenas and dungeons: ncc:frost_warden (giant stray: freezing aura, icicles, powder snow, strays and a blizzard at half health), ncc:hive_queen (huge bee: heals while her swarm lives, poison dives, honey slows, a second swarm below 40 %), ncc:ember_colossus (giant magma cube: bursts into burning shards at two thirds and one third, fire rings, lava splashes, water hurts it) and ncc:tempest (big breeze: wind bursts, lifts players, a whirlwind that pulls everyone in and throws them out). No drops, their own health, temporary blocks taken away again
 - Bosses: their chat lines only go to the game's players (Theron too), not to everyone within 30 blocks

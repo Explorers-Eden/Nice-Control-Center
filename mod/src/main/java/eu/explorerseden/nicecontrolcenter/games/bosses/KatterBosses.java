@@ -27,7 +27,7 @@ import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 public final class KatterBosses {
 	public static final List<String> KEYS = List.of("arachne", "raj", "rusta", "tenku", "theron");
 	/** NCC's own bosses ("ncc:frost_warden"…). */
-	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest");
+	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest", "drowned_admiral", "bone_architect", "creeper_king", "echo_shepherd");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -93,7 +93,7 @@ public final class KatterBosses {
 		});
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			BossFight f = owner.get(entity.getUUID());
-			if (f != null && !f.over) f.hurt(entity, source);
+			if (f != null && !f.over) f.damaged(entity, source, taken);
 			if (entity instanceof ServerPlayer p && source.getEntity() != null) {
 				BossFight by = owner.get(source.getEntity().getUUID());
 				if (by != null && !by.over) by.hit(p, source.getEntity());
@@ -139,6 +139,10 @@ public final class KatterBosses {
 			case "ncc_hive_queen" -> new HiveQueenFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_ember_colossus" -> new EmberColossusFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_tempest" -> new TempestFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_drowned_admiral" -> new DrownedAdmiralFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_bone_architect" -> new BoneArchitectFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_creeper_king" -> new CreeperKingFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_echo_shepherd" -> new EchoShepherdFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 		f.viewers = viewers;
@@ -160,6 +164,10 @@ public final class KatterBosses {
 			case "ncc_hive_queen" -> "The Hive Queen";
 			case "ncc_ember_colossus" -> "The Ember Colossus";
 			case "ncc_tempest" -> "The Tempest";
+			case "ncc_drowned_admiral" -> "The Drowned Admiral";
+			case "ncc_bone_architect" -> "The Bone Architect";
+			case "ncc_creeper_king" -> "The Creeper King";
+			case "ncc_echo_shepherd" -> "The Echo Shepherd";
 			default -> "Magus Theron the Betrayer";
 		};
 	}

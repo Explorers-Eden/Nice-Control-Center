@@ -48,7 +48,7 @@ field). The easiest way to get one is `/dungeon tool marker <text>`, which hands
 | `checkpoint` | Players with lives left come back here after dying. |
 | `mob:zombie x3` | Spawns 3 zombies here when the copy is made. Any mob works, also NPCs: `mob:npc:knight x2`. |
 | `boss:wither_skeleton {CustomName:'"Warden of Bones"'}` | Like `mob:`, but it counts as a boss: shows a boss bar, and with "clear when every boss is dead" the run ends when all bosses are dead. |
-| `boss:ncc:frost_warden` | An NCC boss (built into the mod): `ncc:frost_warden`, `ncc:hive_queen`, `ncc:ember_colossus` or `ncc:tempest`, with all its attacks and phases; it drops nothing. |
+| `boss:ncc:frost_warden` | An NCC boss (built into the mod): `ncc:frost_warden`, `ncc:hive_queen`, `ncc:ember_colossus`, `ncc:tempest`, `ncc:drowned_admiral`, `ncc:bone_architect`, `ncc:creeper_king` or `ncc:echo_shepherd`, with all its attacks and phases; it drops nothing. |
 | `boss:katters:theron` | A Katters Structures boss (by Katter, built into the mod): `katters:arachne`, `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron`, with all its attacks and phases; it drops nothing. As `mob:` it fights the same but doesn't count as a boss. |
 
 ---

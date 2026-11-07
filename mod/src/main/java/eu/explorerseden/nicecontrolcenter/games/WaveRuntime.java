@@ -544,7 +544,8 @@ public final class WaveRuntime {
 					Games.Pos at = g.arena.mobSpawns.get(random.nextInt(g.arena.mobSpawns.size()));
 					m.teleportTo(at.x, at.y, at.z);
 				}
-				if (m instanceof Mob mob && !alive.isEmpty() && (mob.getTarget() == null || !(mob.getTarget() instanceof ServerPlayer t && alive.contains(t)))) {
+				// (Built-in bosses pick their own targets: the Echo Shepherd hunts by sound.)
+				if (m instanceof Mob mob && !m.entityTags().contains(BossFight.TAG) && !alive.isEmpty() && (mob.getTarget() == null || !(mob.getTarget() instanceof ServerPlayer t && alive.contains(t)))) {
 					ServerPlayer nearest = null;
 					for (ServerPlayer p : alive) if (nearest == null || p.distanceToSqr(m) < nearest.distanceToSqr(m)) nearest = p;
 					mob.setTarget(nearest);
