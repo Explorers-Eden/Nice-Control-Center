@@ -28,7 +28,8 @@ public final class KatterBosses {
 	public static final List<String> KEYS = List.of("arachne", "raj", "rusta", "tenku", "theron");
 	/** NCC's own bosses ("ncc:frost_warden"…). */
 	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest", "drowned_admiral", "bone_architect", "creeper_king", "echo_shepherd", "coven_matron",
-			"phantom_monarch", "piglin_warlord", "ender_stalker", "iron_tyrant");
+			"phantom_monarch", "piglin_warlord", "ender_stalker", "iron_tyrant",
+			"purpur_sentinel", "cinder_lord", "weeping_ghast", "dire_alpha");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -92,6 +93,13 @@ public final class KatterBosses {
 			fights.clear();
 			owner.clear();
 		});
+		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+			BossFight f = owner.get(entity.getUUID());
+			if (f == null || f.over || f.applying) return true;
+			// (/kill and the void always go through.)
+			if (source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+			return f.allowDamage(entity, source, amount);
+		});
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			BossFight f = owner.get(entity.getUUID());
 			if (f != null && !f.over) f.damaged(entity, source, taken);
@@ -128,10 +136,36 @@ public final class KatterBosses {
 	/** The same, its bar only for {@code viewers} (the game's players; null: anyone within 48 blocks). */
 	public static BossFight spawn(MinecraftServer server, String id, String dim, double x, double y, double z, List<String> tags, String bossTag, boolean bar,
 			java.util.function.Predicate<ServerPlayer> viewers) {
+		return spawn(server, id, dim, x, y, z, tags, bossTag, bar, viewers, null, 1);
+	}
+
+	/**
+	 * The same, kept inside {@code bounds} (the arena or dungeon box; null: anywhere) and with {@code healthScale}
+	 * times the health (a wave arena's "% more health per wave").
+	 */
+	public static BossFight spawn(MinecraftServer server, String id, String dim, double x, double y, double z, List<String> tags, String bossTag, boolean bar,
+			java.util.function.Predicate<ServerPlayer> viewers, net.minecraft.world.phys.AABB bounds, float healthScale) {
 		String k = key(id);
 		ServerLevel level = eu.explorerseden.nicecontrolcenter.games.GameRuntime.levelOf(server, dim);
 		if (k == null || level == null) return null;
-		BossFight f = switch (k) {
+		BossFight.pendingBounds = bounds;
+		BossFight.pendingScale = healthScale <= 0 ? 1 : healthScale;
+		BossFight f;
+		try {
+			f = make(k, level, tags, bossTag, bar, x, y, z);
+		} finally {
+			BossFight.pendingBounds = null;
+			BossFight.pendingScale = 1;
+		}
+		f.viewers = viewers;
+		fights.add(f);
+		NiceControlCenter.LOGGER.info("Games: boss {} summoned in {} at {} {} {}{}", f.name(), dim, Math.round(x), Math.round(y), Math.round(z),
+				healthScale > 1.001f ? " (health x" + String.format(Locale.ROOT, "%.2f", healthScale) + ")" : "");
+		return f;
+	}
+
+	private static BossFight make(String k, ServerLevel level, List<String> tags, String bossTag, boolean bar, double x, double y, double z) {
+		return switch (k) {
 			case "arachne" -> new ArachneFight(level, tags, bossTag, bar, x, y, z);
 			case "raj" -> new RajFight(level, tags, bossTag, bar, x, y, z);
 			case "rusta" -> new RustaFight(level, tags, bossTag, bar, x, y, z);
@@ -149,12 +183,12 @@ public final class KatterBosses {
 			case "ncc_piglin_warlord" -> new PiglinWarlordFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_ender_stalker" -> new EnderStalkerFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_iron_tyrant" -> new IronTyrantFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_purpur_sentinel" -> new PurpurSentinelFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_cinder_lord" -> new CinderLordFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_weeping_ghast" -> new WeepingGhastFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_dire_alpha" -> new DireAlphaFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
-		f.viewers = viewers;
-		fights.add(f);
-		NiceControlCenter.LOGGER.info("Games: boss {} summoned in {} at {} {} {}", f.name(), dim, Math.round(x), Math.round(y), Math.round(z));
-		return f;
 	}
 
 	/** A Katters boss's name, for messages ("katters:raj" → "Raj Raksha"). */
@@ -179,6 +213,10 @@ public final class KatterBosses {
 			case "ncc_piglin_warlord" -> "The Piglin Warlord";
 			case "ncc_ender_stalker" -> "The Ender Stalker";
 			case "ncc_iron_tyrant" -> "The Iron Tyrant";
+			case "ncc_purpur_sentinel" -> "The Purpur Sentinel";
+			case "ncc_cinder_lord" -> "The Cinder Lord";
+			case "ncc_weeping_ghast" -> "The Weeping Ghast";
+			case "ncc_dire_alpha" -> "The Dire Alpha";
 			default -> "Magus Theron the Betrayer";
 		};
 	}

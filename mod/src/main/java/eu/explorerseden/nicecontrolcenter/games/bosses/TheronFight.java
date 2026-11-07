@@ -109,7 +109,8 @@ final class TheronFight extends BossFight {
 				}
 			}
 			case 1, 3, 5 -> {
-				int at = phase == 1 ? 150 : phase == 3 ? 100 : 50;
+				// (150, 100 and 50 of his 200, as shares: a wave may give him more.)
+				float at = magus.getMaxHealth() * (phase == 1 ? 0.75f : phase == 3 ? 0.5f : 0.25f);
 				if (magus.getHealth() <= at) {
 					hide();
 					phase++;

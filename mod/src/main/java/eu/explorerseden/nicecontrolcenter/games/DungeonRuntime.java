@@ -1038,7 +1038,8 @@ public final class DungeonRuntime {
 		if (e == null) return;
 		// A Katters boss (katters:theron…): the whole fight; its bodies get the run's boss tag.
 		if (eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.is(e.id())) {
-			eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(server, e.id(), Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(), boss ? r.bossTag() : null, !boss, p -> r.players.contains(p.getUUID()));
+			eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(server, e.id(), Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(), boss ? r.bossTag() : null, !boss, p -> r.players.contains(p.getUUID()),
+					new AABB(r.min.getX(), r.min.getY(), r.min.getZ(), r.max.getX() + 1, r.max.getY() + 1, r.max.getZ() + 1), 1);
 			return;
 		}
 		int count = boss ? 1 : e.count();

@@ -10,7 +10,10 @@ Built-in boss fights for wave arenas and dungeons. Write one like a mob:
 
 Every boss:
 
-- keeps its own health (the wave arena's "% more health and damage per wave" doesn't apply)
+- gets the wave arena's "% more health per wave" on its health, like the other wave mobs (its phases go by share of
+  its health, so they still come at the same points)
+- stays inside the fight box (the wave arena's box, the dungeon copy): flying bosses are turned back at the walls and
+  ceiling instead of leaving small arenas
 - drops nothing and gives no XP
 - shows its boss bar only to the players of its game, and its chat lines go only to them
 - is left alone by Nice Mob Manager
@@ -123,6 +126,34 @@ A towering iron golem, 300 health. It always goes for the nearest player and hit
 - **Boulders:** every 7 s a dust ring marks a spot near a player further away, then a boulder lands there: 8 damage.
 - **At half health:** it plates itself in iron: 14 armour and no knockback, slower but harder hits (up to about 14),
   and the slam does 7.
+
+### The Purpur Sentinel — `ncc:purpur_sentinel`
+A giant shulker, 140 health.
+- **Bullet volleys:** every 6 s a homing shulker bullet goes to each of up to three players (levitation).
+- **Teleport:** every 12 s it moves to one of four spots around its post, marked a second before.
+- **Shell:** closed, it takes little damage. Hit it while it's open.
+- **At half health:** 3 Purpur Turret shulkers.
+
+### The Cinder Lord — `ncc:cinder_lord`
+A big blaze, 140 health, in a ring of three fire shields.
+- **Fire shields:** while any shield is up, it takes only a quarter of the damage. A shield breaks after 3 snowballs
+  or 5 hits. Players get 16 snowballs at the start, topped up every 20 s.
+- **Flame pillars:** every 8 s a ring warns under up to two players, then a pillar of fire: 6 damage, and they burn.
+- **Fireball spirals:** with all shields down, eight fireballs in a turning spiral every 3 s.
+
+### The Weeping Ghast — `ncc:weeping_ghast`
+A huge ghast, 120 health, high above the arena (below the box's ceiling). Its fireballs break nothing.
+- **Fireball rain:** every 7 s three spots near players are marked, then fire comes down on them.
+- **Tears:** every 5 s its tears leave a slowing cloud on the ground below.
+- **Little ghasts:** two every 25 s (up to four).
+- **Hit its fireballs back:** each returned fireball does 20 damage. That's what really hurts it.
+
+### The Dire Alpha — `ncc:dire_alpha`
+A big wolf in wolf armour, 160 health, with its pack.
+- **Pounce:** every 7 s it leaps at a player: 6 damage and bleeding (wither).
+- **Pack:** it starts with 2 Pack Wolves and howls for 3 more every 18 s (up to 6).
+- **Bleeding bites:** its bites wither.
+- **Below a quarter:** the pack runs off. It fights on alone, faster and stronger, pouncing every 4 s.
 
 ## Katters Structures bosses
 

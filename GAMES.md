@@ -102,13 +102,18 @@ A party of 1–4 (see Parties) fights waves of mobs.
   phantoms), `ncc:piglin_warlord` (a brute: marked charges, blinding gold dust, a warband at half health, zombified at
   a quarter), `ncc:ender_stalker` (an enderman: blinks behind players, swaps two of them, endermites, stronger while
   stared at; it never takes blocks) and `ncc:iron_tyrant` (an iron golem: ground slams, marked boulders, plated at
-  half health). Same rules as the Katters bosses below;
+  half health), `ncc:purpur_sentinel` (a shulker: homing bullet volleys, teleports to marked spots, turrets),
+  `ncc:cinder_lord` (a blaze behind three fire shields that snowballs break; flame pillars, fireball spirals),
+  `ncc:weeping_ghast` (a ghast high up: fireball rain, slowing tears, little ghasts; hit its fireballs back) and
+  `ncc:dire_alpha` (an armoured wolf: pounces, howls for its pack, bleeding bites). Every boss is described in
+  `BOSSES.md`. Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
   `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron` to the bosses (the panel has a picker), or put
   them in a hand-written wave. They fight with their own attacks (Theron's phases and minions, Rústa's forms, Raj's
-  lightning, Arachne's webs and brood, Tenkū's dolphins and beams; Tenkū hovers when it's out of water), keep their
-  own health (no "% more per wave") and drop nothing. Try one where you stand: `/game boss <name>`; `/game boss clear`
+  lightning, Arachne's webs and brood, Tenkū's dolphins and beams; Tenkū hovers when it's out of water), get the
+  arena's "% more health per wave" on their health (their phases go by share, so they still work), stay inside the
+  fight box (flying ones too) and drop nothing. Try one where you stand: `/game boss <name>`; `/game boss clear`
   takes them away again.
 
 ## Quick rounds

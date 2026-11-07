@@ -59,7 +59,9 @@ final class ArachneFight extends BossFight {
 		if (ticks % 40 != 0) return;
 		Vec3 at = spider.position();
 		float health = spider.getHealth();
-		int tier = health <= 30 ? 3 : health <= 60 ? 2 : health <= 90 ? 1 : 0;
+		// (By share of her health: 90, 60 and 30 of 160, also when a wave gave her more.)
+		float sh = share(spider);
+		int tier = sh <= 30 / 160f ? 3 : sh <= 60 / 160f ? 2 : sh <= 90 / 160f ? 1 : 0;
 		if (tier > 0) attack(tier);
 		for (ServerPlayer p : near(at, 35)) effect(p, MobEffects.MINING_FATIGUE, 200, 4);
 		for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, around(spider, 35),

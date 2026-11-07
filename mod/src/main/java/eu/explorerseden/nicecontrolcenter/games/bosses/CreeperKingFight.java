@@ -131,7 +131,7 @@ final class CreeperKingFight extends BossFight {
 	void took(float amount) {
 		if (countdownEnd < 0) return;
 		hitDuring += amount;
-		if (hitDuring >= 30) {
+		if (hitDuring >= 30 * healthScale) {
 			countdownEnd = -1;
 			Vec3 at = king.position();
 			sound(at, SoundEvents.FIRE_EXTINGUISH, 2, 0.6f);

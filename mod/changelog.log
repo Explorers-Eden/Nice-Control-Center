@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.94.0
+- Bosses in wave arenas get the arena's "% more health per wave" on their health (phases go by share of health now, so Arachne, Theron, Tenkū and the Creeper King still switch at the same points)
+- Bosses stay inside the fight box (wave arena box, dungeon copy): flying ones (Phantom Monarch, Hive Queen, the new Weeping Ghast) are turned back at walls and ceiling instead of leaving small arenas
+- New NCC bosses: ncc:purpur_sentinel (giant shulker: homing bullet volleys, teleports to marked spots, turrets at half health), ncc:cinder_lord (blaze behind three fire shields that snowballs or hits break, players get snowballs; flame pillars, fireball spirals), ncc:weeping_ghast (huge ghast high up: fireball rain, slowing tears, little ghasts; its fireballs hit back do 20, they break nothing) and ncc:dire_alpha (armoured wolf: pounces, howls for its pack, bleeding bites; alone and desperate below a quarter)
+- Bosses: /kill and the void always reach boss pieces
 ## 1.93.2
 - Ember Colossus: less health (150 instead of 240, shards 25 instead of 40) and more to do: leaps at players (flames mark where it lands) and slams down in a burning shockwave, fireball volleys, a molten trail of short fire; once it bursts apart everything comes faster
 ## 1.93.1

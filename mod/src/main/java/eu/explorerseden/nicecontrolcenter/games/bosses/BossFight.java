@@ -7,6 +7,7 @@ import java.util.Set;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
@@ -57,6 +58,15 @@ public abstract class BossFight {
 	/** Things to do later (the second half of a warned attack): tick → what. */
 	private final List<Object[]> later = new ArrayList<>();
 	private ServerBossEvent bar;
+	/** Set by the registry just before a fight is made: its box and health factor (read in the constructor). */
+	static AABB pendingBounds;
+	static float pendingScale = 1;
+	/** The arena or dungeon box: its bodies stay inside (flying ones would leave small arenas). Null: anywhere. */
+	final AABB bounds;
+	/** Health factor (a wave arena's "% more health per wave"): every main body gets this much more health. */
+	final float healthScale;
+	/** Its main bodies (the boss itself, its shards or forms). */
+	final List<LivingEntity> mains = new ArrayList<>();
 	/** Who sees its bar: the game's players (null: anyone within 48 blocks). */
 	java.util.function.Predicate<ServerPlayer> viewers;
 	long ticks;
@@ -67,6 +77,8 @@ public abstract class BossFight {
 		this.tags = tags;
 		this.bossTag = bossTag;
 		this.random = level.getRandom();
+		this.bounds = pendingBounds;
+		this.healthScale = pendingScale;
 		if (showBar) bar = new ServerBossEvent(java.util.UUID.randomUUID(), Component.literal(name()), color(), BossEvent.BossBarOverlay.NOTCHED_10);
 	}
 
@@ -88,6 +100,28 @@ public abstract class BossFight {
 	void hurt(LivingEntity piece, net.minecraft.world.damagesource.DamageSource source) {
 	}
 
+	/**
+	 * Before one of its pieces takes damage: false cancels it. A fight can apply its own amount instead with
+	 * {@link #hurtAs} (a fire shield taking a quarter, a returned fireball capped).
+	 */
+	boolean allowDamage(LivingEntity piece, net.minecraft.world.damagesource.DamageSource source, float amount) {
+		return true;
+	}
+
+	/** Set while the fight applies its own damage (so allowDamage lets it through). */
+	boolean applying;
+
+	/** Damage the fight decides itself (after cancelling the original). */
+	void hurtAs(LivingEntity piece, float amount, Entity by) {
+		if (amount <= 0 || dead(piece)) return;
+		applying = true;
+		try {
+			piece.hurtServer(level, by instanceof ServerPlayer p ? level.damageSources().playerAttack(p) : level.damageSources().generic(), amount);
+		} finally {
+			applying = false;
+		}
+	}
+
 	/** One of its pieces took {@code amount} damage (calls {@link #hurt} too). */
 	void damaged(LivingEntity piece, net.minecraft.world.damagesource.DamageSource source, float amount) {
 		hurt(piece, source);
@@ -99,7 +133,9 @@ public abstract class BossFight {
 
 	final void step() {
 		ticks++;
+		checkTargets();
 		tick();
+		confine();
 		// Delayed parts of attacks.
 		for (Object[] l : List.copyOf(later)) {
 			if ((long) l[0] > ticks) continue;
@@ -125,6 +161,32 @@ public abstract class BossFight {
 					else bar.removePlayer(p);
 				}
 			}
+		}
+	}
+
+	/**
+	 * Keeps its bodies inside the box: flying ones every tick (a phantom or ghast would circle out of a small arena),
+	 * walkers now and then. Pushed back in and turned round, never teleported to the far side.
+	 */
+	private static final java.util.Set<String> FLYERS = java.util.Set.of("phantom", "ghast", "happy_ghast", "bee", "blaze", "vex", "allay", "breeze", "parrot", "bat");
+
+	private void confine() {
+		if (bounds == null) return;
+		for (Entity e : parts) {
+			if (!(e instanceof LivingEntity l) || dead(l) || l.isPassenger() || l.entityTags().contains(ASSET)) continue;
+			boolean flying = l.isNoGravity() || FLYERS.contains(BuiltInRegistries.ENTITY_TYPE.getKey(l.getType()).getPath());
+			if (!flying && ticks % 10 != 0) continue;
+			double w = Math.min(1.5, l.getBbWidth() / 2 + 0.3), h = l.getBbHeight() + 0.3;
+			double x0 = bounds.minX + w, x1 = bounds.maxX - w, z0 = bounds.minZ + w, z1 = bounds.maxZ - w;
+			double y0 = bounds.minY, y1 = bounds.maxY - h;
+			if (x0 > x1 || z0 > z1 || y0 > y1) continue;
+			double x = l.getX(), y = l.getY(), z = l.getZ();
+			double cx = Math.max(x0, Math.min(x1, x)), cy = Math.max(y0, Math.min(y1, y)), cz = Math.max(z0, Math.min(z1, z));
+			if (cx == x && cy == y && cz == z) continue;
+			Vec3 v = l.getDeltaMovement();
+			l.teleportTo(cx, cy, cz);
+			// Turned round where it hit the edge.
+			l.setDeltaMovement(cx != x ? -v.x * 0.5 : v.x, cy != y ? -Math.abs(v.y) * 0.5 * Math.signum(cy - y) : v.y, cz != z ? -v.z * 0.5 : v.z);
 		}
 	}
 
@@ -161,6 +223,11 @@ public abstract class BossFight {
 			return made;
 		});
 		if (e == null) return null;
+		return adopt(e, main, asset) ? e : null;
+	}
+
+	/** An entity made elsewhere (a shulker bullet built in code): tagged like the fight's own and added to the world. */
+	boolean adopt(Entity e, boolean main, boolean asset) {
 		List<Entity> all = new ArrayList<>();
 		all.add(e);
 		for (Entity p : e.getIndirectPassengers()) all.add(p);
@@ -171,12 +238,88 @@ public abstract class BossFight {
 			for (String t : tags) p.addTag(t);
 			if (main && bossTag != null) p.addTag(bossTag);
 			if (asset) p.addTag(ASSET);
-			if (p instanceof LivingEntity l) l.skipDropExperience();
+			if (p instanceof LivingEntity l) {
+				l.skipDropExperience();
+				if (main) {
+					mains.add(l);
+					if (healthScale != 1) {
+						var max = l.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+						if (max != null) {
+							max.setBaseValue(max.getBaseValue() * healthScale);
+							l.setHealth(l.getMaxHealth());
+						}
+					}
+				}
+			}
 			parts.add(p);
 			KatterBosses.own(p, this);
 		}
-		if (!level.tryAddFreshEntityWithPassengers(e)) return null;
-		return e;
+		return level.tryAddFreshEntityWithPassengers(e);
+	}
+
+	// ---------------------------------------------------------------- breakable things
+
+	/** Something in the arena to break (a heart, a totem, a lightning rod): a block to see, a hidden slime to hit. */
+	static final class Target {
+		Entity display;
+		LivingEntity hitbox;
+		/** Hits left for fights that count hits instead of health (fire shields). */
+		int hits;
+
+		boolean broken() {
+			return dead(hitbox);
+		}
+
+		/** Moves it (both parts). */
+		void moveTo(Vec3 at) {
+			if (display != null && !display.isRemoved()) display.teleportTo(at.x, at.y, at.z);
+			if (hitbox != null && !hitbox.isRemoved()) hitbox.teleportTo(at.x, at.y, at.z);
+		}
+	}
+
+	final List<Target> targets = new ArrayList<>();
+
+	/**
+	 * A breakable thing at the spot: {@code block} as a display ("minecraft:creaking_heart"), {@code health} on an
+	 * invisible slime the size of a block. It isn't a wave mob (doesn't hold a wave open); broken, the display goes.
+	 */
+	Target target(String block, Vec3 at, float health, String name, boolean glow) {
+		Target t = new Target();
+		t.display = spawn("minecraft:block_display", at.x, at.y, at.z, "{" + (glow ? "Glowing:1b," : "") + "block_state:{Name:\"" + block + "\"},"
+				+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[-0.5f,0f,-0.5f],scale:[1f,1f,1f]}}", false, true);
+		t.hitbox = (LivingEntity) spawn("minecraft:slime", at.x, at.y, at.z, "{Size:0,NoAI:1b,Silent:1b,PersistenceRequired:1b,DeathLootTable:\"minecraft:empty\","
+				+ "Health:" + health + "f,CustomName:\"" + name + "\",active_effects:[{id:\"minecraft:invisibility\",amplifier:0,duration:-1,show_particles:0b}],"
+				+ "attributes:[{id:\"minecraft:max_health\",base:" + health + "},{id:\"minecraft:scale\",base:2},{id:\"minecraft:knockback_resistance\",base:1}]}", false, true);
+		if (t.hitbox != null) t.hitbox.setNoGravity(true);
+		targets.add(t);
+		return t;
+	}
+
+	/** Broken targets: the display goes with a burst of the block's particles. */
+	private void checkTargets() {
+		for (Target t : List.copyOf(targets)) {
+			if (!t.broken()) continue;
+			if (t.display != null && !t.display.isRemoved()) {
+				Vec3 at = t.display.position();
+				level.sendParticles(ParticleTypes.EXPLOSION, at.x, at.y + 0.5, at.z, 1, 0, 0, 0, 0);
+				sound(at, net.minecraft.sounds.SoundEvents.SHIELD_BREAK.value(), 1.5f, 0.8f);
+				t.display.discard();
+			}
+			targets.remove(t);
+		}
+	}
+
+	/** Gear a fight's mechanic needs (snowballs against fire shields): a game item, gone again after the game. */
+	void give(ServerPlayer p, net.minecraft.world.item.ItemStack st) {
+		eu.explorerseden.nicecontrolcenter.claims.GameClaims.giveKitItem(p, st, "boss");
+	}
+
+	/** The fight's players (its viewers), else players within 40 blocks of the spot. */
+	List<ServerPlayer> players(Vec3 at) {
+		if (viewers == null) return near(at, 40);
+		List<ServerPlayer> out = new ArrayList<>();
+		for (ServerPlayer p : level.players()) if (viewers.test(p) && p.isAlive() && !p.isSpectator()) out.add(p);
+		return out;
 	}
 
 	/** Something short-lived that dies at once: its effect goes off where it dies (wind burst, cobwebs). */

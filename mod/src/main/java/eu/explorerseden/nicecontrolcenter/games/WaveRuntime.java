@@ -534,7 +534,9 @@ public final class WaveRuntime {
 			MobLines.Entry one = new MobLines.Entry(e.id(), 1, e.nbt());
 			double sx = at.x + (random.nextDouble() - 0.5), sz = at.z + (random.nextDouble() - 0.5);
 			// (Its bar only for this game's players.)
-			if (KatterBosses.is(e.id())) KatterBosses.spawn(server, e.id(), at.dim, sx, at.y, sz, boss ? List.of(g.tag(), BOSS) : List.of(g.tag()), null, true, p -> g.players.contains(p.getUUID()));
+			// (Kept inside the fight box; as much more health as the arena's "% more health per wave" gives its mobs.)
+			if (KatterBosses.is(e.id())) KatterBosses.spawn(server, e.id(), at.dim, sx, at.y, sz, boss ? List.of(g.tag(), BOSS) : List.of(g.tag()), null, true, p -> g.players.contains(p.getUUID()),
+					box(g.arena), (float) (1 + g.arena.toughness / 100.0 * (g.wave - 1)));
 			else MobLines.summon(server, at.dim, sx, at.y, sz, one, "Tags:[\"" + g.tag() + "\"" + (boss ? ",\"" + BOSS + "\"" : "") + "]");
 		}
 		if (server.getTickCount() % 20 == 0) {

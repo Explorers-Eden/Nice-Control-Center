@@ -85,7 +85,7 @@ final class HiveQueenFight extends BossFight {
 			}
 			// Healing while any bee lives.
 			if (!swarm.isEmpty() && queen.getHealth() < queen.getMaxHealth()) {
-				queen.heal(4);
+				queen.heal(4 * healthScale);
 				level.sendParticles(ParticleTypes.HEART, at.x, at.y + 2, at.z, 2, 0.6, 0.4, 0.6, 0);
 			}
 		}

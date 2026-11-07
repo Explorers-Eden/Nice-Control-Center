@@ -81,7 +81,7 @@ final class TenkuFight extends BossFight {
 		float health = turtle.getHealth();
 		// One dolphin leaves per 50 health lost; then the nearest player is thrown back (at most once a minute).
 		for (int i = 0; i < 8; i++) {
-			if (dolphins[i] != null && !dolphins[i].isRemoved() && health <= 400 - 50 * i) {
+			if (dolphins[i] != null && !dolphins[i].isRemoved() && health <= turtle.getMaxHealth() * (400 - 50 * i) / 500f) {
 				dolphins[i].discard();
 				if (ticks >= pushReady) {
 					ServerPlayer p = nearest(at, 18);
