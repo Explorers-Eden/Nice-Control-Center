@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.99.0
+- Fabled Roots is paused in Flying Fair and the dungeon dimension: players there get the tag fabled_roots.paused (Fabled Roots with the matching update skips their race and class effects, abilities and the race menu), and the base attributes their race set (armour, attack, jump, gravity, speed, fall damage…; not their size) and its attack-speed modifiers are back to vanilla there, restored when they leave (kept in a file through restarts)
 ## 1.98.0
 - Kits: more than one kit for wave arenas, quick rounds, dungeons and game areas; each player gets one of them at random. In game: /game edit <name> kit add, /dungeon kit <name> add, /claim admin kit add (and … clear); the plain kit command still replaces them all with one
 ## 1.97.0
