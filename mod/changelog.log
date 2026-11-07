@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.93.2
+- Ember Colossus: less health (150 instead of 240, shards 25 instead of 40) and more to do: leaps at players (flames mark where it lands) and slams down in a burning shockwave, fireball volleys, a molten trail of short fire; once it bursts apart everything comes faster
 ## 1.93.1
 - Iron Tyrant: much weaker hits (attack 8 instead of the golem's 15, so 4–11 a hit; plated 10, up to about 14, instead of up to about 30, which killed through any regeneration), ground slam 5 (plated 7) and a lower launch, boulder 8
 ## 1.93.0

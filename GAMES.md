@@ -89,8 +89,9 @@ A party of 1–4 (see Parties) fights waves of mobs.
   broken blocks, water and lava are gone (boxes up to 4 million blocks). Game ravagers don't break leaves.
 - **NCC bosses** (built into the mod): `ncc:frost_warden` (a giant stray: freezing aura, icicles, powder snow, at half
   health strays and a blizzard), `ncc:hive_queen` (a huge bee that heals while her swarm lives, dives with a poison
-  sting, honey slows), `ncc:ember_colossus` (a giant magma cube that bursts into burning shards at two thirds and one
-  third; fire rings, lava splashes; water hurts it) and `ncc:tempest` (a big breeze: wind bursts, lifts players, a
+  sting, honey slows), `ncc:ember_colossus` (a giant magma cube: leaps at players where flames mark the landing and
+  slams down in a burning shockwave, fireball volleys, a molten trail, fire rings and lava splashes; bursts into
+  burning shards at two thirds and one third and gets faster; water hurts it) and `ncc:tempest` (a big breeze: wind bursts, lifts players, a
   whirlwind that pulls everyone in and throws them out; it turns arrows away), `ncc:drowned_admiral` (trident volleys,
   a tidal push, a drowned crew; heals in water), `ncc:bone_architect` (bone walls around players, arrow rain, skeletons
   rising from the ground), `ncc:creeper_king` (creeperlings, stomps, and a countdown at a quarter of its health: 30
