@@ -187,6 +187,37 @@ An evoker, 160 health.
 - **Warding totem at half health:** a floating totem (40 health) shields it completely until it's broken, and the
   fangs come every 3 s meanwhile.
 
+### The Oxidized Engine — `ncc:oxidized_engine`
+A towering copper golem, 180 health, walked by the mod.
+- **Rusting:** every 30 s it oxidizes a stage (exposed, weathered, oxidized). Each stage it gets slower, but its hits
+  (5, rising by 1.5 a stage) and slams hurt more.
+- **Lightning rods:** three Lightning Rods stand around it (20 health each). Every 40 s lightning strikes a standing
+  rod and polishes it fresh again, with some healing. Break the rods.
+- **Slam:** every 9 s, when someone is close, a warning, then a shockwave.
+- **Sparks:** every 12 s a ring of sparks, then a jolt for everyone within 4.5 blocks (5).
+
+### The Ramlord — `ncc:ramlord`
+A giant goat, 160 health.
+- **Long ram:** every 10 s a line of dust marks it, then it charges along it: 6 damage, and players are thrown far.
+- **Horn throw:** every 7 s a horn flies at a player: 6 damage.
+- **Rockfall:** every 9 s dust marks a spot near a player further away, then a rock lands there: 7 damage.
+- **Mountain leap:** every 14 s it jumps at a marked spot and lands in a shockwave: 6 damage.
+
+### The Llama Matriarch — `ncc:llama_matriarch`
+A big llama in a red blanket, 140 health, with 3 Caravan Llamas.
+- **Spit volleys:** every 4 s she and each caravan llama spit at a player.
+- **Stampede:** every 15 s a line is marked, then the caravan runs along it: 5 damage, and a knock.
+- **Lead lash:** every 12 s the farthest player within 30 blocks is pulled towards her.
+- She closes in when players keep away.
+
+### The Panda Grandmaster — `ncc:panda_grandmaster`
+A big aggressive panda, 160 health.
+- **Roll:** every 9 s a line is marked, then it rolls through it: 6 damage, and a knock.
+- **Sneeze:** every 11 s, when someone is close, everyone in front of it is blown away and slowed.
+- **Bamboo:** every 12 s bamboo grows in a ring around a player for 7 seconds. Touching it hurts (2).
+- **Snack:** every 25 s it sits down to eat for 4 seconds. Every hit then does double damage.
+- **Below 30 %:** worried, and so faster and stronger. Rolls come every 6 s.
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't

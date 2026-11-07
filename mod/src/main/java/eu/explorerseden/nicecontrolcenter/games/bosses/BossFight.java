@@ -380,15 +380,24 @@ public abstract class BossFight {
 	 * again after that, or when the fight ends.
 	 */
 	boolean tempBlock(BlockPos pos, net.minecraft.world.level.block.state.BlockState state, int ticks) {
+		return tempBlock(pos, state, ticks, false);
+	}
+
+	/**
+	 * The same; {@code quiet}: no shape updates, so a block that needs special ground (bamboo) stays put instead of
+	 * popping off as an item.
+	 */
+	boolean tempBlock(BlockPos pos, net.minecraft.world.level.block.state.BlockState state, int ticks, boolean quiet) {
+		int flags = quiet ? net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE : 3;
 		BlockPos p = pos.immutable();
 		net.minecraft.world.level.block.state.BlockState was = level.getBlockState(p);
 		if (temp.containsKey(p)) {
 			temp.get(p)[0] = this.ticks + ticks;
-			level.setBlock(p, state, 3);
+			level.setBlock(p, state, flags);
 			return true;
 		}
 		if (!was.isAir() && !was.canBeReplaced()) return false;
-		level.setBlock(p, state, 3);
+		level.setBlock(p, state, flags);
 		temp.put(p, new Object[] { this.ticks + ticks, was, state.getBlock() });
 		return true;
 	}

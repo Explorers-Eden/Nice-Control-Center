@@ -30,7 +30,8 @@ public final class KatterBosses {
 	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest", "drowned_admiral", "bone_architect", "creeper_king", "echo_shepherd", "coven_matron",
 			"phantom_monarch", "piglin_warlord", "ender_stalker", "iron_tyrant",
 			"purpur_sentinel", "cinder_lord", "weeping_ghast", "dire_alpha",
-			"heartwood_creaking", "abyssal_eye", "rotting_giant", "arch_evoker");
+			"heartwood_creaking", "abyssal_eye", "rotting_giant", "arch_evoker",
+			"oxidized_engine", "ramlord", "llama_matriarch", "panda_grandmaster");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -192,6 +193,10 @@ public final class KatterBosses {
 			case "ncc_abyssal_eye" -> new AbyssalEyeFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_rotting_giant" -> new RottingGiantFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_arch_evoker" -> new ArchEvokerFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_oxidized_engine" -> new OxidizedEngineFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_ramlord" -> new RamlordFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_llama_matriarch" -> new LlamaMatriarchFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_panda_grandmaster" -> new PandaGrandmasterFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 	}
@@ -226,6 +231,10 @@ public final class KatterBosses {
 			case "ncc_abyssal_eye" -> "The Abyssal Eye";
 			case "ncc_rotting_giant" -> "The Rotting Giant";
 			case "ncc_arch_evoker" -> "The Arch-Evoker";
+			case "ncc_oxidized_engine" -> "The Oxidized Engine";
+			case "ncc_ramlord" -> "The Ramlord";
+			case "ncc_llama_matriarch" -> "The Llama Matriarch";
+			case "ncc_panda_grandmaster" -> "The Panda Grandmaster";
 			default -> "Magus Theron the Betrayer";
 		};
 	}

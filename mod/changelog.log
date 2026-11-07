@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.96.0
+- New NCC bosses: ncc:oxidized_engine (copper golem that rusts as it fights: slower but harder hits each stage; lightning on its rods polishes it fresh, break them; slams and sparks), ncc:ramlord (giant goat: long rams that throw players far, horn throws, rockfall, mountain leaps), ncc:llama_matriarch (llama with her caravan: spit volleys, stampedes along a marked line, a lead lash) and ncc:panda_grandmaster (rolls, sneezes, bamboo rings that hurt, a snack break for double damage, worried and faster below 30 %)
+- Bosses: temporary blocks can be placed without shape updates (bamboo where it couldn't grow stays and never drops)
 ## 1.95.0
 - New NCC bosses: ncc:heartwood_creaking (moves only unseen, untouchable while its three resin hearts stand, root snares, one heart regrows), ncc:abyssal_eye (floating elder guardian: a laser that locks on and fires unless you take cover, mining fatigue, spikes, guardian adds), ncc:rotting_giant (the giant zombie walked by the mod: stomps, thrown zombies, lifts a player, kneels to rest for double damage) and ncc:arch_evoker (fang lines, rings and spirals, vex storms, a warding totem at half health that shields it until broken)
 - Bosses: breakable things can show an item too (the Arch-Evoker's totem)

@@ -108,7 +108,10 @@ A party of 1–4 (see Parties) fights waves of mobs.
   `ncc:dire_alpha` (an armoured wolf: pounces, howls for its pack, bleeding bites), `ncc:heartwood_creaking` (only
   moves unseen, untouchable until its resin hearts are broken), `ncc:abyssal_eye` (an elder guardian whose laser locks
   on: take cover), `ncc:rotting_giant` (the giant zombie: stomps, thrown zombies, rests on its knees for double
-  damage) and `ncc:arch_evoker` (fang patterns, vex storms, a warding totem). Every boss is described in
+  damage), `ncc:arch_evoker` (fang patterns, vex storms, a warding totem), `ncc:oxidized_engine` (a copper golem that
+  rusts as it fights; lightning rods polish it fresh, break them), `ncc:ramlord` (a goat: long rams, horn throws,
+  rockfall, leaps), `ncc:llama_matriarch` (a llama and her caravan: spit, stampedes, a lead lash) and
+  `ncc:panda_grandmaster` (rolls, sneezes, bamboo rings, a snack break for double damage). Every boss is described in
   `BOSSES.md`. Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
