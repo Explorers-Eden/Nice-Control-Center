@@ -23,7 +23,8 @@ import net.minecraft.world.phys.Vec3;
 final class IronTyrantFight extends BossFight {
 	private static final String BODY = "{DeathLootTable:\"minecraft:empty\",PersistenceRequired:1b,PlayerCreated:0b,Health:300f,CustomName:{text:\"The Iron Tyrant\",color:\"#A8A8A8\",bold:true},"
 			+ "attributes:[{id:\"minecraft:max_health\",base:300},{id:\"minecraft:scale\",base:2.5},{id:\"minecraft:follow_range\",base:40},{id:\"minecraft:step_height\",base:2},"
-			+ "{id:\"minecraft:explosion_knockback_resistance\",base:1}]}";
+			// Golems hit for half to one and a half times their attack: 8 keeps a hit at 4–11 (vanilla's 15 two-shots anyone).
+			+ "{id:\"minecraft:attack_damage\",base:8},{id:\"minecraft:explosion_knockback_resistance\",base:1}]}";
 	private static final String BOULDER = "{teleport_duration:14,block_state:{Name:\"minecraft:cobblestone\"},transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
 			+ "translation:[-0.75f,0f,-0.75f],scale:[1.5f,1.5f,1.5f]}}";
 
@@ -72,7 +73,7 @@ final class IronTyrantFight extends BossFight {
 			later(20, () -> {
 				Vec3 c = tyrant.position();
 				sound(c, SoundEvents.IRON_GOLEM_ATTACK, 3, 0.5f);
-				shockwave(tyrant, c, 7, plated ? 9 : 6, 0.8, 1.1);
+				shockwave(tyrant, c, 7, plated ? 7 : 5, 0.8, 0.75);
 			});
 		}
 		// A boulder every 7 s at a player further away.
@@ -92,7 +93,7 @@ final class IronTyrantFight extends BossFight {
 			var speed = tyrant.getAttribute(Attributes.MOVEMENT_SPEED);
 			if (speed != null) speed.setBaseValue(speed.getBaseValue() * 0.75);
 			var dmg = tyrant.getAttribute(Attributes.ATTACK_DAMAGE);
-			if (dmg != null) dmg.setBaseValue(dmg.getBaseValue() * 1.4);
+			if (dmg != null) dmg.setBaseValue(dmg.getBaseValue() * 1.25);
 			sound(at, SoundEvents.ANVIL_LAND, 2, 0.5f);
 			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y + 2, at.z, 60, 1.5, 2, 1.5, 0.2);
 			say(at, 40, styled("The Iron Tyrant ", 0xA8A8A8, true, false).copy().append(plain("plates itself in iron.")));
@@ -112,7 +113,7 @@ final class IronTyrantFight extends BossFight {
 			if (d != null) d.discard();
 			level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, Blocks.COBBLESTONE.defaultBlockState()), spot.x, spot.y + 0.5, spot.z, 40, 0.8, 0.3, 0.8, 0.1);
 			sound(spot, SoundEvents.STONE_BREAK, 2, 0.6f);
-			for (ServerPlayer p : near(spot, 2)) p.hurtServer(level, level.damageSources().mobAttack(tyrant), 10);
+			for (ServerPlayer p : near(spot, 2)) p.hurtServer(level, level.damageSources().mobAttack(tyrant), 8);
 		});
 	}
 }

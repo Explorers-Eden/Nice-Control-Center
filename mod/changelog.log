@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.93.1
+- Iron Tyrant: much weaker hits (attack 8 instead of the golem's 15, so 4–11 a hit; plated 10, up to about 14, instead of up to about 30, which killed through any regeneration), ground slam 5 (plated 7) and a lower launch, boulder 8
 ## 1.93.0
 - New NCC bosses: ncc:coven_matron (extra potions, lingering clouds, three copies at two thirds and one third that vanish when hit), ncc:phantom_monarch (its shadow marks its dives, dazed on the ground after a hit, a night court of phantoms, no sun burn), ncc:piglin_warlord (marked charges, blinding gold dust, a warband at half health, zombified at a quarter with the same health), ncc:ender_stalker (blinks behind players, swaps two players, endermites, stronger while stared at, stays near where it started) and ncc:iron_tyrant (ground slams, marked boulders, plated at half health)
 - Endermen of the games (bosses, wave mobs) never take blocks
