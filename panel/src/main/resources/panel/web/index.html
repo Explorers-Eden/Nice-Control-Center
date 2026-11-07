@@ -1241,7 +1241,7 @@
 			<div class="np-tab-panel" data-tab="games" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-controller"></i> Games</h3>
-					<p class="np-card-intro">Mini-games made from ready templates. Build one where you stand in game, then set its entrances (e.g. in your hub): players step in there and are taken to the game; after it they're back at the game hub spawn.</p>
+					<p class="np-card-intro">Mini-games made from ready templates (wave fights have their own page: Arenas). Build one where you stand in game, then set its entrances (e.g. in your hub): players step in there and are taken to the game; after it they're back at the game hub spawn.</p>
 					<div class="pn-gm-templates">
 						<div><i class="bi bi-bricks"></i><b>Infinite parkour</b><span>Jumps appear ahead, harder as you go; every player gets their own lane.</span></div>
 						<div><i class="bi bi-flag"></i><b>Race course</b><span>Checkpoints in order, then the finish: running, by boat or elytra.</span></div>
@@ -1273,18 +1273,33 @@
 						<span class="np-form-msg" id="pn-gm-note"></span>
 					</div>
 				</section>
+				<div id="pn-gm-list" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-gm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-gm-msg"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="arenas" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shield-shaded"></i> Wave arenas</h3>
+					<p class="np-card-intro">A party of 1–4 fights waves of mobs in an arena you built; rewards per wave and for clearing. Make one where players should appear: <code>/game create waves &lt;name&gt;</code>, then follow the setup list on its card. Bosses: <a href="https://github.com/Explorers-Eden/Nice-Control-Center/blob/main/docs/BOSSES.md" target="_blank" rel="noopener">the boss guide <i class="bi bi-box-arrow-up-right"></i></a></p>
+					<p class="pn-hint">Games on/off and the game hub spawn are on the Games page; pools of arenas on Pools.</p>
+					<div class="np-filters"><span class="np-form-msg" id="pn-ar-note"></span></div>
+				</section>
+				<div id="pn-ar-list" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-ar-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-ar-msg"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="arenapools" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-collection"></i> Arena pools</h3>
 					<p class="np-card-intro">Wave arenas can share a pool. A pool entrance starts whichever arena of the pool is free (not the one the party played last, when there's a choice). When all of them are busy, the party queues for the pool: it waits in the spectator area of one of them and plays in the first one that's free.</p>
 					<dl class="pn-gm-howto">
-						<dt>Into a pool</dt><dd><code>/game edit &lt;arena&gt; pool &lt;pool&gt;</code> (<code>none</code> takes it out), or the arena's "Arena pool" field below</dd>
+						<dt>Into a pool</dt><dd><code>/game edit &lt;arena&gt; pool &lt;pool&gt;</code> (<code>none</code> takes it out), or the "Arena pool" field on the arena's card (Arenas page)</dd>
 						<dt>Entrances</dt><dd><code>/game pool &lt;pool&gt; entrance add</code> where players should step in (<code>remove</code> next to one, <code>clear</code>); <code>/game pool list</code> shows them all</dd>
 					</dl>
 					<div id="pn-gm-pools" class="pn-gm-ways"></div>
 				</section>
 				<datalist id="pn-gm-pool-names"></datalist>
-				<div id="pn-gm-list" class="pn-rw-list"></div>
-				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-gm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-gm-msg"></span></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-ap-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-ap-msg"></span></div>
 			</div>
 
 			<div class="np-tab-panel" data-tab="npcs" hidden>
