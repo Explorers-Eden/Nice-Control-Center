@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.93.0
+- New NCC bosses: ncc:coven_matron (extra potions, lingering clouds, three copies at two thirds and one third that vanish when hit), ncc:phantom_monarch (its shadow marks its dives, dazed on the ground after a hit, a night court of phantoms, no sun burn), ncc:piglin_warlord (marked charges, blinding gold dust, a warband at half health, zombified at a quarter with the same health), ncc:ender_stalker (blinks behind players, swaps two players, endermites, stronger while stared at, stays near where it started) and ncc:iron_tyrant (ground slams, marked boulders, plated at half health)
+- Endermen of the games (bosses, wave mobs) never take blocks
 ## 1.92.0
 - New NCC bosses: ncc:drowned_admiral (trident volleys, a tidal push, a drowned crew at two thirds and one third, heals in water), ncc:bone_architect (bone walls around players, arrow rain, skeletons rising from the ground), ncc:creeper_king (creeperlings whose blasts break nothing, stomps, a countdown at a quarter of its health: 30 damage in 10 s stops it, else a huge blast and it's gone) and ncc:echo_shepherd (darkness, a marked sonic beam to step out of, hunts by sound: sneaking players only found within 6 blocks, sculk where it walks)
 - Wave arenas: built-in bosses pick their own targets (the arena no longer turns them to the nearest player)

@@ -95,7 +95,13 @@ A party of 1–4 (see Parties) fights waves of mobs.
   a tidal push, a drowned crew; heals in water), `ncc:bone_architect` (bone walls around players, arrow rain, skeletons
   rising from the ground), `ncc:creeper_king` (creeperlings, stomps, and a countdown at a quarter of its health: 30
   damage in 10 seconds stops it, else a huge blast that breaks nothing) and `ncc:echo_shepherd` (darkness, a marked
-  sonic beam to step out of, hunts by sound: sneaking players are only found close by). Same rules as the Katters bosses below;
+  sonic beam to step out of, hunts by sound: sneaking players are only found close by), `ncc:coven_matron` (a witch:
+  extra potions, lingering clouds, three copies at two thirds and one third that vanish when hit),
+  `ncc:phantom_monarch` (a huge phantom: its shadow shows its dives, dazed on the ground after a hit, a night court of
+  phantoms), `ncc:piglin_warlord` (a brute: marked charges, blinding gold dust, a warband at half health, zombified at
+  a quarter), `ncc:ender_stalker` (an enderman: blinks behind players, swaps two of them, endermites, stronger while
+  stared at; it never takes blocks) and `ncc:iron_tyrant` (an iron golem: ground slams, marked boulders, plated at
+  half health). Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
   `katters:raj`, `katters:rusta`, `katters:tenku` or `katters:theron` to the bosses (the panel has a picker), or put

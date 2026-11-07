@@ -27,7 +27,8 @@ import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 public final class KatterBosses {
 	public static final List<String> KEYS = List.of("arachne", "raj", "rusta", "tenku", "theron");
 	/** NCC's own bosses ("ncc:frost_warden"…). */
-	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest", "drowned_admiral", "bone_architect", "creeper_king", "echo_shepherd");
+	public static final List<String> NCC = List.of("frost_warden", "hive_queen", "ember_colossus", "tempest", "drowned_admiral", "bone_architect", "creeper_king", "echo_shepherd", "coven_matron",
+			"phantom_monarch", "piglin_warlord", "ender_stalker", "iron_tyrant");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -143,6 +144,11 @@ public final class KatterBosses {
 			case "ncc_bone_architect" -> new BoneArchitectFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_creeper_king" -> new CreeperKingFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_echo_shepherd" -> new EchoShepherdFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_coven_matron" -> new CovenMatronFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_phantom_monarch" -> new PhantomMonarchFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_piglin_warlord" -> new PiglinWarlordFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_ender_stalker" -> new EnderStalkerFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_iron_tyrant" -> new IronTyrantFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 		f.viewers = viewers;
@@ -168,6 +174,11 @@ public final class KatterBosses {
 			case "ncc_bone_architect" -> "The Bone Architect";
 			case "ncc_creeper_king" -> "The Creeper King";
 			case "ncc_echo_shepherd" -> "The Echo Shepherd";
+			case "ncc_coven_matron" -> "The Coven Matron";
+			case "ncc_phantom_monarch" -> "The Phantom Monarch";
+			case "ncc_piglin_warlord" -> "The Piglin Warlord";
+			case "ncc_ender_stalker" -> "The Ender Stalker";
+			case "ncc_iron_tyrant" -> "The Iron Tyrant";
 			default -> "Magus Theron the Betrayer";
 		};
 	}
