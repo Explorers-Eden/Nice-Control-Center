@@ -86,6 +86,11 @@ A party of 1–4 (see Parties) fights waves of mobs.
   random; `kit clear` removes them).
 - Panel: waves to clear (0 = endless), mob pool, wave sizes, boss waves (every … waves the boss comes alone; a list, picked at random or in order), toughness, hand-written waves, team lives,
   peaceful and neutral mobs attacking too (on by default), commands after each wave (`{wave}`).
+- **Arena pools**: wave arenas can share a pool (`/game edit <name> pool <pool>`, `none` takes it out; or the panel
+  field). A pool entrance (`/game pool <pool> entrance add`, `remove` the nearest, `clear`; `/game pool list`) starts
+  a free arena of the pool for the party leader and their party close by, not the one they played last when there's
+  another. When every arena is busy, the party queues for the pool: it waits in the spectator area of one of the
+  pool's arenas and plays in the first one that's free. The arenas' own start points and entrances still work.
 - The fight box is put back as it was at the start after every wave and when the game ends: cobwebs, fire, placed or
   broken blocks, water and lava are gone (boxes up to 4 million blocks). Game ravagers don't break leaves.
 - **NCC bosses** (built into the mod): `ncc:frost_warden` (a giant stray: freezing aura, icicles, powder snow, at half

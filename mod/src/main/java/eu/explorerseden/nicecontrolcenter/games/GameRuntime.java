@@ -1198,6 +1198,23 @@ public final class GameRuntime {
 							ctx.getSource().sendSuccess(() -> Words.lit("Hub spawn cleared: players go to their home or respawn point again."), true);
 							return 1;
 						})))
+				// Arena pools (wave arenas): entrances that start whichever arena of the pool is free.
+				.then(Commands.literal("pool").requires(admin)
+						.then(Commands.literal("list").executes(ctx -> {
+							reloadNow();
+							if (settings.pools().isEmpty()) return fail(ctx, "No arena pools yet: /game edit <arena> pool <name>.");
+							for (String pool : settings.pools()) {
+								String names = String.join(", ", settings.arenas.stream().filter(a -> a.type.equals("waves") && pool.equals(a.arenaPool)).map(a -> a.name + (a.enabled ? "" : " (off)")).toList());
+								long pads = settings.poolPads.stream().filter(x -> x.pool.equals(pool)).count();
+								ctx.getSource().sendSuccess(() -> Words.lit(pool + ": " + (names.isEmpty() ? "no arenas" : names) + " · " + pads + " entrance" + (pads == 1 ? "" : "s")), false);
+							}
+							return 1;
+						}))
+						.then(Commands.argument("pool", StringArgumentType.word()).suggests((ctx, b) -> SharedSuggestionProvider.suggest(settings.pools(), b))
+								.then(Commands.literal("entrance")
+										.then(Commands.literal("add").executes(ctx -> poolPad(ctx, "add")))
+										.then(Commands.literal("remove").executes(ctx -> poolPad(ctx, "remove")))
+										.then(Commands.literal("clear").executes(ctx -> poolPad(ctx, "clear"))))))
 				.then(Commands.literal("create").requires(admin)
 						.then(Commands.argument("type", StringArgumentType.word()).suggests((ctx, b) -> SharedSuggestionProvider.suggest(Games.TYPES, b))
 								.then(Commands.argument("name", StringArgumentType.word()).executes(GameRuntime::create))))
@@ -1316,6 +1333,20 @@ public final class GameRuntime {
 									a.spectateMax = null;
 									return Games.quick(a.type) ? "No spectator area: players who step on the pad during a round are queued for the next one where they are, players who are out go back to the pad."
 										: "No spectator area: the dead watch a teammate, queued parties wait where they are.";
+								}))))
+						// Wave arenas: the arena pool it's in (pool entrances start a free arena of it).
+						.then(Commands.literal("pool").then(Commands.argument("pool", StringArgumentType.word())
+								.suggests((ctx, b) -> SharedSuggestionProvider.suggest(java.util.stream.Stream.concat(settings.pools().stream(), java.util.stream.Stream.of("none")), b))
+								.executes(ctx -> edit(ctx, (a, p) -> {
+									if (!a.type.equals("waves")) return "Only wave arenas go into arena pools (nothing changed).";
+									String typed = StringArgumentType.getString(ctx, "pool");
+									String pool = typed.equalsIgnoreCase("none") ? "" : Games.poolName(typed);
+									if (pool.isEmpty() && !typed.equalsIgnoreCase("none")) return "A pool name is letters, digits, - and _ (nothing changed).";
+									a.arenaPool = pool;
+									if (pool.isEmpty()) return "Not in an arena pool any more.";
+									long n = settings.arenas.stream().filter(x -> x.type.equals("waves") && pool.equals(x.arenaPool)).count();
+									boolean pads = settings.poolPads.stream().anyMatch(x -> x.pool.equals(pool));
+									return "In the arena pool " + pool + " (" + n + " arena" + (n == 1 ? "" : "s") + ")." + (pads ? "" : " Its entrance: /game pool " + pool + " entrance add.");
 								}))))
 						.then(Commands.literal("exitpad")
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
@@ -1682,6 +1713,49 @@ public final class GameRuntime {
 	private static String spectateUse(Arena a) {
 		return Games.quick(a.type) ? "players who step on the pad during a round queue here for the next one, players who are out watch from here"
 				: a.type.equals("waves") ? "the dead wait here, other parties queue here" : "only wave arenas and quick rounds use it";
+	}
+
+	/** /game pool <pool> entrance add (here) | remove (the nearest within 5 blocks) | clear. */
+	private static int poolPad(CommandContext<CommandSourceStack> ctx, String what) throws CommandSyntaxException {
+		ServerPlayer p = ctx.getSource().getPlayerOrException();
+		reloadNow();
+		String pool = Games.poolName(StringArgumentType.getString(ctx, "pool"));
+		if (pool.isEmpty()) return fail(ctx, "A pool name is letters, digits, - and _.");
+		String msg;
+		switch (what) {
+			case "add" -> {
+				Games.PoolPad pad = new Games.PoolPad();
+				pad.pool = pool;
+				pad.pos = pos(p);
+				settings.poolPads.add(pad);
+				long arenas = settings.pool(pool).size();
+				msg = "Entrance to the arena pool " + pool + " here (" + arenas + " arena" + (arenas == 1 ? "" : "s") + " in it" + (arenas == 0 ? ": /game edit <arena> pool " + pool : "") + ").";
+			}
+			case "remove" -> {
+				Games.PoolPad near = null;
+				double best = 25;
+				for (Games.PoolPad x : settings.poolPads) {
+					if (!x.pool.equals(pool) || !x.pos.dim.equals(dim(p))) continue;
+					double d = p.distanceToSqr(x.pos.x, x.pos.y, x.pos.z);
+					if (d < best) {
+						best = d;
+						near = x;
+					}
+				}
+				if (near == null) return fail(ctx, "No entrance of " + pool + " within 5 blocks.");
+				settings.poolPads.remove(near);
+				msg = "Entrance of " + pool + " removed.";
+			}
+			default -> {
+				int before = settings.poolPads.size();
+				settings.poolPads.removeIf(x -> x.pool.equals(pool));
+				msg = (before - settings.poolPads.size()) + " entrances of " + pool + " removed.";
+			}
+		}
+		saveSettings();
+		String done = msg;
+		ctx.getSource().sendSuccess(() -> Words.lit(done), true);
+		return 1;
 	}
 
 	private static Arena arena(CommandContext<CommandSourceStack> ctx) {

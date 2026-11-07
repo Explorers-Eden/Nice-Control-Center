@@ -1,3 +1,6 @@
+## 1.83.0
+- Games: an Arena pools card (each pool's wave arenas, its entrances, which can be removed, how many run and wait) and an "Arena pool" field on wave arenas
+- Dungeons have their own sidebar entry, with sub-tabs: Dungeons, Rooms, Pads & queues, Running now (old links to Games → Dungeons still land there)
 ## 1.82.0
 - Games, wave arenas: the setup list shows the mob spawns per kind (melee, ranged, boss, any)
 ## 1.81.2

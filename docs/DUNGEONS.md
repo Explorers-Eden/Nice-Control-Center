@@ -5,7 +5,7 @@ copies it into the dungeon dimension just for them, and wipes the copy again whe
 fresh: same build, new mobs, refilled chests.
 
 You need to be an admin (op) and in creative for the setup. Turn dungeons on in the panel first:
-**Community → Games → Dungeons**, switch **Dungeons on**.
+**Community → Dungeons**, switch **Dungeons on**.
 
 Contents:
 1. [Your first dungeon in 5 steps](#1-your-first-dungeon-in-5-steps)

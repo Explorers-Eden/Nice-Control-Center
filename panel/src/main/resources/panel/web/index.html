@@ -1273,6 +1273,16 @@
 						<span class="np-form-msg" id="pn-gm-note"></span>
 					</div>
 				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-collection"></i> Arena pools</h3>
+					<p class="np-card-intro">Wave arenas can share a pool. A pool entrance starts whichever arena of the pool is free (not the one the party played last, when there's a choice). When all of them are busy, the party queues for the pool: it waits in the spectator area of one of them and plays in the first one that's free.</p>
+					<dl class="pn-gm-howto">
+						<dt>Into a pool</dt><dd><code>/game edit &lt;arena&gt; pool &lt;pool&gt;</code> (<code>none</code> takes it out), or the arena's "Arena pool" field below</dd>
+						<dt>Entrances</dt><dd><code>/game pool &lt;pool&gt; entrance add</code> where players should step in (<code>remove</code> next to one, <code>clear</code>); <code>/game pool list</code> shows them all</dd>
+					</dl>
+					<div id="pn-gm-pools" class="pn-gm-ways"></div>
+				</section>
+				<datalist id="pn-gm-pool-names"></datalist>
 				<div id="pn-gm-list" class="pn-rw-list"></div>
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-gm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-gm-msg"></span></div>
 			</div>
@@ -1345,24 +1355,42 @@
 						<span class="np-form-msg" id="pn-dg-note"></span>
 					</div>
 				</section>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-activity"></i> Running now</h3>
-					<div id="pn-dg-runs"></div>
-				</section>
 				<div id="pn-dg-list" class="pn-rw-list"></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-dg-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-dg-msg"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="dungeonrooms" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-diagram-3"></i> Room groups</h3>
+					<p class="np-card-intro">Random rooms: jigsaws in a dungeon (or in a room) with a group get a random room of that group each run. Build a room, then <code>/dungeon room create &lt;name&gt;</code> at a corner in game.</p>
 					<div id="pn-dg-groups"></div>
+					<div class="np-filters"><span class="np-form-msg" id="pn-dg-note-rooms"></span></div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Rooms</h3>
 					<div id="pn-dg-rooms" class="pn-rw-list"></div>
 				</section>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-dg-save-rooms"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-dg-msg-rooms"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="dungeonpads" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Pads</h3>
+					<p class="np-card-intro">Where runs start: the party leader steps on a pad and gets a random dungeon of its pool.</p>
 					<div id="pn-dg-pads"></div>
 				</section>
-				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-dg-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-dg-msg"></span></div>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-dg-save-pads"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-dg-msg-pads"></span></div>
+			</div>
+
+			<div class="np-tab-panel" data-tab="dungeonruns" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-activity"></i> Running now</h3>
+					<div id="pn-dg-runs"></div>
+					<div class="np-filters">
+						<button type="button" class="np-btn" id="pn-dg-refresh-runs"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+						<span class="np-form-msg" id="pn-dg-note-runs"></span>
+					</div>
+				</section>
 			</div>
 
 			<div class="np-tab-panel" data-tab="points" hidden>

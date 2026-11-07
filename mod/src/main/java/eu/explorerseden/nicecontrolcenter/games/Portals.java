@@ -42,7 +42,7 @@ import eu.explorerseden.nicecontrolcenter.mixin.TextDisplayAccessor;
  * in), and after being sent somewhere a player has to step off first.
  */
 public final class Portals {
-	enum Kind { ENTER, WATCH, BACK }
+	enum Kind { ENTER, WATCH, BACK, POOL }
 
 	private static final String TAG = "ncc_label";
 	private static final int HOLD_TICKS = 20;
@@ -102,6 +102,17 @@ public final class Portals {
 				if (!WaveRuntime.inGame(p) && !QuickRuntime.inGame(p)) for (Games.Pos b : a.exitPads) if (on(p, b)) { hit = a; kind = Kind.BACK; }
 				if (hit != null) break;
 			}
+			// Arena pool entrances: the pool's first arena stands for it here.
+			String pool = null;
+			if (hit == null) for (Games.PoolPad pp : GameRuntime.settings().poolPads) {
+				if (!on(p, pp.pos)) continue;
+				List<Arena> in = GameRuntime.settings().pool(pp.pool);
+				if (in.isEmpty()) continue;
+				pool = pp.pool;
+				hit = in.get(0);
+				kind = Kind.POOL;
+				break;
+			}
 			if (hit == null || p.isSpectator() || ignored(p, true)) {
 				stepOffFirst.remove(id);
 				holding.remove(id);
@@ -113,6 +124,7 @@ public final class Portals {
 				String what = switch (kind) {
 					case ENTER -> hit.shown() + "…";
 					case WATCH -> "Watching " + hit.shown() + "…";
+					case POOL -> cap(pool) + "…";
 					default -> "Back…";
 				};
 				p.sendOverlayMessage(Words.lit(what).withStyle(kind == Kind.BACK ? ChatFormatting.GRAY : ChatFormatting.GOLD));
@@ -124,6 +136,11 @@ public final class Portals {
 			switch (kind) {
 				case ENTER -> enter(server, p, hit);
 				case WATCH -> watch(server, p, hit);
+				case POOL -> {
+					Games.Pos here = new Games.Pos(dim(p), p.getX(), p.getY(), p.getZ(), p.getYRot());
+					List<ServerPlayer> went = WaveRuntime.enterPool(server, p, pool);
+					if (went != null) for (ServerPlayer g : went) cameFrom.put(g.getUUID(), here);
+				}
 				default -> back(server, p, hit);
 			}
 		}
@@ -230,6 +247,10 @@ public final class Portals {
 			Games.Pos goal = a.type.equals("maze") && !GameRuntime.mazeBuilding(a) ? GameRuntime.mazeGoal(a) : null;
 			if (goal != null) ring(server, goal, new DustParticleOptions(a.rgb(), 1.1f), turn, false, 0.9 * Math.max(1, a.mazePath * 0.6));
 		}
+		for (Games.PoolPad pp : GameRuntime.settings().poolPads) {
+			List<Arena> in = GameRuntime.settings().pool(pp.pool);
+			if (!in.isEmpty()) ring(server, pp.pos, new DustParticleOptions(in.get(0).rgb(), 1.3f), turn, true);
+		}
 	}
 
 	private static void ring(MinecraftServer server, Games.Pos pad, DustParticleOptions dust, double turn, boolean rise) {
@@ -263,6 +284,11 @@ public final class Portals {
 			if (a.spectate != null) out.put(key("spectate", a.id, a.spectate), new Label(a.spectate, 2.4,
 					Words.lit("Spectators").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(Words.lit("\n" + a.shown()).withStyle(st -> st.withBold(false).withColor(ChatFormatting.WHITE)))));
 		}
+		for (Games.PoolPad pp : GameRuntime.settings().poolPads) {
+			List<Arena> in = GameRuntime.settings().pool(pp.pool);
+			if (in.isEmpty()) continue;
+			out.put(key("pool", pp.pool, pp.pos), new Label(pp.pos, 2.2, poolText(pp.pool, in)));
+		}
 		Dungeons.Settings d = DungeonRuntime.settings();
 		if (d.enabled) {
 			for (Dungeons.Pad pad : d.pads) {
@@ -295,6 +321,22 @@ public final class Portals {
 
 	private static String key(String kind, String id, Games.Pos at) {
 		return TAG + "_" + Integer.toHexString((LOOK + "|" + kind + "|" + id + "|" + at.dim + "|" + Math.round(at.x * 2) + "|" + Math.round(at.y * 2) + "|" + Math.round(at.z * 2)).hashCode());
+	}
+
+	/** An arena pool: its name, its arenas, how many are free and who's waiting. */
+	private static Component poolText(String pool, List<Arena> in) {
+		Arena first = in.get(0);
+		MutableComponent t = Words.lit(cap(pool)).withStyle(st -> st.withColor(first.rgb()).withBold(true));
+		String names = String.join(", ", in.stream().map(Arena::shown).toList());
+		t.append(Words.lit("\n" + (names.length() > 60 ? in.size() + " arenas" : names)).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)));
+		Map<String, Object> live = WaveRuntime.poolLive(pool);
+		long free = live.get("free") instanceof Number n ? n.longValue() : 0;
+		long queued = live.get("queued") instanceof Number n ? n.longValue() : 0;
+		int least = in.stream().mapToInt(a -> a.minParty).min().orElse(1), most = in.stream().mapToInt(a -> a.maxParty).max().orElse(4);
+		String line = (least == most ? least + "" : least + "–" + most) + " players · " + (free > 0 ? free + " free" : "all busy") + (queued > 0 ? " · " + queued + (queued == 1 ? " party" : " parties") + " in queue" : "");
+		t.append(Words.lit("\n" + line).withStyle(st -> st.withBold(false).withColor(ChatFormatting.AQUA)));
+		t.append(Words.lit("\nParty leader steps on").withStyle(st -> st.withBold(false).withColor(ChatFormatting.DARK_GRAY)));
+		return t;
 	}
 
 	/** The game's name, what it is, who plays now, and the best three. */

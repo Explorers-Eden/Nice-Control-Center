@@ -218,6 +218,8 @@ public final class Games {
 		public Pos areaMax;
 		/** Where mobs come from (picked at random). */
 		public List<Pos> mobSpawns = new ArrayList<>();
+		/** The arena pool it's in ("" = none): pool entrances start a free arena of the pool (wave arenas). */
+		public String arenaPool = "";
 		/** Optional: where dead party members wait for the next wave and other parties queue up; its radius. */
 		public Pos spectate;
 		public int spectateRadius = 8;
@@ -354,8 +356,35 @@ public final class Games {
 		return own.get(random.nextInt(own.size()));
 	}
 
+	/** Arena pool names: lower case letters, digits, - and _ (up to 32); "" for none. */
+	public static String poolName(String name) {
+		String p = name == null ? "" : name.strip().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]", "");
+		return p.substring(0, Math.min(32, p.length()));
+	}
+
+	/** An entrance to an arena pool (wave arenas): stepping in starts a free arena of the pool. */
+	public static final class PoolPad {
+		public String pool = "";
+		public Pos pos;
+	}
+
 	public static final class Settings {
 		public boolean enabled = true;
+		/** Entrances to arena pools (placed in game: /game pool <pool> entrance add). */
+		public List<PoolPad> poolPads = new ArrayList<>();
+
+		/** The enabled wave arenas of a pool. */
+		public List<Arena> pool(String pool) {
+			return arenas.stream().filter(a -> a.enabled && a.type.equals("waves") && !pool.isEmpty() && pool.equals(a.arenaPool)).toList();
+		}
+
+		/** Every pool name in use (arenas and entrances), sorted. */
+		public java.util.SortedSet<String> pools() {
+			java.util.SortedSet<String> out = new java.util.TreeSet<>();
+			for (Arena a : arenas) if (a.type.equals("waves") && !a.arenaPool.isEmpty()) out.add(a.arenaPool);
+			for (PoolPad p : poolPads) out.add(p.pool);
+			return out;
+		}
 		/**
 		 * The hub spawn (e.g. in Flying Fair): players who log out or die in a game area, or anywhere in the hub's
 		 * dimension, come back here. Null = their home or vanilla respawn.
@@ -370,6 +399,9 @@ public final class Games {
 
 		public Settings fill() {
 			if (arenas == null) arenas = new ArrayList<>();
+			if (poolPads == null) poolPads = new ArrayList<>();
+			poolPads.removeIf(p -> p == null || p.pos == null || p.pos.dim == null || poolName(p.pool).isEmpty());
+			for (PoolPad p : poolPads) p.pool = poolName(p.pool);
 			// Droppers were taken out in 1.81.0: theirs go (rather than turning into another type).
 			arenas.removeIf(a -> a == null || "dropper".equals(a.type));
 			Set<String> ids = new HashSet<>();
@@ -516,6 +548,7 @@ public final class Games {
 				a.heads.removeIf(x -> x == null || x.dim == null);
 				a.rewardEvery = Math.max(0, Math.min(10_000, a.rewardEvery));
 				a.everyJumps = Math.max(0, Math.min(10_000, a.everyJumps));
+				a.arenaPool = poolName(a.arenaPool);
 				if (a.entrances == null) a.entrances = new ArrayList<>();
 				if (a.watchEntrances == null) a.watchEntrances = new ArrayList<>();
 				a.watchEntrances.removeIf(x -> x == null || x.dim == null);

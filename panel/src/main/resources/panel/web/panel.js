@@ -172,8 +172,12 @@
         { tab: 'servershop', label: 'Server shop', perm: 'server.view', desc: 'Claim blocks, commands and pets the server sells in /market.' }] },
       { id: 'games', hue: '#ff9f68', label: 'Games', icon: 'bi-controller', subs: [
         { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-game arenas (parkour, races, mazes, wave fights, quick rounds, head hunts): settings and the best players.' },
-        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
         { tab: 'slots', label: 'Slot Machines', perm: 'server.view', desc: 'Slot Machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
+      { id: 'dungeons', hue: '#c38bff', label: 'Dungeons', icon: 'bi-door-closed', subs: [
+        { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party; lives, time limit, kits and messages.' },
+        { tab: 'dungeonrooms', label: 'Rooms', perm: 'server.view', desc: 'Rooms and room groups that random dungeon layouts are made of.' },
+        { tab: 'dungeonpads', label: 'Pads & queues', perm: 'server.view', desc: 'Where runs start (pads and their pools) and where parties wait when every copy is in use.' },
+        { tab: 'dungeonruns', label: 'Running now', perm: 'server.view', desc: 'The dungeon runs going on right now; close one if it\'s stuck.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rules', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, play games, and at in-game times.' },
         { tab: 'points', label: 'Points', perm: 'server.view', desc: 'One points balance per player for all games: how they earn it, balances, giving and taking.' },
@@ -228,7 +232,7 @@
     'tweaks': 'tweaks', 'tweaks/gameplay': 'tweaks', 'tweaks/trees-veins': 'felling', 'tweaks/trees-nature': 'felling', 'tweaks/market': 'market',
     'performance/tuning': 'tuning', 'settings/game': 'mod:server', 'settings/startup-java': 'java', 'settings/server-list': 'serverlist', 'settings/public-info': 'info',
     'files/all-files': 'files', 'files/mod-configs': 'configs', 'files/data-pack-settings': 'mod:packs', 'appearance': 'appearance', 'commands': 'commands',
-    'games/points': 'points', 'games/reward-shops': 'rewardshops',
+    'games/points': 'points', 'games/reward-shops': 'rewardshops', 'games/dungeons': 'dungeons',
     'players/maintenance': 'maintenance', 'performance/reports': 'mod:reports', 'users': 'users', 'audit': 'audit', 'world/map': 'map',
   };
   /** Pages outside the sidebar (the user menu). */
@@ -639,7 +643,7 @@
     if (tab === 'conduct') loadConduct();
     if (tab === 'rewards') loadRewards();
     if (tab === 'games') loadGames();
-    if (tab === 'dungeons') loadDungeons();
+    if (['dungeons', 'dungeonrooms', 'dungeonpads', 'dungeonruns'].includes(tab)) loadDungeons();
     if (tab === 'points' || tab === 'rewardshops') loadPoints();
     if (tab === 'npcs') loadNpcs();
     if (tab === 'slots') loadSlots();
@@ -2210,7 +2214,36 @@
     }).join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, maze, waves, ghasts, colorfloor, anvils, treasure, fishing, moles, targets, gallery, chef, lava, heads).</p>';
     $('pn-gm-list').querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; });
     $('pn-gm-save').disabled = !edit;
+    gmRenderPools(edit);
   }
+
+  /** Arena pools: their wave arenas, entrances (placed in game, removable here) and who's waiting. */
+  function gmRenderPools(edit) {
+    const s = gm.settings;
+    const pool = (x) => String(x || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+    const names = [...new Set([...s.arenas.filter((a) => a.type === 'waves' && pool(a.arenaPool)).map((a) => pool(a.arenaPool)), ...(s.poolPads || []).map((p) => p.pool)])].sort();
+    $('pn-gm-pool-names').innerHTML = names.map((n) => `<option value="${esc(n)}">`).join('');
+    $('pn-gm-pools').innerHTML = names.map((n) => {
+      const arenas = s.arenas.filter((a) => a.type === 'waves' && pool(a.arenaPool) === n);
+      const pads = (s.poolPads || []).map((p, i) => ({ p, i })).filter((x) => x.p.pool === n);
+      const live = (gm.live || []).filter((x) => arenas.some((a) => a.id === x.id));
+      const running = live.filter((x) => x.playing).length;
+      const queued = live.reduce((m, x) => Math.max(m, x.poolQueued || 0), 0);
+      const warn = !arenas.some((a) => a.enabled) ? '<span class="pn-dg-warn">no arena on in this pool</span>' : !pads.length ? '<span class="pn-dg-warn">no entrance yet</span>' : '';
+      return `<div class="pn-gm-way"><b><i class="bi bi-collection"></i> ${esc(n)} <span class="np-chip">${arenas.length} arena${arenas.length === 1 ? '' : 's'}</span>${running ? `<span class="np-chip gold">${running} running</span>` : ''}${queued ? `<span class="np-chip">${queued} part${queued === 1 ? 'y' : 'ies'} queued</span>` : ''} ${warn}</b>
+        <small>${arenas.map((a) => `${esc(a.title || a.name)}${a.enabled ? '' : ' (off)'}`).join(', ') || 'No arena in it yet.'}</small>
+        ${pads.length ? `<ul class="pn-gm-heads">${pads.map(({ p, i }) => `<li><span>${esc(dimShort(p.pos.dim))} · ${Math.round(p.pos.x)}, ${Math.round(p.pos.y)}, ${Math.round(p.pos.z)}</span><button type="button" class="np-btn small danger" data-poolrm="${i}" title="Take it away" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>` : `<small>Entrance: <code>/game pool ${esc(n)} entrance add</code></small>`}
+      </div>`;
+    }).join('') || '<p class="pn-hint">No pools yet: give wave arenas the same "Arena pool" below, then place an entrance with <code>/game pool &lt;pool&gt; entrance add</code>.</p>';
+  }
+  $('pn-gm-pools').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-poolrm]');
+    if (!b) return;
+    const pad = gm.settings.poolPads[+b.dataset.poolrm];
+    gm.removed.points.push(spotKey('pool:' + pad.pool, 'poolPads', pad.pos));
+    gm.settings.poolPads.splice(+b.dataset.poolrm, 1);
+    gmChanged(true);
+  });
 
   /** The wave arena's own fields, and what's still to be set up in game. */
   function gmWaveFields(a, field, num, text, lines) {
@@ -2232,7 +2265,8 @@
     const overrides = Object.entries(a.waveLines || {}).sort((x, y) => x[0] - y[0]).map(([w, l]) => `${w}: ${l}`).join('\n');
     return {
       setup: `<div class="pn-field-wide">${setup}</div>`,
-      play: field('rounds', 'Waves to clear (0 = endless)', num('rounds', 0, 1000))
+      play: field('arenaPool', 'Arena pool (empty = none)', `<input type="text" data-g="arenaPool" list="pn-gm-pool-names" value="${esc(a.arenaPool || '')}" placeholder="none" maxlength="32">`)
+        + field('rounds', 'Waves to clear (0 = endless)', num('rounds', 0, 1000))
         + field('minParty', 'Players, at least', num('minParty', 1, 4)) + field('maxParty', 'Players, at most', num('maxParty', 1, 4))
         + field('teamLives', 'Team lives (0 = only all down loses)', num('teamLives', 0, 1000))
         + field('breakSeconds', 'Break between waves (s)', num('breakSeconds', 3, 300))
@@ -2410,6 +2444,8 @@
 
   // Katters boss picker: adds its line to the bosses list (and that counts as a change).
   $('pn-gm-list').addEventListener('change', (e) => {
+    // A pool typed in: the pools card shows it (once the field is left, not on every key).
+    if (e.target.dataset.g === 'arenaPool') { gmRenderPools(can('settings.server')); return; }
     if (!e.target.dataset.katters || !e.target.value) return;
     const box = e.target.closest('[data-arena]')?.querySelector('textarea[data-g="bosses"]');
     if (!box) return;
@@ -3170,6 +3206,11 @@
   // ── Dungeons ───────────────────────────────────────────────────────────
 
   const dg = { settings: null, runs: [], scores: {}, dirty: false, removed: { dungeons: [], rooms: [], pads: [], waiting: [] } };
+  /** The Dungeons sub-tabs with a save bar (one shared set of settings), and their messages. */
+  const DG_TABS = ['dungeons', 'dungeonrooms', 'dungeonpads'];
+  const DG_SAVES = [['pn-dg-save', 'pn-dg-msg'], ['pn-dg-save-rooms', 'pn-dg-msg-rooms'], ['pn-dg-save-pads', 'pn-dg-msg-pads']];
+  /** A note shown on every Dungeons sub-tab (resaving, closing runs, errors). */
+  const dgNote = (text, ok) => ['pn-dg-note', 'pn-dg-note-rooms', 'pn-dg-note-runs'].forEach((id) => formMsg(id, text, ok));
 
   async function loadDungeons() {
     try {
@@ -3183,9 +3224,9 @@
         dg.dirty = false;
       }
       renderDungeons();
-      if (fresh) Dirty.reset('dungeons');
+      if (fresh) DG_TABS.forEach((t) => Dirty.reset(t));
     } catch (err) {
-      formMsg('pn-dg-note', err.message, false);
+      dgNote(err.message, false);
     }
   }
 
@@ -3197,7 +3238,7 @@
     $('pn-dg-party').value = s.maxParty;
     $('pn-dg-pieces').value = s.piecesPerTick;
     ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces'].forEach((id) => { $(id).disabled = !edit; });
-    $('pn-dg-save').disabled = !edit;
+    DG_SAVES.forEach(([b]) => { $(b).disabled = !edit; });
 
     $('pn-dg-runs').innerHTML = dg.runs.length ? `<ul class="pn-dg-runs">${dg.runs.map((r) => `<li>
         <b>${esc(r.dungeon)}</b><span class="np-chip">${esc(r.state)}</span><span class="np-chip">slot ${r.slot}</span>
@@ -3327,8 +3368,7 @@
 
   function dgChanged(rerender) {
     dg.dirty = true;
-    $('pn-dg-save').disabled = false;
-    formMsg('pn-dg-msg', 'Not saved yet.', true);
+    DG_SAVES.forEach(([b, m]) => { $(b).disabled = false; formMsg(m, 'Not saved yet.', true); });
     if (rerender) renderDungeons();
   }
 
@@ -3385,15 +3425,15 @@
     const b = e.target.closest('[data-dgresave]');
     if (!b) return false;
     if (dg.dirty) {
-      formMsg('pn-dg-note', 'Save your changes first.', false);
+      dgNote('Save your changes first.', false);
       return true;
     }
     try {
       await api('api/dungeons/resave', { kind: b.dataset.dgresave, name: b.dataset.name });
-      formMsg('pn-dg-note', `Saving ${b.dataset.name} again from the build…`, true);
+      dgNote(`Saving ${b.dataset.name} again from the build…`, true);
       setTimeout(loadDungeons, 2500);
     } catch (err) {
-      formMsg('pn-dg-note', err.message, false);
+      dgNote(err.message, false);
     }
     return true;
   };
@@ -3443,24 +3483,25 @@
     if (!b || !confirm('Close this run? Everyone in it is sent back.')) return;
     try {
       await api('api/dungeons/close', { slot: +b.dataset.dgclose });
-      formMsg('pn-dg-note', 'Run closed.', true);
+      dgNote('Run closed.', true);
       setTimeout(loadDungeons, 1500);
     } catch (err) {
-      formMsg('pn-dg-note', err.message, false);
+      dgNote(err.message, false);
     }
   });
   $('pn-dg-refresh').addEventListener('click', loadDungeons);
-  $('pn-dg-save').addEventListener('click', async () => {
+  $('pn-dg-refresh-runs').addEventListener('click', loadDungeons);
+  DG_SAVES.forEach(([b, msg]) => $(b).addEventListener('click', async () => {
     try {
       await api('api/dungeons', { ...dg.settings, removed: dg.removed });
       dg.dirty = false;
       dg.removed = { dungeons: [], rooms: [], pads: [], waiting: [] };
-      formMsg('pn-dg-msg', serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
+      formMsg(msg, serverRunning ? 'Saved. The server picks it up within a few seconds.' : 'Saved.', true);
       loadDungeons();
     } catch (err) {
-      formMsg('pn-dg-msg', err.message, false);
+      formMsg(msg, err.message, false);
     }
-  });
+  }));
 
   // ── Event rewards ──────────────────────────────────────────────────────
 
@@ -8642,7 +8683,7 @@
   Dirty.track('slots', tabPanel('slots'), { saveButtons: [$('pn-sm-save')], reload: () => { sm.dirty = false; loadSlots(true); }, extra: () => sm.settings });
   Dirty.track('npcs', tabPanel('npcs'), { saveButtons: [$('pn-nc-save')], reload: () => { nc.dirty = false; loadNpcs(true); }, extra: () => nc.settings });
   Dirty.track('games', tabPanel('games'), { saveButtons: [$('pn-gm-save')], reload: () => { gm.dirty = false; loadGames(); }, extra: () => gm.settings });
-  Dirty.track('dungeons', tabPanel('dungeons'), { saveButtons: [$('pn-dg-save')], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings });
+  DG_SAVES.forEach(([b], i) => Dirty.track(DG_TABS[i], tabPanel(DG_TABS[i]), { saveButtons: [$(b)], reload: () => { dg.dirty = false; dg.settings = null; loadDungeons(); }, extra: () => dg.settings }));
   Dirty.track('rewards', tabPanel('rewards'), { saveButtons: [$('pn-rw-save')], reload: () => { rw.dirty = false; loadRewards(); }, extra: () => rw.settings });
   Dirty.track('owncommands', tabPanel('owncommands'), { saveButtons: [$('pn-own-save')], reload: () => { own.dirty = false; loadOwnCommands(); }, extra: () => own.list });
   Dirty.track('conduct', $('pn-coc-form'), { reload: loadConduct, extra: () => conduct.texts });

@@ -119,6 +119,8 @@ final class GamesRoutes {
 				a.galleryLanes = was.galleryLanes;
 				a.chefStations = was.chefStations;
 			}
+			// Arena pool entrances are placed in game: only the ones the page deleted go.
+			next.poolPads = new java.util.ArrayList<>(now.poolPads.stream().filter(p -> !gone.contains(Removed.spot("pool:" + p.pool, "poolPads", p.pos))).toList());
 			// Games made in game while the page was open stay (only the ones deleted on the page go).
 			java.util.Set<String> deleted = removed.of("arenas");
 			for (Games.Arena was : now.arenas) {

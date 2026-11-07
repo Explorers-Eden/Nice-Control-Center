@@ -118,6 +118,10 @@ public final class WaveRuntime {
 	private static final Map<UUID, Game> playing = new HashMap<>();
 	/** arena id → parties waiting (leader first). */
 	private static final Map<String, Deque<List<UUID>>> queues = new HashMap<>();
+	/** arena pool → parties waiting for whichever of its arenas is free first (leader first), oldest first. */
+	private static final Map<String, Deque<List<UUID>>> poolQueues = new HashMap<>();
+	/** leader → the arena they played last from a pool (the next pick is another when there's a choice). */
+	private static final Map<UUID, String> lastFromPool = new HashMap<>();
 	/** arena id → when the first queued party starts. */
 	private static final Map<String, Long> queueStart = new HashMap<>();
 	private static final Map<UUID, Integer> onPad = new HashMap<>();
@@ -186,6 +190,8 @@ public final class WaveRuntime {
 		m.put("playing", g == null ? 0 : g.players.stream().filter(g::in).count());
 		m.put("wave", g == null ? 0 : g.wave);
 		m.put("queued", queues.getOrDefault(arenaId, new ArrayDeque<>()).size());
+		Arena a = byId(arenaId);
+		if (a != null && !a.arenaPool.isEmpty()) m.put("poolQueued", poolQueues.getOrDefault(a.arenaPool, new ArrayDeque<>()).size());
 		return m;
 	}
 
@@ -336,14 +342,21 @@ public final class WaveRuntime {
 	}
 
 	private static boolean queued(UUID id) {
-		for (Deque<List<UUID>> q : queues.values()) for (List<UUID> party : q) if (party.contains(id)) return true;
+		for (Deque<List<UUID>> q : allQueues()) for (List<UUID> party : q) if (party.contains(id)) return true;
 		return false;
+	}
+
+	/** The arenas' own queues and the pools' queues. */
+	private static List<Deque<List<UUID>>> allQueues() {
+		List<Deque<List<UUID>>> out = new ArrayList<>(queues.values());
+		out.addAll(poolQueues.values());
+		return out;
 	}
 
 	/** Out of the queue: the whole party if it's their leader, else just them. */
 	private static boolean unqueue(UUID id) {
 		boolean found = false;
-		for (Deque<List<UUID>> q : queues.values()) {
+		for (Deque<List<UUID>> q : allQueues()) {
 			for (List<UUID> party : List.copyOf(q)) {
 				if (!party.contains(id)) continue;
 				found = true;
@@ -360,6 +373,7 @@ public final class WaveRuntime {
 
 	/** Queued parties wait close by; the first one starts a few seconds after the arena is free. */
 	private static void queues(MinecraftServer server) {
+		poolQueues(server);
 		long now = System.currentTimeMillis();
 		for (Map.Entry<String, Deque<List<UUID>>> e : queues.entrySet()) {
 			Arena a = byId(e.getKey());
@@ -412,6 +426,161 @@ public final class WaveRuntime {
 			String err = start(server, a, party);
 			if (err != null) for (ServerPlayer m : party) m.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
 		}
+	}
+
+	// ---------------------------------------------------------------- arena pools
+
+	/** For the labels and the panel: a pool's arenas, how many are free, running, and the parties waiting. */
+	public static Map<String, Object> poolLive(String pool) {
+		List<Arena> all = GameRuntime.settings().pool(pool);
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("arenas", all.size());
+		m.put("running", all.stream().filter(a -> games.containsKey(a.id)).count());
+		m.put("free", all.stream().filter(WaveRuntime::free).count());
+		m.put("queued", poolQueues.getOrDefault(pool, new ArrayDeque<>()).size());
+		return m;
+	}
+
+	/** No game in it and nobody queued for it. */
+	private static boolean free(Arena a) {
+		return !games.containsKey(a.id) && queues.getOrDefault(a.id, new ArrayDeque<>()).isEmpty();
+	}
+
+	/**
+	 * A pool entrance: the leader and their party close by start a free arena of the pool (not the one they played
+	 * last when there's another); every one busy, they queue for the pool and wait in one of its spectator areas until
+	 * the first arena is free. The players who went (null when nobody did).
+	 */
+	public static List<ServerPlayer> enterPool(MinecraftServer server, ServerPlayer p, String pool) {
+		if (inGame(p) || queued(p.getUUID())) {
+			p.sendSystemMessage(Words.lit("You're in a game or queue already: /game leave first.").withStyle(ChatFormatting.RED));
+			return null;
+		}
+		if (!Parties.isLeader(p.getUUID())) {
+			p.sendSystemMessage(Words.lit("Your party leader steps in for the party.").withStyle(ChatFormatting.GRAY));
+			return null;
+		}
+		List<Arena> ready = GameRuntime.settings().pool(pool).stream().filter(a -> check(server, a) == null).toList();
+		if (ready.isEmpty()) {
+			p.sendSystemMessage(Words.lit("No arena of " + pool + " is ready yet.").withStyle(ChatFormatting.RED));
+			return null;
+		}
+		long now = System.currentTimeMillis();
+		List<ServerPlayer> party = new ArrayList<>(List.of(p));
+		for (UUID id : Parties.members(p.getUUID())) {
+			ServerPlayer m = server.getPlayerList().getPlayer(id);
+			if (m == null || m == p || m.level() != p.level() || m.distanceToSqr(p) > PARTY_RANGE * PARTY_RANGE || playing.containsKey(id) || queued(id) || m.isSpectator()
+					|| cooldown.getOrDefault(id, 0L) > now || Portals.ignored(m, false)) continue;
+			party.add(m);
+		}
+		int most = ready.stream().mapToInt(a -> a.maxParty).max().orElse(1);
+		List<ServerPlayer> rest = party.size() > most ? new ArrayList<>(party.subList(most, party.size())) : List.of();
+		if (!rest.isEmpty()) party = new ArrayList<>(party.subList(0, most));
+		int size = party.size();
+		List<Arena> fits = ready.stream().filter(a -> size >= a.minParty && size <= a.maxParty).toList();
+		if (fits.isEmpty()) {
+			int least = ready.stream().mapToInt(a -> a.minParty).min().orElse(1);
+			p.sendSystemMessage(Words.lit(pool + " is for " + least + "–" + most + " players (your party here: " + size + ").").withStyle(ChatFormatting.RED));
+			return null;
+		}
+		for (ServerPlayer m : party) cooldown.put(m.getUUID(), now + GameRuntime.WAIT_AFTER);
+		if (!rest.isEmpty()) {
+			String now1 = String.join(", ", party.stream().map(x -> x.getGameProfile().name()).toList());
+			for (ServerPlayer m : party) m.sendSystemMessage(Words.lit("[Party] Arenas of " + pool + " take " + most + ": " + now1 + " play now, the rest the next free one.").withStyle(ChatFormatting.LIGHT_PURPLE));
+			for (ServerPlayer m : rest) m.sendSystemMessage(Words.lit("[Party] Arenas of " + pool + " take " + most + ": " + now1 + " play now, you the next free one.").withStyle(ChatFormatting.LIGHT_PURPLE));
+		}
+		// The rest only queue when an arena of the pool takes that many.
+		int restSize = rest.size();
+		boolean restFits = restSize > 0 && ready.stream().anyMatch(a -> restSize >= a.minParty && restSize <= a.maxParty);
+		if (restSize > 0 && !restFits) for (ServerPlayer m : rest) m.sendSystemMessage(Words.lit("[Party] Too few of you are left over for an arena of " + pool + ": step in again with more.").withStyle(ChatFormatting.RED));
+		if (!restFits) rest = List.of();
+		List<ServerPlayer> went = new ArrayList<>(party);
+		went.addAll(rest);
+		// Others waiting for the pool go first.
+		List<Arena> open = poolQueues.getOrDefault(pool, new ArrayDeque<>()).isEmpty() ? fits.stream().filter(WaveRuntime::free).toList() : List.of();
+		if (open.isEmpty()) {
+			poolQueue(server, pool, fits, party);
+			if (!rest.isEmpty()) poolQueue(server, pool, ready, rest);
+			return went;
+		}
+		String last = lastFromPool.get(p.getUUID());
+		List<Arena> other = open.size() > 1 ? open.stream().filter(a -> !a.id.equals(last)).toList() : open;
+		Arena a = (other.isEmpty() ? open : other).get(random.nextInt((other.isEmpty() ? open : other).size()));
+		lastFromPool.put(p.getUUID(), a.id);
+		String err = start(server, a, party);
+		if (err != null) {
+			p.sendSystemMessage(Words.lit(err).withStyle(ChatFormatting.RED));
+			return null;
+		}
+		if (!rest.isEmpty()) poolQueue(server, pool, ready, rest);
+		return went;
+	}
+
+	/** Into the pool's queue: they wait in the spectator area of the arena with the fewest waiting for it. */
+	private static void poolQueue(MinecraftServer server, String pool, List<Arena> arenas, List<ServerPlayer> party) {
+		Deque<List<UUID>> q = poolQueues.computeIfAbsent(pool, k -> new ArrayDeque<>());
+		q.add(party.stream().map(ServerPlayer::getUUID).toList());
+		Arena wait = arenas.stream().filter(a -> a.spectate != null)
+				.min(java.util.Comparator.comparingInt(a -> queues.getOrDefault(a.id, new ArrayDeque<>()).size())).orElse(null);
+		ServerLevel level = wait == null ? null : GameRuntime.levelOf(server, wait.spectate.dim);
+		for (ServerPlayer m : party) {
+			if (level != null) {
+				m.teleportTo(level, wait.spectate.x, GameRuntime.freeY(level, m, wait.spectate.x, wait.spectate.y, wait.spectate.z), wait.spectate.z, Set.of(), wait.spectate.yaw, 0, true);
+				m.resetFallDistance();
+			}
+			m.sendSystemMessage(Words.lit("Every arena of " + pool + " is busy: you're number " + q.size() + " in the queue and play in the first one that's free"
+					+ (level != null ? ". Wait here." : ".") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
+		}
+		NiceControlCenter.LOGGER.info("Games: {} queued for the arena pool {} ({} waiting)", party.get(0).getGameProfile().name(), pool, q.size());
+	}
+
+	/** The first party of each pool's queue goes to the first free arena of the pool (its usual countdown there). */
+	private static void poolQueues(MinecraftServer server) {
+		for (Map.Entry<String, Deque<List<UUID>>> e : poolQueues.entrySet()) {
+			String pool = e.getKey();
+			Deque<List<UUID>> q = e.getValue();
+			for (List<UUID> party : List.copyOf(q)) if (server.getPlayerList().getPlayer(party.get(0)) == null) q.remove(party);
+			List<Arena> arenas = GameRuntime.settings().pool(pool);
+			if (arenas.isEmpty() || !GameRuntime.settings().enabled) {
+				for (List<UUID> party : q) for (UUID id : party) {
+					ServerPlayer m = server.getPlayerList().getPlayer(id);
+					if (m != null) m.sendSystemMessage(Words.lit("The arena pool " + pool + " is closed: you left its queue.").withStyle(ChatFormatting.RED));
+				}
+				q.clear();
+				continue;
+			}
+			int i = 0;
+			for (List<UUID> party : q) {
+				i++;
+				if (server.getTickCount() % 40 != 0) break;
+				for (UUID id : party) {
+					ServerPlayer m = server.getPlayerList().getPlayer(id);
+					if (m != null) m.sendOverlayMessage(Words.lit(pool + " · every arena busy · you're " + ordinal(i) + " in the queue").withStyle(ChatFormatting.GOLD));
+				}
+			}
+			List<UUID> first = q.peek();
+			if (first == null) continue;
+			long online = first.stream().filter(id -> server.getPlayerList().getPlayer(id) != null).count();
+			// Too few left online for any arena of the pool: out of the queue (it would hold everyone up).
+			if (arenas.stream().noneMatch(a -> online >= a.minParty && online <= a.maxParty)) {
+				q.poll();
+				for (UUID id : first) {
+					ServerPlayer m = server.getPlayerList().getPlayer(id);
+					if (m != null) m.sendSystemMessage(Words.lit("Not enough of your party is online for " + pool + ": left the queue.").withStyle(ChatFormatting.RED));
+				}
+				continue;
+			}
+			Arena open = arenas.stream().filter(a -> free(a) && check(server, a) == null && online >= a.minParty && online <= a.maxParty).findFirst().orElse(null);
+			if (open == null) continue;
+			q.poll();
+			queues.computeIfAbsent(open.id, k -> new ArrayDeque<>()).add(first);
+			lastFromPool.put(first.get(0), open.id);
+			for (UUID id : first) {
+				ServerPlayer m = server.getPlayerList().getPlayer(id);
+				if (m != null) m.sendSystemMessage(Words.lit(open.shown() + " is free: you're up next.").withStyle(ChatFormatting.GREEN));
+			}
+		}
+		poolQueues.values().removeIf(Deque::isEmpty);
 	}
 
 	// ---------------------------------------------------------------- start
