@@ -174,9 +174,18 @@ public final class GameClaims {
 		}));
 		// No ender pearls in games: they'd throw players out of the game or over its walls.
 		net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (!(player instanceof ServerPlayer p) || !player.getItemInHand(hand).is(net.minecraft.world.item.Items.ENDER_PEARL) || !inAnyGame(p)) return net.minecraft.world.InteractionResult.PASS;
-			p.sendOverlayMessage(Component.literal("No ender pearls in games").withStyle(ChatFormatting.RED));
-			return net.minecraft.world.InteractionResult.FAIL;
+			if (!(player instanceof ServerPlayer p) || !inAnyGame(p)) return net.minecraft.world.InteractionResult.PASS;
+			ItemStack held = player.getItemInHand(hand);
+			if (held.is(net.minecraft.world.item.Items.ENDER_PEARL)) {
+				p.sendOverlayMessage(Component.literal("No ender pearls in games").withStyle(ChatFormatting.RED));
+				return net.minecraft.world.InteractionResult.FAIL;
+			}
+			// Warping Wonders' teleporting items (clock, compasses, portal horn, totem of homecoming) don't work in games either.
+			if (warps(held)) {
+				p.sendOverlayMessage(Component.literal("No teleporting items in games").withStyle(ChatFormatting.RED));
+				return net.minecraft.world.InteractionResult.FAIL;
+			}
+			return net.minecraft.world.InteractionResult.PASS;
 		});
 		// No ender chests where things are put aside: they'd carry game items out (or own things in).
 		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hit) -> {
@@ -524,6 +533,13 @@ public final class GameClaims {
 	// ---------------------------------------------------------------- adventure mode, kit leftovers
 
 	/** In a game claim, or in a dungeon run inside the dungeon (not while waiting on the pad). */
+	/** An item Warping Wonders teleports with: clock, compass, recovery compass, or one of its own (portal horn, totem of homecoming). */
+	static boolean warps(ItemStack st) {
+		if (st.is(net.minecraft.world.item.Items.CLOCK) || st.is(net.minecraft.world.item.Items.COMPASS) || st.is(net.minecraft.world.item.Items.RECOVERY_COMPASS)) return true;
+		CustomData d = st.get(DataComponents.CUSTOM_DATA);
+		return d != null && d.copyTag().contains("warping_wonders");
+	}
+
 	/** In a game of any kind: a game area, a dungeon run, a wave game, a quick round, or a parkour, race or maze run. */
 	public static boolean inAnyGame(ServerPlayer p) {
 		return playing(p) || gameClaimFor(p) != null || eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p);
@@ -775,7 +791,7 @@ public final class GameClaims {
 	}
 
 	/** Items into the player's market inbox (mailbox parcels), with a line in chat. */
-	private static void inbox(ServerPlayer p, List<ItemStack> items) {
+	public static void inbox(ServerPlayer p, List<ItemStack> items) {
 		if (items.isEmpty()) return;
 		var data = MarketStore.data();
 		var box = data.mailbox(p.getStringUUID(), p.getPlainTextName());
@@ -826,7 +842,8 @@ public final class GameClaims {
 			} else if (v == 15) {
 				CompoundTag back = playerData(server, p.getUUID()).getCompoundOrEmpty("back");
 				String dim = back.getStringOr("dimension", "");
-				if (!dim.isEmpty() && gameClaimAt(dim, (int) Math.floor(number(back, "x")), (int) Math.floor(number(back, "z"))) != null) why = "The back teleport can't take you back into a game area.";
+				if (dim.equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)) why = "The back teleport can't take you into the dungeons.";
+				else if (!dim.isEmpty() && gameClaimAt(dim, (int) Math.floor(number(back, "x")), (int) Math.floor(number(back, "z"))) != null) why = "The back teleport can't take you back into a game area.";
 			}
 			if (why == null) continue;
 			server.getScoreboard().getOrCreatePlayerScore(p, obj).set(0);

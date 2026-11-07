@@ -60,6 +60,8 @@ final class WeepingGhastFight extends BossFight {
 	@Override
 	boolean allowDamage(LivingEntity piece, DamageSource source, float amount) {
 		if (piece == ghast && source.getDirectEntity() instanceof LargeFireball) {
+			// Only a fireball a player hit back counts (its little ghasts' fireballs pass harmlessly).
+			if (!(source.getEntity() instanceof ServerPlayer)) return false;
 			hurtAs(ghast, 20, source.getEntity());
 			Vec3 at = ghast.position();
 			level.sendParticles(ParticleTypes.EXPLOSION, at.x, at.y + 2, at.z, 3, 1, 1, 1, 0);

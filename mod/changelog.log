@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.99.2
+- Bosses: Oxidized Engine never fully oxidizes (the game turned it into a statue block) and its rod lightning is only a flash (it broke its own rods and set fires); Weeping Ghast only takes the 20 from fireballs a player hit back (its little ghasts' fireballs killed it); Piglin Warlord and Theron's ravager start right with wave health scaling; the Cinder Lord's and Ember Colossus' fireballs put their fire out again; flyers turn back from the box's ceiling instead of sticking to it; the Abyssal Eye's laser doesn't hit players who left the fight; the Ember Colossus only clears its own split cubes; an item the Trickster Fox still holds for a player who left goes to their /inbox
+- Games: Warping Wonders' teleporting items (clock, compasses, portal horn, totem of homecoming) don't work during games
+- Dungeons: anyone in the dungeon dimension outside a run is sent back (creative, spectators and claim bypass excepted); the Nice Actions back teleport can't take players into the dungeons
 ## 1.99.1
 - Wave arenas (gear: kit): a player who died gets their kit again at the next wave (they came back empty-handed before)
 - Wave arenas and dungeons: a player keeps the kit they drew; dying no longer draws a new random one

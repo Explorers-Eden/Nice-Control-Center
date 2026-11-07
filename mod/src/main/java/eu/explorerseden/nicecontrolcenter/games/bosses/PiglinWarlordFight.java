@@ -41,7 +41,7 @@ final class PiglinWarlordFight extends BossFight {
 	PiglinWarlordFight(ServerLevel level, List<String> tags, String bossTag, boolean bar, double x, double y, double z) {
 		super(level, tags, bossTag, bar);
 		warlord = (LivingEntity) spawn("minecraft:piglin_brute", x, y, z, body(false), true, false);
-		if (warlord != null) warlord.setHealth(240);
+		if (warlord != null) warlord.setHealth(warlord.getMaxHealth());
 	}
 
 	@Override

@@ -55,6 +55,15 @@ public abstract class BossFight {
 	final Set<BlockPos> webs = new HashSet<>();
 	/** Blocks its attacks put down for a while (powder snow, honey, fire, walls): when they go, and what was there. */
 	private final java.util.Map<BlockPos, Object[]> temp = new java.util.HashMap<>();
+	/** Its fireballs in flight and where they were last (the fire they light is cleaned up). */
+	private final java.util.Map<Entity, Vec3> fireballs = new java.util.HashMap<>();
+
+	/** A fireball of the fight: whatever it sets alight is put out again. */
+	Entity fireball(Entity f) {
+		if (f != null) fireballs.put(f, f.position());
+		return f;
+	}
+
 	/** Things to do later (the second half of a warned attack): tick → what. */
 	private final List<Object[]> later = new ArrayList<>();
 	private ServerBossEvent bar;
@@ -146,6 +155,22 @@ public abstract class BossFight {
 			later.remove(l);
 			((Runnable) l[1]).run();
 		}
+		// Fireballs that landed: the fire they lit goes out again soon (it isn't the arena's).
+		if (!fireballs.isEmpty()) {
+			for (java.util.Map.Entry<Entity, Vec3> e : List.copyOf(fireballs.entrySet())) {
+				Entity f = e.getKey();
+				if (!f.isRemoved()) {
+					fireballs.put(f, f.position());
+					continue;
+				}
+				fireballs.remove(f);
+				BlockPos c = BlockPos.containing(e.getValue());
+				for (BlockPos b : BlockPos.betweenClosed(c.offset(-2, -2, -2), c.offset(2, 2, 2))) {
+					if (!level.getBlockState(b).is(Blocks.FIRE) || temp.containsKey(b)) continue;
+					temp.put(b.immutable(), new Object[] { ticks + 40, Blocks.AIR.defaultBlockState(), Blocks.FIRE });
+				}
+			}
+		}
 		// Temporary blocks whose time is up.
 		if (!temp.isEmpty() && ticks % 5 == 0) {
 			for (java.util.Map.Entry<BlockPos, Object[]> e : List.copyOf(temp.entrySet())) {
@@ -190,7 +215,7 @@ public abstract class BossFight {
 			Vec3 v = l.getDeltaMovement();
 			l.teleportTo(cx, cy, cz);
 			// Turned round where it hit the edge.
-			l.setDeltaMovement(cx != x ? -v.x * 0.5 : v.x, cy != y ? -Math.abs(v.y) * 0.5 * Math.signum(cy - y) : v.y, cz != z ? -v.z * 0.5 : v.z);
+			l.setDeltaMovement(cx != x ? -v.x * 0.5 : v.x, cy != y ? Math.abs(v.y) * 0.5 * Math.signum(cy - y) : v.y, cz != z ? -v.z * 0.5 : v.z);
 		}
 	}
 

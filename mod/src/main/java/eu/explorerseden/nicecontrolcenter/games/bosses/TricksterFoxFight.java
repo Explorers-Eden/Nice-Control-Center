@@ -86,7 +86,8 @@ final class TricksterFoxFight extends BossFight {
 		if (st.isEmpty()) return;
 		ServerPlayer p = level.getServer().getPlayerList().getPlayer(old.getUUID());
 		if (p == null) {
-			owed.computeIfAbsent(old.getUUID(), k -> new ArrayList<>()).add(st);
+			// Gone meanwhile: into their inbox (/inbox), which is saved.
+			eu.explorerseden.nicecontrolcenter.claims.GameClaims.inbox(old, List.of(st));
 			return;
 		}
 		handBack(p, st);

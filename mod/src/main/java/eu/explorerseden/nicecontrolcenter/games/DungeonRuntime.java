@@ -531,6 +531,7 @@ public final class DungeonRuntime {
 		}
 		if (t % 2 == 0 && settings.enabled) pads(server);
 		if (t % 20 == 0) queues(server);
+		if (t % 20 == 5) strays(server);
 		if (t % 20 == 0) padParticles(server);
 		if (t % 10 == 0) outlines(server);
 		if (t % 1200 == 0) noGraveUntil.values().removeIf(until -> until < System.currentTimeMillis());
@@ -1245,6 +1246,20 @@ public final class DungeonRuntime {
 	}
 
 	/** Out of the dungeon dimension: the hub spawn, else where they'd respawn. */
+	/**
+	 * Nobody stays in the dungeon dimension outside a run (a datapack teleport, a portal horn, a /tp): sent back.
+	 * Admins building or checking (creative, spectator, claim bypass) are left alone.
+	 */
+	private static void strays(MinecraftServer server) {
+		for (ServerPlayer p : List.copyOf(server.getPlayerList().getPlayers())) {
+			if (!p.isAlive() || !inDungeonDimension(p) || playing.containsKey(p.getUUID()) || p.isCreative() || p.isSpectator()
+					|| eu.explorerseden.nicecontrolcenter.claims.ClaimTool.bypassing(p)) continue;
+			NiceControlCenter.LOGGER.info("Dungeons: {} was in the dungeon dimension outside a run: sent back", p.getGameProfile().name());
+			p.sendSystemMessage(Words.lit("The dungeons are only for runs: you're sent back.").withStyle(ChatFormatting.GRAY));
+			sendBack(server, p);
+		}
+	}
+
 	static void sendBack(MinecraftServer server, ServerPlayer p) {
 		if (GameRuntime.toHub(server, p)) return;
 		var to = p.findRespawnPositionAndUseSpawnBlock(false, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING);

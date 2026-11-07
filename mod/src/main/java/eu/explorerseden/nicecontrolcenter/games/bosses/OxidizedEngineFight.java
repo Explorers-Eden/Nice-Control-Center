@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.golem.CopperGolem;
 import net.minecraft.world.level.block.WeatheringCopper;
@@ -93,7 +94,8 @@ final class OxidizedEngineFight extends BossFight {
 			}
 		}
 		// Rusting every 30 s.
-		if (ticks % 600 == 0 && stage < STAGES.length - 1) {
+		// (Never fully oxidized: the game turns an oxidized copper golem into a statue block.)
+		if (ticks % 600 == 0 && stage < STAGES.length - 2) {
 			setStage(stage + 1);
 			sound(at, net.minecraft.sounds.SoundEvent.createVariableRangeEvent(net.minecraft.resources.Identifier.withDefaultNamespace("item.axe.wax_off")), 2, 0.5f);
 			level.sendParticles(ParticleTypes.WAX_OFF, at.x, at.y + 2, at.z, 30, 1, 1.5, 1, 0.1);
@@ -104,7 +106,9 @@ final class OxidizedEngineFight extends BossFight {
 			if (!rods.isEmpty()) {
 				Target rod = rods.get(random.nextInt(rods.size()));
 				Vec3 r = rod.hitbox.position();
-				spawn("minecraft:lightning_bolt", r.x, r.y + 1, r.z, "{Visual:1b}", false, true);
+				Entity bolt = spawn("minecraft:lightning_bolt", r.x, r.y + 1, r.z, "{}", false, true);
+				// Only the flash: no fire, no damage (its own rods would break).
+				if (bolt instanceof net.minecraft.world.entity.LightningBolt lb) lb.setVisualOnly(true);
 				setStage(0);
 				effect(engine, MobEffects.REGENERATION, 100, 1);
 				level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y + 2, at.z, 60, 1, 1.5, 1, 0.3);

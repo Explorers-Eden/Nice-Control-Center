@@ -87,7 +87,8 @@ final class AbyssalEyeFight extends BossFight {
 		if (ticks % 40 == 0) for (ServerPlayer p : near(at, 40)) effect(p, MobEffects.MINING_FATIGUE, 120, 1);
 		// The laser: locked for 2 s, then it fires unless cover is in the way.
 		if (locked != null) {
-			if (locked.isRemoved() || !locked.isAlive()) {
+			// (Gone from the fight meanwhile: out, another dimension, too far: no shot.)
+			if (locked.isRemoved() || !locked.isAlive() || locked.level() != level || viewers != null && !viewers.test(locked) || locked.distanceToSqr(eye) > 48 * 48) {
 				locked = null;
 			} else if (ticks % 2 == 0) {
 				Vec3 from = eye.getEyePosition(), to = locked.getEyePosition();

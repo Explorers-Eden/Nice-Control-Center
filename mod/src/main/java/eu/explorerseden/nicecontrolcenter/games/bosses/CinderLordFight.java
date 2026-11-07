@@ -126,7 +126,7 @@ final class CinderLordFight extends BossFight {
 			for (int i = 0; i < 8; i++) {
 				double a = base + Math.PI * 2 * i / 8;
 				Vec3 d = new Vec3(Math.cos(a), -0.05, Math.sin(a)).scale(0.7);
-				spawn("minecraft:small_fireball", at.x + d.x * 2, at.y + 1.5, at.z + d.z * 2, "{acceleration_power:0.06d,Motion:[" + d.x + "d," + d.y + "d," + d.z + "d]}", false, true);
+				fireball(spawn("minecraft:small_fireball", at.x + d.x * 2, at.y + 1.5, at.z + d.z * 2, "{acceleration_power:0.06d,Motion:[" + d.x + "d," + d.y + "d," + d.z + "d]}", false, true));
 			}
 		}
 	}

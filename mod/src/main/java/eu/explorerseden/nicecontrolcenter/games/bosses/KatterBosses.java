@@ -119,6 +119,11 @@ public final class KatterBosses {
 		});
 	}
 
+	/** One of a fight's pieces (not one the game split off a dead cube, which copies the tags). */
+	static boolean owned(Entity e) {
+		return owner.containsKey(e.getUUID());
+	}
+
 	static void own(Entity e, BossFight f) {
 		owner.put(e.getUUID(), f);
 	}

@@ -192,6 +192,8 @@ final class TheronFight extends BossFight {
 		Vec3 at = dead(magus) ? home : magus.position();
 		if (!dead(magus)) magus.discard();
 		ravager = (LivingEntity) spawn("minecraft:ravager", at.x, at.y, at.z, RAVAGER, true, false);
+		// A quarter of its health, also when a wave gave it more.
+		if (ravager != null) ravager.setHealth(ravager.getMaxHealth() / 4);
 		if (orb != null) orb.discard();
 		sound(at, SoundEvents.AMETHYST_CLUSTER_BREAK, 20, 1);
 		sound(at, SoundEvents.RAVAGER_ROAR, 30, 1);

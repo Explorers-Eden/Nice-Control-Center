@@ -78,7 +78,7 @@ final class EmberColossusFight extends BossFight {
 		for (Object[] d : deaths) {
 			for (Entity e : level.getEntitiesOfClass(LivingEntity.class, new net.minecraft.world.phys.AABB(BlockPos.containing((Vec3) d[0])).inflate(6),
 					// (They copy the dead cube's name and tags, so only what the fight made itself stays.)
-					x -> x.getType() == (core == null ? null : core.getType()) && !parts.contains(x))) {
+					x -> x.getType() == (core == null ? null : core.getType()) && x.entityTags().contains(TAG) && !KatterBosses.owned(x))) {
 				e.discard();
 			}
 		}
@@ -162,7 +162,7 @@ final class EmberColossusFight extends BossFight {
 				Vec3 eye = from.position().add(0, from.getBbHeight() * 0.7, 0);
 				Vec3 dir = p.getEyePosition().subtract(eye).normalize();
 				Vec3 m = dir.scale(0.8);
-				spawn("minecraft:small_fireball", eye.x + dir.x * 1.5, eye.y, eye.z + dir.z * 1.5, "{acceleration_power:0.08d,Motion:[" + m.x + "d," + m.y + "d," + m.z + "d]}", false, true);
+				fireball(spawn("minecraft:small_fireball", eye.x + dir.x * 1.5, eye.y, eye.z + dir.z * 1.5, "{acceleration_power:0.08d,Motion:[" + m.x + "d," + m.y + "d," + m.z + "d]}", false, true));
 			});
 		}
 	}
