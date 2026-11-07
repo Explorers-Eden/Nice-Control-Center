@@ -1307,8 +1307,22 @@ public final class GameRuntime {
 								}))))
 						.then(Commands.literal("kit").executes(ctx -> edit(ctx, (a, p) -> {
 							a.kit = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p);
-							return "The kit is what you carry now (" + a.kit.size() + " stacks)" + ("own".equals(a.gear) ? "; it's handed out only with gear: kit (panel)." : ".");
-						})))
+							a.moreKits = new ArrayList<>();
+							return "The kit is what you carry now (" + a.kit.size() + " stacks)" + ("own".equals(a.gear) ? "; it's handed out only with gear: kit (panel)." : ".")
+									+ " More kits to pick from at random: kit add.";
+						}))
+								// One more kit: each player gets one of them at random.
+								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+									if (a.kit == null || a.kit.isEmpty()) a.kit = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p);
+									else a.moreKits.add(eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p));
+									int n = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitCount(a.kit, a.moreKits);
+									return n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random.";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									a.kit = new ArrayList<>();
+									a.moreKits = new ArrayList<>();
+									return "No kit now.";
+								}))))
 						.then(Commands.literal("start").executes(ctx -> edit(ctx, (a, p) -> {
 							a.start = pos(p);
 							return "Start pad moved here.";

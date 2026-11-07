@@ -74,14 +74,27 @@ public final class ClaimCommand {
 									ClaimTool.tell(p, c.displayName() + " now hands out " + n + " stack" + (n == 1 ? "" : "s") + " on entering (what you carry now).", ChatFormatting.GOLD);
 									return 1;
 								}))
+								// One more kit: each player gets one of them at random.
+								.then(Commands.literal("add").executes(ctx -> {
+									ServerPlayer p = ctx.getSource().getPlayerOrException();
+									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
+									if (c == null) {
+										ClaimTool.tell(p, "Stand in the claim (or subclaim) first.", ChatFormatting.RED);
+										return 0;
+									}
+									int n = GameClaims.addKit(p, c);
+									ClaimTool.tell(p, c.displayName() + " has " + n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random.", ChatFormatting.GOLD);
+									return 1;
+								}))
 								.then(Commands.literal("clear").executes(ctx -> {
 									ServerPlayer p = ctx.getSource().getPlayerOrException();
 									Claim c = ClaimStore.claimAt(p.level(), p.blockPosition());
-									if (c == null || c.admin == null || c.admin.kit.isEmpty()) {
+									if (c == null || c.admin == null || GameClaims.kitCount(c.admin.kit, c.admin.moreKits) == 0) {
 										ClaimTool.tell(p, "No kit here.", ChatFormatting.RED);
 										return 0;
 									}
 									c.admin.kit = new java.util.ArrayList<>();
+									c.admin.moreKits = new java.util.ArrayList<>();
 									ClaimStore.changed();
 									ClaimTool.tell(p, "The kit of " + c.displayName() + " is gone.", ChatFormatting.GOLD);
 									return 1;

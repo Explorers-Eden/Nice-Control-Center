@@ -358,6 +358,8 @@ public final class Claims {
 		public boolean inventory = false;
 		/** Items (as the game writes them, JSON) handed out on entering. */
 		public List<String> kit = new ArrayList<>();
+		/** More kits: each player gets one of all the kits at random (the first is {@code kit}). */
+		public List<List<String>> moreKits = new ArrayList<>();
 		/** Items picked up inside vanish on leaving (otherwise they go to the market inbox). */
 		public boolean removePickups = false;
 		/** Items picked up inside drop where the player dies (otherwise kept if they respawn inside, gone if sent out). */
@@ -943,7 +945,10 @@ public final class Claims {
 					c.admin.gameMode = m;
 				}
 				if (a.has("deaths") && a.get("deaths").isJsonPrimitive()) c.admin.deaths = Math.max(0, Math.min(1000, a.get("deaths").getAsInt()));
-				if (a.has("clearKit") && a.get("clearKit").getAsBoolean()) c.admin.kit = new ArrayList<>();
+				if (a.has("clearKit") && a.get("clearKit").getAsBoolean()) {
+					c.admin.kit = new ArrayList<>();
+					c.admin.moreKits = new ArrayList<>();
+				}
 				if (a.has("clearRespawn") && a.get("clearRespawn").getAsBoolean()) c.admin.respawn = null;
 				if (!c.admin.anySet()) c.admin = null;
 				data.touch(c, now);

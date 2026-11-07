@@ -230,7 +230,7 @@ public final class GameClaims {
 
 	private static boolean inKitClaim(ServerPlayer p) {
 		Claim c = gameClaimFor(p);
-		return c != null && c.admin.kit != null && !c.admin.kit.isEmpty();
+		return c != null && kitCount(c.admin.kit, c.admin.moreKits) > 0;
 	}
 
 	/**
@@ -324,7 +324,7 @@ public final class GameClaims {
 			p.setExperiencePoints(0);
 			p.removeAllEffects();
 		}
-		if (o.kit != null) for (String json : o.kit) handOut(p, json, c.id);
+		for (String json : pickKit(o.kit, o.moreKits)) handOut(p, json, c.id);
 		p.inventoryMenu.broadcastChanges();
 	}
 
@@ -643,6 +643,22 @@ public final class GameClaims {
 	}
 
 	/** Hands out kit items (they vanish when the player leaves or dies). */
+	/** One of the kits at random (the first and the more ones, the empty ones left out); empty when there's none. */
+	public static List<String> pickKit(List<String> kit, List<List<String>> more) {
+		List<List<String>> all = new ArrayList<>();
+		if (kit != null && !kit.isEmpty()) all.add(kit);
+		if (more != null) for (List<String> k : more) if (k != null && !k.isEmpty()) all.add(k);
+		if (all.isEmpty()) return List.of();
+		return all.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(all.size()));
+	}
+
+	/** How many kits there are ("2 kits (a random one each)"). */
+	public static int kitCount(List<String> kit, List<List<String>> more) {
+		int n = kit != null && !kit.isEmpty() ? 1 : 0;
+		if (more != null) for (List<String> k : more) if (k != null && !k.isEmpty()) n++;
+		return n;
+	}
+
 	public static void giveKit(ServerPlayer p, List<String> kit, String key) {
 		if (kit == null) return;
 		for (String json : kit) handOut(p, json, key);
@@ -854,8 +870,22 @@ public final class GameClaims {
 		}
 		if (c.admin == null) c.admin = new Claims.AdminOptions();
 		c.admin.kit = kit;
+		c.admin.moreKits = new ArrayList<>();
 		ClaimStore.changed();
 		return kit.size();
+	}
+
+	/** The admin's current inventory becomes one more kit of the claim (a random one is handed out); how many kits now. */
+	public static int addKit(ServerPlayer admin, Claim c) {
+		if (c.admin == null) c.admin = new Claims.AdminOptions();
+		if (c.admin.kit == null || c.admin.kit.isEmpty()) {
+			setKit(admin, c);
+			return 1;
+		}
+		if (c.admin.moreKits == null) c.admin.moreKits = new ArrayList<>();
+		c.admin.moreKits.add(kitFrom(admin));
+		ClaimStore.changed();
+		return kitCount(c.admin.kit, c.admin.moreKits);
 	}
 
 	// ---------------------------------------------------------------- storage

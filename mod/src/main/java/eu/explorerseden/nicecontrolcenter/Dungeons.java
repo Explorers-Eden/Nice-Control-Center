@@ -126,6 +126,8 @@ public final class Dungeons {
 		public String gear = "kit";
 		/** Kit items as the game writes them (taken from an admin's inventory with /dungeon kit). */
 		public List<String> kit = new ArrayList<>();
+		/** More kits: each player gets one of all the kits at random (the first is {@code kit}). */
+		public List<List<String>> moreKits = new ArrayList<>();
 		/** Kit mode: items found inside vanish afterwards (else they go to the player's inbox). */
 		public boolean removePickups = true;
 		/** "exit" (reaching an exit marker) or "boss" (every boss dead). */
@@ -253,6 +255,8 @@ public final class Dungeons {
 				if (!"boss".equals(d.clearOn)) d.clearOn = "exit";
 				if (!"own".equals(d.gear)) d.gear = "kit";
 				if (d.kit == null) d.kit = new ArrayList<>();
+				if (d.moreKits == null) d.moreKits = new ArrayList<>();
+				d.moreKits.removeIf(k -> k == null || k.isEmpty());
 				// (Null strings from older files become empty.)
 				if (d.enterMessage == null) d.enterMessage = "";
 				if (d.prepareMessage == null) d.prepareMessage = "";

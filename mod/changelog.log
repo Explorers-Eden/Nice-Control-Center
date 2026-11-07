@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.98.0
+- Kits: more than one kit for wave arenas, quick rounds, dungeons and game areas; each player gets one of them at random. In game: /game edit <name> kit add, /dungeon kit <name> add, /claim admin kit add (and … clear); the plain kit command still replaces them all with one
 ## 1.97.0
 - New NCC bosses: ncc:trickster_fox (copies that vanish when hit, blink bites, pounces, snatches what a player holds for 5 s and gives it back), ncc:glacier_bear (with two cubs: enraged when a cub is hurt, ice slides leaving snow, a stunning roar, the cubs throw snowballs), ncc:elder_sniffer (goes for whoever keeps farthest away: buried mines, thornbush walls, seed turrets to break) and ncc:shellguard (curls up after three quick hits, a mace gets through; rolled charges, scute shrapnel, burrows up under a marked player)
 ## 1.96.0

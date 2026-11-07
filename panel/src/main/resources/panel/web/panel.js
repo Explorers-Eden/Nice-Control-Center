@@ -2225,7 +2225,7 @@
       ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Mob spawns:', `/game edit ${n} mobspawn add`),
       ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}` : 'Spectator area (optional; without it the dead watch a teammate), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
-      ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit`),
+      ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks${(a.moreKits || []).length ? ` (+${a.moreKits.length} more kit${a.moreKits.length === 1 ? '' : 's'}: a random one each)` : ''}` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit` + ' (more: kit add)'),
     ].join('')}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (wave 1 with nobody in it).</p>`;
     const sel = (k, opts) => `<select data-g="${k}"${typeof a[k] === 'boolean' ? ' data-bool="1"' : ''}>${opts.map(([v, l]) => `<option value="${v}" ${String(a[k]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     const overrides = Object.entries(a.waveLines || {}).sort((x, y) => x[0] - y[0]).map(([w, l]) => `${w}: ${l}`).join('\n');
@@ -3241,7 +3241,7 @@
           ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
           ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}
           <p class="pn-hint pn-field-wide">Items that must stay in the dungeon (a pickaxe in a chest, a key from a mob): give them <code>custom_data={ncc_game_only:1b}</code>, e.g. <code>minecraft:iron_pickaxe[custom_data={ncc_game_only:1b}]</code> in a loot table, chest or mob drop. They vanish when the player leaves, whatever is set here.</p>
-          ${d.gear === 'kit' ? field('Kit', `<span class="pn-dg-kit">${(d.kit || []).length ? `${d.kit.length} stack${d.kit.length === 1 ? '' : 's'} <button type="button" class="np-btn small" data-dgkit="${i}">Clear</button>` : 'none'} <small>set in game: <code>/dungeon kit ${esc(d.name)}</code></small></span>`) : ''}
+          ${d.gear === 'kit' ? field('Kit', `<span class="pn-dg-kit">${(d.kit || []).length ? `${d.kit.length} stack${d.kit.length === 1 ? '' : 's'}${(d.moreKits || []).length ? ` +${d.moreKits.length} more kit${d.moreKits.length === 1 ? '' : 's'} (a random one each)` : ''} <button type="button" class="np-btn small" data-dgkit="${i}">Clear</button>` : 'none'} <small>set in game: <code>/dungeon kit ${esc(d.name)}</code>, more: <code>/dungeon kit ${esc(d.name)} add</code></small></span>`) : ''}
           ${field('Message on entering', text('enterMessage', '▶ {dungeon}: find the way out!'), true)}
           ${field('Boss bar while it\'s prepared', text('prepareMessage', 'Preparing your dungeon…'), true)}
           ${field('Message when cleared', text('clearedMessage', '■ {dungeon} cleared in {time}!'), true)}
@@ -3418,6 +3418,7 @@
       dgChanged(true);
     } else if (kit) {
       dg.settings.dungeons[+kit.dataset.dgkit].kit = [];
+      dg.settings.dungeons[+kit.dataset.dgkit].moreKits = [];
       dgChanged(true);
     }
   });
@@ -7345,7 +7346,7 @@
     const a = c.admin || {};
     $('pn-cl-admin').querySelectorAll('[data-admin]').forEach((el) => { el.checked = el.dataset.admin in a ? !!a[el.dataset.admin] : el.dataset.admin === 'fightMobs'; el.disabled = !can('claims.manage'); });
     const noSlots = (c.kitItems || []).some((it) => it.slot < 0);
-    $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering${noSlots ? '. Set before kits kept their slots: set it again to have every item land where it was' : ', each in its own slot (when that slot is free)'}.` : 'No kit: be in game with the items in your inventory, then:';
+    $('pn-cl-kit-text').textContent = a.kit ? `Kit: ${a.kit} stack${a.kit === 1 ? '' : 's'} handed out on entering${a.moreKits ? ` (+${a.moreKits} more kit${a.moreKits === 1 ? '' : 's'}: each player gets one at random; add more with /claim admin kit add)` : ''}${noSlots ? '. Set before kits kept their slots: set it again to have every item land where it was' : ', each in its own slot (when that slot is free)'}.` : 'No kit: be in game with the items in your inventory, then:';
     $('pn-cl-kit-clear').hidden = !a.kit;
     $('pn-cl-kit-grid').hidden = !(c.kitItems && c.kitItems.length);
     $('pn-cl-kit-grid').innerHTML = c.kitItems && c.kitItems.length ? kitGrid(c.kitItems) : '';

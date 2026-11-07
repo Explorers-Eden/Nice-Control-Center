@@ -256,6 +256,8 @@ public final class Games {
 		/** "kit": their own things are put aside and the kit handed out; "own": they fight with what they carry. */
 		public String gear = "kit";
 		public List<String> kit = new ArrayList<>();
+		/** More kits: each player gets one of all the kits at random (the first is {@code kit}). */
+		public List<List<String>> moreKits = new ArrayList<>();
 		/** Kit gear: items found inside vanish afterwards (else they go to the inbox). */
 		public boolean removePickups = true;
 		/** Run as the server for each living player after a wave is cleared ({wave}, {player}, {game}). */
@@ -443,6 +445,8 @@ public final class Games {
 				a.waveLines.entrySet().removeIf(e -> e.getValue() == null || e.getValue().isBlank() || !e.getKey().matches("\\d{1,4}"));
 				if (!"own".equals(a.gear)) a.gear = "kit";
 				if (a.kit == null) a.kit = new ArrayList<>();
+				if (a.moreKits == null) a.moreKits = new ArrayList<>();
+				a.moreKits.removeIf(k -> k == null || k.isEmpty());
 				if (a.waveCommands == null) a.waveCommands = new ArrayList<>();
 				if (a.loseMessage == null) a.loseMessage = "";
 				a.joinSeconds = Math.max(0, Math.min(120, a.joinSeconds));

@@ -73,7 +73,8 @@ field). The easiest way to get one is `/dungeon tool marker <text>`, which hands
 Set per dungeon in the panel under "Gear":
 
 - **Kit**: players' own things are put aside when they enter and come back afterwards. Inside, they get the
-  dungeon's kit: carry what the kit should hold and type `/dungeon kit <dungeon>`. "Items found inside" decides what
+  dungeon's kit: carry what the kit should hold and type `/dungeon kit <dungeon>`. More kits: `/dungeon kit <dungeon> add`
+  (each player gets one of them at random); `/dungeon kit <dungeon> clear` removes them. "Items found inside" decides what
   happens to loot at the end: it vanishes, or it goes to their inbox.
 - **Own**: players bring their own things. What they carry comes back after a death inside.
 
@@ -202,7 +203,7 @@ Inside a dungeon the market, inbox, pets, homes and Nice Actions teleports don't
 | `/dungeon save <name>` | admin | Save the build (again after every change) |
 | `/dungeon try <name>` | admin | Play it yourself without a pad |
 | `/dungeon pool <name> <pool>` | admin | Move a dungeon to a pool |
-| `/dungeon kit <name>` | admin | Make what you carry the dungeon's kit |
+| `/dungeon kit <name>` | admin | Make what you carry the dungeon's kit (`… add`: one more kit, a random one each; `… clear`: none) |
 | `/dungeon delete <name>` | admin | Remove a dungeon (runs going on keep their copy) |
 | `/dungeon tool marker <text>` | admin | A marker block (`start`, `exit`, `checkpoint`, `mob:…`, `boss:…`) |
 | `/dungeon tool door <door>` | admin | A room door |

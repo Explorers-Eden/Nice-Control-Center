@@ -1016,7 +1016,7 @@ public final class DungeonRuntime {
 			}
 			if (r.kit()) {
 				GameClaims.stashFor(p, "dungeon");
-				GameClaims.giveKit(p, r.dungeon.kit, "dungeon");
+				GameClaims.giveKit(p, GameClaims.pickKit(r.dungeon.kit, r.dungeon.moreKits), "dungeon");
 			}
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
@@ -1119,7 +1119,7 @@ public final class DungeonRuntime {
 		}
 		// Back in: their own gear (own) or the kit again.
 		if (r.kit()) {
-			GameClaims.giveKit(p, r.dungeon.kit, "dungeon");
+			GameClaims.giveKit(p, GameClaims.pickKit(r.dungeon.kit, r.dungeon.moreKits), "dungeon");
 			GameClaims.giveBackKept(p);
 		} else {
 			GameClaims.restoreFor(p, false);
@@ -1440,11 +1440,33 @@ public final class DungeonRuntime {
 					Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
 					if (x == null) return fail(ctx, "There's no such dungeon.");
 					x.kit = GameClaims.kitFrom(p);
+					x.moreKits = new ArrayList<>();
 					saveSettings();
-					ctx.getSource().sendSuccess(() -> Words.lit(x.name + "'s kit is what you carry now (" + x.kit.size() + " stacks)."
+					ctx.getSource().sendSuccess(() -> Words.lit(x.name + "'s kit is what you carry now (" + x.kit.size() + " stacks). More kits to pick from at random: /dungeon kit " + x.name + " add."
 							+ ("own".equals(x.gear) ? " It's handed out only when the dungeon puts things aside (gear: kit, in the panel)." : "")), true);
 					return 1;
-				})))
+				})
+						// One more kit: each player gets one of them at random.
+						.then(Commands.literal("add").executes(ctx -> {
+							ServerPlayer p = ctx.getSource().getPlayerOrException();
+							Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
+							if (x == null) return fail(ctx, "There's no such dungeon.");
+							if (x.kit == null || x.kit.isEmpty()) x.kit = GameClaims.kitFrom(p);
+							else x.moreKits.add(GameClaims.kitFrom(p));
+							saveSettings();
+							int n = GameClaims.kitCount(x.kit, x.moreKits);
+							ctx.getSource().sendSuccess(() -> Words.lit(x.name + " has " + n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random."), true);
+							return 1;
+						}))
+						.then(Commands.literal("clear").executes(ctx -> {
+							Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
+							if (x == null) return fail(ctx, "There's no such dungeon.");
+							x.kit = new ArrayList<>();
+							x.moreKits = new ArrayList<>();
+							saveSettings();
+							ctx.getSource().sendSuccess(() -> Words.lit(x.name + " has no kit now."), true);
+							return 1;
+						}))))
 				.then(Commands.literal("try").requires(admin).then(dungeonArg.get().executes(ctx -> {
 					Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
 					if (x == null) return fail(ctx, "There's no such dungeon.");

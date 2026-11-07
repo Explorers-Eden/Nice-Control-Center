@@ -482,7 +482,7 @@ public final class QuickRuntime {
 			r.score.put(p.getUUID(), 0L);
 			if (kit(a)) {
 				GameClaims.stashFor(p, "quick");
-				GameClaims.giveKit(p, a.kit, "quick");
+				GameClaims.giveKit(p, GameClaims.pickKit(a.kit, a.moreKits), "quick");
 				for (ItemStack st : starter(a)) GameClaims.giveKitItem(p, st, "quick");
 			}
 			double sx = spawn.x + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0), sz = spawn.z + (going.size() > 1 ? random.nextDouble() * 2 - 1 : 0);

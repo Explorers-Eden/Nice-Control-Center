@@ -442,7 +442,7 @@ public final class WaveRuntime {
 			unqueue(p.getUUID());
 			if (kit(a)) {
 				GameClaims.stashFor(p, "waves");
-				GameClaims.giveKit(p, a.kit, "waves");
+				GameClaims.giveKit(p, GameClaims.pickKit(a.kit, a.moreKits), "waves");
 			}
 			p.teleportTo(level, a.spawn.x, a.spawn.y, a.spawn.z, Set.of(), a.spawn.yaw, 0, true);
 			p.resetFallDistance();
