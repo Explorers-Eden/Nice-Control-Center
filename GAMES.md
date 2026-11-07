@@ -105,7 +105,10 @@ A party of 1–4 (see Parties) fights waves of mobs.
   half health), `ncc:purpur_sentinel` (a shulker: homing bullet volleys, teleports to marked spots, turrets),
   `ncc:cinder_lord` (a blaze behind three fire shields that snowballs break; flame pillars, fireball spirals),
   `ncc:weeping_ghast` (a ghast high up: fireball rain, slowing tears, little ghasts; hit its fireballs back) and
-  `ncc:dire_alpha` (an armoured wolf: pounces, howls for its pack, bleeding bites). Every boss is described in
+  `ncc:dire_alpha` (an armoured wolf: pounces, howls for its pack, bleeding bites), `ncc:heartwood_creaking` (only
+  moves unseen, untouchable until its resin hearts are broken), `ncc:abyssal_eye` (an elder guardian whose laser locks
+  on: take cover), `ncc:rotting_giant` (the giant zombie: stomps, thrown zombies, rests on its knees for double
+  damage) and `ncc:arch_evoker` (fang patterns, vex storms, a warding totem). Every boss is described in
   `BOSSES.md`. Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,

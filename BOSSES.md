@@ -155,6 +155,38 @@ A big wolf in wolf armour, 160 health, with its pack.
 - **Bleeding bites:** its bites wither.
 - **Below a quarter:** the pack runs off. It fights on alone, faster and stronger, pouncing every 4 s.
 
+### The Heartwood Creaking — `ncc:heartwood_creaking`
+A giant creaking, 120 health.
+- **Only moves unseen:** like any creaking, it moves only while nobody looks at it.
+- **Resin hearts:** three Resin Hearts stand 6–10 blocks around it. While any of them stands, it can't be hurt.
+  Break the hearts (30 health each), then the creaking.
+- **Root snares:** every 10 s resin grows around a player and slows them.
+- **At half health:** once all hearts are broken, one grows back, once.
+
+### The Abyssal Eye — `ncc:abyssal_eye`
+An elder guardian floating over the arena, 160 health.
+- **Laser:** every 7 s it locks on to a player for 2 seconds (a line of bubbles), then fires: 8 damage, unless a
+  block is in the way. Take cover.
+- **Gaze:** mining fatigue for everyone within 40 blocks.
+- **Spikes:** whoever hits it close up takes 2 damage back.
+- **At half health:** 3 Abyssal Spawn guardians.
+
+### The Rotting Giant — `ncc:rotting_giant`
+The giant zombie, 180 health, walked by the mod.
+- **Plods on:** it walks slowly at the nearest player and swipes at anyone at its feet (6).
+- **Stomp:** every 8 s, when someone is close, the ground warns, then a shockwave: 6 damage.
+- **Thrown zombies:** every 10 s it throws a Zombie Spawn at a marked spot.
+- **Grab:** every 15 s the nearest player within 6 blocks is lifted up and dropped.
+- **Rest:** every 30 s it sinks to its knees for 4 seconds. Every hit then does double damage.
+
+### The Arch-Evoker — `ncc:arch_evoker`
+An evoker, 160 health.
+- **Fang patterns:** every 5.5 s, in turn: a line of fangs at a player, two rings around itself, a spiral out from
+  itself.
+- **Vex storm:** every 20 s, 4 Storm Vexes (up to 6).
+- **Warding totem at half health:** a floating totem (40 health) shields it completely until it's broken, and the
+  fangs come every 3 s meanwhile.
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't
