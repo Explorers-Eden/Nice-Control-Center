@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.97.0
+- New NCC bosses: ncc:trickster_fox (copies that vanish when hit, blink bites, pounces, snatches what a player holds for 5 s and gives it back), ncc:glacier_bear (with two cubs: enraged when a cub is hurt, ice slides leaving snow, a stunning roar, the cubs throw snowballs), ncc:elder_sniffer (goes for whoever keeps farthest away: buried mines, thornbush walls, seed turrets to break) and ncc:shellguard (curls up after three quick hits, a mace gets through; rolled charges, scute shrapnel, burrows up under a marked player)
 ## 1.96.0
 - New NCC bosses: ncc:oxidized_engine (copper golem that rusts as it fights: slower but harder hits each stage; lightning on its rods polishes it fresh, break them; slams and sparks), ncc:ramlord (giant goat: long rams that throw players far, horn throws, rockfall, mountain leaps), ncc:llama_matriarch (llama with her caravan: spit volleys, stampedes along a marked line, a lead lash) and ncc:panda_grandmaster (rolls, sneezes, bamboo rings that hurt, a snack break for double damage, worried and faster below 30 %)
 - Bosses: temporary blocks can be placed without shape updates (bamboo where it couldn't grow stays and never drops)

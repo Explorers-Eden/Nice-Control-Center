@@ -218,6 +218,39 @@ A big aggressive panda, 160 health.
 - **Snack:** every 25 s it sits down to eat for 4 seconds. Every hit then does double damage.
 - **Below 30 %:** worried, and so faster and stronger. Rolls come every 6 s.
 
+### The Trickster Fox — `ncc:trickster_fox`
+A big snow fox, 120 health.
+- **Copies:** every 18 s three copies of it appear. A copy vanishes when hit; the real one throws sparks.
+- **Blink and bite:** every 5 s it blinks up to a player and bites (5).
+- **Pounce:** every 11 s it jumps at a marked spot: 6 damage.
+- **Pickpocket:** every 15 s it snatches what the nearest player holds. It comes back after 5 seconds, or when the
+  fight ends, or when they next join if they left.
+
+### The Glacier Bear — `ncc:glacier_bear`
+A huge polar bear, 180 health, with 2 Glacier Cubs.
+- **Enraged:** hurt a cub and she's enraged for 10 seconds: faster and stronger.
+- **Ice slide:** every 10 s a line is marked, then she slides along it leaving snow: 6 damage, and a knock.
+- **Roar:** every 12 s, when someone is close, a roar stuns everyone within 6 blocks (slowness IV and weakness for
+  2 s).
+- **Snowballs:** the cubs throw snowballs every 3 s.
+
+### The Elder Sniffer — `ncc:elder_sniffer`
+An ancient sniffer, 200 health.
+- **Sniffs out the farthest:** it goes for whoever keeps farthest away, and knocks anyone it walks into (5).
+- **Buried mines:** every 8 s three spots near players are marked, and they burst 3 seconds later (nothing broken).
+- **Thornbush walls:** every 12 s a wall of berry bushes grows between it and its prey for 10 seconds.
+- **Ancient seed turrets:** every 20 s a seed turret grows (up to two, 15 health each). It spits at the nearest
+  player every 2 s (2) until it's broken.
+
+### The Shellguard — `ncc:shellguard`
+A giant armadillo, 140 health.
+- **Curls up:** hit it three times within 3 seconds and it curls up for 4 seconds, taking no damage. A mace still gets
+  through.
+- **Rolled charge:** every 9 s a line is marked, then it rolls along it: 6 damage, and a knock.
+- **Scute shrapnel:** every 7 s, when someone is close, a ring warns, then everyone within 5 blocks takes 3.
+- **Burrow:** every 16 s it vanishes into the ground and comes up 2 seconds later under a marked player: 6 damage, and
+  they're thrown up.
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't

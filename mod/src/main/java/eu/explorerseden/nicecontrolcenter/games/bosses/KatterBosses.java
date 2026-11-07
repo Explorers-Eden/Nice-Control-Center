@@ -31,7 +31,8 @@ public final class KatterBosses {
 			"phantom_monarch", "piglin_warlord", "ender_stalker", "iron_tyrant",
 			"purpur_sentinel", "cinder_lord", "weeping_ghast", "dire_alpha",
 			"heartwood_creaking", "abyssal_eye", "rotting_giant", "arch_evoker",
-			"oxidized_engine", "ramlord", "llama_matriarch", "panda_grandmaster");
+			"oxidized_engine", "ramlord", "llama_matriarch", "panda_grandmaster",
+			"trickster_fox", "glacier_bear", "elder_sniffer", "shellguard");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -90,6 +91,7 @@ public final class KatterBosses {
 				}
 			}
 		});
+		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> server.execute(() -> TricksterFoxFight.joined(handler.player)));
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			for (BossFight f : List.copyOf(fights)) f.finish();
 			fights.clear();
@@ -197,6 +199,10 @@ public final class KatterBosses {
 			case "ncc_ramlord" -> new RamlordFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_llama_matriarch" -> new LlamaMatriarchFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_panda_grandmaster" -> new PandaGrandmasterFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_trickster_fox" -> new TricksterFoxFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_glacier_bear" -> new GlacierBearFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_elder_sniffer" -> new ElderSnifferFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_shellguard" -> new ShellguardFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 	}
@@ -235,6 +241,10 @@ public final class KatterBosses {
 			case "ncc_ramlord" -> "The Ramlord";
 			case "ncc_llama_matriarch" -> "The Llama Matriarch";
 			case "ncc_panda_grandmaster" -> "The Panda Grandmaster";
+			case "ncc_trickster_fox" -> "The Trickster Fox";
+			case "ncc_glacier_bear" -> "The Glacier Bear";
+			case "ncc_elder_sniffer" -> "The Elder Sniffer";
+			case "ncc_shellguard" -> "The Shellguard";
 			default -> "Magus Theron the Betrayer";
 		};
 	}

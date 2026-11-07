@@ -127,6 +127,10 @@ public abstract class BossFight {
 		hurt(piece, source);
 	}
 
+	/** When the fight is over (beaten or taken away): give back what it still holds. */
+	void ended() {
+	}
+
 	/** One of its pieces hurt a player. */
 	void hit(ServerPlayer victim, Entity attacker) {
 	}
@@ -200,6 +204,11 @@ public abstract class BossFight {
 		for (java.util.Map.Entry<BlockPos, Object[]> e : temp.entrySet()) untemp(e.getKey(), e.getValue());
 		temp.clear();
 		later.clear();
+		try {
+			ended();
+		} catch (RuntimeException e) {
+			NiceControlCenter.LOGGER.warn("Games: boss {} didn't wrap up: {}", name(), e.toString());
+		}
 		NiceControlCenter.LOGGER.info("Games: boss {} gone", name());
 	}
 

@@ -111,7 +111,10 @@ A party of 1–4 (see Parties) fights waves of mobs.
   damage), `ncc:arch_evoker` (fang patterns, vex storms, a warding totem), `ncc:oxidized_engine` (a copper golem that
   rusts as it fights; lightning rods polish it fresh, break them), `ncc:ramlord` (a goat: long rams, horn throws,
   rockfall, leaps), `ncc:llama_matriarch` (a llama and her caravan: spit, stampedes, a lead lash) and
-  `ncc:panda_grandmaster` (rolls, sneezes, bamboo rings, a snack break for double damage). Every boss is described in
+  `ncc:panda_grandmaster` (rolls, sneezes, bamboo rings, a snack break for double damage), `ncc:trickster_fox` (copies,
+  blinks, pounces, snatches what you hold for a moment), `ncc:glacier_bear` (with cubs: enraged when a cub is hurt,
+  ice slides, roars), `ncc:elder_sniffer` (goes for whoever keeps farthest away: buried mines, thornbush walls, seed
+  turrets) and `ncc:shellguard` (an armadillo that curls up after quick hits, rolls, burrows). Every boss is described in
   `BOSSES.md`. Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
