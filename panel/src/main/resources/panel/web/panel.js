@@ -36,10 +36,42 @@
   /** The same text without its codes (for searching). */
   const mcPlain = (text) => String(text ?? '').replace(/\u00a7[0-9a-fk-or]/gi, '');
 
+  // ── Several people at once ──────────────────────────────────────────────
+  // Each loaded settings address has a revision (X-Rev). A save sends back the one it loaded: if someone else
+  // saved meanwhile, the panel refuses it instead of overwriting their changes. X-Tab tells our own saves apart in
+  // the live announcements (see connectLive).
+  const TAB = Math.random().toString(36).slice(2, 10);
+  const revs = {};
+  const SAVE_TAILS = ['settings', 'edit', 'motd', 'motds'];
+  /** The loaded address a save belongs to: its own, else the parent's for …/settings, …/edit, …/motd(s). */
+  function revKey(path, anyChild) {
+    if (revs[path]) return path;
+    const i = path.lastIndexOf('/');
+    if (i <= 0) return null;
+    const parent = path.slice(0, i);
+    return revs[parent] && (anyChild || SAVE_TAILS.includes(path.slice(i + 1))) ? parent : null;
+  }
+
   async function api(path, body) {
+    const key = String(path).split('?')[0];
+    const headers = { 'Content-Type': 'application/json', 'X-NCC': '1', 'X-Tab': TAB };
+    if (body !== undefined) {
+      const k = revKey(key, false);
+      if (k) headers['X-Rev'] = revs[k];
+    }
     const res = await fetch(path, body === undefined ? {} : {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-NCC': '1' }, body: JSON.stringify(body),
+      method: 'POST', headers, body: JSON.stringify(body),
     });
+    if (res.ok) {
+      const rev = res.headers.get('X-Rev');
+      if (rev) {
+        if (body === undefined) revs[key] = rev;
+        else {
+          const k = revKey(key, true);
+          if (k) revs[k] = rev;
+        }
+      }
+    }
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 && path !== 'api/login') showLogin();
     if (!res.ok) {
@@ -68,6 +100,7 @@
     $('pn-login').hidden = false;
     $('pn-user').focus();
     closeConsole();
+    closeLive();
     const frame = $('pn-dashboard-frame');
     frame.src = 'about:blank';
     delete frame.dataset.loaded;
@@ -89,6 +122,7 @@
     if (me.theme && me.theme !== document.documentElement.dataset.theme) setTheme(me.theme, false);
     applyPermissions();
     if (can('console.read')) openConsole();
+    connectLive();
     if (can('server.view')) {
       $('pn-state-pill').hidden = false;
       loadSettings();
@@ -1613,8 +1647,94 @@
         }
       },
       any: () => [...forms.values()].some((f) => f.dirty),
+      /**
+       * Someone else saved settings: every form without unsaved changes loads the new state (now if it's on screen,
+       * else when it's next shown). Forms with unsaved changes stay as they are; their Save is refused if it was
+       * theirs that changed (the server checks), and Cancel loads the new state.
+       */
+      remote() {
+        let dirtyShown = false;
+        for (const f of forms.values()) {
+          if (f.dirty) {
+            if (shown(f.el)) dirtyShown = true;
+            continue;
+          }
+          if (shown(f.el)) {
+            f.snap = null;
+            f.reload();
+          } else f.stale = true;
+        }
+        return dirtyShown;
+      },
+      /** Forms that went stale while hidden and are on screen now: loaded again. */
+      refreshStale() {
+        for (const f of forms.values()) {
+          if (!f.stale || f.dirty || !shown(f.el)) continue;
+          f.stale = false;
+          f.snap = null;
+          f.reload();
+        }
+      },
     };
   })();
+  /** On screen (not in a hidden tab). */
+  function shown(el) {
+    return !!el && el.getClientRects().length > 0;
+  }
+  setInterval(() => Dirty.refreshStale(), 1500);
+
+  // Saves made in other panels, as they happen.
+  let live = null;
+  let liveRetry = 0;
+  function connectLive() {
+    if (live || !loggedIn) return;
+    const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'api/live';
+    try {
+      live = new WebSocket(url);
+    } catch (e) {
+      live = null;
+      return;
+    }
+    live.onopen = () => { liveRetry = 0; };
+    live.onmessage = (e) => {
+      let m;
+      try { m = JSON.parse(e.data); } catch (err) { return; }
+      if (!m || m.tab === TAB) return;
+      const dirtyShown = Dirty.remote();
+      liveNotice(m.by, m.path, dirtyShown);
+    };
+    live.onclose = () => {
+      live = null;
+      if (loggedIn) setTimeout(connectLive, Math.min(30000, 1000 * 2 ** liveRetry++));
+    };
+  }
+  function closeLive() {
+    if (!live) return;
+    const s = live;
+    live = null;
+    s.onclose = null;
+    s.close();
+  }
+  /** A short note in the corner: who saved what (a warning when this page has unsaved changes). */
+  function liveNotice(by, path, warn) {
+    let box = $('pn-live-toasts');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'pn-live-toasts';
+      box.className = 'np-toasts pn-toasts';
+      box.setAttribute('aria-live', 'polite');
+      document.body.appendChild(box);
+      box.addEventListener('click', (e) => e.target.closest('.np-toast')?.remove());
+    }
+    const what = String(path || '').replace(/^api\//, '').replace(/\//g, ' › ');
+    const t = document.createElement('div');
+    t.className = 'np-toast';
+    t.innerHTML = `<div class="np-toast-body"><b>${esc(by)} saved ${esc(what)}</b><span>${warn
+      ? 'This page has unsaved changes: if they are on the same settings, Save will be refused so nothing of theirs is lost. Cancel loads their version.'
+      : 'Pages you have open show it now.'}</span></div><button type="button" class="np-toast-close" aria-label="Dismiss"><i class="bi bi-x"></i></button>`;
+    box.appendChild(t);
+    setTimeout(() => t.remove(), warn ? 15000 : 6000);
+  }
 
   window.addEventListener('beforeunload', (e) => { if (Dirty.any()) { e.preventDefault(); e.returnValue = ''; } });
 

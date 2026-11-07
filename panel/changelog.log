@@ -1,3 +1,6 @@
+## 1.80.0
+- Several people at once: a save made on top of an older copy than the current one is refused ("<name> saved this at <time> while you were editing…"), so nobody overwrites someone else's changes any more; Cancel loads their version
+- Saves show up live in every open panel: pages without unsaved changes load the new state at once (hidden ones when they're next opened), and a note in the corner says who saved what
 ## 1.79.6
 - Games, wave arenas: the boss picker has Trickster Fox, Glacier Bear, Elder Sniffer and Shellguard
 ## 1.79.5

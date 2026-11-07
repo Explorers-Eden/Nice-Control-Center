@@ -162,6 +162,7 @@ public final class Panel {
 		map.useStatus(stats::uptime7d, tuning::maintenance, () -> scheduler.nextWith("restart"));
 		info.useRestart(() -> scheduler.nextWith("restart"));
 
+		Live live = new Live();
 		Javalin app = Javalin.create(config -> {
 			config.startup.showJavalinBanner = false;
 			// Config files are edited as JSON bodies; uploads go through multipart and may be large (worlds, mod packs).
@@ -184,7 +185,7 @@ public final class Panel {
 			// need the X-NCC header, which a cross-site form can't send.
 			routes.before("/api/*", ctx -> {
 				String path = ctx.path();
-				if (path.equals("/api/health") || path.equals("/api/console")) return;
+				if (path.equals("/api/health") || path.equals("/api/console") || path.equals("/api/live")) return;
 				if (!ctx.method().name().equals("GET") && !"1".equals(ctx.header("X-NCC"))) {
 					error(ctx, HttpStatus.FORBIDDEN, "Missing X-NCC header");
 					ctx.skipRemainingHandlers();
@@ -198,6 +199,25 @@ public final class Panel {
 					return;
 				}
 				ctx.attribute(SESSION, session);
+				// Someone else saved this page since it was loaded: refused instead of overwriting their changes.
+				if (live.conflict(ctx)) ctx.skipRemainingHandlers();
+			});
+			routes.after("/api/*", ctx -> {
+				Auth.Session session = ctx.attribute(SESSION);
+				live.after(ctx, session == null ? null : session.name());
+			});
+
+			// Saves announced to every open panel (pages without unsaved changes load them at once).
+			routes.ws("/api/live", ws -> {
+				ws.onConnect(ctx -> {
+					if (auth.session(ctx.cookie(Auth.COOKIE)) == null) {
+						ctx.closeSession(4401, "Please log in");
+						return;
+					}
+					live.join(ctx);
+				});
+				ws.onClose(live::leave);
+				ws.onError(live::leave);
 			});
 
 			// The dashboard pages and their API calls use the same session; the routes check permissions.
