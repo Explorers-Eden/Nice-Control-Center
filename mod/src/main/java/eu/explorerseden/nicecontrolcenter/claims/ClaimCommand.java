@@ -82,6 +82,10 @@ public final class ClaimCommand {
 										ClaimTool.tell(p, "Stand in the claim (or subclaim) first.", ChatFormatting.RED);
 										return 0;
 									}
+									if (GameClaims.kitFrom(p).isEmpty()) {
+										ClaimTool.tell(p, "Your inventory is empty: carry what the kit should hold first.", ChatFormatting.RED);
+										return 0;
+									}
 									int n = GameClaims.addKit(p, c);
 									ClaimTool.tell(p, c.displayName() + " has " + n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random.", ChatFormatting.GOLD);
 									return 1;

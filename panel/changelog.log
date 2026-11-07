@@ -1,3 +1,5 @@
+## 1.81.2
+- Games, Dungeons: saving the page keeps the kits as they are in game (extra kits added or cleared in game while the page was open were undone)
 ## 1.81.1
 - Dungeons: the guide link points to docs/DUNGEONS.md (the guides moved into docs/)
 ## 1.81.0

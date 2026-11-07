@@ -65,6 +65,8 @@ public final class WaveRuntime {
 
 	static final class Game {
 		final Arena arena;
+		/** The kit each player drew (the same one again after a death). */
+		final Map<UUID, List<String>> kits = new HashMap<>();
 		/** The arena's blocks at the start: put back after each wave and at the end. */
 		ArenaSnapshot blocks;
 		final List<UUID> players = new ArrayList<>();
@@ -442,7 +444,10 @@ public final class WaveRuntime {
 			unqueue(p.getUUID());
 			if (kit(a)) {
 				GameClaims.stashFor(p, "waves");
-				GameClaims.giveKit(p, GameClaims.pickKit(a.kit, a.moreKits), "waves");
+				// (Kept: after a death the same kit comes back at the next wave.)
+				List<String> kit = GameClaims.pickKit(a.kit, a.moreKits);
+				g.kits.put(p.getUUID(), kit);
+				GameClaims.giveKit(p, kit, "waves");
 			}
 			p.teleportTo(level, a.spawn.x, a.spawn.y, a.spawn.z, Set.of(), a.spawn.yaw, 0, true);
 			p.resetFallDistance();
@@ -676,8 +681,12 @@ public final class WaveRuntime {
 		ServerLevel level = GameRuntime.levelOf(server, g.arena.spawn.dim);
 		if (level != null) p.teleportTo(level, g.arena.spawn.x, g.arena.spawn.y, g.arena.spawn.z, Set.of(), g.arena.spawn.yaw, 0, true);
 		p.resetFallDistance();
-		if (kit(g.arena)) GameClaims.giveBackKept(p);
-		else GameClaims.restoreFor(p, false);
+		if (kit(g.arena)) {
+			// What they found, and their kit again (dying took the kit's items).
+			GameClaims.giveBackKept(p);
+			List<String> kit = g.kits.get(p.getUUID());
+			GameClaims.giveKit(p, kit != null ? kit : GameClaims.pickKit(g.arena.kit, g.arena.moreKits), "waves");
+		} else GameClaims.restoreFor(p, false);
 		p.sendSystemMessage(Words.lit("You're back in!").withStyle(ChatFormatting.GREEN));
 	}
 

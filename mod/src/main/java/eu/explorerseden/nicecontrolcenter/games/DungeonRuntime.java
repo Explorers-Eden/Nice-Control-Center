@@ -90,6 +90,8 @@ public final class DungeonRuntime {
 		final int slot;
 		final Dungeon dungeon;
 		final Set<UUID> players = new LinkedHashSet<>();
+		/** The kit each player drew (the same one again after a death). */
+		final Map<UUID, List<String>> kits = new HashMap<>();
 		final Set<UUID> out = new LinkedHashSet<>();
 		final Map<UUID, String> names = new HashMap<>();
 		/** Deaths left before a player is out. */
@@ -1016,7 +1018,10 @@ public final class DungeonRuntime {
 			}
 			if (r.kit()) {
 				GameClaims.stashFor(p, "dungeon");
-				GameClaims.giveKit(p, GameClaims.pickKit(r.dungeon.kit, r.dungeon.moreKits), "dungeon");
+				// (Kept: after a death the same kit comes back, no rerolling by dying.)
+				List<String> kit = GameClaims.pickKit(r.dungeon.kit, r.dungeon.moreKits);
+				r.kits.put(p.getUUID(), kit);
+				GameClaims.giveKit(p, kit, "dungeon");
 			}
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
@@ -1119,7 +1124,8 @@ public final class DungeonRuntime {
 		}
 		// Back in: their own gear (own) or the kit again.
 		if (r.kit()) {
-			GameClaims.giveKit(p, GameClaims.pickKit(r.dungeon.kit, r.dungeon.moreKits), "dungeon");
+			List<String> kit = r.kits.get(p.getUUID());
+			GameClaims.giveKit(p, kit != null ? kit : GameClaims.pickKit(r.dungeon.kit, r.dungeon.moreKits), "dungeon");
 			GameClaims.giveBackKept(p);
 		} else {
 			GameClaims.restoreFor(p, false);
@@ -1451,8 +1457,10 @@ public final class DungeonRuntime {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
 							Dungeon x = settings.dungeon(StringArgumentType.getString(ctx, "name"));
 							if (x == null) return fail(ctx, "There's no such dungeon.");
-							if (x.kit == null || x.kit.isEmpty()) x.kit = GameClaims.kitFrom(p);
-							else x.moreKits.add(GameClaims.kitFrom(p));
+							List<String> taken = GameClaims.kitFrom(p);
+							if (taken.isEmpty()) return fail(ctx, "Your inventory is empty: carry what the kit should hold first.");
+							if (x.kit == null || x.kit.isEmpty()) x.kit = taken;
+							else x.moreKits.add(taken);
 							saveSettings();
 							int n = GameClaims.kitCount(x.kit, x.moreKits);
 							ctx.getSource().sendSuccess(() -> Words.lit(x.name + " has " + n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random."), true);

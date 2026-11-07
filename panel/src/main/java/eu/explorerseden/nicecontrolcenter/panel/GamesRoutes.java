@@ -115,6 +115,7 @@ final class GamesRoutes {
 				a.watchEntrances = minus(was.watchEntrances, a.id, "watchEntrances", gone);
 				a.heads = minus(was.heads, a.id, "heads", gone);
 				a.kit = was.kit;
+				a.moreKits = was.moreKits;
 				a.galleryLanes = was.galleryLanes;
 				a.chefStations = was.chefStations;
 			}
@@ -195,7 +196,13 @@ final class GamesRoutes {
 				d.connectors = was.connectors;
 				d.savedAt = was.savedAt;
 				d.savedBy = was.savedBy;
-				if (d.kit != null && !d.kit.isEmpty()) d.kit = was.kit;
+				// The kits are set in game: kept as the mod wrote them, unless the page cleared them (Clear).
+				if (d.kit != null && !d.kit.isEmpty()) {
+					d.kit = was.kit;
+					d.moreKits = was.moreKits;
+				} else {
+					d.moreKits = new java.util.ArrayList<>();
+				}
 			}
 			next.dungeons.removeIf(d -> now.dungeon(d.id) == null);
 			for (Dungeons.Room r : next.rooms) {

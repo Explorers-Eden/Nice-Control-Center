@@ -56,6 +56,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 
 import eu.explorerseden.nicecontrolcenter.Games;
+import eu.explorerseden.nicecontrolcenter.claims.GameClaims;
 import eu.explorerseden.nicecontrolcenter.Games.Arena;
 import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
@@ -1306,17 +1307,20 @@ public final class GameRuntime {
 									return "Exit pads cleared.";
 								}))))
 						.then(Commands.literal("kit").executes(ctx -> edit(ctx, (a, p) -> {
-							a.kit = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p);
+							a.kit = GameClaims.kitFrom(p);
 							a.moreKits = new ArrayList<>();
 							return "The kit is what you carry now (" + a.kit.size() + " stacks)" + ("own".equals(a.gear) ? "; it's handed out only with gear: kit (panel)." : ".")
 									+ " More kits to pick from at random: kit add.";
 						}))
 								// One more kit: each player gets one of them at random.
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
-									if (a.kit == null || a.kit.isEmpty()) a.kit = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p);
-									else a.moreKits.add(eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitFrom(p));
-									int n = eu.explorerseden.nicecontrolcenter.claims.GameClaims.kitCount(a.kit, a.moreKits);
-									return n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random.";
+									List<String> taken = GameClaims.kitFrom(p);
+									if (taken.isEmpty()) return "Your inventory is empty: carry what the kit should hold first.";
+									if (a.kit == null || a.kit.isEmpty()) a.kit = taken;
+									else a.moreKits.add(taken);
+									int n = GameClaims.kitCount(a.kit, a.moreKits);
+									return n + (n == 1 ? " kit" : " kits") + " now; each player gets one of them at random"
+											+ ("own".equals(a.gear) ? " (only with gear: kit, in the panel)." : ".");
 								})))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
 									a.kit = new ArrayList<>();

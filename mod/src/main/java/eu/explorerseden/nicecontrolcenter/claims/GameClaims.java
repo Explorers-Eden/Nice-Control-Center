@@ -642,8 +642,7 @@ public final class GameClaims {
 		enter(p, pseudo);
 	}
 
-	/** Hands out kit items (they vanish when the player leaves or dies). */
-	/** One of the kits at random (the first and the more ones, the empty ones left out); empty when there's none. */
+		/** One of the kits at random (the first and the more ones, the empty ones left out); empty when there's none. */
 	public static List<String> pickKit(List<String> kit, List<List<String>> more) {
 		List<List<String>> all = new ArrayList<>();
 		if (kit != null && !kit.isEmpty()) all.add(kit);
@@ -659,6 +658,7 @@ public final class GameClaims {
 		return n;
 	}
 
+	/** Hands out kit items (they vanish when the player leaves or dies). */
 	public static void giveKit(ServerPlayer p, List<String> kit, String key) {
 		if (kit == null) return;
 		for (String json : kit) handOut(p, json, key);
@@ -878,12 +878,15 @@ public final class GameClaims {
 	/** The admin's current inventory becomes one more kit of the claim (a random one is handed out); how many kits now. */
 	public static int addKit(ServerPlayer admin, Claim c) {
 		if (c.admin == null) c.admin = new Claims.AdminOptions();
+		List<String> taken = kitFrom(admin);
+		if (taken.isEmpty()) return kitCount(c.admin.kit, c.admin.moreKits);
 		if (c.admin.kit == null || c.admin.kit.isEmpty()) {
-			setKit(admin, c);
-			return 1;
+			c.admin.kit = taken;
+			ClaimStore.changed();
+			return kitCount(c.admin.kit, c.admin.moreKits);
 		}
 		if (c.admin.moreKits == null) c.admin.moreKits = new ArrayList<>();
-		c.admin.moreKits.add(kitFrom(admin));
+		c.admin.moreKits.add(taken);
 		ClaimStore.changed();
 		return kitCount(c.admin.kit, c.admin.moreKits);
 	}
