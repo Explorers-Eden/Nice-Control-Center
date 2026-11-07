@@ -285,8 +285,14 @@ public abstract class BossFight {
 	 */
 	Target target(String block, Vec3 at, float health, String name, boolean glow) {
 		Target t = new Target();
-		t.display = spawn("minecraft:block_display", at.x, at.y, at.z, "{" + (glow ? "Glowing:1b," : "") + "block_state:{Name:\"" + block + "\"},"
-				+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[-0.5f,0f,-0.5f],scale:[1f,1f,1f]}}", false, true);
+		// "item:minecraft:totem_of_undying" shows an item (floating, bigger), anything else a block.
+		if (block.startsWith("item:")) {
+			t.display = spawn("minecraft:item_display", at.x, at.y + 0.5, at.z, "{" + (glow ? "Glowing:1b," : "") + "billboard:\"vertical\",item:{id:\"" + block.substring(5) + "\",count:1},"
+					+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[1.6f,1.6f,1.6f]}}", false, true);
+		} else {
+			t.display = spawn("minecraft:block_display", at.x, at.y, at.z, "{" + (glow ? "Glowing:1b," : "") + "block_state:{Name:\"" + block + "\"},"
+					+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[-0.5f,0f,-0.5f],scale:[1f,1f,1f]}}", false, true);
+		}
 		t.hitbox = (LivingEntity) spawn("minecraft:slime", at.x, at.y, at.z, "{Size:0,NoAI:1b,Silent:1b,PersistenceRequired:1b,DeathLootTable:\"minecraft:empty\","
 				+ "Health:" + health + "f,CustomName:\"" + name + "\",active_effects:[{id:\"minecraft:invisibility\",amplifier:0,duration:-1,show_particles:0b}],"
 				+ "attributes:[{id:\"minecraft:max_health\",base:" + health + "},{id:\"minecraft:scale\",base:2},{id:\"minecraft:knockback_resistance\",base:1}]}", false, true);

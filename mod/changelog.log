@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.95.0
+- New NCC bosses: ncc:heartwood_creaking (moves only unseen, untouchable while its three resin hearts stand, root snares, one heart regrows), ncc:abyssal_eye (floating elder guardian: a laser that locks on and fires unless you take cover, mining fatigue, spikes, guardian adds), ncc:rotting_giant (the giant zombie walked by the mod: stomps, thrown zombies, lifts a player, kneels to rest for double damage) and ncc:arch_evoker (fang lines, rings and spirals, vex storms, a warding totem at half health that shields it until broken)
+- Bosses: breakable things can show an item too (the Arch-Evoker's totem)
 ## 1.94.0
 - Bosses in wave arenas get the arena's "% more health per wave" on their health (phases go by share of health now, so Arachne, Theron, Tenkū and the Creeper King still switch at the same points)
 - Bosses stay inside the fight box (wave arena box, dungeon copy): flying ones (Phantom Monarch, Hive Queen, the new Weeping Ghast) are turned back at walls and ceiling instead of leaving small arenas
