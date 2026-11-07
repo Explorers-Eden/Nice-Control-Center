@@ -121,6 +121,47 @@ public final class MobLines {
 	}
 
 	/** The weapon a mob spawns with in the wild (null = none or not always). */
+	// ---------------------------------------------------------------- melee or ranged
+
+	/** Hostile mobs that shoot or cast from afar without a weapon to hold. */
+	private static final java.util.Set<String> NATIVE_RANGED = java.util.Set.of("blaze", "ghast", "shulker", "breeze", "evoker", "witch");
+	private static final java.util.Map<String, String> KINDS = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final java.util.regex.Pattern MAINHAND = java.util.regex.Pattern.compile("mainhand:\\{id:\"([^\"]+)\"");
+
+	/**
+	 * "ranged" or "melee" for a mob line, from what the mob really does: the ones that only shoot (blazes, ghasts,
+	 * witches…) are ranged; the ones that can shoot (skeletons, pillagers, piglins, drowned…) only with a bow,
+	 * crossbow or trident in hand (from the line's data, else what they'd get anyway); peaceful and neutral mobs the
+	 * way {@link Aggro} has them fight (llamas and snow golems shoot; parrots, bats, allays, fish spit); else melee.
+	 */
+	public static String kind(net.minecraft.server.level.ServerLevel level, Entry e) {
+		if (e == null || e.id().startsWith("npc:")) return "melee";
+		return KINDS.computeIfAbsent(e.id() + "|" + e.nbt(), k -> {
+			java.util.regex.Matcher m = MAINHAND.matcher(e.nbt());
+			String hand = m.find() ? m.group(1) : weapon(e.id());
+			try {
+				var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(net.minecraft.resources.Identifier.parse(e.id()));
+				net.minecraft.world.entity.Entity made = type.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				return made == null ? "melee" : kind(made, hand);
+			} catch (RuntimeException ex) {
+				return "melee";
+			}
+		});
+	}
+
+	/** The same for a mob that's already there (its own main hand when {@code hand} is null). */
+	public static String kind(net.minecraft.world.entity.Entity mob, String hand) {
+		String path = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).getPath();
+		if (NATIVE_RANGED.contains(path)) return "ranged";
+		if (mob instanceof net.minecraft.world.entity.Mob m) {
+			Boolean shoots = Aggro.shoots(m);
+			if (shoots != null) return shoots ? "ranged" : "melee";
+		}
+		if (!(mob instanceof net.minecraft.world.entity.monster.RangedAttackMob) && !(mob instanceof net.minecraft.world.entity.monster.CrossbowAttackMob)) return "melee";
+		if (hand == null && mob instanceof net.minecraft.world.entity.LivingEntity l) hand = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(l.getMainHandItem().getItem()).toString();
+		return hand != null && (hand.endsWith("bow") || hand.endsWith("crossbow") || hand.endsWith("trident")) ? "ranged" : "melee";
+	}
+
 	static String weapon(String id) {
 		return switch (id) {
 			case "minecraft:skeleton", "minecraft:stray", "minecraft:bogged", "minecraft:parched", "minecraft:illusioner" -> "minecraft:bow";

@@ -81,7 +81,7 @@ game-area options, including the game mode inside).
 ## Wave fight (`waves`)
 A party of 1–4 (see Parties) fights waves of mobs.
 - Create it where players should appear (the spawn; move it with `/game edit <name> spawn`), then `corner1` / `corner2` (the fight box),
-  `mobspawn add` (several), optional `spectate [radius]`, `back add` (exit pads inside: 5 s on one leaves),
+  `mobspawn add` (several; `mobspawn add melee|ranged|boss` makes a spawn for one kind: the kind is worked out from how a mob fights: blazes, ghasts, witches and evokers, bow, crossbow or trident holders, and peaceful or neutral mobs that shoot or spit in games (llamas, snow golems, parrots, bats, fish…) are ranged and come out of ranged spawns, the boss out of boss spawns, the rest out of melee ones; when an arena has none of a kind, they use the spawns for any mob; `mobspawn clear [kind]`), optional `spectate [radius]`, `back add` (exit pads inside: 5 s on one leaves),
   `kit` (what you carry becomes the kit; `kit add` adds another one, and each player then gets one of the kits at
   random; `kit clear` removes them).
 - Panel: waves to clear (0 = endless), mob pool, wave sizes, boss waves (every … waves the boss comes alone; a list, picked at random or in order), toughness, hand-written waves, team lives,

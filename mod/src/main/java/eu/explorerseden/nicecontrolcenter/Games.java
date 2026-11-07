@@ -37,6 +37,8 @@ public final class Games {
 
 	/** A spot in a dimension. */
 	public static final class Pos {
+		/** Mob spawns only: which mobs come out here ("melee", "ranged", "boss"; null or "": any). */
+		public String kind;
 		public String dim = "";
 		public double x;
 		public double y;
@@ -336,6 +338,20 @@ public final class Games {
 		/** A reward every this many heads found (0 = none): everyCommands ({found}, {total}, {player}, {game}). */
 		public int rewardEvery = 5;
 		public List<String> everyCommands = new ArrayList<>();
+	}
+
+	/** Mob spawn kinds (wave arenas). */
+	public static final java.util.List<String> SPAWN_KINDS = java.util.List.of("melee", "ranged", "boss");
+	/**
+	 * A mob spawn for that kind: one of its own kind, else one for any mob, else any at all (null: the arena has
+	 * none).
+	 */
+	public static Pos spawnFor(Arena a, String kind, java.util.Random random) {
+		if (a.mobSpawns.isEmpty()) return null;
+		java.util.List<Pos> own = a.mobSpawns.stream().filter(p -> kind.equals(p.kind)).toList();
+		if (own.isEmpty()) own = a.mobSpawns.stream().filter(p -> p.kind == null || p.kind.isEmpty()).toList();
+		if (own.isEmpty()) own = a.mobSpawns;
+		return own.get(random.nextInt(own.size()));
 	}
 
 	public static final class Settings {

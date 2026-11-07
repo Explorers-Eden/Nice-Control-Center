@@ -1270,12 +1270,32 @@ public final class GameRuntime {
 						.then(Commands.literal("mobspawn")
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
 									a.mobSpawns.add(pos(p));
-									return "Mob spawn " + a.mobSpawns.size() + " added here.";
-								})))
+									return "Mob spawn " + a.mobSpawns.size() + " added here (any mob; for one kind: mobspawn add melee|ranged|boss).";
+								}))
+										// For one kind of mob: melee, ranged (skeletons, pillagers…) or the boss.
+										.then(Commands.argument("kind", StringArgumentType.word())
+												.suggests((ctx, b) -> SharedSuggestionProvider.suggest(Games.SPAWN_KINDS, b))
+												.executes(ctx -> edit(ctx, (a, p) -> {
+													String kind = StringArgumentType.getString(ctx, "kind").toLowerCase(java.util.Locale.ROOT);
+													if (!Games.SPAWN_KINDS.contains(kind)) return "The kind is melee, ranged or boss.";
+													Games.Pos at = pos(p);
+													at.kind = kind;
+													a.mobSpawns.add(at);
+													long n = a.mobSpawns.stream().filter(x -> kind.equals(x.kind)).count();
+													return "Spawn for " + kind + " mobs added here (" + n + " for " + kind + ", " + a.mobSpawns.size() + " in all).";
+												}))))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
 									a.mobSpawns.clear();
 									return "Mob spawns cleared.";
-								}))))
+								}))
+										.then(Commands.argument("kind", StringArgumentType.word())
+												.suggests((ctx, b) -> SharedSuggestionProvider.suggest(java.util.stream.Stream.concat(Games.SPAWN_KINDS.stream(), java.util.stream.Stream.of("any")), b))
+												.executes(ctx -> edit(ctx, (a, p) -> {
+													String kind = StringArgumentType.getString(ctx, "kind").toLowerCase(java.util.Locale.ROOT);
+													int before = a.mobSpawns.size();
+													a.mobSpawns.removeIf(x -> kind.equals("any") ? x.kind == null || x.kind.isEmpty() : kind.equals(x.kind));
+													return (before - a.mobSpawns.size()) + " " + kind + " spawns removed.";
+												})))))
 						.then(Commands.literal("spectate").executes(ctx -> edit(ctx, (a, p) -> {
 									a.spectate = pos(p);
 									return "Spectator area here (radius " + a.spectateRadius + "): " + spectateUse(a) + ".";

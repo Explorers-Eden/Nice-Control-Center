@@ -82,6 +82,20 @@ public final class Aggro {
 		else acc.nicecontrolcenter$goals().addGoal(1, new Spit(m));
 	}
 
+	/**
+	 * How {@link #make} has a peaceful or neutral mob fight: true when it shoots or spits from afar, false when it
+	 * charges or bites; null for hostile mobs (they keep their own way of fighting).
+	 */
+	public static Boolean shoots(Mob m) {
+		if (landShy(m) || m instanceof Enemy && !(m instanceof NeutralMob)) return null;
+		boolean ownAttack = m.getAttribute(Attributes.ATTACK_DAMAGE) != null;
+		boolean cantWalk = m.getNavigation() instanceof FlyingPathNavigation || m.getNavigation() instanceof WaterBoundPathNavigation || m instanceof AmbientCreature;
+		if (ownAttack && m.getBrain().checkMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET, net.minecraft.world.entity.ai.memory.MemoryStatus.REGISTERED)) return false;
+		if (m instanceof RangedAttackMob) return true;
+		if (cantWalk && !ownAttack) return true;
+		return !(m instanceof PathfinderMob);
+	}
+
 	private static LivingEntity target(Mob m) {
 		LivingEntity t = m.getTarget();
 		return t instanceof Player p && p.isAlive() && !p.isSpectator() && !p.isCreative() ? t : null;

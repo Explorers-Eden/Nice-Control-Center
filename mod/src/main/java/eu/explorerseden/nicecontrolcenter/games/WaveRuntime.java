@@ -534,8 +534,10 @@ public final class WaveRuntime {
 		for (int i = 0; i < Math.min(4, room) && !g.toSpawn.isEmpty(); i++) {
 			spawned++;
 			MobLines.Entry e = g.toSpawn.poll();
-			Games.Pos at = g.arena.mobSpawns.get(random.nextInt(g.arena.mobSpawns.size()));
 			boolean boss = e.count() < 0;
+			// Out of a spawn for its kind (melee, ranged, boss), else any.
+			String kind = boss || KatterBosses.is(e.id()) ? "boss" : MobLines.kind(level, e);
+			Games.Pos at = Games.spawnFor(g.arena, kind, random);
 			MobLines.Entry one = new MobLines.Entry(e.id(), 1, e.nbt());
 			double sx = at.x + (random.nextDouble() - 0.5), sz = at.z + (random.nextDouble() - 0.5);
 			// (Its bar only for this game's players.)
@@ -548,7 +550,8 @@ public final class WaveRuntime {
 			for (LivingEntity m : mobs) {
 				// Back into the box (riders go with their mount; a boss out of reach on purpose stays); after a minute the last few glow.
 				if (!box.inflate(2).contains(m.position()) && !m.isPassenger() && !m.isInvulnerable()) {
-					Games.Pos at = g.arena.mobSpawns.get(random.nextInt(g.arena.mobSpawns.size()));
+					String kind = m.entityTags().contains(BOSS) || m.entityTags().contains(BossFight.TAG) ? "boss" : MobLines.kind(m, null);
+					Games.Pos at = Games.spawnFor(g.arena, kind, random);
 					m.teleportTo(at.x, at.y, at.z);
 				}
 				// (Built-in bosses pick their own targets: the Echo Shepherd hunts by sound.)

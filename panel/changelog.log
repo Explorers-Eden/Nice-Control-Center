@@ -1,3 +1,5 @@
+## 1.82.0
+- Games, wave arenas: the setup list shows the mob spawns per kind (melee, ranged, boss, any)
 ## 1.81.2
 - Games, Dungeons: saving the page keeps the kits as they are in game (extra kits added or cleared in game while the page was open were undone)
 ## 1.81.1
