@@ -195,7 +195,7 @@ final class TenkuFight extends BossFight {
 		switch (kind) {
 			case 0 -> {
 				spawn("minecraft:area_effect_cloud", at.x, at.y, at.z, "{" + particle + "potion_contents:{custom_color:" + color + ",custom_effects:[{id:\"minecraft:nausea\",amplifier:1,duration:100}]}}", false, true);
-				Entity t = spawn("minecraft:tnt", at.x, at.y + 2, at.z, "{fuse:100,block_state:{Name:\"minecraft:conduit\"}}", false, true);
+				Entity t = spawn("minecraft:tnt", at.x, at.y + 2, at.z, "{fuse:100,block_state:" + blockState("minecraft:conduit", "") + "}", false, true);
 				if (t instanceof PrimedTnt tnt) blasts.add(tnt);
 			}
 			case 1 -> spawn("minecraft:area_effect_cloud", at.x, at.y, at.z, "{" + particle + "potion_contents:{custom_color:" + color + ",custom_effects:[{id:\"minecraft:hunger\",amplifier:1,duration:400}]}}", false, true);

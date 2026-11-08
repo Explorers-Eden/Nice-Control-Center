@@ -31,9 +31,9 @@ import net.minecraft.world.phys.Vec3;
  */
 final class TheronFight extends BossFight {
 	private static final String ROD = "{CustomNameVisible:0b,transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[-1f,-0.5625f,-1f],scale:[2f,1.125f,2f]},"
-			+ "block_state:{Name:\"minecraft:lightning_rod\",Properties:{facing:\"up\",powered:\"false\",waterlogged:\"false\"}}}";
+			+ "block_state:" + blockState("minecraft:lightning_rod", "facing:\"up\",powered:\"false\",waterlogged:\"false\"") + "}";
 	private static final String ORB = "{teleport_duration:5,shadow_strength:0f,transformation:{left_rotation:[-0.3535534f,0.14644665f,0.3535534f,0.85355335f],right_rotation:[0f,0f,0f,1f],"
-			+ "translation:[5.9604645e-8f,-0.85355335f,0.14644663f],scale:[1f,1f,1f]},block_state:{Name:\"minecraft:redstone_block\"}}";
+			+ "translation:[5.9604645e-8f,-0.85355335f,0.14644663f],scale:[1f,1f,1f]},block_state:" + blockState("minecraft:redstone_block", "") + "}";
 	private static final String MAGUS = "{Invulnerable:1b,CustomNameVisible:1b,DeathLootTable:\"minecraft:empty\",PersistenceRequired:1b,NoAI:1b,CanPickUpLoot:0b,Health:200f,PatrolLeader:0b,CanJoinRaid:0b,"
 			+ "CustomName:{bold:true,color:\"light_purple\",italic:true,text:\"Magus Theron the Betrayer\"},equipment:{mainhand:{id:\"minecraft:bow\",count:1,components:{\"minecraft:enchantments\":"
 			+ "{\"minecraft:power\":1,\"minecraft:punch\":2}}}},drop_chances:{mainhand:0.0},attributes:[{id:\"minecraft:knockback_resistance\",base:1},{id:\"minecraft:max_health\",base:200},"

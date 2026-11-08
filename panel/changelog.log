@@ -1,3 +1,5 @@
+## 1.85.1
+- Games: the boss picker lists the four village bosses (Village Elder, Master Smith, Grand Librarian, Harvest Keeper)
 ## 1.85.0
 - Games: wave arenas are a tab of their own inside Games (Games, Arenas, Dungeons, Slot Machines), with the arena pools card on top; Dungeons is one tab inside Games again, as before. The separate Arenas and Dungeons sidebar entries from 1.83.0 and 1.84.0 are gone (their links still land on the right tab)
 ## 1.84.0

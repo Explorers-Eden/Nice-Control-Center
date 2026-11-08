@@ -50,8 +50,44 @@ public final class Aggro {
 		return m instanceof net.minecraft.world.entity.monster.zombie.Drowned;
 	}
 
+	/** The goals {@link #make} gave each mob (so {@link #unmake} can take exactly those away again). */
+	private static final java.util.Map<Mob, java.util.List<Goal>> given = new WeakHashMap<>();
+
 	/** Makes the mob fight players (melee damage when it has no attack of its own); hostile mobs are left as they are. */
 	public static void make(Mob m, float damage) {
+		MobGoalsAccessor acc = (MobGoalsAccessor) m;
+		Set<Goal> before = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+		for (var w : acc.nicecontrolcenter$goals().getAvailableGoals()) before.add(w.getGoal());
+		for (var w : acc.nicecontrolcenter$targets().getAvailableGoals()) before.add(w.getGoal());
+		make0(m, damage);
+		java.util.List<Goal> added = new java.util.ArrayList<>();
+		for (var w : acc.nicecontrolcenter$goals().getAvailableGoals()) if (!before.contains(w.getGoal())) added.add(w.getGoal());
+		for (var w : acc.nicecontrolcenter$targets().getAvailableGoals()) if (!before.contains(w.getGoal())) added.add(w.getGoal());
+		if (!added.isEmpty()) given.computeIfAbsent(m, k -> new java.util.ArrayList<>()).addAll(added);
+	}
+
+	/** Already turned by {@link #make} (a wave mob, or a resident a boss rallied). */
+	public static boolean made(Mob m) {
+		return done.contains(m);
+	}
+
+	/** Undoes {@link #make}: its goals go, the target and any anger too (a resident a boss rallied calms down). */
+	public static void unmake(Mob m) {
+		MobGoalsAccessor acc = (MobGoalsAccessor) m;
+		java.util.List<Goal> gs = given.remove(m);
+		if (gs != null) {
+			for (Goal g : gs) {
+				acc.nicecontrolcenter$goals().removeGoal(g);
+				acc.nicecontrolcenter$targets().removeGoal(g);
+			}
+		}
+		done.remove(m);
+		m.setTarget(null);
+		if (m instanceof NeutralMob n) n.stopBeingAngry();
+		m.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET);
+	}
+
+	private static void make0(Mob m, float damage) {
 		// Drowned: any player, anywhere, any time; their trident throw works once they have a target, without one
 		// they charge (their own melee goal refuses targets on dry land by day).
 		if (landShy(m)) {

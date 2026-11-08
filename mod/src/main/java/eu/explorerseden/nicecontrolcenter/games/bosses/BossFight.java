@@ -234,7 +234,102 @@ public abstract class BossFight {
 		} catch (RuntimeException e) {
 			NiceControlCenter.LOGGER.warn("Games: boss {} didn't wrap up: {}", name(), e.toString());
 		}
+		if (!rallied.isEmpty()) {
+			int n = rallied.size();
+			calm();
+			NiceControlCenter.LOGGER.info("Games: boss {} let go of {} villagers and golems", name(), n);
+		}
 		NiceControlCenter.LOGGER.info("Games: boss {} gone", name());
+	}
+
+	// ---------------------------------------------------------------- the village on its side
+
+	/** On residents a fight rallied (the arena's own villagers and golems). */
+	public static final String RALLIED = "ncc_rallied";
+	private static final Identifier TAMED = Identifier.fromNamespaceAndPath("nicecontrolcenter", "rallied");
+	private static final java.util.Set<String> VILLAGE = java.util.Set.of("villager", "iron_golem", "copper_golem", "snow_golem");
+	/** Residents fighting for it: mob → whether the fight turned it (false: it fought players already, a wave mob). */
+	final java.util.Map<net.minecraft.world.entity.Mob, Boolean> rallied = new java.util.LinkedHashMap<>();
+	/** Residents knocked out (they never die: the arena keeps its villagers). */
+	final java.util.Set<net.minecraft.world.entity.Mob> knocked = new java.util.HashSet<>();
+
+	/**
+	 * The arena's villagers and golems fight for the boss: inside its box (without one, within {@code range}, and
+	 * not iron golems a player built). They're knocked out instead of killed, and calm down again when it's over.
+	 * Returns how many joined now.
+	 */
+	int rally(Vec3 at, double range) {
+		AABB box = bounds != null ? bounds : new AABB(at, at).inflate(range);
+		int n = 0;
+		for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box, x -> x.isAlive()
+				&& VILLAGE.contains(BuiltInRegistries.ENTITY_TYPE.getKey(x.getType()).getPath()) && !KatterBosses.owned(x) && !x.entityTags().contains(TAG))) {
+			if (bounds == null && m instanceof net.minecraft.world.entity.animal.golem.IronGolem g && g.isPlayerCreated()) continue;
+			boolean turned = !eu.explorerseden.nicecontrolcenter.games.Aggro.made(m);
+			if (turned) eu.explorerseden.nicecontrolcenter.games.Aggro.make(m, 3f);
+			m.addTag(RALLIED);
+			// Iron golems hit for half to one and a half times their attack: vanilla's 15 two-shots anyone, so 40 %.
+			var dmg = m.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+			if (dmg != null && dmg.getValue() > 8 && !dmg.hasModifier(TAMED)) dmg.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(TAMED, -0.6,
+					net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+			rallied.put(m, turned);
+			KatterBosses.own(m, this);
+			n++;
+		}
+		List<ServerPlayer> ps = players(at);
+		for (net.minecraft.world.entity.Mob m : rallied.keySet()) {
+			if (knocked.contains(m) || ps.isEmpty()) continue;
+			ServerPlayer p = ps.get(random.nextInt(ps.size()));
+			m.setTarget(p);
+			level.sendParticles(ParticleTypes.ANGRY_VILLAGER, m.getX(), m.getY() + m.getBbHeight() + 0.3, m.getZ(), 2, 0.3, 0.2, 0.3, 0);
+		}
+		return n;
+	}
+
+	/** Its rallied residents still standing. */
+	List<net.minecraft.world.entity.Mob> rallied() {
+		List<net.minecraft.world.entity.Mob> out = new ArrayList<>();
+		for (net.minecraft.world.entity.Mob m : rallied.keySet()) if (!dead(m) && !knocked.contains(m)) out.add(m);
+		return out;
+	}
+
+	void buffRallied(net.minecraft.core.Holder<MobEffect> what, int ticks, int amplifier) {
+		for (net.minecraft.world.entity.Mob m : rallied()) effect(m, what, ticks, amplifier);
+	}
+
+	/** Damage to a rallied resident: a blow that would kill knocks it out instead; knocked out, it takes none. */
+	final boolean ralliedDamage(net.minecraft.world.entity.Mob m, net.minecraft.world.damagesource.DamageSource source, float amount) {
+		if (knocked.contains(m)) return false;
+		if (amount < m.getHealth()) return true;
+		knocked.add(m);
+		m.setHealth(1);
+		eu.explorerseden.nicecontrolcenter.games.Aggro.unmake(m);
+		effect(m, net.minecraft.world.effect.MobEffects.SLOWNESS, -1, 4);
+		effect(m, net.minecraft.world.effect.MobEffects.WEAKNESS, -1, 4);
+		level.sendParticles(ParticleTypes.POOF, m.getX(), m.getY() + 0.5, m.getZ(), 12, 0.4, 0.4, 0.4, 0.02);
+		sound(m.position(), net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_KNOCKBACK, 1, 0.8f);
+		return false;
+	}
+
+	/** Every resident calms down and is healed (and a wave mob it took over fights on as before). */
+	private void calm() {
+		for (java.util.Map.Entry<net.minecraft.world.entity.Mob, Boolean> e : rallied.entrySet()) {
+			net.minecraft.world.entity.Mob m = e.getKey();
+			if (m.isRemoved()) continue;
+			m.removeTag(RALLIED);
+			var dmg = m.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+			if (dmg != null) dmg.removeModifier(TAMED);
+			boolean wasKnocked = knocked.contains(m);
+			if (wasKnocked) {
+				m.removeEffect(net.minecraft.world.effect.MobEffects.SLOWNESS);
+				m.removeEffect(net.minecraft.world.effect.MobEffects.WEAKNESS);
+			}
+			if (e.getValue() || wasKnocked) {
+				eu.explorerseden.nicecontrolcenter.games.Aggro.unmake(m);
+				m.setHealth(m.getMaxHealth());
+			}
+		}
+		rallied.clear();
+		knocked.clear();
 	}
 
 	// ---------------------------------------------------------------- making things
@@ -324,7 +419,7 @@ public abstract class BossFight {
 			t.display = spawn("minecraft:item_display", at.x, at.y + 0.5, at.z, "{" + (glow ? "Glowing:1b," : "") + "billboard:\"vertical\",item:{id:\"" + block.substring(5) + "\",count:1},"
 					+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[1.6f,1.6f,1.6f]}}", false, true);
 		} else {
-			t.display = spawn("minecraft:block_display", at.x, at.y, at.z, "{" + (glow ? "Glowing:1b," : "") + "block_state:{Name:\"" + block + "\"},"
+			t.display = spawn("minecraft:block_display", at.x, at.y, at.z, "{" + (glow ? "Glowing:1b," : "") + "block_state:" + blockState(block, "") + ","
 					+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[-0.5f,0f,-0.5f],scale:[1f,1f,1f]}}", false, true);
 		}
 		t.hitbox = (LivingEntity) spawn("minecraft:slime", at.x, at.y, at.z, "{Size:0,NoAI:1b,Silent:1b,PersistenceRequired:1b,DeathLootTable:\"minecraft:empty\","
@@ -472,6 +567,89 @@ public abstract class BossFight {
 	/** An explosion that hurts but breaks nothing. */
 	void blast(Entity from, Vec3 at, float power) {
 		level.explode(from, at.x, at.y, at.z, power, net.minecraft.world.level.Level.ExplosionInteraction.NONE);
+	}
+
+	/**
+	 * A boss villager's data: the profession's look, no trades (no trading window, it only shakes its head), no AI
+	 * of its own (the fight moves it, so it never panics, sleeps or wanders off to work).
+	 */
+	static String villager(String name, String rgb, String profession, int health, double scale) {
+		return "{DeathLootTable:\"minecraft:empty\",PersistenceRequired:1b,NoAI:1b,Xp:1,Offers:{Recipes:[]},VillagerData:{profession:\"minecraft:" + profession + "\",type:\"minecraft:plains\",level:5},"
+				+ "Health:" + health + "f,CustomName:{text:\"" + name + "\",color:\"" + rgb + "\",bold:true},attributes:[{id:\"minecraft:max_health\",base:" + health + "},{id:\"minecraft:scale\",base:" + scale + "},"
+				+ "{id:\"minecraft:knockback_resistance\",base:0.8},{id:\"minecraft:step_height\",base:1.5},{id:\"minecraft:explosion_knockback_resistance\",base:1}]}";
+	}
+
+	/** 26.3 writes block states as {id, properties}, 26.1 and 26.2 as {Name, Properties}: tried once. */
+	private static final boolean NEW_STATES = net.minecraft.world.level.block.state.BlockState.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, parseOr("{id:\"minecraft:stone\"}")).result().isPresent();
+
+	private static CompoundTag parseOr(String snbt) {
+		try {
+			return TagParser.parseCompoundFully(snbt);
+		} catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+			return new CompoundTag();
+		}
+	}
+
+	/** A block state for summon data in this version's shape; {@code props}: "facing:\"up\"" or empty. */
+	static String blockState(String block, String props) {
+		String p = props == null || props.isEmpty() ? "" : (NEW_STATES ? ",properties:{" : ",Properties:{") + props + "}";
+		return (NEW_STATES ? "{id:\"" : "{Name:\"") + block + "\"" + p + "}";
+	}
+
+	/** Turns a body to look at the spot. */
+	static void face(LivingEntity body, Vec3 to) {
+		Vec3 d = to.subtract(body.position());
+		float yaw = (float) (Math.toDegrees(Math.atan2(d.z, d.x)) - 90);
+		body.setYRot(yaw);
+		body.setYHeadRot(yaw);
+		body.setYBodyRot(yaw);
+	}
+
+	/**
+	 * A body without AI of its own (a boss villager: no panic, no sleep, no trading) walks at the player and swings
+	 * when it's in reach (once a second). Returns the squared distance to them.
+	 */
+	double stride(LivingEntity body, ServerPlayer p, double speed, double reach, float damage) {
+		Vec3 d = p.position().subtract(body.position()).multiply(1, 0, 1);
+		face(body, p.position());
+		double reachAt = reach + body.getBbWidth() / 2;
+		if (d.lengthSqr() > reachAt * reachAt * 0.8) body.setDeltaMovement(d.normalize().scale(speed).add(0, body.getDeltaMovement().y, 0));
+		if (ticks % 20 == 0 && d.lengthSqr() <= reachAt * reachAt && damage > 0) {
+			p.hurtServer(level, level.damageSources().mobAttack(body), damage);
+			push(p, (d.lengthSqr() < 0.01 ? body.getLookAngle() : d.normalize()).scale(0.6).add(0, 0.3, 0));
+		}
+		return d.lengthSqr();
+	}
+
+	/**
+	 * A block falling where a ring warned ({@code warn} ticks): players within {@code radius} take {@code damage}
+	 * and {@code then} (null: nothing more); the block is only a display, so it breaks nothing.
+	 */
+	void dropBlock(Vec3 target, String block, int warn, LivingEntity from, double radius, float damage, java.util.function.Consumer<ServerPlayer> then) {
+		Vec3 spot = Vec3.atBottomCenterOf(groundAt(target));
+		net.minecraft.world.level.block.state.BlockState st = BuiltInRegistries.BLOCK.getValue(Identifier.parse(block)).defaultBlockState();
+		for (int t = 0; t < warn; t += 5) later(t, () -> telegraph(spot, radius, new net.minecraft.core.particles.BlockParticleOption(ParticleTypes.BLOCK, st)));
+		Entity d = spawn("minecraft:block_display", spot.x, spot.y + 14, spot.z, "{teleport_duration:14,block_state:" + blockState(block, "") + ",transformation:{left_rotation:[0f,0f,0f,1f],"
+				+ "right_rotation:[0f,0f,0f,1f],translation:[-0.5f,0f,-0.5f],scale:[1f,1f,1f]}}", false, true);
+		later(warn, () -> {
+			if (d != null) d.teleportTo(spot.x, spot.y, spot.z);
+		});
+		later(warn + 14, () -> {
+			if (d != null) d.discard();
+			level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(ParticleTypes.BLOCK, st), spot.x, spot.y + 0.5, spot.z, 30, 0.6, 0.3, 0.6, 0.1);
+			sound(spot, st.getSoundType().getBreakSound(), 2, 0.7f);
+			for (ServerPlayer p : near(spot, radius)) {
+				if (damage > 0) p.hurtServer(level, from == null ? level.damageSources().generic() : level.damageSources().mobAttack(from), damage);
+				if (then != null) then.accept(p);
+			}
+		});
+	}
+
+	/** A block the fight's helpers left (a snow golem's trail): taken away again after {@code ticks}. */
+	void litter(BlockPos pos, int ticks) {
+		BlockPos p = pos.immutable();
+		if (temp.containsKey(p) || level.getBlockState(p).isAir()) return;
+		temp.put(p, new Object[] { this.ticks + ticks, Blocks.AIR.defaultBlockState(), level.getBlockState(p).getBlock() });
 	}
 
 	/** Health share of a body (0–1). */

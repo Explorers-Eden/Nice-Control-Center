@@ -25,7 +25,7 @@ final class FrostWardenFight extends BossFight {
 			+ "drop_chances:{mainhand:0.0,head:0.0},attributes:[{id:\"minecraft:max_health\",base:220},{id:\"minecraft:scale\",base:2.5},{id:\"minecraft:knockback_resistance\",base:0.8},"
 			+ "{id:\"minecraft:follow_range\",base:40},{id:\"minecraft:step_height\",base:2},{id:\"minecraft:explosion_knockback_resistance\",base:1}]}";
 	private static final String STRAY = "{DeathLootTable:\"minecraft:empty\",PersistenceRequired:1b,CustomName:\"Frost Guard\",equipment:{mainhand:{id:\"minecraft:bow\",count:1}},drop_chances:{mainhand:0.0}}";
-	private static final String ICICLE = "{teleport_duration:12,block_state:{Name:\"minecraft:pointed_dripstone\",Properties:{thickness:\"tip\",vertical_direction:\"down\"}},"
+	private static final String ICICLE = "{teleport_duration:12,block_state:" + blockState("minecraft:pointed_dripstone", "thickness:\"tip\",vertical_direction:\"down\"") + ","
 			+ "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],translation:[-0.5f,0f,-0.5f],scale:[1f,1.5f,1f]}}";
 
 	private final LivingEntity warden;

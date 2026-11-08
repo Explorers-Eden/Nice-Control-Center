@@ -25,7 +25,7 @@ final class IronTyrantFight extends BossFight {
 			+ "attributes:[{id:\"minecraft:max_health\",base:300},{id:\"minecraft:scale\",base:2.5},{id:\"minecraft:follow_range\",base:40},{id:\"minecraft:step_height\",base:2},"
 			// Golems hit for half to one and a half times their attack: 8 keeps a hit at 4–11 (vanilla's 15 two-shots anyone).
 			+ "{id:\"minecraft:attack_damage\",base:8},{id:\"minecraft:explosion_knockback_resistance\",base:1}]}";
-	private static final String BOULDER = "{teleport_duration:14,block_state:{Name:\"minecraft:cobblestone\"},transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
+	private static final String BOULDER = "{teleport_duration:14,block_state:" + blockState("minecraft:cobblestone", "") + ",transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
 			+ "translation:[-0.75f,0f,-0.75f],scale:[1.5f,1.5f,1.5f]}}";
 
 	private final LivingEntity tyrant;

@@ -23,7 +23,7 @@ final class RamlordFight extends BossFight {
 	private static final String BODY = "{DeathLootTable:\"minecraft:empty\",PersistenceRequired:1b,Health:160f,CustomName:{text:\"The Ramlord\",color:\"#D9D2C3\",bold:true},"
 			+ "attributes:[{id:\"minecraft:max_health\",base:160},{id:\"minecraft:scale\",base:3},{id:\"minecraft:knockback_resistance\",base:0.9},{id:\"minecraft:step_height\",base:2},"
 			+ "{id:\"minecraft:safe_fall_distance\",base:64},{id:\"minecraft:explosion_knockback_resistance\",base:1}]}";
-	private static final String ROCK = "{teleport_duration:14,block_state:{Name:\"minecraft:stone\"},transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
+	private static final String ROCK = "{teleport_duration:14,block_state:" + blockState("minecraft:stone", "") + ",transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
 			+ "translation:[-0.75f,0f,-0.75f],scale:[1.5f,1.5f,1.5f]}}";
 
 	private final LivingEntity ram;

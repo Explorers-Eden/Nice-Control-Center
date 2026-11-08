@@ -251,6 +251,54 @@ A giant armadillo, 140 health.
 - **Burrow:** every 16 s it vanishes into the ground and comes up 2 seconds later under a marked player: 6 damage, and
   they're thrown up.
 
+### Village bosses
+The village bosses are made for an arena full of villagers and golems: **the village fights on their side**. When the
+fight starts, the villagers, iron golems, copper golems and snow golems inside the fight box join in (without a box,
+those within 32 blocks, but not iron golems a player built).
+- Residents are never killed: a blow that would kill one knocks it out instead. It sits out the rest of the fight and
+  takes no more damage, so the arena keeps its villagers.
+- The village's iron golems hit at 40 % of their usual strength while they fight (vanilla's golem hits two-shot
+  anyone).
+- When the fight is over (won, lost or cleared) every resident calms down and is healed. Mobs that were already wave
+  mobs fight on as before.
+
+### The Village Elder — `ncc:village_elder`
+An old cleric villager, 140 health.
+- **Alarm bell:** at the start and every 30 s he rings the bell: the village joins (newcomers too) and is faster and
+  stronger for 8 seconds.
+- **Bodyguards:** while a golem stands within 4 blocks of him he takes half damage. Pull the golems away first.
+- **Mending prayer:** every 12 s he prays over his most hurt golem for 3 seconds (a green beam), healing it. A
+  player's hit breaks the prayer off.
+- **Potions:** every 7 s a splash potion falls on a player: weakness, then slowness.
+- **At half health:** two Village Guard iron golems join (60 health, hits of 3–9).
+
+### The Master Smith — `ncc:master_smith`
+The village armorer, a big villager, 160 health. He walks up and hits for 5.
+- **Hammer slam:** every 8 s, when someone is close, a ring of anvil dust warns, then everyone within 6 blocks takes 6
+  and is thrown back.
+- **Anvils:** every 10 s anvils fall on three marked spots near players: 7 damage. They break nothing.
+- **Golem forge:** every 20 s he starts a copper block next to him (30 health, glowing). Not broken within 8 seconds,
+  it becomes a Forged Golem that joins the fight. Two at most.
+- **Tempering:** every 25 s his golems (the village's and his own) get resistance for 6 seconds.
+
+### The Grand Librarian — `ncc:grand_librarian`
+A librarian floating 2 blocks up among three enchanted books, 120 health. He keeps 6–10 blocks away.
+- **Books:** while any book circles him he takes only 30 % damage. Each book has 20 health and casts every 5 s:
+  levitation, slowness, or a harming bolt (4). A block in the way stops the spell.
+- **Hush:** every 13 s a ring marks a player's spot, then everyone in it gets weakness and blindness for 3 seconds.
+- **Shelf walls:** every 18 s a bookshelf wall rises across the way to the nearest player, for 8 seconds.
+- **At half health:** his broken books come back, once.
+
+### The Harvest Keeper — `ncc:harvest_keeper`
+The village farmer, a big villager, 150 health. He walks up and hits for 5.
+- **Scarecrows:** three carved pumpkins stand around him (25 health each). While any stands, he mends.
+- **Scythe:** every 7 s, when someone is close, sweeps warn in front of him, then everyone in front within 7 blocks
+  takes 6.
+- **Hay bales:** every 9 s hay falls on every player's spot after a warning: 4 damage, slowness, a knock.
+- **Field helpers:** two snow golems to start, up to four (a new one every 20 s). Their snow melts again.
+- **Supper:** every 30 s he sits down to eat for 3 seconds. He heals a little, but takes double damage while he
+  eats.
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't

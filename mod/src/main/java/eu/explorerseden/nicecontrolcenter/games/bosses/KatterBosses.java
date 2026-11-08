@@ -32,7 +32,8 @@ public final class KatterBosses {
 			"purpur_sentinel", "cinder_lord", "weeping_ghast", "dire_alpha",
 			"heartwood_creaking", "abyssal_eye", "rotting_giant", "arch_evoker",
 			"oxidized_engine", "ramlord", "llama_matriarch", "panda_grandmaster",
-			"trickster_fox", "glacier_bear", "elder_sniffer", "shellguard");
+			"trickster_fox", "glacier_bear", "elder_sniffer", "shellguard",
+			"village_elder", "master_smith", "grand_librarian", "harvest_keeper");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -102,14 +103,15 @@ public final class KatterBosses {
 			if (f == null || f.over || f.applying) return true;
 			// (/kill and the void always go through.)
 			if (source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+			if (entity instanceof net.minecraft.world.entity.Mob m && f.rallied.containsKey(m)) return f.ralliedDamage(m, source, amount);
 			return f.allowDamage(entity, source, amount);
 		});
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			BossFight f = owner.get(entity.getUUID());
-			if (f != null && !f.over) f.damaged(entity, source, taken);
+			if (f != null && !f.over && !(entity instanceof net.minecraft.world.entity.Mob m && f.rallied.containsKey(m))) f.damaged(entity, source, taken);
 			if (entity instanceof ServerPlayer p && source.getEntity() != null) {
 				BossFight by = owner.get(source.getEntity().getUUID());
-				if (by != null && !by.over) by.hit(p, source.getEntity());
+				if (by != null && !by.over && !(source.getEntity() instanceof net.minecraft.world.entity.Mob m && by.rallied.containsKey(m))) by.hit(p, source.getEntity());
 			}
 		});
 		// Nothing drops: what fell this tick next to a dying piece goes.
@@ -208,6 +210,10 @@ public final class KatterBosses {
 			case "ncc_glacier_bear" -> new GlacierBearFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_elder_sniffer" -> new ElderSnifferFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_shellguard" -> new ShellguardFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_village_elder" -> new VillageElderFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_master_smith" -> new MasterSmithFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_grand_librarian" -> new GrandLibrarianFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_harvest_keeper" -> new HarvestKeeperFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 	}
@@ -250,6 +256,10 @@ public final class KatterBosses {
 			case "ncc_glacier_bear" -> "The Glacier Bear";
 			case "ncc_elder_sniffer" -> "The Elder Sniffer";
 			case "ncc_shellguard" -> "The Shellguard";
+			case "ncc_village_elder" -> "The Village Elder";
+			case "ncc_master_smith" -> "The Master Smith";
+			case "ncc_grand_librarian" -> "The Grand Librarian";
+			case "ncc_harvest_keeper" -> "The Harvest Keeper";
 			default -> "Magus Theron the Betrayer";
 		};
 	}
