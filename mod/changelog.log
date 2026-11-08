@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.104.1
+- Games: tiny slimes hurt players too in wave arenas, dungeons and other games' boxes (vanilla lets only bigger slimes deal damage; tiny magma cubes already did)
 ## 1.104.0
 - Wave arenas: /game try <arena> by a player starts a game with only them in it (party size doesn't matter); /game leave ends it and takes them out. Before, it started the waves with nobody in it, so /game leave did nothing (from the console it still runs with nobody in it)
 - Wave arenas: /game leave while queued also takes you out of the spectator area you waited in (it only took you out of the queue)

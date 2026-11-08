@@ -66,6 +66,16 @@ public final class Aggro {
 		if (!added.isEmpty()) given.computeIfAbsent(m, k -> new java.util.ArrayList<>()).addAll(added);
 	}
 
+	/**
+	 * Tiny slimes deal no damage in vanilla; in games they do (tiny magma cubes always did): game mobs (an "ncc_" tag),
+	 * and any slime inside a game's box or in the dungeon dimension (split-off slimes may not carry the tags).
+	 */
+	public static boolean gameMob(net.minecraft.world.entity.Entity e) {
+		if (e.entityTags().stream().anyMatch(t -> t.startsWith("ncc_"))) return true;
+		if (e.level().dimension().identifier().toString().equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)) return true;
+		return GameRuntime.inArenaBox(e.level(), e.blockPosition());
+	}
+
 	/** Already turned by {@link #make} (a wave mob, or a resident a boss rallied). */
 	public static boolean made(Mob m) {
 		return done.contains(m);
