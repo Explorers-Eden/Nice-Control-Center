@@ -299,6 +299,45 @@ The village farmer, a big villager, 150 health. He walks up and hits for 5.
 - **Supper:** every 30 s he sits down to eat for 3 seconds. He heals a little, but takes double damage while he
   eats.
 
+### Pillager bosses
+Made for a pillager arena. Their raiders never join a real raid.
+
+### The Raid Captain — `ncc:raid_captain`
+A big pillager with a crossbow and the ominous banner on his head, 140 health.
+- **War banner:** a banner stands 5 blocks from him (40 health, glowing). While it stands, he and every raider within
+  24 blocks of it are stronger.
+- **Raid horn:** every 25 s he sounds the horn and three pillagers and a vindicator join (eight helpers at most).
+- **Rockets:** every 9 s up to three players' spots are marked, and a rocket arcs to each: 6 damage within 2 blocks.
+- **At 30 %:** his last raiders come: two vindicators and two vexes.
+
+### The Headsman — `ncc:headsman`
+A giant vindicator with an iron axe, 160 health. His hits do 6.
+- **Shield breaker:** a blocked hit knocks the shield out of use for 5 seconds.
+- **Axe spin:** every 8 s, when someone is close, a ring warns, then everyone within 4.5 blocks takes 6 and is
+  thrown out.
+- **Leap:** every 9 s he jumps at someone 6–16 blocks off, onto a marked spot: 7 within 3.5 blocks when he lands.
+- **Execution:** every 15 s he marks the player with the lowest health (they glow). For 5 seconds he goes only for
+  them, with a much stronger axe. The others break it by doing him 12 damage.
+- **Below 30 %:** frenzy: faster, stronger, and he spins and leaps more often.
+
+### The Siege Engineer — `ncc:siege_engineer`
+A big pillager with a crossbow and a TNT block on his head, 130 health.
+- **Ballista:** a dispenser 5 blocks from him (30 health, glowing) fires five arrows at the nearest player every 3 s
+  until it's broken. At half health he builds a new one, once.
+- **Mortar:** every 9 s TNT falls on two marked players' spots and goes off. It breaks nothing.
+- **Caltrops:** every 12 s cobwebs appear around a player for 5 seconds.
+- **Barricade:** when someone comes within 4 blocks he fences himself in for 6 seconds (every 15 s at most).
+
+### The Beastmaster — `ncc:beastmaster`
+A pillager (120 health) riding his ravager, Gorehorn (100 health, hits of 6). **Both must fall.**
+- **Charge:** every 9 s a line is marked, then the ravager charges along it: 7 damage and a hard knock.
+- **Roar:** every 12 s, when someone is close, a ring warns, then everyone within 5 blocks takes 4, is thrown back,
+  and is slowed and weakened for 2 seconds.
+- **The Beastmaster** shoots his crossbow from the saddle.
+- **Gorehorn falls first:** he fights on foot, faster and stronger. Two War Hounds join at once, then two more
+  every 15 s (four at most), and every 8 s he snares a player (a cobweb at their feet, slowness).
+- **He falls first:** Gorehorn goes berserk: faster, and it charges every 6 s.
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't

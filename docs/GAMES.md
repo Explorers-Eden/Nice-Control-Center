@@ -120,7 +120,7 @@ A party of 1–4 (see Parties) fights waves of mobs.
   `ncc:panda_grandmaster` (rolls, sneezes, bamboo rings, a snack break for double damage), `ncc:trickster_fox` (copies,
   blinks, pounces, snatches what you hold for a moment), `ncc:glacier_bear` (with cubs: enraged when a cub is hurt,
   ice slides, roars), `ncc:elder_sniffer` (goes for whoever keeps farthest away: buried mines, thornbush walls, seed
-  turrets) `ncc:shellguard` (an armadillo that curls up after quick hits, rolls, burrows), and the village bosses `ncc:village_elder`, `ncc:master_smith`, `ncc:grand_librarian` and `ncc:harvest_keeper` (the arena's own villagers and golems fight for them; knocked out, never killed). Every boss is described in
+  turrets) `ncc:shellguard` (an armadillo that curls up after quick hits, rolls, burrows), and the village bosses `ncc:village_elder`, `ncc:master_smith`, `ncc:grand_librarian` and `ncc:harvest_keeper` (the arena's own villagers and golems fight for them; knocked out, never killed), and the pillager bosses `ncc:raid_captain`, `ncc:headsman`, `ncc:siege_engineer` and `ncc:beastmaster`. Every boss is described in
   `BOSSES.md`. Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,

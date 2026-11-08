@@ -1232,16 +1232,13 @@ public final class GameRuntime {
 				// A Katters boss right here, to see it fight (gone again with /game boss clear, or the next restart).
 				.then(Commands.literal("boss").requires(admin)
 						.then(Commands.literal("clear").executes(ctx -> {
-							int n = 0;
+							// Collected first: discarding while walking the level's entities can throw halfway.
+							List<net.minecraft.world.entity.Entity> found = new java.util.ArrayList<>();
 							for (ServerLevel l : ctx.getSource().getServer().getAllLevels()) {
-								for (net.minecraft.world.entity.Entity e : l.getAllEntities()) {
-									if (e.entityTags().contains(BOSS_TRY)) {
-										e.discard();
-										n++;
-									}
-								}
+								for (net.minecraft.world.entity.Entity e : l.getAllEntities()) if (e.entityTags().contains(BOSS_TRY)) found.add(e);
 							}
-							int gone = n;
+							for (net.minecraft.world.entity.Entity e : found) if (!e.isRemoved()) e.discard();
+							int gone = found.size();
 							ctx.getSource().sendSuccess(() -> Words.lit(gone + " boss pieces taken away."), true);
 							return gone;
 						}))

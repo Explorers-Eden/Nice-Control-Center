@@ -33,7 +33,8 @@ public final class KatterBosses {
 			"heartwood_creaking", "abyssal_eye", "rotting_giant", "arch_evoker",
 			"oxidized_engine", "ramlord", "llama_matriarch", "panda_grandmaster",
 			"trickster_fox", "glacier_bear", "elder_sniffer", "shellguard",
-			"village_elder", "master_smith", "grand_librarian", "harvest_keeper");
+			"village_elder", "master_smith", "grand_librarian", "harvest_keeper",
+			"raid_captain", "headsman", "siege_engineer", "beastmaster");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -214,6 +215,10 @@ public final class KatterBosses {
 			case "ncc_master_smith" -> new MasterSmithFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_grand_librarian" -> new GrandLibrarianFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_harvest_keeper" -> new HarvestKeeperFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_raid_captain" -> new RaidCaptainFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_headsman" -> new HeadsmanFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_siege_engineer" -> new SiegeEngineerFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_beastmaster" -> new BeastmasterFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 	}
@@ -260,6 +265,10 @@ public final class KatterBosses {
 			case "ncc_master_smith" -> "The Master Smith";
 			case "ncc_grand_librarian" -> "The Grand Librarian";
 			case "ncc_harvest_keeper" -> "The Harvest Keeper";
+			case "ncc_raid_captain" -> "The Raid Captain";
+			case "ncc_headsman" -> "The Headsman";
+			case "ncc_siege_engineer" -> "The Siege Engineer";
+			case "ncc_beastmaster" -> "The Beastmaster";
 			default -> "Magus Theron the Betrayer";
 		};
 	}
