@@ -109,6 +109,7 @@ final class GamesRoutes {
 				a.spectateRadius = was.spectateRadius;
 				a.spectateMin = was.spectateMin;
 				a.spectateMax = was.spectateMax;
+				a.spectateSpawns = was.spectateSpawns;
 				// Placed in game (also while the page was open): only what the page deleted goes.
 				a.exitPads = minus(was.exitPads, a.id, "exitPads", gone);
 				a.entrances = minus(was.entrances, a.id, "entrances", gone);

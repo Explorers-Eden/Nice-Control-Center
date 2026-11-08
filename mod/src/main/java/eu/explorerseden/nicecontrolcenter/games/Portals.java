@@ -196,7 +196,7 @@ public final class Portals {
 			return;
 		}
 		cameFrom.put(p.getUUID(), new Games.Pos(dim(p), p.getX(), p.getY(), p.getZ(), p.getYRot()));
-		to(server, p, a.spectate);
+		to(server, p, a.spectateSpot());
 		p.sendSystemMessage(Words.lit("Watching " + a.shown() + ". A back point takes you out again.").withStyle(ChatFormatting.AQUA));
 	}
 

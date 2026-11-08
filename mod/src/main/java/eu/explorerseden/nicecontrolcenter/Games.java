@@ -226,6 +226,15 @@ public final class Games {
 		/** Optional: the spectator area as a box (two corners, height included) instead of the radius. */
 		public Pos spectateMin;
 		public Pos spectateMax;
+		/** Optional: where players appear in the spectator area (a random one); none: the spectator point. */
+		public List<Pos> spectateSpawns = new ArrayList<>();
+
+		/** Where a player is put in the spectator area: a random spectator spawn, else the spectator point. */
+		public Pos spectateSpot() {
+			if (spectateSpawns == null || spectateSpawns.isEmpty() || spectate == null) return spectate;
+			List<Pos> same = spectateSpawns.stream().filter(p -> p.dim.equals(spectate.dim)).toList();
+			return same.isEmpty() ? spectate : same.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(same.size()));
+		}
 		/** Back points: inside a game, standing on one for 5 seconds leaves it; elsewhere it takes players back where they came from. */
 		public List<Pos> exitPads = new ArrayList<>();
 		public int minParty = 1;
@@ -470,6 +479,7 @@ public final class Games {
 				if (a.winnerCommands == null) a.winnerCommands = new ArrayList<>();
 				if (a.mobSpawns == null) a.mobSpawns = new ArrayList<>();
 				if (a.exitPads == null) a.exitPads = new ArrayList<>();
+				if (a.spectateSpawns == null) a.spectateSpawns = new ArrayList<>();
 				a.spectateRadius = Math.max(2, Math.min(64, a.spectateRadius));
 				a.minParty = Math.max(1, Math.min(4, a.minParty));
 				a.maxParty = Math.max(a.minParty, Math.min(4, a.maxParty));

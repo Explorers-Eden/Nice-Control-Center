@@ -2266,7 +2266,7 @@
       ok(!!box, box ? `Fight box ${box} (${p(a.areaMin)} → ${p(a.areaMax)})` : 'Fight box (two corners, height included):', box ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
       ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'} (${['melee', 'ranged', 'boss', ''].map((k) => [k || 'any', a.mobSpawns.filter((m) => (m.kind || '') === k).length]).filter(([, c]) => c).map(([k, c]) => `${k} ${c}`).join(', ')})` : 'Mob spawns:',
         `/game edit ${n} mobspawn add [melee|ranged|boss]`),
-      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}` : 'Spectator area (optional; without it the dead watch a teammate), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}${gmSpecSpawns(a)}` : 'Spectator area (optional; without it the dead watch a teammate), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
       ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks${(a.moreKits || []).length ? ` (+${a.moreKits.length} more kit${a.moreKits.length === 1 ? '' : 's'}: a random one each)` : ''}` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit` + ' (more: kit add)'),
     ].join('')}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (wave 1 with nobody in it).</p>`;
@@ -2309,6 +2309,12 @@
       <small class="pn-hint">One per line, like <code>/summon</code>: the mob, <code>x3</code> for several, its NBT in <code>{…}</code>${o.nbt ? ` (${o.nbt})` : ''}; or an NPC from the NPCs page${npcs ? `: ${npcs}` : ' (<code>npc:name</code>)'}.${o.hint ? ' ' + o.hint : ''}</small></label>`
       + (o.count ? field('maxAlive', o.count, num('maxAlive', 1, 200)) : '')
       + (o.peaceful === false ? '' : field('peacefulFight', 'Peaceful and neutral mobs', `<select data-g="peacefulFight" data-bool="1"><option value="true" ${a.peacefulFight !== false ? 'selected' : ''}>attack players too</option><option value="false" ${a.peacefulFight === false ? 'selected' : ''}>stay as they are</option></select>`));
+  }
+
+  /** Its spectator spawns (players appear on a random one), or how to add them. */
+  function gmSpecSpawns(a) {
+    const n = (a.spectateSpawns || []).length;
+    return n ? ` · ${n} spectator spawn${n === 1 ? '' : 's'} (players appear on a random one)` : ` · spawn points inside it optional: <code>/game edit ${esc(a.name)} spectate spawn add</code>`;
   }
 
   /** The spectator area's size: its box (spectate corner1 / corner2) or its radius. */
@@ -2364,7 +2370,7 @@
       a.type === 'chef' ? ok((a.chefStations || []).length > 0, (a.chefStations || []).length ? `${a.chefStations.length} supply chest${a.chefStations.length === 1 ? '' : 's'} (filled with what they held when set; again: station add)` : 'Supply chests (fill a chest with ingredients, look at it):', `/game edit ${n} station add`) : '',
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
-      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here`
+      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here${gmSpecSpawns(a)}`
         : 'Spectator area (optional; where the queue for the next round waits and players who are out watch), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
     ].join('');
     const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)',

@@ -260,6 +260,8 @@ public final class ClaimProtection {
 	}
 
 	public static boolean explosionAllowed(Level level, BlockPos pos) {
+		// Game arenas never get blown up (creepers in a wave arena), claimed or not.
+		if (eu.explorerseden.nicecontrolcenter.games.GameRuntime.inArenaBox(level, pos)) return false;
 		if (!ClaimStore.enabled()) return true;
 		Claim c = ClaimStore.claimAt(level, pos);
 		return c == null || c.flags.explosions;

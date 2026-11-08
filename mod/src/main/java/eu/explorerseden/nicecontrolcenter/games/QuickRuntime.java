@@ -1352,7 +1352,7 @@ public final class QuickRuntime {
 
 	/** To the spectator area (false when its dimension is gone). */
 	private static boolean toSpectate(MinecraftServer server, Arena a, ServerPlayer p) {
-		Games.Pos s = a.spectate;
+		Games.Pos s = a.spectateSpot();
 		ServerLevel level = s == null ? null : GameRuntime.levelOf(server, s.dim);
 		if (level == null || !p.isAlive()) return false;
 		p.teleportTo(level, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);

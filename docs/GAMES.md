@@ -15,7 +15,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
    Particles, the name and the top 3 float above it; stepping in for a second takes players to the game.
 5. **Watch points** (to the spectator area): `/game edit <name> spectate [radius]` where players are put, or a box:
    `/game edit <name> spectate corner1` and `spectate corner2` (players may move anywhere inside it); then
-   `/game edit <name> watch add` in the hub. `spectate clear` removes the area.
+   `/game edit <name> watch add` in the hub. `spectate clear` removes the area. Optional spawn points inside it:
+   `/game edit <name> spectate spawn add` (several; players appear on a random one instead of the spectator point;
+   `spectate spawn remove` takes the one within 3 blocks, `spectate spawn clear` all).
 6. **Back points** (the way out of the spectator area): `/game edit <name> back add`.
 7. Points take `remove` (the nearest within 5 blocks) and `clear`, e.g. `/game edit <name> entrance remove`.
    The panel lists them all and can take them away too.
@@ -37,7 +39,11 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 12. **Mobs** (wave fights, ghast deflect, colour floor, snowball gallery, maze): one mob pool, the same everywhere, one line per mob
     like `/summon`: `zombie`, `skeleton x2`, `husk {equipment:{mainhand:{id:"minecraft:iron_sword",count:1}}}`, or an NPC
     `npc:knight`; plus how many at once and whether peaceful mobs fight.
-13. Try a game: `/game try <name>` (wave fights and quick rounds). Scores: `/game top <name>`.
+13. Try a game: `/game try <name>` (wave fights and quick rounds): you play it alone (party size doesn't matter), and
+    `/game leave` ends it. From the console a wave arena runs with nobody in it for 3 minutes. Scores:
+    `/game top <name>`.
+
+Explosions (creepers and the like) break no blocks inside any game's box, whether it lies in a claim or not.
 
 Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.

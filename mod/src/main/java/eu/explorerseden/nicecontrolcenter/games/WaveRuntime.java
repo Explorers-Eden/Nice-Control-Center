@@ -202,7 +202,29 @@ public final class WaveRuntime {
 			out(server, g, p, "You left " + g.arena.shown() + ".");
 			return true;
 		}
-		return unqueue(p.getUUID());
+		// Queued: out of the queue, and away from the spectator area they waited in.
+		Arena waitedIn = waitingIn(p);
+		if (!unqueue(p.getUUID())) return false;
+		p.sendSystemMessage(Words.lit("You left the queue.").withStyle(ChatFormatting.GRAY));
+		if (waitedIn != null) finishFor(server, waitedIn, p);
+		return true;
+	}
+
+	/** The wave arena whose spectator area they stand in (null: none). */
+	private static Arena waitingIn(ServerPlayer p) {
+		for (Arena a : GameRuntime.settings().arenas) {
+			if (a.type.equals("waves") && a.spectate != null && Games.inSpectate(a, dim(p), p.getX(), p.getY(), p.getZ(), 2)) return a;
+		}
+		return null;
+	}
+
+	/** /game try by a player: a game with only them in it (party size ignored); it ends when they leave or fall. */
+	public static String tryOut(MinecraftServer server, Arena a, ServerPlayer p) {
+		if (playing.containsKey(p.getUUID()) || QuickRuntime.inGame(p) || GameRuntime.inRun(p)) return "You're already in a game: /game leave first.";
+		unqueue(p.getUUID());
+		String err = start(server, a, List.of(p));
+		if (err == null) NiceControlCenter.LOGGER.info("Games: wave arena {} tried by {}", a.name, p.getGameProfile().name());
+		return err;
 	}
 
 	/** /game try: wave 1 with nobody in it (for testing the arena); it ends after three minutes. */
@@ -335,7 +357,8 @@ public final class WaveRuntime {
 		q.add(party.stream().map(ServerPlayer::getUUID).toList());
 		ServerLevel level = a.spectate == null ? null : GameRuntime.levelOf(server, a.spectate.dim);
 		for (ServerPlayer m : party) {
-			if (level != null) m.teleportTo(level, a.spectate.x, a.spectate.y, a.spectate.z, Set.of(), a.spectate.yaw, 0, true);
+			Games.Pos s = a.spectateSpot();
+			if (level != null) m.teleportTo(level, s.x, GameRuntime.freeY(level, m, s.x, s.y, s.z), s.z, Set.of(), s.yaw, 0, true);
 			m.sendSystemMessage(Words.lit("A game is running in " + a.shown() + ": you're number " + q.size() + " in the queue"
 					+ (level != null ? ". Wait here." : ".") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
 		}
@@ -525,7 +548,8 @@ public final class WaveRuntime {
 		ServerLevel level = wait == null ? null : GameRuntime.levelOf(server, wait.spectate.dim);
 		for (ServerPlayer m : party) {
 			if (level != null) {
-				m.teleportTo(level, wait.spectate.x, GameRuntime.freeY(level, m, wait.spectate.x, wait.spectate.y, wait.spectate.z), wait.spectate.z, Set.of(), wait.spectate.yaw, 0, true);
+				Games.Pos s = wait.spectateSpot();
+				m.teleportTo(level, s.x, GameRuntime.freeY(level, m, s.x, s.y, s.z), s.z, Set.of(), s.yaw, 0, true);
 				m.resetFallDistance();
 			}
 			m.sendSystemMessage(Words.lit("Every arena of " + pool + " is busy: you're number " + q.size() + " in the queue and play in the first one that's free"
@@ -675,7 +699,7 @@ public final class WaveRuntime {
 		for (UUID id : g.down) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p == null || !p.isAlive() || g.watching.containsKey(id) || g.arena.spectate == null) continue;
-			Games.Pos s = g.arena.spectate;
+			Games.Pos s = g.arena.spectateSpot();
 			if (!Games.inSpectate(g.arena, dim(p), p.getX(), p.getY(), p.getZ(), 1)) {
 				ServerLevel sl = GameRuntime.levelOf(server, s.dim);
 				if (sl != null) p.teleportTo(sl, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);
@@ -887,7 +911,8 @@ public final class WaveRuntime {
 		if (g.arena.spectate != null) {
 			ServerLevel level = GameRuntime.levelOf(server, g.arena.spectate.dim);
 			if (level != null) {
-				p.teleportTo(level, g.arena.spectate.x, g.arena.spectate.y, g.arena.spectate.z, Set.of(), g.arena.spectate.yaw, 0, true);
+				Games.Pos s = g.arena.spectateSpot();
+				p.teleportTo(level, s.x, s.y, s.z, Set.of(), s.yaw, 0, true);
 				p.sendSystemMessage(Words.lit("Wait here for the next wave (an exit pad takes you out).").withStyle(ChatFormatting.GRAY));
 				return;
 			}

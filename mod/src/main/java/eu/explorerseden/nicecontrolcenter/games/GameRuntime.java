@@ -1263,6 +1263,12 @@ public final class GameRuntime {
 						return 1;
 					}
 					if (a == null || !a.type.equals("waves")) return fail(ctx, "Only wave arenas and quick rounds can be tried.");
+					if (ctx.getSource().getEntity() instanceof ServerPlayer self) {
+						String err = WaveRuntime.tryOut(ctx.getSource().getServer(), a, self);
+						if (err != null) return fail(ctx, err);
+						ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": a game with only you in it; /game leave ends it."), true);
+						return 1;
+					}
 					String err = WaveRuntime.trial(ctx.getSource().getServer(), a);
 					if (err != null) return fail(ctx, err);
 					ctx.getSource().sendSuccess(() -> Words.lit(a.shown() + ": wave 1 comes in 3 seconds with nobody in it; it ends in 3 minutes."), true);
@@ -1324,10 +1330,32 @@ public final class GameRuntime {
 										.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(ctx -> spectateCorner(ctx, true))))
 								.then(Commands.literal("corner2").executes(ctx -> spectateCorner(ctx, false))
 										.then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos()).executes(ctx -> spectateCorner(ctx, false))))
+								// Optional spawn points inside it: players appear on a random one.
+								.then(Commands.literal("spawn")
+										.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
+											if (a.spectate == null) return "Set the spectator area first: /game edit " + a.name + " spectate.";
+											Games.Pos at = pos(p);
+											if (!at.dim.equals(a.spectate.dim)) return "Spectator spawns go in the spectator area's dimension.";
+											a.spectateSpawns.add(at);
+											return "Spectator spawn " + a.spectateSpawns.size() + " here: players appear on a random one" + (Games.inSpectate(a, at.dim, at.x, at.y, at.z, 0) ? "." : " (this one is outside the spectator area: they'd be put back in it).");
+										})))
+										.then(Commands.literal("remove").executes(ctx -> edit(ctx, (a, p) -> {
+											Games.Pos at = pos(p);
+											Games.Pos best = null;
+											for (Games.Pos s : a.spectateSpawns) if (s.dim.equals(at.dim) && (best == null || dist2(s, at) < dist2(best, at))) best = s;
+											if (best == null || dist2(best, at) > 9) return "No spectator spawn within 3 blocks.";
+											a.spectateSpawns.remove(best);
+											return "Spectator spawn removed (" + a.spectateSpawns.size() + " left" + (a.spectateSpawns.isEmpty() ? ": players appear on the spectator point again" : "") + ").";
+										})))
+										.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+											a.spectateSpawns.clear();
+											return "No spectator spawns: players appear on the spectator point.";
+										}))))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
 									a.spectate = null;
 									a.spectateMin = null;
 									a.spectateMax = null;
+									a.spectateSpawns.clear();
 									return Games.quick(a.type) ? "No spectator area: players who step on the pad during a round are queued for the next one where they are, players who are out go back to the pad."
 										: "No spectator area: the dead watch a teammate, queued parties wait where they are.";
 								}))))
@@ -1515,6 +1543,25 @@ public final class GameRuntime {
 
 	private interface Edit {
 		String apply(Arena a, ServerPlayer p);
+	}
+
+	/** Inside a game arena's box (any type, on or off): explosions break nothing there. */
+	public static boolean inArenaBox(net.minecraft.world.level.Level level, BlockPos pos) {
+		Games.Settings s = settings;
+		if (s == null || s.arenas.isEmpty()) return false;
+		String dim = level.dimension().identifier().toString();
+		for (Arena a : s.arenas) {
+			Games.Pos lo = a.areaMin, hi = a.areaMax;
+			if (lo == null || hi == null || !lo.dim.equals(dim) || !hi.dim.equals(dim)) continue;
+			if (pos.getX() >= Math.min(lo.x, hi.x) && pos.getX() <= Math.max(lo.x, hi.x) && pos.getY() >= Math.min(lo.y, hi.y) && pos.getY() <= Math.max(lo.y, hi.y)
+					&& pos.getZ() >= Math.min(lo.z, hi.z) && pos.getZ() <= Math.max(lo.z, hi.z)) return true;
+		}
+		return false;
+	}
+
+	private static double dist2(Games.Pos a, Games.Pos b) {
+		double x = a.x - b.x, y = a.y - b.y, z = a.z - b.z;
+		return x * x + y * y + z * z;
 	}
 
 	private static int edit(CommandContext<CommandSourceStack> ctx, Edit e) throws CommandSyntaxException {

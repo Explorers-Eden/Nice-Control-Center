@@ -33,7 +33,7 @@ public abstract class ClaimExplosionMixin {
 	}
 
 	private List<BlockPos> filter(List<BlockPos> blocks) {
-		if (!ClaimStore.enabled() || blocks.isEmpty()) return blocks;
+		if (blocks.isEmpty()) return blocks;
 		boolean any = false;
 		for (BlockPos p : blocks) {
 			if (!ClaimProtection.explosionAllowed(level, p)) {
