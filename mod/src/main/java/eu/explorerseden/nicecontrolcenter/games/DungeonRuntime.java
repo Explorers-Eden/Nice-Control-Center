@@ -632,7 +632,7 @@ public final class DungeonRuntime {
 		if (t % 20 == 0) {
 			AABB box = new AABB(r.min.getX(), r.min.getY(), r.min.getZ(), r.max.getX() + 1, r.max.getY() + 1, r.max.getZ() + 1);
 			for (net.minecraft.world.entity.Mob m : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box, e -> e.isAlive())) {
-				if (r.dungeon.peacefulFight || Aggro.landShy(m)) Aggro.make(m, 3f);
+				if (r.dungeon.peacefulFight || Aggro.hostile(m)) Aggro.make(m, 3f);
 			}
 		}
 		if (r.state != State.RUNNING) return;

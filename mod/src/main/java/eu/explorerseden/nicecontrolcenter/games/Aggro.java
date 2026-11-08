@@ -46,6 +46,14 @@ public final class Aggro {
 	 * Monsters that leave players alone on land: drowned only go after targets in water or at night (and head for water
 	 * by day). In games they're always handed to {@link #make}, whatever the peaceful-mobs switch says.
 	 */
+	/**
+	 * Hostile mobs: in games they always fight, whatever the peaceful-mobs switch says; the ones that hold back in
+	 * vanilla are handed to {@link #make} (spiders by day, endermen, zombified piglins, drowned on land).
+	 */
+	public static boolean hostile(Mob m) {
+		return m instanceof Enemy;
+	}
+
 	public static boolean landShy(Mob m) {
 		return m instanceof net.minecraft.world.entity.monster.zombie.Drowned;
 	}
@@ -109,9 +117,19 @@ public final class Aggro {
 			else if (m instanceof PathfinderMob walker) acc.nicecontrolcenter$goals().addGoal(0, new Charge(walker, damage, true));
 			return;
 		}
+		// Spiders leave players alone in daylight: they get players as targets any time (their own bite does the rest).
+		if (m instanceof net.minecraft.world.entity.monster.spider.Spider) {
+			if (done.add(m)) ((MobGoalsAccessor) m).nicecontrolcenter$targets().addGoal(0, new NearestAttackableTargetGoal<>(m, Player.class, false));
+			return;
+		}
 		if (m instanceof Enemy && !(m instanceof NeutralMob)) return;
 		if (!done.add(m)) return;
 		MobGoalsAccessor acc = (MobGoalsAccessor) m;
+		// Cube mobs that don't fight in vanilla (the sulfur cube): they hop at players with the slimes' own attack.
+		if (eu.explorerseden.nicecontrolcenter.compat.CubeMobs.arm(m)) {
+			acc.nicecontrolcenter$targets().addGoal(0, new NearestAttackableTargetGoal<>(m, Player.class, false));
+			return;
+		}
 		acc.nicecontrolcenter$targets().addGoal(0, new NearestAttackableTargetGoal<>(m, Player.class, false));
 		acc.nicecontrolcenter$goals().addGoal(0, new Anger(m));
 		boolean ownAttack = m.getAttribute(Attributes.ATTACK_DAMAGE) != null;

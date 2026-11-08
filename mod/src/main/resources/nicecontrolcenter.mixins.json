@@ -80,6 +80,7 @@
 		"ClaimEndermanLeaveMixin",
 		"ClaimEndermanTakeMixin",
 		"GameTinySlimeMixin",
+		"GameSulfurCubeMixin",
 		"ClaimExplosionEntityMixin",
 		"ClaimExplosionMixin",
 		"ClaimFarmlandMixin",

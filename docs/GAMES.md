@@ -91,7 +91,9 @@ A party of 1–4 (see Parties) fights waves of mobs.
   `kit` (what you carry becomes the kit; `kit add` adds another one, and each player then gets one of the kits at
   random; `kit clear` removes them).
 - Panel: waves to clear (0 = endless), mob pool, wave sizes, boss waves (every … waves the boss comes alone; a list, picked at random or in order), toughness, hand-written waves, team lives,
-  peaceful and neutral mobs attacking too (on by default), commands after each wave (`{wave}`).
+  peaceful and neutral mobs attacking too (on by default; sulfur cubes too), commands after each wave (`{wave}`).
+  Hostile mobs always attack in games, also those that hold back elsewhere: spiders by day, endermen, zombified
+  piglins, tiny slimes.
 - **Arena pools**: wave arenas can share a pool (`/game edit <name> pool <pool>`, `none` takes it out; or the panel
   field). A pool entrance (`/game pool <pool> entrance add`, `remove` the nearest, `clear`; `/game pool list`) starts
   a free arena of the pool for the party leader and their party close by, not the one they played last when there's

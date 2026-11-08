@@ -170,7 +170,8 @@ Per dungeon on the panel's Dungeons page:
   out can watch as spectators.
 - **Time limit** in minutes (0 = none).
 - **Cleared when**: reaching an exit, or every boss dead.
-- **Peaceful mobs fight**: cows, villagers, golems… attack players too (on by default).
+- **Peaceful mobs fight**: cows, villagers, golems, sulfur cubes… attack players too (on by default). Hostile mobs
+  always attack, also those that hold back elsewhere (spiders by day, endermen, zombified piglins, tiny slimes).
 - **Messages** on entering, while it's being prepared, when cleared and when failed. Placeholders: `{player}`,
   `{party}`, `{dungeon}`, `{time}`.
 - **Commands** run once per player on entering and when leaving (without `/`, same placeholders).

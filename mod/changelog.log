@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.104.2
+- Games: hostile mobs always attack, whatever the "peaceful mobs fight" switch says: spiders by day, endermen and zombified piglins too (before, they only fought with the switch on, spiders not even then)
+- Games (26.3): with "peaceful mobs fight" on, sulfur cubes hop at players and hurt on touch like slimes
 ## 1.104.1
 - Games: tiny slimes hurt players too in wave arenas, dungeons and other games' boxes (vanilla lets only bigger slimes deal damage; tiny magma cubes already did)
 ## 1.104.0

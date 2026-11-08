@@ -719,7 +719,7 @@ public final class WaveRuntime {
 			// (Katters bosses keep their own health: their phases go by it.)
 			if (!m.entityTags().contains(SCALED) && !m.entityTags().contains(BossFight.TAG)) toughen(g, m);
 			// Peaceful and neutral mobs fight too (3 damage, tougher each wave like the rest).
-			if (m instanceof Mob mob && (g.arena.peacefulFight || Aggro.landShy(mob))) Aggro.make(mob, 3f * (1 + g.arena.toughness / 100f * (g.wave - 1)));
+			if (m instanceof Mob mob && (g.arena.peacefulFight || Aggro.hostile(mob))) Aggro.make(mob, 3f * (1 + g.arena.toughness / 100f * (g.wave - 1)));
 		}
 		// A few at a time, up to the cap of mobs alive at once.
 		int room = g.arena.maxAlive - mobs.size();
