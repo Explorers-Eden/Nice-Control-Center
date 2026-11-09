@@ -87,6 +87,13 @@ public final class Pregen {
 		/** Held while the heap stays nearly full after collections (Distant Horizons' LOD saves falling behind). */
 		volatile boolean pausedForMemory;
 		long memoryCheckAt;
+		/** When the memory pause began, whether it asked for a full collection yet, the lowest share since. */
+		long pausedAt;
+		boolean collected;
+		double pauseLow;
+		long steadySince;
+		/** Pause above this share (75 %; higher after carrying on over a steady cache). */
+		double pauseAt = 0.75;
 		// Where a restart picks up: the ring being worked on and what was done before it.
 		volatile int ringStart;
 		volatile long doneAtRing;
@@ -240,20 +247,52 @@ public final class Pregen {
 		 * Distant Horizons keeps the LOD data of every chunk loaded in memory until it's written; when chunks
 		 * come in faster than it writes, that grows until the heap is full (both overloads on 2026-11-02:
 		 * ~9.5 of 13 GB were its save queue). Waits above 75 % of the heap (old generation as it is now, so it
-		 * pauses before the heap is full, not after) until it's down to 60 %.
+		 * pauses before the heap is full, not after) until it's down to 60 %, or until a full collection shows the
+		 * rest holding steady for 5 minutes: then it's cache, and it carries on (pausing again 10 points higher).
 		 */
 		private boolean memoryHeld() {
 			long now = System.currentTimeMillis();
 			if (now < memoryCheckAt) return pausedForMemory;
 			memoryCheckAt = now + 2_000;
 			double share = SystemMetrics.heapPressure();
-			if (!pausedForMemory && share > 0.75) {
+			if (!pausedForMemory && share > pauseAt) {
 				pausedForMemory = true;
+				pausedAt = now;
+				collected = false;
+				pauseLow = share;
+				steadySince = now;
 				NiceControlCenter.LOGGER.warn("Pregen: paused, the heap is {} % full; waiting for it to drop (Distant Horizons saving)",
 						Math.round(share * 100));
 			} else if (pausedForMemory && share < 0.60) {
 				pausedForMemory = false;
+				pauseAt = 0.75;
 				NiceControlCenter.LOGGER.info("Pregen: memory back to {} %, carrying on", Math.round(share * 100));
+			} else if (pausedForMemory) {
+				// While paused hardly anything is allocated, so the collector feels no need to run: garbage and caches
+				// it would drop on demand (Distant Horizons keeps gigabytes of pooled arrays behind soft references)
+				// stay counted, and the pause never ended (2026-11-09: 5 hours at 75 %). After 2 minutes one full
+				// collection shows what's really kept; when that stays steady (no save queue growing), it's cache.
+				if (!collected && now - pausedAt > 120_000) {
+					collected = true;
+					NiceControlCenter.LOGGER.info("Pregen: still paused at {} %; asking for a full collection to see what's really kept", Math.round(share * 100));
+					System.gc();
+					memoryCheckAt = now + 10_000;
+					return true;
+				}
+				if (share < pauseLow - 0.02) {
+					pauseLow = share;
+					steadySince = now;
+				} else if (share > pauseLow + 0.03) {
+					// Growing: something is filling up, keep waiting.
+					pauseLow = share;
+					steadySince = now;
+				}
+				if (collected && now - steadySince > 300_000) {
+					pausedForMemory = false;
+					pauseAt = Math.min(0.90, Math.max(0.75, share + 0.10));
+					NiceControlCenter.LOGGER.info("Pregen: memory steady at {} % for 5 minutes (cache the collector frees when it needs room), carrying on; pausing again above {} %",
+							Math.round(share * 100), Math.round(pauseAt * 100));
+				}
 			}
 			return pausedForMemory;
 		}

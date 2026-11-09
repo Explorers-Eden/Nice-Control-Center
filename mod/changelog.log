@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.104.3
+- Pregen: the memory pause could last for hours although memory wasn't short: Distant Horizons keeps gigabytes of pooled arrays that the Java collector frees whenever it needs room, but while the pregen waits hardly anything is allocated, so the collector never ran and the heap stayed above the 60 % needed to carry on (5 hours at 75 % on 2026-11-09). Now after 2 minutes paused it asks for one full collection, and when memory then holds steady for 5 minutes it carries on, pausing again only 10 points higher (at most 90 %). A save queue that keeps growing still stops it as before
 ## 1.104.2
 - Games: hostile mobs always attack, whatever the "peaceful mobs fight" switch says: spiders by day, endermen and zombified piglins too (before, they only fought with the switch on, spiders not even then)
 - Games (26.3): with "peaceful mobs fight" on, sulfur cubes hop at players and hurt on touch like slimes
