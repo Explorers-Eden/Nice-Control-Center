@@ -1,3 +1,5 @@
+## 1.88.1
+- Games → Rogue runs: room rewards offer armor instead of food; coins, max health and armor each have their amount and "+ per room" on the row
 ## 1.88.0
 - Games → Rogue runs: room rewards (boon, coins, max health, food, with weights and amounts), a Rest rooms card (heal, food, saturation, harmful effects, effects, message, commands), the shop NPC's name and skin, and the unlocks menu's title, top line, icons and texts
 - NPCs: "Rogue unlocks" as a shop an NPC opens on a right-click

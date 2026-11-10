@@ -365,23 +365,19 @@ public final class RogueBoons {
 				for (ServerPlayer p : RogueRuns.inside(server, r)) st.coins.merge(p.getUUID(), coins, Integer::sum);
 				DungeonRuntime.tellRun(server, r, Words.lit("✦ Room reward: +" + coins + " ⛁ for everyone").withStyle(ChatFormatting.GOLD));
 			}
-			case "health" -> {
+			case "health", "armor" -> {
+				boolean hp = "health".equals(pick.kind);
+				int amount = pick.amount + pick.perRoom * Math.max(0, st.depth - 1);
+				if (amount <= 0) return;
+				Holder<Attribute> attr = attribute(hp ? "minecraft:max_health" : "minecraft:armor");
 				for (ServerPlayer p : RogueRuns.inside(server, r)) {
-					int more = st.bonusHealth.merge(p.getUUID(), pick.amount, Integer::sum);
-					Holder<Attribute> a = attribute("minecraft:max_health");
-					AttributeInstance inst = a == null ? null : p.getAttribute(a);
-					if (inst != null) inst.addOrUpdateTransientModifier(new AttributeModifier(Identifier.fromNamespaceAndPath("nicecontrolcenter", PREFIX + "_health"), more, AttributeModifier.Operation.ADD_VALUE));
-					p.heal(pick.amount);
+					int has = (hp ? st.bonusHealth : st.bonusArmor).merge(p.getUUID(), amount, Integer::sum);
+					AttributeInstance inst = attr == null ? null : p.getAttribute(attr);
+					if (inst != null) inst.addOrUpdateTransientModifier(new AttributeModifier(Identifier.fromNamespaceAndPath("nicecontrolcenter", PREFIX + (hp ? "_health" : "_armor")), has, AttributeModifier.Operation.ADD_VALUE));
+					if (hp) p.heal(amount);
 				}
-				DungeonRuntime.tellRun(server, r, Words.lit("✦ Room reward: +" + num(pick.amount / 2.0) + (pick.amount == 2 ? " heart" : " hearts") + " of max health for everyone (this run)").withStyle(ChatFormatting.RED));
-			}
-			case "food" -> {
-				for (ServerPlayer p : RogueRuns.inside(server, r)) {
-					var food = p.getFoodData();
-					food.setFoodLevel(Math.min(20, food.getFoodLevel() + pick.amount));
-					food.setSaturation(Math.min(food.getFoodLevel(), food.getSaturationLevel() + pick.amount / 2f));
-				}
-				DungeonRuntime.tellRun(server, r, Words.lit("✦ Room reward: a meal, +" + num(pick.amount / 2.0) + " hunger for everyone").withStyle(ChatFormatting.GREEN));
+				DungeonRuntime.tellRun(server, r, Words.lit(hp ? "✦ Room reward: +" + num(amount / 2.0) + (amount == 2 ? " heart" : " hearts") + " of max health for everyone (this run)"
+						: "✦ Room reward: +" + amount + " armor for everyone (this run)").withStyle(hp ? ChatFormatting.RED : ChatFormatting.AQUA));
 			}
 			default -> {
 			}

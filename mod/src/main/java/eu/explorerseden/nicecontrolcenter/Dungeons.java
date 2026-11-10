@@ -56,17 +56,17 @@ public final class Dungeons {
 		public String description = "";
 	}
 
-	/** What clearing a room can give (one rolled per room for the party): boon (each picks one), coins, health, food. */
-	public static final List<String> REWARD_KINDS = List.of("boon", "coins", "health", "food");
+	/** What clearing a room can give (one rolled per room for the party): boon (each picks one), coins, max health, armor. */
+	public static final List<String> REWARD_KINDS = List.of("boon", "coins", "health", "armor");
 
 	/** One kind of room reward and how likely it is. */
 	public static final class RoomReward {
 		public boolean enabled = true;
 		public String kind = "boon";
 		public int weight = 10;
-		/** coins: coins; health: max health points (2 = a heart) for the run; food: hunger points (saturation half as much). */
+		/** coins: coins; health: max health points (2 = a heart); armor: armor points (2 = a chestplate icon); for the run. */
 		public int amount;
-		/** coins: this many more per room. */
+		/** This many more per room after the first. */
 		public int perRoom;
 	}
 
@@ -131,7 +131,7 @@ public final class Dungeons {
 		public int choices = 3;
 		public int pickSeconds = 30;
 		/** What clearing a fight, elite or boss room gives (treasure rooms always give a boon choice). */
-		public List<RoomReward> rewards = new ArrayList<>(List.of(reward("boon", 60, 0, 0), reward("coins", 20, 8, 2), reward("health", 10, 2, 0), reward("food", 10, 8, 0)));
+		public List<RoomReward> rewards = new ArrayList<>(List.of(reward("boon", 60, 0, 0), reward("coins", 20, 8, 2), reward("health", 10, 2, 0), reward("armor", 10, 2, 0)));
 		/** The shop NPC on a shop room's shop marker: its name and skin (a player name, a skin link or base64; empty = default). */
 		public String shopName = "Merchant";
 		public String shopSkin = "";
@@ -460,6 +460,11 @@ public final class Dungeons {
 			if (g.rewards == null) g.rewards = new ArrayList<>();
 			g.rewards.removeIf(x -> x == null);
 			for (RoomReward x : g.rewards) {
+				// (Food from 1.107.0 couldn't fill past a full bar: it's armor now.)
+				if ("food".equals(x.kind)) {
+					x.kind = "armor";
+					x.amount = 2;
+				}
 				if (!REWARD_KINDS.contains(x.kind)) x.kind = "boon";
 				x.weight = Math.max(0, Math.min(100, x.weight));
 				x.amount = Math.max(0, Math.min(10000, x.amount));

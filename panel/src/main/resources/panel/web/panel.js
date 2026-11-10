@@ -3414,7 +3414,8 @@
           ${f('Text in menus (empty = made from the above)', `<input type="text" ${a('description')} value="${esc(b.description)}" maxlength="100">`, true)}
         </div></section>`;
     }).join('') || '<p class="pn-hint">No boons: nothing to choose after rooms, nothing in shops.</p>';
-    const RW_KINDS = [['boon', 'Boon (each picks one)'], ['coins', 'Coins'], ['health', 'Max health'], ['food', 'Food']];
+    const RW_KINDS = [['boon', 'Boon (each picks one)'], ['coins', 'Run coins'], ['health', 'Max health'], ['armor', 'Armor']];
+    const RW_AMOUNT = { coins: 'coins', health: 'health points (2 = a heart)', armor: 'armor points' };
     const rwTotal = (g.rewards || []).filter((x) => x.enabled).reduce((n, x) => n + x.weight, 0);
     $('pn-rg-rewards').innerHTML = (g.rewards || []).length ? `<ul class="pn-dg-runs">${g.rewards.map((x, i) => {
       const a = (k) => `data-ri="${i}" data-rk="${k}"`;
@@ -3422,8 +3423,8 @@
         <label class="np-switch" title="On or off"><input type="checkbox" ${a('enabled')} ${x.enabled ? 'checked' : ''}><span></span></label>
         ${sel(a('kind'), RW_KINDS, x.kind)}
         <label class="pn-dg-inline">weight <input type="number" min="0" max="100" ${a('weight')} value="${x.weight}"></label>
-        ${x.kind === 'boon' ? '' : `<label class="pn-dg-inline">${x.kind === 'coins' ? 'coins' : x.kind === 'health' ? 'health points' : 'hunger points'} <input type="number" min="0" ${a('amount')} value="${x.amount}"></label>`}
-        ${x.kind === 'coins' ? `<label class="pn-dg-inline">+ per room <input type="number" min="0" ${a('perRoom')} value="${x.perRoom}"></label>` : ''}
+        ${x.kind === 'boon' ? '' : `<label class="pn-dg-inline">${RW_AMOUNT[x.kind] || 'amount'} <input type="number" min="0" ${a('amount')} value="${x.amount}"></label>
+        <label class="pn-dg-inline" title="Added for each room after the first, so deeper rooms give more">+ per room <input type="number" min="0" ${a('perRoom')} value="${x.perRoom}"></label>`}
         <small>${x.enabled && rwTotal ? Math.round(x.weight * 100 / rwTotal) + ' %' : 'off'}</small>
         <button type="button" class="np-btn small danger" data-rgdel="${i}" title="Remove"><i class="bi bi-trash"></i></button></li>`;
     }).join('')}</ul>` : '<p class="pn-hint">No room rewards: clearing a room gives nothing.</p>';

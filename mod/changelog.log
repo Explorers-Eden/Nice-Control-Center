@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.107.1
+- Rogue room rewards: food is gone (the hunger bar can't go above full), armor instead (armor points for the rest of the run); coins, max health and armor all have an amount plus "per room" (more the deeper the run). Food rewards saved before become armor
 ## 1.107.0
 - Rogue runs: cleared fight, elite and boss rooms give one room reward picked by weight instead of always a boon: a boon choice, run coins (more per room), more max health for the rest of the run, or food (hunger can't go above a full bar in Minecraft, so it fills it). Treasure rooms still give a boon choice
 - Rogue runs: shop rooms' shop marker is an NPC now (name and skin in the panel); a right-click opens the shop

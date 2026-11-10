@@ -99,6 +99,7 @@ final class RogueRuns {
 		final Map<UUID, Integer> rerolls = new HashMap<>();
 		/** Max health from room rewards (health points) per player. */
 		final Map<UUID, Integer> bonusHealth = new HashMap<>();
+		final Map<UUID, Integer> bonusArmor = new HashMap<>();
 		int offerToken;
 		long offersUntil;
 		/** Shop rooms: where the shop is, and who stands there (opened once per step on). */

@@ -52,7 +52,7 @@ run starts in a fight room.
 
   A type only shows up when its group has rooms, so a run with only fight rooms works too.
 - A cleared fight, elite or boss room gives the party one **room reward**, picked by weight: a boon choice, run coins,
-  more max health for the run, or food. With a boon choice every player picks one (30 seconds, then one is picked
+  more max health or more armor for the rest of the run. With a boon choice every player picks one (30 seconds, then one is picked
   for them; `/dungeon boon` opens the choice again) and the doors wait until everyone has chosen. Treasure rooms
   always give a boon choice.
 - The party leader picks by standing on a door for 2 seconds (playing solo, you pick yourself).
@@ -86,7 +86,8 @@ These are the same for every rogue run.
 - **Boons**: what each one does (an attribute like `minecraft:max_health` added flat or as a percent, an effect whose
   level grows with each one taken, an item as in /give, a heal, or a command), how often one player can take it in a
   run, and how often it's offered (weight 0: only in the shop). They come off when the run ends for the player.
-- **Room rewards**: the kinds above with their weight and amount (coins can grow per room).
+- **Room rewards**: the kinds above with their weight, amount and "+ per room" (coins, health and armor give more the
+  deeper the run).
 - **Rest rooms**: heal %, food and saturation, harmful effects taken away or not, effects given
   (`minecraft:regeneration 5 1`: id, seconds, level), a message and commands.
 - **Coins**: per foe for everyone still in (elite rooms pay more, bosses a fixed amount). They're only for the run.
