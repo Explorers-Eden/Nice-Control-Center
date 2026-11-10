@@ -129,6 +129,8 @@ public final class DungeonRuntime {
 		long endAt;
 		boolean cleared;
 		ServerBossEvent bar;
+		/** Rogue runs: the room chain (null for a dungeon). */
+		RogueRuns.State rogue;
 
 		Run(int slot, Dungeon d) {
 			this.slot = slot;
@@ -273,10 +275,11 @@ public final class DungeonRuntime {
 			for (Dungeons.Marker m : target.markers) counts.merge(m.type, 1, Integer::sum);
 			String markers = counts.isEmpty() ? "" : ", " + counts.entrySet().stream().map(e -> e.getValue() + " " + e.getKey()).reduce((x, y) -> x + ", " + y).orElse("");
 			String names = target.connectors.stream().filter(c -> !c.spot()).map(c -> c.name).distinct().reduce((x, y) -> x + ", " + y).orElse("");
-			done.accept(Words.lit("Saved the room " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + ", " + doors + (doors == 1 ? " door" : " doors")
+			boolean rogueRoom = target.markers.stream().anyMatch(m -> "door".equals(m.type) || "spawn".equals(m.type));
+			done.accept(Words.lit("Saved the room " + name + " (" + target.sizeX + " × " + target.sizeY + " × " + target.sizeZ + (doors == 0 && rogueRoom ? "" : ", " + doors + (doors == 1 ? " jigsaw door" : " jigsaw doors"))
 					+ (names.isEmpty() ? "" : ": " + names) + (spots.isEmpty() ? "" : ", " + spots) + markers + ")"
 					+ (target.groups.isEmpty() ? ". Put it in a group (panel, or /dungeon room group " + name + " <group>) so spots can get it." : " in " + String.join(", ", target.groups) + ".")
-					+ (target.connectors.isEmpty() ? " It has no jigsaw blocks, so it can't join a spot." : "")).withStyle(target.connectors.isEmpty() ? ChatFormatting.GOLD : ChatFormatting.GREEN));
+					+ (target.connectors.isEmpty() && !rogueRoom ? " It has no jigsaw blocks, so it can't join a spot." : "")).withStyle(target.connectors.isEmpty() && !rogueRoom ? ChatFormatting.GOLD : ChatFormatting.GREEN));
 		}));
 		return null;
 	}
@@ -462,7 +465,7 @@ public final class DungeonRuntime {
 	public static boolean respawnsInside(ServerPlayer p) {
 		Run r = playing.get(p.getUUID());
 		if (r == null || r.state != State.RUNNING || r.out.contains(p.getUUID())) return false;
-		return r.lives.getOrDefault(p.getUUID(), 0) > 0 || r.dungeon.outSpectate && r.players.size() - r.out.size() > 1;
+		return r.lives.getOrDefault(p.getUUID(), 0) > 0 || (r.dungeon.outSpectate || r.rogue != null) && r.players.size() - r.out.size() > 1;
 	}
 
 	/**
@@ -499,6 +502,7 @@ public final class DungeonRuntime {
 			}
 			m.put("players", who);
 			m.put("millis", r.millis());
+			if (r.rogue != null) m.put("depth", r.rogue.depth);
 			runs.add(m);
 		}
 		Map<String, Object> out = new LinkedHashMap<>();
@@ -635,7 +639,12 @@ public final class DungeonRuntime {
 				if (r.dungeon.peacefulFight || Aggro.hostile(m)) Aggro.make(m, 3f);
 			}
 		}
+		if (r.state == State.RUNNING && r.rogue != null) RogueRuns.tick(server, level, r);
 		if (r.state != State.RUNNING) return;
+		if (r.players.isEmpty()) {
+			if (r.millis() > 180_000) fail(server, r, null);
+			return;
+		}
 		if (r.dungeon.timeLimit > 0) {
 			List<ServerPlayer> in = new ArrayList<>();
 			for (UUID id : r.players) {
@@ -697,7 +706,7 @@ public final class DungeonRuntime {
 	}
 
 	/** A Rewards trigger for everyone of the run who's still in (not out, still online). */
-	private static void rewardInside(MinecraftServer server, Run r, String trigger, long score, boolean timed) {
+	static void rewardInside(MinecraftServer server, Run r, String trigger, long score, boolean timed) {
 		for (UUID id : List.copyOf(r.players)) {
 			if (r.out.contains(id)) continue;
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
@@ -714,12 +723,12 @@ public final class DungeonRuntime {
 		long left = r.players.size() - r.out.size();
 		String limit = r.dungeon.timeLimit > 0 ? " / " + GameRuntime.clock(r.dungeon.timeLimit * 60_000L) : "";
 		int lives = r.lives.getOrDefault(p.getUUID(), 0);
-		p.sendOverlayMessage(Words.lit(r.dungeon.name + " · " + GameRuntime.clock(r.millis()) + limit
+		p.sendOverlayMessage(Words.lit(r.dungeon.name + (r.rogue != null ? RogueRuns.hud(r) : "") + " · " + GameRuntime.clock(r.millis()) + limit
 				+ (r.dungeon.lives > 0 ? " · " + "❤".repeat(Math.min(lives, 10)) + (lives == 0 ? "last life" : "") : "")
 				+ (r.players.size() > 1 ? " · " + left + " in" : "")).withStyle(ChatFormatting.LIGHT_PURPLE));
 	}
 
-	private static void tellRun(MinecraftServer server, Run r, Component text) {
+	static void tellRun(MinecraftServer server, Run r, Component text) {
 		for (UUID id : r.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p != null) p.sendSystemMessage(text);
@@ -902,8 +911,13 @@ public final class DungeonRuntime {
 	/** The most players any ready dungeon of the pool takes (0 = none ready). */
 	private static int poolMax(String pool) {
 		int most = 0;
-		for (Dungeon d : settings.dungeons) if (d.enabled && d.saved() && d.pool.equals(pool) && d.hasMarker("start")) most = Math.max(most, d.maxParty);
+		for (Dungeon d : settings.dungeons) if (d.enabled && ready(d) && d.pool.equals(pool)) most = Math.max(most, d.maxParty);
 		return most;
+	}
+
+	/** Players can get it: a saved dungeon with a start marker, or a rogue entry with a first room. */
+	static boolean ready(Dungeon d) {
+		return d.rogue() ? RogueRuns.ready(settings, d) : d.saved() && d.hasMarker("start");
 	}
 
 	/** Starts a run for these players with a random dungeon of the pool; returns why not, or null. */
@@ -912,7 +926,7 @@ public final class DungeonRuntime {
 		int size = party.size();
 		List<Dungeon> fits = new ArrayList<>();
 		for (Dungeon d : settings.dungeons) {
-			if (d.enabled && d.saved() && d.pool.equals(pool) && size >= d.minParty && size <= d.maxParty && d.hasMarker("start")) fits.add(d);
+			if (d.enabled && ready(d) && d.pool.equals(pool) && size >= d.minParty && size <= d.maxParty) fits.add(d);
 		}
 		if (fits.isEmpty()) return "No dungeon in the " + pool + " pool is ready for " + (size == 1 ? "one player" : size + " players") + " yet.";
 		String last = lastPlayed.get(party.get(0).getUUID());
@@ -924,8 +938,8 @@ public final class DungeonRuntime {
 	static String start(MinecraftServer server, List<ServerPlayer> party, Dungeon d) {
 		ServerLevel level = level(server);
 		if (level == null) return "The dungeon dimension isn't loaded; it appears after the server restarts with this version.";
-		if (!d.saved()) return d.name + " has no saved blocks yet: /dungeon save " + d.name;
-		if (!d.hasMarker("start")) return d.name + " needs a start marker (a data structure block with the text start).";
+		if (!d.rogue() && !d.saved()) return d.name + " has no saved blocks yet: /dungeon save " + d.name;
+		if (!d.rogue() && !d.hasMarker("start")) return d.name + " needs a start marker (a data structure block with the text start).";
 		int slot = -1;
 		for (int i = 0; i < settings.maxSlots; i++) {
 			if (!slots.containsKey(i)) {
@@ -937,23 +951,33 @@ public final class DungeonRuntime {
 		Run r = new Run(slot, d);
 		int x = (slot + 1) * settings.slotSpacing;
 		r.min = new BlockPos(x, BASE_Y, 0);
-		r.max = r.min.offset(d.sizeX - 1, d.sizeY - 1, d.sizeZ - 1);
-		r.loading = DungeonTemplates.load(server, d);
-		r.layout = DungeonRooms.plan(d, settings, random);
-		Set<String> roomNames = new LinkedHashSet<>();
-		for (DungeonRooms.Placed pl : r.layout.rooms()) roomNames.add(pl.room().name);
-		r.roomLoading = DungeonTemplates.onWorker(() -> {
-			Map<String, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> out = new HashMap<>();
-			for (String n : roomNames) out.put(n, DungeonTemplates.readRoom(server, n));
-			return out;
-		});
+		if (d.rogue()) {
+			// A room chain: two room spots in the slot, the first room read on the worker.
+			r.max = RogueRuns.max(r.min);
+			r.loading = CompletableFuture.completedFuture(List.of());
+			r.layout = new DungeonRooms.Layout(List.of(), List.of(), List.of());
+			String err = RogueRuns.prepare(server, settings, r);
+			if (err != null) return err;
+		} else {
+			r.max = r.min.offset(d.sizeX - 1, d.sizeY - 1, d.sizeZ - 1);
+			r.loading = DungeonTemplates.load(server, d);
+			r.layout = DungeonRooms.plan(d, settings, random);
+			Set<String> roomNames = new LinkedHashSet<>();
+			for (DungeonRooms.Placed pl : r.layout.rooms()) roomNames.add(pl.room().name);
+			r.roomLoading = DungeonTemplates.onWorker(() -> {
+				Map<String, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> out = new HashMap<>();
+				for (String n : roomNames) out.put(n, DungeonTemplates.readRoom(server, n));
+				return out;
+			});
+		}
 		r.bar = new ServerBossEvent(UUID.randomUUID(), Words.lit(fill(d.prepareMessage.isEmpty() ? "Preparing your dungeon…" : d.prepareMessage, r, null)),
 				BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
 		r.bar.setProgress(0);
 		for (ServerPlayer p : party) {
 			r.players.add(p.getUUID());
 			r.names.put(p.getUUID(), p.getGameProfile().name());
-			r.lives.put(p.getUUID(), d.lives);
+			// (Rogue runs: out is out.)
+			r.lives.put(p.getUUID(), d.rogue() ? 0 : d.lives);
 			playing.put(p.getUUID(), r);
 			lastPlayed.put(p.getUUID(), d.id);
 			r.bar.addPlayer(p);
@@ -965,6 +989,7 @@ public final class DungeonRuntime {
 
 	/** The copy is ready: markers become air (spawning what they say), everyone goes to the start. */
 	private static void begin(MinecraftServer server, ServerLevel level, Run r) {
+		if (r.rogue != null) RogueRuns.enterFirst(server, level, r);
 		List<Dungeons.Marker> markers = new ArrayList<>(r.dungeon.markers);
 		markers.addAll(r.layout.markers());
 		for (Dungeons.Marker m : markers) {
@@ -1000,6 +1025,11 @@ public final class DungeonRuntime {
 		r.bar = null;
 		r.state = State.RUNNING;
 		r.startedAt = System.currentTimeMillis();
+		if (r.players.isEmpty() && r.rogue != null) {
+			// A rogue run tried from the console: it goes on (/dungeon rogue pick <slot> <door>) for 3 minutes.
+			NiceControlCenter.LOGGER.info("Dungeons: rogue run {} tried in slot {} (first room {} at {}); ends in 3 minutes", r.dungeon.name, r.slot, r.rogue.room.name, r.start.toShortString());
+			return;
+		}
 		if (r.players.isEmpty()) {
 			// Tried from the console: it stands for a minute, then it's wiped.
 			NiceControlCenter.LOGGER.info("Dungeons: dungeon {} copied into slot {} at {} (start {}); wiped in a minute", r.dungeon.name, r.slot, r.min.toShortString(), r.start.toShortString());
@@ -1028,7 +1058,7 @@ public final class DungeonRuntime {
 			p.resetFallDistance();
 			Cleanup.refresh(p);
 			GameClaims.gameMode(p, false);
-			p.sendSystemMessage(Words.lit(fill(r.dungeon.enterMessage.isEmpty() ? "▶ {dungeon}: find the way out!" : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
+			p.sendSystemMessage(Words.lit(fill(r.dungeon.enterMessage.isEmpty() ? (r.rogue != null ? "▶ {dungeon}: clear room after room. One life, so go as deep as you can!" : "▶ {dungeon}: find the way out!") : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
 			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Words.lit(r.dungeon.name).withStyle(ChatFormatting.LIGHT_PURPLE)));
 			commands(server, r.dungeon.enterCommands, r, p);
 		}
@@ -1175,9 +1205,21 @@ public final class DungeonRuntime {
 		if (inDungeonDimension(p)) sendBack(server, p);
 	}
 
-	private static void clear(MinecraftServer server, Run r) {
+	static void clear(MinecraftServer server, Run r) {
+		if (r.state != State.RUNNING) return;
 		r.cleared = true;
 		long time = System.currentTimeMillis() - r.startedAt;
+		if (r.rogue != null) {
+			boolean record = rogueScore(r, time);
+			end(server, r, (r.dungeon.clearedMessage.isEmpty() ? "■ {dungeon} won: {depth} rooms cleared in {time}!" : r.dungeon.clearedMessage) + (record ? " A new best!" : ""), ChatFormatting.GOLD);
+			for (UUID id : r.players) {
+				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				if (p == null) continue;
+				RewardsControl.fireGame(server, "dungeonCleared", p, r.dungeon.name, time, true);
+				RewardsControl.fireGame(server, "rogueEnd", p, r.dungeon.name, r.rogue.cleared, false);
+			}
+			return;
+		}
 		int size = r.players.size();
 		Map<String, Dungeons.Best> board = scores.computeIfAbsent(r.dungeon.id, k -> new LinkedHashMap<>());
 		Dungeons.Best best = board.computeIfAbsent(String.valueOf(size), k -> new Dungeons.Best());
@@ -1196,7 +1238,7 @@ public final class DungeonRuntime {
 		}
 	}
 
-	private static void fail(MinecraftServer server, Run r, String why) {
+	static void fail(MinecraftServer server, Run r, String why) {
 		if (r.state == State.LOADING || r.state == State.PASTING) {
 			for (UUID id : r.players) {
 				ServerPlayer p = server.getPlayerList().getPlayer(id);
@@ -1208,13 +1250,43 @@ public final class DungeonRuntime {
 			return;
 		}
 		if (r.state != State.RUNNING) return;
+		long time = System.currentTimeMillis() - r.startedAt;
+		if (r.rogue != null) {
+			boolean record = !r.players.isEmpty() && rogueScore(r, time);
+			String line = r.dungeon.failedMessage.isEmpty() ? "■ {dungeon}: the run is over after {depth} rooms ({time})." : r.dungeon.failedMessage;
+			end(server, r, (why == null ? line : why + " " + line) + (record ? " A new best!" : ""), record ? ChatFormatting.GOLD : ChatFormatting.RED);
+			for (UUID id : r.players) {
+				ServerPlayer p = server.getPlayerList().getPlayer(id);
+				if (p != null) RewardsControl.fireGame(server, "rogueEnd", p, r.dungeon.name, r.rogue.cleared, false);
+			}
+			return;
+		}
 		String line = r.dungeon.failedMessage.isEmpty() ? "■ {dungeon}: the run is over." : r.dungeon.failedMessage;
 		end(server, r, why == null ? line : why + " " + line, ChatFormatting.RED);
-		long time = System.currentTimeMillis() - r.startedAt;
 		for (UUID id : r.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
 			if (p != null) RewardsControl.fireGame(server, "dungeonFailed", p, r.dungeon.name, time, true);
 		}
+	}
+
+	/** A rogue run's result on the board (party size → most rooms, then the faster time); true for a new best. */
+	private static boolean rogueScore(Run r, long time) {
+		int depth = r.rogue.cleared;
+		if (depth <= 0) return false;
+		int size = r.players.size();
+		Map<String, Dungeons.Best> board = scores.computeIfAbsent(r.dungeon.id, k -> new LinkedHashMap<>());
+		Dungeons.Best best = board.computeIfAbsent(String.valueOf(size), k -> new Dungeons.Best());
+		best.clears++;
+		boolean record = depth > best.depth || depth == best.depth && (best.millis == 0 || time < best.millis);
+		if (record) {
+			best.depth = depth;
+			best.millis = time;
+			best.names = new ArrayList<>(r.names.values());
+			best.at = System.currentTimeMillis();
+		}
+		if (scoresFile != null) AsyncFiles.write(scoresFile, Json.GSON.toJson(scores));
+		NiceControlCenter.LOGGER.info("Dungeons: rogue run {} ended after {} rooms ({}) for {}{}", r.dungeon.name, depth, GameRuntime.clock(time), String.join(", ", r.names.values()), record ? ", a new best" : "");
+		return record;
 	}
 
 	/** Tells everyone, runs the exit commands for those still in, and sends them back after a few seconds. */
@@ -1276,7 +1348,8 @@ public final class DungeonRuntime {
 		String party = String.join(", ", r.names.values());
 		text = Games.math(text, Map.of("seconds", String.valueOf(r.millis() / 1000), "deaths", String.valueOf(r.deaths))).replace("{seconds}", String.valueOf(r.millis() / 1000));
 		return text.replace("{dungeon}", r.dungeon.name).replace("{party}", party).replace("{time}", GameRuntime.clock(r.millis()))
-				.replace("{deaths}", String.valueOf(r.deaths)).replace("{player}", p == null ? party : p.getGameProfile().name());
+				.replace("{deaths}", String.valueOf(r.deaths)).replace("{depth}", String.valueOf(r.rogue == null ? 0 : r.rogue.cleared))
+				.replace("{player}", p == null ? party : p.getGameProfile().name());
 	}
 
 	private static void commands(MinecraftServer server, List<String> lines, Run r, ServerPlayer p) {
@@ -1369,7 +1442,7 @@ public final class DungeonRuntime {
 				.then(Commands.literal("list").executes(ctx -> {
 					StringBuilder b = new StringBuilder();
 					for (String pool : settings.pools()) {
-						List<String> names = settings.dungeons.stream().filter(x -> x.pool.equals(pool)).map(x -> x.name + (x.enabled && x.saved() ? "" : " (off)")).toList();
+						List<String> names = settings.dungeons.stream().filter(x -> x.pool.equals(pool)).map(x -> x.name + (x.rogue() ? " (rogue)" : "") + (x.enabled && ready(x) ? "" : " (off)")).toList();
 						long pads = settings.pads.stream().filter(x -> x.pool.equals(pool)).count();
 						b.append("\n").append(pool).append(": ").append(names.isEmpty() ? "no dungeons" : String.join(", ", names)).append(" · ").append(pads).append(pads == 1 ? " pad" : " pads");
 					}
@@ -1383,7 +1456,7 @@ public final class DungeonRuntime {
 					StringBuilder b = new StringBuilder(x.name + (board.isEmpty() ? ": not cleared yet." : ":"));
 					for (int n = 1; n <= 4; n++) {
 						Dungeons.Best best = board.get(String.valueOf(n));
-						if (best != null) b.append("\n").append(n == 1 ? "Solo" : n + " players").append(": ").append(GameRuntime.clock(best.millis)).append(" · ").append(String.join(", ", best.names));
+						if (best != null) b.append("\n").append(n == 1 ? "Solo" : n + " players").append(": ").append(x.rogue() ? best.depth + " rooms in " : "").append(GameRuntime.clock(best.millis)).append(" · ").append(String.join(", ", best.names));
 					}
 					ctx.getSource().sendSuccess(() -> Words.lit(b.toString()).withStyle(ChatFormatting.GOLD), false);
 					return 1;
@@ -1517,6 +1590,18 @@ public final class DungeonRuntime {
 					ctx.getSource().sendSuccess(() -> Words.lit(x.name + " is in the " + x.pool + " pool now."), true);
 					return 1;
 				}))))
+				.then(Commands.literal("rogue").requires(admin)
+						.then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> rogueCreate(ctx, "default"))
+								.then(poolArg.get().executes(ctx -> rogueCreate(ctx, StringArgumentType.getString(ctx, "pool"))))))
+						.then(Commands.literal("pick").then(Commands.argument("slot", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
+								.then(Commands.argument("door", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1)).executes(ctx -> {
+									Run r = slots.get(com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "slot"));
+									if (r == null || r.state != State.RUNNING) return fail(ctx, "No run going in that slot.");
+									String err = RogueRuns.chooseNumber(ctx.getSource().getServer(), r, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "door"));
+									if (err != null) return fail(ctx, err);
+									ctx.getSource().sendSuccess(() -> Words.lit("Going through door " + com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "door") + "."), true);
+									return 1;
+								})))))
 				.then(Commands.literal("pad").requires(admin)
 						.then(Commands.literal("add").then(poolArg.get().executes(ctx -> {
 							ServerPlayer p = ctx.getSource().getPlayerOrException();
@@ -1565,6 +1650,31 @@ public final class DungeonRuntime {
 					ctx.getSource().sendSuccess(() -> Words.lit(b.isEmpty() ? "No dungeon runs right now." : "Dungeon runs:" + b), false);
 					return 1;
 				})));
+	}
+
+	/** /dungeon rogue create <name> [pool]: a rogue entry (a chain of rooms, set up in the panel). */
+	private static int rogueCreate(CommandContext<CommandSourceStack> ctx, String pool) {
+		String name = StringArgumentType.getString(ctx, "name");
+		if (!name.matches("[A-Za-z0-9_-]{1,32}")) return fail(ctx, "A one-word name (letters, digits, - and _).");
+		if (settings.dungeon(name) != null) return fail(ctx, "There's a dungeon called " + name + " already.");
+		Dungeon d = new Dungeon();
+		d.name = name;
+		d.mode = "rogue";
+		d.pool = Dungeons.pool(pool);
+		d.roomGroups.put("fight", Dungeons.pool(name + "_fight"));
+		d.roomGroups.put("elite", Dungeons.pool(name + "_elite"));
+		d.roomGroups.put("boss", Dungeons.pool(name + "_boss"));
+		d.startGroup = Dungeons.pool(name + "_start");
+		d.mobs.addAll(List.of("minecraft:zombie", "minecraft:skeleton", "minecraft:spider"));
+		d.bosses.add("ncc:frost_warden");
+		settings.dungeons.add(d);
+		settings.fill();
+		saveSettings();
+		ctx.getSource().sendSuccess(() -> Words.lit("Made the rogue run " + name + " in the " + d.pool + " pool. Its rooms come from the groups " + d.startGroup + " (first room, optional), "
+				+ d.roomGroups.get("fight") + ", " + d.roomGroups.get("elite") + " and " + d.roomGroups.get("boss")
+				+ ": build rooms with a start marker, door markers (where players pick the next room) and spawn markers (where its mobs come), then /dungeon room save <room> <group>."
+				+ " Mobs, bosses and scaling are in the panel (Games → Dungeons).").withStyle(ChatFormatting.LIGHT_PURPLE), true);
+		return 1;
 	}
 
 	private static int save(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {

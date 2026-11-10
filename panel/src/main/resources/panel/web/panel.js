@@ -3249,11 +3249,11 @@
     $('pn-dg-slots').value = s.maxSlots;
     $('pn-dg-party').value = s.maxParty;
     $('pn-dg-pieces').value = s.piecesPerTick;
-    ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces'].forEach((id) => { $(id).disabled = !edit; });
+    ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces', 'pn-dg-rogue-name', 'pn-dg-rogue-add'].forEach((id) => { $(id).disabled = !edit; });
     DG_SAVES.forEach(([b]) => { $(b).disabled = !edit; });
 
     $('pn-dg-runs').innerHTML = dg.runs.length ? `<ul class="pn-dg-runs">${dg.runs.map((r) => `<li>
-        <b>${esc(r.dungeon)}</b><span class="np-chip">${esc(r.state)}</span><span class="np-chip">slot ${r.slot}</span>
+        <b>${esc(r.dungeon)}</b><span class="np-chip">${esc(r.state)}</span><span class="np-chip">slot ${r.slot}</span>${r.depth != null ? `<span class="np-chip">room ${r.depth}</span>` : ''}
         <span class="pn-dg-who">${r.players.map((p) => `<span class="${p.out ? 'out' : ''}">${esc(p.name)}${p.out ? ' (out)' : p.lives ? ` ❤${p.lives}` : ''}</span>`).join('') || '<em>nobody (tried from the console)</em>'}</span>
         <span class="pn-dg-time">${gmClock(r.millis)}</span>
         <button type="button" class="np-btn small danger" data-dgclose="${r.slot}" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i> Close</button></li>`).join('')}</ul>`
@@ -3268,30 +3268,32 @@
       const counts = {};
       (d.markers || []).forEach((m) => { counts[m.type] = (counts[m.type] || 0) + 1; });
       const markers = Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ') || 'no markers';
-      const warn = !d.pieces ? 'Not saved yet: <code>/dungeon save ' + esc(d.name) + '</code>'
+      const rogue = d.mode === 'rogue';
+      const warn = rogue ? dgRogueWarn(d)
+        : !d.pieces ? 'Not saved yet: <code>/dungeon save ' + esc(d.name) + '</code>'
         : !counts.start ? 'Needs a <code>start</code> marker before players can get it.'
         : d.clearOn === 'exit' && !counts.exit ? 'No <code>exit</code> marker: it can\'t be cleared.'
         : d.clearOn === 'boss' && !counts.boss ? 'No <code>boss</code> marker: it can\'t be cleared.' : '';
       const best = dg.scores[d.id] || {};
-      const board = [1, 2, 3, 4].filter((n) => best[n]).map((n) => `<li><b>${n === 1 ? 'Solo' : n + ' players'}</b><span>${gmClock(best[n].millis)}</span><small>${esc((best[n].names || []).join(', '))} · ${best[n].clears} clear${best[n].clears === 1 ? '' : 's'}</small></li>`).join('');
+      const board = [1, 2, 3, 4].filter((n) => best[n]).map((n) => `<li><b>${n === 1 ? 'Solo' : n + ' players'}</b><span>${rogue ? `${best[n].depth} rooms · ` : ''}${gmClock(best[n].millis)}</span><small>${esc((best[n].names || []).join(', '))} · ${best[n].clears} clear${best[n].clears === 1 ? '' : 's'}</small></li>`).join('');
       return `<section class="pn-gm-card ${d.enabled ? '' : 'off'}" data-dungeon="${i}">
         <div class="pn-rw-head">
           <label class="np-switch" title="In its pool or not"><input type="checkbox" data-d="enabled" ${d.enabled ? 'checked' : ''}><span></span></label>
-          <span class="pn-rw-give-icon"><i class="bi bi-door-closed"></i></span>
-          <b class="pn-gm-name">${esc(d.name)}</b><span class="np-chip">${esc(d.pool)}</span>
+          <span class="pn-rw-give-icon"><i class="bi ${rogue ? 'bi-shuffle' : 'bi-door-closed'}"></i></span>
+          <b class="pn-gm-name">${esc(d.name)}</b><span class="np-chip">${esc(d.pool)}</span>${rogue ? '<span class="np-chip">rogue run</span>' : ''}
           ${d.pieces ? `<span class="np-chip">${d.sizeX} × ${d.sizeY} × ${d.sizeZ}</span>` : ''}
           <span class="pn-rw-actions">${d.from ? `<button type="button" class="np-btn small" data-dgresave="dungeon" data-name="${esc(d.name)}" title="Copy the build in the world again (after changes to it)"><i class="bi bi-arrow-repeat"></i> Save again from the build</button>` : ''}<button type="button" class="np-btn small danger" data-dgdel="${i}" title="Remove the dungeon and its saved blocks"><i class="bi bi-trash"></i></button></span>
         </div>
-        <p class="pn-hint"><i class="bi bi-pin-map"></i> ${esc(markers)}${d.savedAt ? ` · saved ${esc(new Date(d.savedAt).toLocaleString())}${d.savedBy ? ' by ' + esc(d.savedBy) : ''}` : ''}${warn ? ` · <span class="pn-dg-warn">${warn}</span>` : ''}</p>
+        <p class="pn-hint">${rogue ? '<i class="bi bi-shuffle"></i> Room after room from the groups below; one life each.' : `<i class="bi bi-pin-map"></i> ${esc(markers)}`}${d.savedAt ? ` · saved ${esc(new Date(d.savedAt).toLocaleString())}${d.savedBy ? ' by ' + esc(d.savedBy) : ''}` : ''}${warn ? ` · <span class="pn-dg-warn">${warn}</span>` : ''}</p>
         <div class="pn-gm-body"><div class="pn-rw-grid">
           ${field('Pool', text('pool', 'default'))}
           ${field('Players, at least', num('minParty', 1, 4))}
           ${field('Players, at most', num('maxParty', 1, 4))}
-          ${field('Lives (deaths before out)', num('lives', 0, 99))}
-          ${field('Out players', `<select data-d="outSpectate">${opt(true, d.outSpectate, 'watch their party')}${opt(false, d.outSpectate, 'go back at once')}</select>`)}
+          ${rogue ? '' : field('Lives (deaths before out)', num('lives', 0, 99))}
+          ${rogue ? '' : field('Out players', `<select data-d="outSpectate">${opt(true, d.outSpectate, 'watch their party')}${opt(false, d.outSpectate, 'go back at once')}</select>`)}
           ${field('Time limit (minutes, 0 = none)', num('timeLimit', 0, 600))}
           ${field('Peaceful and neutral mobs', `<select data-d="peacefulFight">${opt(true, d.peacefulFight !== false, 'attack players too')}${opt(false, d.peacefulFight !== false, 'stay as they are')}</select>`)}
-          ${field('Cleared by', `<select data-d="clearOn">${opt('exit', d.clearOn, 'reaching an exit')}${opt('boss', d.clearOn, 'beating every boss')}</select>`)}
+          ${rogue ? '' : field('Cleared by', `<select data-d="clearOn">${opt('exit', d.clearOn, 'reaching an exit')}${opt('boss', d.clearOn, 'beating every boss')}</select>`)}
           ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
           ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}
           <p class="pn-hint pn-field-wide">Items that must stay in the dungeon (a pickaxe in a chest, a key from a mob): give them <code>custom_data={ncc_game_only:1b}</code>, e.g. <code>minecraft:iron_pickaxe[custom_data={ncc_game_only:1b}]</code> in a loot table, chest or mob drop. They vanish when the player leaves, whatever is set here.</p>
@@ -3302,10 +3304,10 @@
           ${field('Message when failed', text('failedMessage', '■ {dungeon}: the run is over.'), true)}
           ${field('Commands on entering ({player}, {party}, {dungeon})', lines('enterCommands'), true)}
           ${field('Commands on leaving or the end ({time}, {deaths})', lines('exitCommands'), true)}
-          ${field('Rooms inside rooms, levels', num('roomDepth', 1, 8))}
+          ${rogue ? dgRogueFields(d, field, num, lines) : `${field('Rooms inside rooms, levels', num('roomDepth', 1, 8))}
           ${field('Rooms per copy, at most', num('maxRooms', 1, 200))}
-          ${dgSpots(d, i)}
-        </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best clears</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}</div></div>
+          ${dgSpots(d, i)}`}
+        </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> ${rogue ? 'Deepest runs' : 'Best clears'}</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}</div></div>
       </section>`;
     }).join('') || '<section class="np-card"><p class="np-empty">No dungeons yet. Build one, then <code>/dungeon create MyDungeon</code> at a corner in game.</p></section>';
 
@@ -3322,6 +3324,41 @@
       + (areas.length ? `<ul class="pn-dg-runs">${areas.map(([pool, a]) => `<li><span class="np-chip">${esc(pool)}</span><span>${esc(dimShort(a.dim))} · ${Math.round(a.x)}, ${Math.round(a.y)}, ${Math.round(a.z)}</span>
         <button type="button" class="np-btn small danger" data-dgwait="${esc(pool)}" ${edit ? '' : 'disabled'} title="No waiting area for this pool"><i class="bi bi-trash"></i></button></li>`).join('')}</ul>` : '');
     $('pn-dg-list').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
+  }
+
+  /** Rooms a rogue group has (on and saved, with a start marker). */
+  function dgGroupRooms(g) {
+    if (!g) return 0;
+    return (dg.settings.rooms || []).filter((r) => r.enabled && r.savedAt && r.groups.includes(g) && (r.markers || []).some((m) => m.type === 'start')).length;
+  }
+
+  function dgRogueWarn(d) {
+    const fight = (d.roomGroups || {}).fight;
+    if (!dgGroupRooms(d.startGroup) && !dgGroupRooms(fight)) return fight ? `No room in the group <code>${esc(fight)}</code> yet (saved, with a <code>start</code> marker): players can't start it.` : 'Set a group for fight rooms.';
+    if (!(d.mobs || []).length) return 'No mobs listed: rooms only have the mobs their own <code>mob:</code> markers name.';
+    return '';
+  }
+
+  /** A rogue run's own settings: room groups per type, how often each comes, mobs, bosses and scaling. */
+  function dgRogueFields(d, field, num, lines) {
+    const rg = d.roomGroups || {};
+    const tw = d.typeWeights || {};
+    const types = [['fight', 'Fight rooms'], ['elite', 'Elite rooms (tougher mobs)'], ['boss', 'Boss rooms']];
+    const groupIn = (k, v, ph) => `<input type="text" ${k} value="${esc(v || '')}" placeholder="${esc(ph)}">`;
+    const count = (g) => g ? ` <small>(${dgGroupRooms(g)} room${dgGroupRooms(g) === 1 ? '' : 's'})</small>` : '';
+    return `<p class="pn-hint pn-field-wide"><i class="bi bi-info-circle"></i> Rooms are dungeon rooms (<code>/dungeon room create</code>, then <code>/dungeon room save &lt;room&gt; &lt;group&gt;</code>) with markers: <code>start</code> where players arrive, <code>door</code> where they pick the next room (once every foe is down), <code>spawn</code> where the mobs below come; <code>mob:</code> and <code>boss:</code> markers work too. The party leader picks the door. Out is out: dead players watch until the run ends.</p>
+      ${field('First room group (optional, a safe room)' + count(d.startGroup), groupIn('data-d="startGroup"', d.startGroup, 'e.g. ' + d.name.toLowerCase() + '_start'))}
+      ${types.map(([t, label]) => field(label + ', group' + count(rg[t]), groupIn(`data-rg="${t}"`, rg[t], d.name.toLowerCase() + '_' + t))).join('')}
+      ${types.filter(([t]) => t !== 'boss').map(([t, label]) => field(label.replace(/ \(.*/, '') + ': how often (weight)', `<input type="number" data-tw="${t}" min="0" max="100" value="${tw[t] ?? 0}">`)).join('')}
+      ${field('Boss room every … rooms (0 = never)', num('bossEvery', 0, 100))}
+      ${field('Rooms to win (0 = endless)', num('maxDepth', 0, 999))}
+      ${field('Mobs (one line each, e.g. <code>zombie</code>, <code>skeleton x2</code>)', lines('mobs'), true)}
+      ${field('Bosses for boss rooms (one at random; <code>ncc:…</code>, <code>katters:…</code> or any mob)', lines('bosses'), true)}
+      ${field('Mobs in the first room', num('firstMobs', 0, 40))}
+      ${field('More mobs per room', num('perRoom', 0, 20))}
+      ${field('% more mobs per extra player', num('perPlayer', 0, 200))}
+      ${field('% more health and damage per room', num('toughness', 0, 200))}
+      ${field('Elite rooms: % more on top', num('eliteToughness', 0, 500))}`;
   }
 
   /** A dungeon's room spots (jigsaws with a group), each with its own chance (empty: the group's). */
@@ -3387,9 +3424,40 @@
   const DG_GLOBAL = { 'pn-dg-slots': 'maxSlots', 'pn-dg-party': 'maxParty', 'pn-dg-pieces': 'piecesPerTick' };
   Object.entries(DG_GLOBAL).forEach(([id, k]) => $(id).addEventListener('input', (e) => { dg.settings[k] = Number(e.target.value) || 0; dgChanged(false); }));
   $('pn-dg-enabled').addEventListener('change', (e) => { dg.settings.enabled = e.target.checked; dgChanged(false); });
+  // A rogue run: no build of its own (its rooms come from groups), so it's made here or with /dungeon rogue create.
+  $('pn-dg-rogue-add').addEventListener('click', () => {
+    const name = $('pn-dg-rogue-name').value.trim();
+    if (!/^[A-Za-z0-9_-]{1,32}$/.test(name)) { dgNote('A one-word name (letters, digits, - and _).', false); return; }
+    if (dg.settings.dungeons.some((d) => d.name.toLowerCase() === name.toLowerCase())) { dgNote('There is one with that name already.', false); return; }
+    const low = name.toLowerCase();
+    dg.settings.dungeons.push({
+      id: '', name, mode: 'rogue', enabled: true, pool: 'default', minParty: 1, maxParty: 4, lives: 0, outSpectate: true, timeLimit: 0, peacefulFight: true,
+      gear: 'kit', kit: [], moreKits: [], removePickups: true, clearOn: 'exit', enterMessage: '', prepareMessage: '', clearedMessage: '', failedMessage: '',
+      enterCommands: [], exitCommands: [], markers: [], connectors: [], spotChances: {}, roomDepth: 4, maxRooms: 40,
+      startGroup: low + '_start', roomGroups: { fight: low + '_fight', elite: low + '_elite', boss: low + '_boss' }, typeWeights: { fight: 70, elite: 30, boss: 0 },
+      bossEvery: 5, maxDepth: 0, mobs: ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:spider'], bosses: ['ncc:frost_warden'],
+      firstMobs: 3, perRoom: 1, perPlayer: 50, toughness: 10, eliteToughness: 50,
+    });
+    $('pn-dg-rogue-name').value = '';
+    dgChanged(true);
+  });
   $('pn-dg-list').addEventListener('input', (e) => {
     const card = e.target.closest('[data-dungeon]');
     const k = e.target.dataset.d;
+    if (card && e.target.dataset.rg) {
+      const dd = dg.settings.dungeons[+card.dataset.dungeon];
+      dd.roomGroups = dd.roomGroups || {};
+      dd.roomGroups[e.target.dataset.rg] = e.target.value.trim().toLowerCase();
+      dgChanged(false);
+      return;
+    }
+    if (card && e.target.dataset.tw) {
+      const dd = dg.settings.dungeons[+card.dataset.dungeon];
+      dd.typeWeights = dd.typeWeights || {};
+      dd.typeWeights[e.target.dataset.tw] = Number(e.target.value) || 0;
+      dgChanged(false);
+      return;
+    }
     if (!card || !k) return;
     const d = dg.settings.dungeons[+card.dataset.dungeon];
     const v = e.target.value;

@@ -224,7 +224,8 @@ Players who play together, in Flying Fair and the dungeons (and the game hub's d
 ## Dungeons
 Built anywhere in the world, copied fresh for every party into the dungeon dimension and wiped again when they're
 done. The full setup guide (markers, pads and parties, gear, random rooms, all commands) is in
-[DUNGEONS.md](DUNGEONS.md).
+[DUNGEONS.md](DUNGEONS.md). Rogue runs (a chain of random rooms, one life, harder each room) are in
+[ROGUE.md](ROGUE.md).
 
 ## Game worlds
 Performance → per-dimension tuning (the Flying Fair preset sets these): no pet perks, and **random looks**: mobs

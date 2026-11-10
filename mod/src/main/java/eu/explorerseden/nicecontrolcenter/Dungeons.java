@@ -26,7 +26,9 @@ public final class Dungeons {
 	/** Pieces are 16 × 16 columns (one chunk wide), as high as the box (its two corners). */
 	public static final int PIECE = 16;
 	/** Markers: data-mode structure blocks in the build, with one of these as their text. */
-	public static final List<String> MARKERS = List.of("start", "exit", "checkpoint", "mob", "boss");
+	public static final List<String> MARKERS = List.of("start", "exit", "checkpoint", "mob", "boss", "door", "spawn");
+	/** Rogue runs: the room types a door can lead to (rooms come from the group set for the type). */
+	public static final List<String> ROGUE_TYPES = List.of("fight", "elite", "boss");
 
 	/** A marker in a saved dungeon, relative to the box's lowest corner. */
 	public static final class Marker {
@@ -105,6 +107,31 @@ public final class Dungeons {
 	public static final class Dungeon {
 		public String id = "";
 		public String name = "";
+		/**
+		 * "dungeon": a built box with rooms in it; "rogue": no box of its own, a chain of rooms one at a time (clear
+		 * the room, pick a door, the next one is harder) until everyone is out.
+		 */
+		public String mode = "dungeon";
+		/** Rogue: the group of the first room (a safe room, its doors open at once); empty = a fight room first. */
+		public String startGroup = "";
+		/** Rogue: room type (fight, elite, boss) → the group its rooms come from. */
+		public java.util.Map<String, String> roomGroups = new java.util.LinkedHashMap<>();
+		/** Rogue: how often a door leads to each type (boss rooms come every bossEvery rooms instead). */
+		public java.util.Map<String, Integer> typeWeights = new java.util.LinkedHashMap<>();
+		/** Rogue: every n-th room is a boss room (0 = never). */
+		public int bossEvery = 5;
+		/** Rogue: rooms to clear for a win (0 = endless, until everyone is out). */
+		public int maxDepth;
+		/** Rogue: mob lines the spawn markers draw from, and the bosses of boss rooms (one at random). */
+		public List<String> mobs = new ArrayList<>();
+		public List<String> bosses = new ArrayList<>();
+		/** Rogue: mobs in the first room, more per room after it, % more per extra player. */
+		public int firstMobs = 3;
+		public int perRoom = 1;
+		public int perPlayer = 50;
+		/** Rogue: % more health and damage per room after the first; elite rooms add eliteToughness % on top. */
+		public int toughness = 10;
+		public int eliteToughness = 50;
 		/** In its pool (players can get it) or not. */
 		public boolean enabled = true;
 		/** Pads hand out a random dungeon from their own pool. */
@@ -167,6 +194,10 @@ public final class Dungeons {
 
 		public boolean hasMarker(String type) {
 			return markers.stream().anyMatch(m -> type.equals(m.type));
+		}
+
+		public boolean rogue() {
+			return "rogue".equals(mode);
 		}
 	}
 
@@ -270,6 +301,29 @@ public final class Dungeons {
 				d.spotChances.replaceAll((k, v) -> v == null ? 100 : Math.max(0, Math.min(100, v)));
 				d.roomDepth = Math.max(1, Math.min(8, d.roomDepth));
 				d.maxRooms = Math.max(1, Math.min(200, d.maxRooms));
+				if (!"rogue".equals(d.mode)) d.mode = "dungeon";
+				d.startGroup = d.startGroup == null || d.startGroup.isBlank() ? "" : pool(d.startGroup);
+				java.util.Map<String, String> rg = new java.util.LinkedHashMap<>();
+				java.util.Map<String, Integer> tw = new java.util.LinkedHashMap<>();
+				for (String t : ROGUE_TYPES) {
+					String g = d.roomGroups == null ? null : d.roomGroups.get(t);
+					rg.put(t, g == null || g.isBlank() ? "" : pool(g));
+					Integer w = d.typeWeights == null ? null : d.typeWeights.get(t);
+					tw.put(t, Math.max(0, Math.min(100, w == null ? ("fight".equals(t) ? 70 : "elite".equals(t) ? 30 : 0) : w)));
+				}
+				d.roomGroups = rg;
+				d.typeWeights = tw;
+				d.bossEvery = Math.max(0, Math.min(100, d.bossEvery));
+				d.maxDepth = Math.max(0, Math.min(999, d.maxDepth));
+				if (d.mobs == null) d.mobs = new ArrayList<>();
+				if (d.bosses == null) d.bosses = new ArrayList<>();
+				d.mobs.removeIf(x -> x == null || x.isBlank());
+				d.bosses.removeIf(x -> x == null || x.isBlank());
+				d.firstMobs = Math.max(0, Math.min(40, d.firstMobs));
+				d.perRoom = Math.max(0, Math.min(20, d.perRoom));
+				d.perPlayer = Math.max(0, Math.min(200, d.perPlayer));
+				d.toughness = Math.max(0, Math.min(200, d.toughness));
+				d.eliteToughness = Math.max(0, Math.min(500, d.eliteToughness));
 			}
 			if (rooms == null) rooms = new ArrayList<>();
 			if (groups == null) groups = new ArrayList<>();
@@ -297,6 +351,11 @@ public final class Dungeons {
 				for (Connector c : r.connectors) if (c.spot()) named.add(c.pool);
 			}
 			for (Dungeon d : dungeons) for (Connector c : d.connectors) if (c.spot()) named.add(c.pool);
+			for (Dungeon d : dungeons) {
+				if (!d.rogue()) continue;
+				if (!d.startGroup.isEmpty()) named.add(d.startGroup);
+				for (String g : d.roomGroups.values()) if (!g.isEmpty()) named.add(g);
+			}
 			List<Group> kept = new ArrayList<>();
 			for (String n : named) {
 				Group g = groups.stream().filter(x -> x != null && n.equals(x.name)).findFirst().orElse(null);
@@ -323,6 +382,8 @@ public final class Dungeons {
 
 	/** A best clear: the time and who was in the party. */
 	public static final class Best {
+		/** Rogue runs: rooms cleared (more is better; the time breaks ties). */
+		public int depth;
 		public long millis;
 		public List<String> names = new ArrayList<>();
 		public long at;

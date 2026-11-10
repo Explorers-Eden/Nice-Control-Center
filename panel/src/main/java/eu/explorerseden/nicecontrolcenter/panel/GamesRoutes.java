@@ -207,7 +207,8 @@ final class GamesRoutes {
 					d.moreKits = new java.util.ArrayList<>();
 				}
 			}
-			next.dungeons.removeIf(d -> now.dungeon(d.id) == null);
+			// New ones come from the game (/dungeon save), except rogue runs (no build of their own): the page makes those.
+			next.dungeons.removeIf(d -> now.dungeon(d.id) == null && !d.rogue());
 			for (Dungeons.Room r : next.rooms) {
 				Dungeons.Room was = now.room(r.id);
 				if (was == null) continue;

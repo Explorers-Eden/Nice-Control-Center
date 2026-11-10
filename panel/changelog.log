@@ -1,3 +1,5 @@
+## 1.86.0
+- Games → Dungeons: "New rogue run" makes a rogue run (no build of its own); its card has the room groups per type, how often each type comes, boss rooms, rooms to win, mobs, bosses and scaling instead of the dungeon-only fields. Best runs show the rooms cleared, running rogue runs the room they're in
 ## 1.85.3
 - Games: the setup list shows a game's spectator spawns (and how to add them); saving from the panel keeps them
 ## 1.85.2
