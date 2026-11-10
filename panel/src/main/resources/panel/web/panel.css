@@ -1107,6 +1107,18 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-dg-runs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .pn-dg-runs li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: rgba(var(--ink),.04); border: 1px solid rgba(var(--ink),.08); font-size: var(--fs-sm); }
 .pn-dg-runs li > button { margin-left: auto; }
+/* Rogue runs: room types as a compact table (type, group, rooms in it, how often). */
+.pn-rg-types { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.pn-rg-types th { text-align: left; font-weight: 600; opacity: .7; padding: 4px 8px; border-bottom: 1px solid rgba(var(--ink),.1); }
+.pn-rg-types td { padding: 5px 8px; border-bottom: 1px solid rgba(var(--ink),.06); vertical-align: middle; }
+.pn-rg-types td:first-child { white-space: nowrap; }
+.pn-rg-types td:first-child small { display: block; opacity: .6; font-weight: normal; }
+.pn-rg-types td:nth-child(3) { text-align: center; width: 4.5em; }
+.pn-rg-types td input[type=text] { width: 100%; }
+.pn-rg-types td input[type=number] { width: 5.5em; }
+.pn-dg-warnchip { color: #ffb84d; }
+.pn-gm-card .pn-rw-head .pn-hint { font-size: var(--fs-sm); }
+@media (max-width: 640px) { .pn-rg-types td:first-child small { display: none; } }
 .pn-dg-who { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text); }
 .pn-dg-who .out { color: var(--faint); text-decoration: line-through; }
 .pn-dg-time { font-variant-numeric: tabular-nums; color: var(--muted); }

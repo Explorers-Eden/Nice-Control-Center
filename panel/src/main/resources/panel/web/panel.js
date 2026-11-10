@@ -3220,6 +3220,10 @@
 
   // ── Dungeons ───────────────────────────────────────────────────────────
 
+  /** Dungeon and rogue run cards that are open (by id); closed ones show only their header. */
+  const dgOpen = new Set();
+  /** Room cards that are open (by id). */
+  const rmOpen = new Set();
   const dg = { settings: null, runs: [], scores: {}, dirty: false, removed: { dungeons: [], rooms: [], pads: [], waiting: [] } };
   const DG_TABS = ['dungeons', 'rogue'];
   const DG_SAVES = [['pn-dg-save', 'pn-dg-msg'], ['pn-rg-save', 'pn-rg-msg']];
@@ -3277,37 +3281,44 @@
         : d.clearOn === 'boss' && !counts.boss ? 'No <code>boss</code> marker: it can\'t be cleared.' : '';
       const best = dg.scores[d.id] || {};
       const board = [1, 2, 3, 4].filter((n) => best[n]).map((n) => `<li><b>${n === 1 ? 'Solo' : n + ' players'}</b><span>${rogue ? `${best[n].depth} rooms · ` : ''}${gmClock(best[n].millis)}</span><small>${esc((best[n].names || []).join(', '))} · ${best[n].clears} clear${best[n].clears === 1 ? '' : 's'}</small></li>`).join('');
-      return `<section class="pn-gm-card ${d.enabled ? '' : 'off'}" data-dungeon="${i}">
-        <div class="pn-rw-head">
+      const H = (icon, title) => `<h4 class="pn-ps-sub pn-field-wide"><i class="bi ${icon}"></i> ${title}</h4>`;
+      const top = Math.max(0, ...Object.values(best).map((b) => (rogue ? b.depth : 0) || 0));
+      return `<section class="pn-gm-card ${d.enabled ? '' : 'off'}${dgOpen.has(d.id) || dgOpen.has(d.name) ? '' : ' collapsed'}" data-dungeon="${i}">
+        <div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
           <label class="np-switch" title="In its pool or not"><input type="checkbox" data-d="enabled" ${d.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon"><i class="bi ${rogue ? 'bi-shuffle' : 'bi-door-closed'}"></i></span>
           <b class="pn-gm-name">${esc(d.name)}</b><span class="np-chip">${esc(d.pool)}</span>${rogue ? '<span class="np-chip">rogue run</span>' : ''}
-          ${d.pieces ? `<span class="np-chip">${d.sizeX} × ${d.sizeY} × ${d.sizeZ}</span>` : ''}
+          ${d.pieces ? `<span class="np-chip">${d.sizeX} × ${d.sizeY} × ${d.sizeZ}</span>` : ''}<span class="np-chip">${d.minParty === d.maxParty ? d.minParty : d.minParty + '–' + d.maxParty} player${d.maxParty === 1 ? '' : 's'}</span>${rogue && top ? `<span class="np-chip gold">best: ${top} rooms</span>` : ''}${warn ? '<span class="np-chip pn-dg-warnchip" title="See the note in the card"><i class="bi bi-exclamation-triangle"></i></span>' : ''}
           <span class="pn-rw-actions">${d.from ? `<button type="button" class="np-btn small" data-dgresave="dungeon" data-name="${esc(d.name)}" title="Copy the build in the world again (after changes to it)"><i class="bi bi-arrow-repeat"></i> Save again from the build</button>` : ''}<button type="button" class="np-btn small danger" data-dgdel="${i}" title="Remove the dungeon and its saved blocks"><i class="bi bi-trash"></i></button></span>
         </div>
         <p class="pn-hint">${rogue ? '<i class="bi bi-shuffle"></i> Room after room from the groups below; one life each.' : `<i class="bi bi-pin-map"></i> ${esc(markers)}`}${d.savedAt ? ` · saved ${esc(new Date(d.savedAt).toLocaleString())}${d.savedBy ? ' by ' + esc(d.savedBy) : ''}` : ''}${warn ? ` · <span class="pn-dg-warn">${warn}</span>` : ''}</p>
         <div class="pn-gm-body"><div class="pn-rw-grid">
-          ${field('Pool', text('pool', 'default'))}
+          ${H('bi-people', 'Players')}
+          ${field('Pool (pads of this pool start it)', text('pool', 'default'))}
           ${field('Players, at least', num('minParty', 1, 4))}
           ${field('Players, at most', num('maxParty', 1, 4))}
+          ${field('Time limit (minutes, 0 = none)', num('timeLimit', 0, 600))}
           ${rogue ? '' : field('Lives (deaths before out)', num('lives', 0, 99))}
           ${rogue ? '' : field('Out players', `<select data-d="outSpectate">${opt(true, d.outSpectate, 'watch their party')}${opt(false, d.outSpectate, 'go back at once')}</select>`)}
-          ${field('Time limit (minutes, 0 = none)', num('timeLimit', 0, 600))}
-          ${field('Peaceful and neutral mobs', `<select data-d="peacefulFight">${opt(true, d.peacefulFight !== false, 'attack players too')}${opt(false, d.peacefulFight !== false, 'stay as they are')}</select>`)}
           ${rogue ? '' : field('Cleared by', `<select data-d="clearOn">${opt('exit', d.clearOn, 'reaching an exit')}${opt('boss', d.clearOn, 'beating every boss')}</select>`)}
-          ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
-          ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}
-          <p class="pn-hint pn-field-wide">Items that must stay in the dungeon (a pickaxe in a chest, a key from a mob): give them <code>custom_data={ncc_game_only:1b}</code>, e.g. <code>minecraft:iron_pickaxe[custom_data={ncc_game_only:1b}]</code> in a loot table, chest or mob drop. They vanish when the player leaves, whatever is set here.</p>
-          ${d.gear === 'kit' ? field('Kit', `<span class="pn-dg-kit">${(d.kit || []).length ? `${d.kit.length} stack${d.kit.length === 1 ? '' : 's'}${(d.moreKits || []).length ? ` +${d.moreKits.length} more kit${d.moreKits.length === 1 ? '' : 's'} (a random one each)` : ''} <button type="button" class="np-btn small" data-dgkit="${i}">Clear</button>` : 'none'} <small>set in game: <code>/dungeon kit ${esc(d.name)}</code>, more: <code>/dungeon kit ${esc(d.name)} add</code></small></span>`) : ''}
-          ${field('Message on entering', text('enterMessage', '▶ {dungeon}: find the way out!'), true)}
-          ${field('Boss bar while it\'s prepared', text('prepareMessage', 'Preparing your dungeon…'), true)}
-          ${field('Message when cleared', text('clearedMessage', '■ {dungeon} cleared in {time}!'), true)}
-          ${field('Message when failed', text('failedMessage', '■ {dungeon}: the run is over.'), true)}
-          ${field('Commands on entering ({player}, {party}, {dungeon})', lines('enterCommands'), true)}
-          ${field('Commands on leaving or the end ({time}, {deaths})', lines('exitCommands'), true)}
-          ${rogue ? dgRogueFields(d, field, num, lines) : `${field('Rooms inside rooms, levels', num('roomDepth', 1, 8))}
+          ${field('Peaceful and neutral mobs', `<select data-d="peacefulFight">${opt(true, d.peacefulFight !== false, 'attack players too')}${opt(false, d.peacefulFight !== false, 'stay as they are')}</select>`)}
+          ${rogue ? dgRogueFields(d, field, num, lines, H) : `${H('bi-bounding-box', 'Random rooms')}
+          ${field('Rooms inside rooms, levels', num('roomDepth', 1, 8))}
           ${field('Rooms per copy, at most', num('maxRooms', 1, 200))}
           ${dgSpots(d, i)}`}
+          ${H('bi-backpack', 'Gear')}
+          ${field('Gear', `<select data-d="gear">${opt('kit', d.gear, 'their things put aside, kit given')}${opt('own', d.gear, 'they bring their own')}</select>`)}
+          ${d.gear === 'kit' ? field('Items found inside', `<select data-d="removePickups">${opt(true, d.removePickups, 'vanish afterwards')}${opt(false, d.removePickups, 'go to their inbox')}</select>`) : ''}
+          ${d.gear === 'kit' ? field('Kit', `<span class="pn-dg-kit">${(d.kit || []).length ? `${d.kit.length} stack${d.kit.length === 1 ? '' : 's'}${(d.moreKits || []).length ? ` +${d.moreKits.length} more kit${d.moreKits.length === 1 ? '' : 's'} (a random one each)` : ''} <button type="button" class="np-btn small" data-dgkit="${i}">Clear</button>` : 'none'} <small>in game: <code>/dungeon kit ${esc(d.name)}</code>, more: <code>… add</code></small></span>`, true) : ''}
+          <p class="pn-hint pn-field-wide">Items that must stay inside (a key, a pickaxe from a chest): give them <code>custom_data={ncc_game_only:1b}</code>; they vanish when the player leaves.</p>
+          ${H('bi-chat-dots', 'Messages and commands')}
+          ${field('On entering', text('enterMessage', rogue ? '▶ {dungeon}: clear room after room…' : '▶ {dungeon}: find the way out!'), true)}
+          ${field('Boss bar while it\'s prepared', text('prepareMessage', 'Preparing your dungeon…'), true)}
+          ${field(rogue ? 'When won' : 'When cleared', text('clearedMessage', rogue ? '■ {dungeon} won: {depth} rooms cleared in {time}!' : '■ {dungeon} cleared in {time}!'), true)}
+          ${field(rogue ? 'When the run is over' : 'When failed', text('failedMessage', rogue ? '■ {dungeon}: the run is over after {depth} rooms ({time}).' : '■ {dungeon}: the run is over.'), true)}
+          ${field('Commands on entering ({player}, {party}, {dungeon})', lines('enterCommands'), true)}
+          ${field('Commands at the end or on leaving ({time}, {deaths}' + (rogue ? ', {depth}' : '') + ')', lines('exitCommands'), true)}
         </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> ${rogue ? 'Deepest runs' : 'Best clears'}</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}</div></div>
       </section>`;
     };
@@ -3346,27 +3357,33 @@
   }
 
   /** A rogue run's own settings: room groups per type, how often each comes, mobs, bosses and scaling. */
-  function dgRogueFields(d, field, num, lines) {
+  function dgRogueFields(d, field, num, lines, H) {
     const rg = d.roomGroups || {};
     const tw = d.typeWeights || {};
-    const types = [['fight', 'Fight rooms'], ['elite', 'Elite rooms (tougher mobs)'], ['boss', 'Boss rooms'], ['treasure', 'Treasure rooms (a free boon)'], ['shop', 'Shop rooms'], ['rest', 'Rest rooms (heal)']];
-    const groupIn = (k, v, ph) => `<input type="text" ${k} value="${esc(v || '')}" placeholder="${esc(ph)}">`;
-    const count = (g) => g ? ` <small>(${dgGroupRooms(g)} room${dgGroupRooms(g) === 1 ? '' : 's'})</small>` : '';
-    return `<p class="pn-hint pn-field-wide"><i class="bi bi-info-circle"></i> Rooms are dungeon rooms (<code>/dungeon room create</code>, then <code>/dungeon room save &lt;room&gt; &lt;group&gt;</code>) with markers: <code>start</code> where players arrive, <code>door</code> where they pick the next room (once every foe is down), <code>spawn</code> where the mobs below come; <code>mob:</code> and <code>boss:</code> markers work too. The party leader picks the door. Out is out: dead players watch until the run ends.</p>
-      ${field('First room group (optional, a safe room)' + count(d.startGroup), groupIn('data-d="startGroup"', d.startGroup, 'e.g. ' + d.name.toLowerCase() + '_start'))}
-      ${types.map(([t, label]) => field(label + ', group' + count(rg[t]), groupIn(`data-rg="${t}"`, rg[t], d.name.toLowerCase() + '_' + t))).join('')}
-      ${types.filter(([t]) => t !== 'boss').map(([t, label]) => field(label.replace(/ \(.*/, '') + ': how often (weight)', `<input type="number" data-tw="${t}" min="0" max="100" value="${tw[t] ?? 0}">`)).join('')}
-      ${field('Boons', `<select data-d="rogueBoons"><option value="true" ${d.rogueBoons !== false ? 'selected' : ''}>after rooms and in shops</option><option value="false" ${d.rogueBoons === false ? 'selected' : ''}>none in this run</option></select>`)}
+    const types = [['fight', '⚔ Fight', 'mobs, then a room reward'], ['elite', '☠ Elite', 'tougher mobs, more coins'], ['boss', '♛ Boss', 'a boss (every … rooms below)'],
+      ['treasure', '✦ Treasure', 'a free boon'], ['shop', '🛒 Shop', 'spend run coins'], ['rest', '❤ Rest', 'heal up']];
+    const rooms = (g) => (g ? dgGroupRooms(g) : 0);
+    const rows = types.map(([t, label, what]) => `<tr><td><b>${label}</b><small>${what}</small></td>
+        <td><input type="text" data-rg="${t}" value="${esc(rg[t] || '')}" placeholder="${esc(d.name.toLowerCase() + '_' + t)}" spellcheck="false"></td>
+        <td class="${rg[t] && !rooms(rg[t]) ? 'pn-dg-warn' : ''}">${rg[t] ? rooms(rg[t]) : '–'}</td>
+        <td>${t === 'boss' ? '<small>every … rooms</small>' : `<input type="number" data-tw="${t}" min="0" max="100" value="${tw[t] ?? 0}">`}</td></tr>`).join('');
+    return `${H('bi-shuffle', 'Rooms')}
+      <p class="pn-hint pn-field-wide">Rooms are dungeon rooms saved into a group (<code>/dungeon room save &lt;room&gt; &lt;group&gt;</code>) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms.</p>
+      ${field('First room (optional, a safe start), group <small>(' + rooms(d.startGroup) + ' rooms)</small>', `<input type="text" data-d="startGroup" value="${esc(d.startGroup || '')}" placeholder="${esc(d.name.toLowerCase())}_start" spellcheck="false">`)}
       ${field('Boss room every … rooms (0 = never)', num('bossEvery', 0, 100))}
       ${field('Rooms to win (0 = endless)', num('maxDepth', 0, 999))}
-      ${field('Mobs (one line each, e.g. <code>zombie</code>, <code>skeleton x2</code>)', lines('mobs'), true)}
-      ${field('Bosses for boss rooms (one at random; <code>ncc:…</code>, <code>katters:…</code> or any mob)', lines('bosses'), true)}
+      <div class="pn-field pn-field-wide"><table class="pn-rg-types"><thead><tr><th>Room type</th><th>Group</th><th>Rooms</th><th>How often</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${field('Boons', `<select data-d="rogueBoons"><option value="true" ${d.rogueBoons !== false ? 'selected' : ''}>after rooms and in shops</option><option value="false" ${d.rogueBoons === false ? 'selected' : ''}>none in this run</option></select>`)}
+      ${H('bi-bug', 'Mobs and how hard it gets')}
+      ${field('Mobs at spawn markers (one per line: <code>zombie</code>, <code>skeleton x2</code>, <code>npc:…</code>)', lines('mobs'), true)}
+      ${field('Bosses for boss rooms (one at random: <code>ncc:…</code>, <code>katters:…</code>, any mob)', lines('bosses'), true)}
       ${field('Mobs in the first room', num('firstMobs', 0, 40))}
       ${field('More mobs per room', num('perRoom', 0, 20))}
       ${field('% more mobs per extra player', num('perPlayer', 0, 200))}
       ${field('% more health and damage per room', num('toughness', 0, 200))}
       ${field('Elite rooms: % more on top', num('eliteToughness', 0, 500))}`;
   }
+
 
   /** Rest room and unlock menu fields (data-rgk: key in the rogue settings, data-rgt: num, bool, text or lines). */
   function rgField(el, g) {
@@ -3386,6 +3403,19 @@
   const RG_BOON_KINDS = [['attribute', 'Attribute'], ['effect', 'Effect'], ['item', 'Item'], ['heal', 'Heal'], ['command', 'Command']];
   const RG_UNLOCK_KINDS = [['coins', 'Coins at the start'], ['boon', 'A boon at the start'], ['reroll', 'Boon rerolls'], ['choice', 'One more boon to choose from']];
 
+  /** Boon and unlock cards that are open ("b:2", "u:0"). */
+  const rgOpen = new Set();
+  /** A boon in a few words, like the game says it ("+4 max health", "regeneration"). */
+  function rgDescribe(b) {
+    if (b.description) return b.description;
+    const what = String(b.target || '').replace(/^minecraft:/, '').replace(/_/g, ' ');
+    if (b.kind === 'attribute') return (b.op === 'percent' ? `+${Math.round(b.amount * 100)} %` : `${b.amount >= 0 ? '+' : ''}${b.amount}`) + ' ' + what;
+    if (b.kind === 'effect') return what + ' (stronger each time)';
+    if (b.kind === 'item') return `${b.amount} × ${what}`;
+    if (b.kind === 'heal') return `heals ${b.amount / 2} hearts`;
+    return 'a command';
+  }
+
   /** Rogue runs' shared settings: coins, boons, the shop and the unlocks. */
   function renderRogue(edit) {
     const g = dg.settings.rogue || (dg.settings.rogue = { boons: [], shop: [], unlocks: [] });
@@ -3398,9 +3428,10 @@
       const a = (k) => `data-bi="${i}" data-bk="${k}"`;
       const targetLabel = { attribute: 'Attribute', effect: 'Effect', item: 'Item', command: 'Command ({player})', heal: '' }[b.kind];
       const amountLabel = { attribute: 'Amount per boon', item: 'How many', heal: 'Health points', effect: '', command: '' }[b.kind];
-      return `<section class="pn-gm-card ${b.enabled ? '' : 'off'}"><div class="pn-rw-head">
+      return `<section class="pn-gm-card ${b.enabled ? '' : 'off'}${rgOpen.has('b:' + i) ? '' : ' collapsed'}" data-rgcard="b:${i}"><div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
           <label class="np-switch" title="Offered or not"><input type="checkbox" ${a('enabled')} ${b.enabled ? 'checked' : ''}><span></span></label>
-          <span class="pn-rw-give-icon"><i class="bi bi-stars"></i></span><b class="pn-gm-name">${esc(b.name || b.id)}</b><span class="np-chip">${esc(b.id)}</span>
+          <span class="pn-rw-give-icon"><i class="bi bi-stars"></i></span><b class="pn-gm-name">${esc(b.name || b.id)}</b><span class="pn-hint">${esc(rgDescribe(b))}</span>${b.weight ? '' : '<span class="np-chip">shop only</span>'}
           <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-rgdel="${i}" title="Remove"><i class="bi bi-trash"></i></button></span></div>
         <div class="pn-rw-grid">
           ${f('Name', `<input type="text" ${a('name')} value="${esc(b.name)}" maxlength="40">`)}
@@ -3436,9 +3467,10 @@
       : '<p class="pn-hint">Nothing for sale: shop rooms are empty.</p>';
     $('pn-rg-unlocks').innerHTML = (g.unlocks || []).map((u, i) => {
       const a = (k) => `data-ui="${i}" data-uk="${k}"`;
-      return `<section class="pn-gm-card ${u.enabled ? '' : 'off'}"><div class="pn-rw-head">
+      return `<section class="pn-gm-card ${u.enabled ? '' : 'off'}${rgOpen.has('u:' + i) ? '' : ' collapsed'}" data-rgcard="u:${i}"><div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
           <label class="np-switch" title="Can be bought or not"><input type="checkbox" ${a('enabled')} ${u.enabled ? 'checked' : ''}><span></span></label>
-          <span class="pn-rw-give-icon"><i class="bi bi-unlock"></i></span><b class="pn-gm-name">${esc(u.name || u.id)}</b><span class="np-chip">${esc(u.id)}</span>
+          <span class="pn-rw-give-icon"><i class="bi bi-unlock"></i></span><b class="pn-gm-name">${esc(u.name || u.id)}</b><span class="pn-hint">${esc((RG_UNLOCK_KINDS.find(([k]) => k === u.kind) || ['', u.kind])[1])}</span><span class="np-chip">${u.maxLevel} level${u.maxLevel === 1 ? '' : 's'} · from ${u.cost}</span>
           <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-rgdel="${i}" title="Remove"><i class="bi bi-trash"></i></button></span></div>
         <div class="pn-rw-grid">
           ${f('Name', `<input type="text" ${a('name')} value="${esc(u.name)}" maxlength="40">`)}
@@ -3470,9 +3502,16 @@
     // A new kind shows other fields; names show in the head.
     $(id).addEventListener('change', (e) => { if (id === 'pn-rg-rewards' || e.target.tagName === 'SELECT' || e.target.type === 'checkbox' || e.target.dataset[ka] === 'name') renderRogue(can('settings.server')); });
     $(id).addEventListener('click', (e) => {
+      const head = e.target.closest('.pn-gm-toggle');
+      if (head && !e.target.closest('input, button, label, select, a')) {
+        const card = head.closest('[data-rgcard]');
+        if (card.classList.toggle('collapsed')) rgOpen.delete(card.dataset.rgcard); else rgOpen.add(card.dataset.rgcard);
+        return;
+      }
       const b = e.target.closest('[data-rgdel]');
       if (!b) return;
       dg.settings.rogue[list].splice(+b.dataset.rgdel, 1);
+      rgOpen.clear();
       dgChanged(true);
     });
   });
@@ -3481,6 +3520,7 @@
     dgChanged(true);
   });
   $('pn-rg-boon-add').addEventListener('click', () => {
+    rgOpen.add('b:' + dg.settings.rogue.boons.length);
     dg.settings.rogue.boons.push({ id: '', enabled: true, name: 'New boon', icon: 'minecraft:nether_star', kind: 'attribute', target: 'minecraft:max_health', amount: 2, op: 'add', maxStacks: 3, weight: 10, description: '' });
     dgChanged(true);
   });
@@ -3489,6 +3529,7 @@
     dgChanged(true);
   });
   $('pn-rg-unlock-add').addEventListener('click', () => {
+    rgOpen.add('u:' + dg.settings.rogue.unlocks.length);
     dg.settings.rogue.unlocks.push({ id: '', enabled: true, name: 'New unlock', icon: 'minecraft:experience_bottle', kind: 'coins', boon: '', description: '', amount: 5, cost: 50, maxLevel: 3 });
     dgChanged(true);
   });
@@ -3516,8 +3557,14 @@
       const shares = inGroup.map((r) => `${esc(r.name)} ${Math.round(r.weight * 100 / total)}%`).join(', ');
       return `<li data-group="${i}"><b>${esc(g.name)}</b>
         <label class="pn-dg-inline">filled <input type="number" min="0" max="100" data-g="fillChance" value="${g.fillChance}"> %</label>
-        <label class="pn-dg-inline" title="0: right away; 1: only in rooms inside another room…">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
-        <small>${inGroup.length ? shares : '<span class="pn-dg-warn">no rooms (that are on)</span>'}</small></li>`;
+        <label class="pn-dg-inline" title="Dungeons: 0 = right away, 1 = only in rooms inside another room… Rogue runs: the room number it can come from">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
+        <small>${inGroup.length ? shares : '<span class="pn-dg-warn">no rooms (that are on)</span>'}${(() => {
+          const runs = s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup === g.name || Object.values(d.roomGroups || {}).includes(g.name))).map((d) => {
+            const t = d.startGroup === g.name ? 'first room' : Object.entries(d.roomGroups || {}).filter(([, v]) => v === g.name).map(([k]) => k).join(', ');
+            return `${esc(d.name)} (${esc(t)})`;
+          });
+          return runs.length ? ` · rogue run: ${runs.join(', ')}` : '';
+        })()}</small></li>`;
     }).join('')}</ul>` : '<p class="pn-hint">No groups yet: a spot\'s target pool or a room\'s group makes one.</p>';
     $('pn-dg-rooms').innerHTML = rooms.map((r, i) => {
       const doors = {};
@@ -3525,14 +3572,17 @@
       const spots = (r.connectors || []).filter((c) => c.pool).map((c) => c.pool);
       const counts = {};
       (r.markers || []).forEach((m) => { counts[m.type] = (counts[m.type] || 0) + 1; });
-      const info = [Object.entries(doors).map(([k, n]) => `door ${esc(k)}${n > 1 ? ' ×' + n : ''}`).join(', ') || '<span class="pn-dg-warn">no doors</span>',
+      const rogueRoom = (r.markers || []).some((m) => m.type === 'door' || m.type === 'spawn' || m.type === 'shop');
+      const info = [Object.entries(doors).map(([k, n]) => `jigsaw door ${esc(k)}${n > 1 ? ' ×' + n : ''}`).join(', ') || (rogueRoom ? '' : '<span class="pn-dg-warn">no jigsaw doors</span>'),
         spots.length ? 'spots: ' + spots.map(esc).join(', ') : '', Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ')].filter(Boolean).join(' · ');
-      return `<section class="pn-gm-card ${r.enabled ? '' : 'off'}" data-room="${i}">
-        <div class="pn-rw-head">
+      const usedBy = s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup && r.groups.includes(d.startGroup) || Object.values(d.roomGroups || {}).some((g) => g && r.groups.includes(g)))).map((d) => d.name);
+      return `<section class="pn-gm-card ${r.enabled ? '' : 'off'}${rmOpen.has(r.id || r.name) ? '' : ' collapsed'}" data-room="${i}">
+        <div class="pn-rw-head pn-gm-toggle" title="Open or close">
+          <i class="bi bi-chevron-right pn-gm-chevron"></i>
           <label class="np-switch" title="Can be picked or not"><input type="checkbox" data-r="enabled" ${r.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon"><i class="bi bi-bounding-box"></i></span>
           <b class="pn-gm-name">${esc(r.name)}</b>
-          ${r.sizeX ? `<span class="np-chip">${r.sizeX} × ${r.sizeY} × ${r.sizeZ}</span>` : ''}
+          ${r.sizeX ? `<span class="np-chip">${r.sizeX} × ${r.sizeY} × ${r.sizeZ}</span>` : ''}${r.groups.map((g) => `<span class="np-chip">${esc(g)}</span>`).join('') || '<span class="np-chip pn-dg-warnchip">no group</span>'}${usedBy.length ? `<span class="pn-hint">rogue: ${esc(usedBy.join(', '))}</span>` : ''}
           <span class="pn-rw-actions">${r.from ? `<button type="button" class="np-btn small" data-dgresave="room" data-name="${esc(r.name)}" title="Copy the build in the world again (after changes to it)"><i class="bi bi-arrow-repeat"></i> Save again from the build</button>` : ''}<button type="button" class="np-btn small danger" data-dgroomdel="${i}" title="Remove the room and its saved blocks"><i class="bi bi-trash"></i></button></span>
         </div>
         <p class="pn-hint"><i class="bi bi-signpost-split"></i> ${info}${r.savedAt ? ` · saved ${esc(new Date(r.savedAt).toLocaleString())}${r.savedBy ? ' by ' + esc(r.savedBy) : ''}` : ''}</p>
@@ -3555,6 +3605,15 @@
 
   /** The dungeon cards and the rogue run cards share their handlers (both are entries of the dungeons list). */
   function dgOn(type, fn) { ['pn-dg-list', 'pn-rg-list'].forEach((id) => $(id).addEventListener(type, fn)); }
+  // A card's header opens and closes it (not its switch or buttons); open ones stay open across reloads of the page.
+  dgOn('click', (e) => {
+    const head = e.target.closest('.pn-gm-toggle');
+    if (!head || e.target.closest('input, button, label, select, a')) return;
+    const card = head.closest('[data-dungeon]');
+    const d = dg.settings.dungeons[+card.dataset.dungeon];
+    const key = d.id || d.name;
+    if (card.classList.toggle('collapsed')) dgOpen.delete(key); else dgOpen.add(key);
+  });
 
   const DG_GLOBAL = { 'pn-dg-slots': 'maxSlots', 'pn-dg-party': 'maxParty', 'pn-dg-pieces': 'piecesPerTick' };
   Object.entries(DG_GLOBAL).forEach(([id, k]) => $(id).addEventListener('input', (e) => { dg.settings[k] = Number(e.target.value) || 0; dgChanged(false); }));
@@ -3576,6 +3635,7 @@
       firstMobs: 3, perRoom: 1, perPlayer: 50, toughness: 10, eliteToughness: 50,
     });
     $('pn-dg-rogue-name').value = '';
+    dgOpen.add(name);
     dgChanged(true);
   });
   dgOn('input', (e) => {
@@ -3655,6 +3715,13 @@
     return true;
   };
   $('pn-dg-rooms').addEventListener('click', async (e) => {
+    const head = e.target.closest('.pn-gm-toggle');
+    if (head && !e.target.closest('input, button, label, select, a')) {
+      const card = head.closest('[data-room]');
+      const r = dg.settings.rooms[+card.dataset.room];
+      if (card.classList.toggle('collapsed')) rmOpen.delete(r.id || r.name); else rmOpen.add(r.id || r.name);
+      return;
+    }
     if (await dgResave(e)) return;
     const del = e.target.closest('[data-dgroomdel]');
     if (!del) return;

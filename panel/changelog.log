@@ -1,3 +1,7 @@
+## 1.88.2
+- Games → Dungeons and Rogue runs: easier to read. Dungeon, rogue run, room, boon and unlock cards fold to one line (open one by clicking its header) with a summary in it (pool, players, best run, groups, what a boon does); inside, the fields are grouped under headings (Players, Rooms, Mobs and how hard it gets, Gear, Messages and commands)
+- Rogue runs: the room types are one small table (type, group, rooms in it, how often) instead of twelve separate fields
+- Dungeons: rooms show their groups and the rogue runs using them; room groups say which rogue run uses them for what; rooms made for rogue runs no longer warn "no doors" (they use door markers, not jigsaw blocks)
 ## 1.88.1
 - Games → Rogue runs: room rewards offer armor instead of food; coins, max health and armor each have their amount and "+ per room" on the row
 ## 1.88.0
