@@ -1343,6 +1343,56 @@
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-sm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-sm-msg"></span></div>
 			</div>
 
+			<div class="np-tab-panel" data-tab="rogue" hidden>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shuffle"></i> Rogue runs</h3>
+					<p class="np-card-intro">Room after room: clear every foe and the doors open, each showing what's behind it (fight, elite, boss, treasure, shop or rest). The party leader picks; each room is harder. Boons picked after a room or bought with run coins last for the run. One life: dead players watch until the run ends. Runs use the dungeon pads, pools, parties and kits.</p>
+					<dl class="pn-gm-howto">
+						<dt>Rooms</dt><dd>Dungeon rooms (<code>/dungeon room create &lt;room&gt;</code>, <code>/dungeon corner2</code>, <code>/dungeon room save &lt;room&gt; &lt;group&gt;</code>) with markers: <code>start</code>, <code>door</code>, <code>spawn</code>, <code>shop</code> (shop rooms), <code>mob:…</code>, <code>boss:…</code></dd>
+						<dt>Start</dt><dd>A pad in the run's pool: <code>/dungeon pad add &lt;pool&gt;</code>; test with <code>/dungeon try &lt;name&gt;</code></dd>
+						<dt>Players</dt><dd><code>/dungeon boon</code> (the boon choice again), <code>/dungeon shop</code>, <code>/dungeon unlocks</code> (bought with points, for every run), <code>/dungeon top &lt;name&gt;</code></dd>
+					</dl>
+					<p class="pn-hint">The whole guide: <a href="https://github.com/Explorers-Eden/Nice-Control-Center/blob/main/docs/ROGUE.md" target="_blank" rel="noopener">rogue runs <i class="bi bi-box-arrow-up-right"></i></a></p>
+					<div class="np-filters" data-dirty-ignore>
+						<input type="text" id="pn-dg-rogue-name" placeholder="name of the new run" maxlength="32">
+						<button type="button" class="np-btn" id="pn-dg-rogue-add"><i class="bi bi-plus-lg"></i> New rogue run</button>
+						<span class="np-form-msg" id="pn-rg-note"></span>
+					</div>
+				</section>
+				<div id="pn-rg-list" class="pn-rw-list"></div>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-coin"></i> Coins and rooms (every rogue run)</h3>
+					<div class="pn-rw-grid">
+						<label class="pn-field"><span>Coins per foe (everyone still in gets them)</span><input type="number" id="pn-rg-coins" min="0" max="1000"></label>
+						<label class="pn-field"><span>Elite rooms pay … times as much</span><input type="number" id="pn-rg-elite" min="1" max="10"></label>
+						<label class="pn-field"><span>Coins per boss</span><input type="number" id="pn-rg-boss" min="0" max="10000"></label>
+						<label class="pn-field"><span>Shop prices: % more per room</span><input type="number" id="pn-rg-growth" min="0" max="100"></label>
+						<label class="pn-field"><span>Rest rooms heal (% of max health)</span><input type="number" id="pn-rg-rest" min="0" max="100"></label>
+						<label class="pn-field"><span>Boons to choose from</span><input type="number" id="pn-rg-choices" min="1" max="6"></label>
+						<label class="pn-field"><span>Seconds to choose (then one is picked)</span><input type="number" id="pn-rg-seconds" min="5" max="300"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-stars"></i> Boons</h3>
+					<p class="np-card-intro">What players choose from after a fight, elite, boss or treasure room, and what shops sell. They last until the run ends for the player. Attribute: <code>minecraft:max_health</code>, <code>attack_damage</code>, <code>movement_speed</code>, <code>armor</code>, <code>knockback_resistance</code>… (add: a flat amount, percent: 0.1 = +10 %). Effect: its level grows with each one taken. Item: as in /give (<code>minecraft:golden_apple</code>). Heal: health points (2 = a heart). Command: as the server, <code>{player}</code>.</p>
+					<div id="pn-rg-boons"></div>
+					<button type="button" class="np-btn small" id="pn-rg-boon-add"><i class="bi bi-plus-lg"></i> Add a boon</button>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-shop"></i> Shop</h3>
+					<p class="np-card-intro">What shop rooms sell, in run coins; prices grow with the room number (above). Players stand on the room's <code>shop</code> marker (or the shop opens when they arrive).</p>
+					<div id="pn-rg-shop"></div>
+					<button type="button" class="np-btn small" id="pn-rg-shop-add"><i class="bi bi-plus-lg"></i> Add to the shop</button>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-unlock"></i> Unlocks</h3>
+					<p class="np-card-intro">Bought with points between runs (<code>/dungeon unlocks</code>), a level at a time: level 2 costs twice the price, level 3 three times. They work in every rogue run.</p>
+					<div id="pn-rg-unlocks"></div>
+					<button type="button" class="np-btn small" id="pn-rg-unlock-add"><i class="bi bi-plus-lg"></i> Add an unlock</button>
+				</section>
+				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-rg-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-rg-msg"></span></div>
+			</div>
+
 			<div class="np-tab-panel" data-tab="dungeons" hidden>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-door-closed"></i> Dungeons</h3>
@@ -1363,8 +1413,6 @@
 					<div class="np-filters">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-dg-enabled"><span></span></span> Dungeons on</label>
 						<button type="button" class="np-btn" id="pn-dg-refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-						<input type="text" id="pn-dg-rogue-name" data-dirty-ignore placeholder="rogue run name" maxlength="32" title="A rogue run: no build of its own, a chain of rooms from room groups">
-						<button type="button" class="np-btn" id="pn-dg-rogue-add"><i class="bi bi-shuffle"></i> New rogue run</button>
 						<span class="np-form-msg" id="pn-dg-note"></span>
 					</div>
 				</section>

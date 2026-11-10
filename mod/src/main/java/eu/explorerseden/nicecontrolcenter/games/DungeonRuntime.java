@@ -387,6 +387,7 @@ public final class DungeonRuntime {
 			slotsFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-dungeon-slots.json");
 			scoresFile = server.getWorldPath(LevelResource.ROOT).resolve(Dungeons.SCORES);
 			scores = Dungeons.readScores(scoresFile);
+			RogueBoons.load(server);
 			wipeLeftovers(server);
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -404,6 +405,20 @@ public final class DungeonRuntime {
 		ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
 			if (entity instanceof ServerPlayer p && playing.containsKey(p.getUUID())) died(p.level().getServer(), playing.get(p.getUUID()), p);
 			return true;
+		});
+		// Rogue runs: a foe of the room down pays coins to everyone still in.
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			if (entity instanceof ServerPlayer || !DungeonRuntime.dungeonWorld(entity.level())) return;
+			for (String t : entity.entityTags()) {
+				if (!t.startsWith("ncc_rogue_") || entity.entityTags().contains(eu.explorerseden.nicecontrolcenter.games.bosses.BossFight.ASSET)) continue;
+				try {
+					Run r = slots.get(Integer.parseInt(t.substring("ncc_rogue_".length())));
+					if (r != null && r.rogue != null && r.state == State.RUNNING) RogueBoons.killed(entity.level().getServer(), r, entity.entityTags().contains(r.bossTag()));
+				} catch (NumberFormatException e) {
+					// Another rogue tag (scaled, door).
+				}
+				return;
+			}
 		});
 		ServerPlayerEvents.AFTER_RESPAWN.register((old, now, alive) -> {
 			if (!alive) respawned(now.level().getServer(), now);
@@ -454,6 +469,11 @@ public final class DungeonRuntime {
 	/** In a dungeon run (a game area: no market, pets or inbox; the hub spawn takes over). */
 	public static boolean inRun(ServerPlayer p) {
 		return playing.containsKey(p.getUUID());
+	}
+
+	/** The run the player is in (also while watching), or null. */
+	static Run runOf(ServerPlayer p) {
+		return playing.get(p.getUUID());
 	}
 
 	/** Died in a run a moment ago or still in one: no grave. */
@@ -723,7 +743,7 @@ public final class DungeonRuntime {
 		long left = r.players.size() - r.out.size();
 		String limit = r.dungeon.timeLimit > 0 ? " / " + GameRuntime.clock(r.dungeon.timeLimit * 60_000L) : "";
 		int lives = r.lives.getOrDefault(p.getUUID(), 0);
-		p.sendOverlayMessage(Words.lit(r.dungeon.name + (r.rogue != null ? RogueRuns.hud(r) : "") + " · " + GameRuntime.clock(r.millis()) + limit
+		p.sendOverlayMessage(Words.lit(r.dungeon.name + (r.rogue != null ? RogueRuns.hud(r, p) : "") + " · " + GameRuntime.clock(r.millis()) + limit
 				+ (r.dungeon.lives > 0 ? " · " + "❤".repeat(Math.min(lives, 10)) + (lives == 0 ? "last life" : "") : "")
 				+ (r.players.size() > 1 ? " · " + left + " in" : "")).withStyle(ChatFormatting.LIGHT_PURPLE));
 	}
@@ -1057,6 +1077,7 @@ public final class DungeonRuntime {
 			p.teleportTo(level, r.start.getX() + 0.5, r.start.getY(), r.start.getZ() + 0.5, Set.of(), p.getYRot(), 0, true);
 			p.resetFallDistance();
 			Cleanup.refresh(p);
+			if (r.rogue != null) RogueBoons.start(r, p);
 			GameClaims.gameMode(p, false);
 			p.sendSystemMessage(Words.lit(fill(r.dungeon.enterMessage.isEmpty() ? (r.rogue != null ? "▶ {dungeon}: clear room after room. One life, so go as deep as you can!" : "▶ {dungeon}: find the way out!") : r.dungeon.enterMessage, r, p)).withStyle(ChatFormatting.LIGHT_PURPLE));
 			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(Words.lit(r.dungeon.name).withStyle(ChatFormatting.LIGHT_PURPLE)));
@@ -1195,6 +1216,7 @@ public final class DungeonRuntime {
 
 	/** Out of the run for good: their game mode and things back, and out of the dungeon dimension. */
 	private static void leaveRun(MinecraftServer server, Run r, ServerPlayer p) {
+		if (r.rogue != null) RogueBoons.strip(r, p);
 		GameType mode = r.watching.remove(p.getUUID());
 		if (mode != null) {
 			p.setCamera(p);
@@ -1439,6 +1461,24 @@ public final class DungeonRuntime {
 					out(ctx.getSource().getServer(), r, p, "You left the dungeon.", false);
 					return 1;
 				}))
+				.then(Commands.literal("boon").executes(ctx -> {
+					ServerPlayer p = ctx.getSource().getPlayerOrException();
+					Run r = playing.get(p.getUUID());
+					if (r == null || r.rogue == null || !r.rogue.offers.containsKey(p.getUUID())) return fail(ctx, "You have no boon to choose right now.");
+					RogueBoons.menu(r, p, null);
+					return 1;
+				}))
+				.then(Commands.literal("shop").executes(ctx -> {
+					ServerPlayer p = ctx.getSource().getPlayerOrException();
+					Run r = playing.get(p.getUUID());
+					if (r == null || r.rogue == null || !"shop".equals(r.rogue.type) || r.out.contains(p.getUUID())) return fail(ctx, "The shop is only in a rogue run's shop room.");
+					RogueBoons.shop(r, p, null);
+					return 1;
+				}))
+				.then(Commands.literal("unlocks").executes(ctx -> {
+					RogueBoons.unlocksMenu(ctx.getSource().getPlayerOrException(), null);
+					return 1;
+				}))
 				.then(Commands.literal("list").executes(ctx -> {
 					StringBuilder b = new StringBuilder();
 					for (String pool : settings.pools()) {
@@ -1664,6 +1704,7 @@ public final class DungeonRuntime {
 		d.roomGroups.put("fight", Dungeons.pool(name + "_fight"));
 		d.roomGroups.put("elite", Dungeons.pool(name + "_elite"));
 		d.roomGroups.put("boss", Dungeons.pool(name + "_boss"));
+		for (String t : List.of("treasure", "shop", "rest")) d.roomGroups.put(t, Dungeons.pool(name + "_" + t));
 		d.startGroup = Dungeons.pool(name + "_start");
 		d.mobs.addAll(List.of("minecraft:zombie", "minecraft:skeleton", "minecraft:spider"));
 		d.bosses.add("ncc:frost_warden");
@@ -1671,9 +1712,9 @@ public final class DungeonRuntime {
 		settings.fill();
 		saveSettings();
 		ctx.getSource().sendSuccess(() -> Words.lit("Made the rogue run " + name + " in the " + d.pool + " pool. Its rooms come from the groups " + d.startGroup + " (first room, optional), "
-				+ d.roomGroups.get("fight") + ", " + d.roomGroups.get("elite") + " and " + d.roomGroups.get("boss")
+				+ d.roomGroups.get("fight") + ", " + d.roomGroups.get("elite") + ", " + d.roomGroups.get("boss") + " (and _treasure, _shop, _rest, optional)"
 				+ ": build rooms with a start marker, door markers (where players pick the next room) and spawn markers (where its mobs come), then /dungeon room save <room> <group>."
-				+ " Mobs, bosses and scaling are in the panel (Games → Dungeons).").withStyle(ChatFormatting.LIGHT_PURPLE), true);
+				+ " Mobs, bosses, scaling, boons and the shop are in the panel (Games → Rogue runs).").withStyle(ChatFormatting.LIGHT_PURPLE), true);
 		return 1;
 	}
 

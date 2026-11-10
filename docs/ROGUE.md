@@ -7,11 +7,15 @@ parties, kits and the dungeon dimension, so everything in [DUNGEONS.md](DUNGEONS
 
 **One life:** players who die are out and watch their party until the run ends. Leaving or logging out is out too.
 
+**Boons and coins:** after a fight, each player picks one of 3 boons (more health, damage, speed, effects, items…)
+that lasts for the rest of the run. Foes pay run coins, spent in shop rooms. Between runs, players buy unlocks with
+points that help in every run.
+
 ## 1. Your first rogue run
 
-1. Make the run: `/dungeon rogue create Crypt` (or in the panel, **Games → Dungeons**, type a name and press
-   **New rogue run**). It gets four groups named after it: `crypt_start`, `crypt_fight`, `crypt_elite` and
-   `crypt_boss`.
+1. Make the run: `/dungeon rogue create Crypt` (or in the panel, **Games → Rogue runs**, type a name and press
+   **New rogue run**). It gets groups named after it: `crypt_start`, `crypt_fight`, `crypt_elite`, `crypt_boss`,
+   and the optional `crypt_treasure`, `crypt_shop` and `crypt_rest`.
 2. Build a few rooms (at most 64 × 64 × 64 each) and put markers in them. The markers are data structure blocks, the
    same as dungeon markers, and `/dungeon tool marker <text>` gives you one:
 
@@ -22,6 +26,7 @@ parties, kits and the dungeon dimension, so everything in [DUNGEONS.md](DUNGEONS
    | `spawn` | Where the run's mobs come (shared out over all spawn markers). |
    | `mob:<id> [xN]` | Fixed mobs, as in dungeons (they get tougher with the room too). |
    | `boss:<id>` | The boss of a boss room (else one from the run's boss list comes at a spawn marker). |
+   | `shop` | Shop rooms: players stand here to open the shop (without one, it opens when they arrive). |
 
 3. Save each room into a group: `/dungeon room create <room>` at one corner, `/dungeon corner2` at the other, then
    `/dungeon room save <room> crypt_fight` (or `crypt_elite`, `crypt_boss`, `crypt_start`). A room can be in several
@@ -34,19 +39,32 @@ run starts in a fight room.
 
 ## 2. How a run goes
 
-- Every foe in the room down → the doors open, each showing what's behind it: **⚔ Fight**, **☠ Elite** or
-  **♛ Boss**.
+- Every foe in the room down → the doors open, each showing what's behind it:
+
+  | Room | |
+  |---|---|
+  | ⚔ Fight | Mobs; a boon afterwards. |
+  | ☠ Elite | Tougher mobs, double coins; a boon afterwards. |
+  | ♛ Boss | A boss; coins and a boon afterwards. |
+  | ✦ Treasure | No mobs: a free boon (and whatever its chests hold: loot tables roll fresh). |
+  | 🛒 Shop | No mobs: spend run coins. |
+  | ❤ Rest | No mobs: heals everyone (50 % of max health by default). |
+
+  A type only shows up when its group has rooms, so a run with only fight rooms works too.
+- After a fight, elite, boss or treasure room every player picks a boon (30 seconds, then one is picked for them;
+  `/dungeon boon` opens the choice again). The doors wait until everyone has chosen.
 - The party leader picks by standing on a door for 2 seconds (playing solo, you pick yourself).
 - The next room is pasted next to the old one, everyone is brought there, and the old room is wiped.
 - Every few rooms (**Boss room every … rooms**), every door leads to a boss room.
 - The run ends when everyone is out. A win: **Rooms to win** cleared (0 = endless), or no room left to go to.
 
-## 3. Settings (panel, Games → Dungeons, on the run's card)
+## 3. Settings (panel, Games → Rogue runs, on the run's card)
 
 | Setting | What it does |
 |---|---|
 | First room group, fight/elite/boss groups | Where each room type's rooms come from. |
-| How often (weight) | How often a door leads to a fight or an elite room. |
+| How often (weight) | How often a door leads to each room type. |
+| Boons | Boons after rooms and in shops, or none in this run. |
 | Boss room every … rooms | 5 = rooms 5, 10, 15… are boss rooms (0 = never). |
 | Rooms to win | 0 = endless. |
 | Mobs | The mobs spawn markers draw from (`zombie`, `skeleton x2`, `npc:…`). |
@@ -59,17 +77,32 @@ group's "from level" (here: from room number …) are on the Rooms page.
 
 Messages can use `{depth}`, the number of rooms cleared.
 
-## 4. Rewards and the board
+## 4. Boons, coins, the shop and unlocks (panel, Games → Rogue runs)
+
+These are the same for every rogue run.
+
+- **Boons**: what each one does (an attribute like `minecraft:max_health` added flat or as a percent, an effect whose
+  level grows with each one taken, an item as in /give, a heal, or a command), how often one player can take it in a
+  run, and how often it's offered (weight 0: only in the shop). They come off when the run ends for the player.
+- **Coins**: per foe for everyone still in (elite rooms pay more, bosses a fixed amount). They're only for the run.
+- **Shop**: which boons shop rooms sell and the price; prices grow with the room number.
+- **Unlocks**: bought with points between runs (`/dungeon unlocks`), a level at a time (level 2 costs twice the
+  price). Kinds: coins at the start of each run, a boon at the start, boon rerolls, one more boon to choose from.
+
+## 5. Rewards and the board
 
 - Rewards triggers: **rogueRoom** (each room cleared, from room …), **rogueBoss** (each boss beaten),
   **rogueEnd** (the run is over, at least … rooms cleared). A win fires **dungeonCleared** as well.
 - The best run per party size (most rooms, then the faster time) is on the run's card and in `/dungeon top <name>`.
 
-## 5. Commands
+## 6. Commands
 
 | Command | Who | What |
 |---|---|---|
 | `/dungeon rogue create <name> [pool]` | admin | Make a rogue run |
 | `/dungeon rogue pick <slot> <door>` | admin | Go through a door (for console tests) |
 | `/dungeon try <name>` | admin | Play it yourself (from the console: a 3-minute test with nobody in it) |
+| `/dungeon boon` | everyone | The boon choice again (if you closed it) |
+| `/dungeon shop` | everyone | The shop again (in a shop room) |
+| `/dungeon unlocks` | everyone | Buy unlocks with points |
 | `/dungeon leave` | everyone | Leave the run (you're out) |

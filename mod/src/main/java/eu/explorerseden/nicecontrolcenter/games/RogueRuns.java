@@ -92,6 +92,16 @@ final class RogueRuns {
 		/** Rooms cleared (the score), bosses beaten. */
 		int cleared;
 		int bossesDown;
+		/** Run coins, boon stacks (boon id → count), boons on offer, rerolls left: per player. */
+		final Map<UUID, Integer> coins = new HashMap<>();
+		final Map<UUID, Map<String, Integer>> stacks = new HashMap<>();
+		final Map<UUID, List<String>> offers = new HashMap<>();
+		final Map<UUID, Integer> rerolls = new HashMap<>();
+		int offerToken;
+		long offersUntil;
+		/** Shop rooms: where the shop is, and who stands there (opened once per step on). */
+		final List<BlockPos> shops = new ArrayList<>();
+		final java.util.Set<UUID> atShop = new java.util.HashSet<>();
 		final ArrayDeque<int[]> toWipe = new ArrayDeque<>();
 		BlockPos wipeMin;
 		BlockPos wipeMax;
@@ -199,6 +209,8 @@ final class RogueRuns {
 		st.open = false;
 		st.roomAt = System.currentTimeMillis();
 		st.doors.clear();
+		st.shops.clear();
+		st.atShop.clear();
 		st.doorTicks = 0;
 		boolean elite = "elite".equals(st.type);
 		st.more = d.toughness / 100.0 * Math.max(0, st.depth - 1) + (elite ? d.eliteToughness / 100.0 : 0);
@@ -206,7 +218,7 @@ final class RogueRuns {
 		r.checkpoint = null;
 		List<BlockPos> spawns = new ArrayList<>();
 		boolean bossMarker = false;
-		boolean fights = !"start".equals(st.type);
+		boolean fights = "fight".equals(st.type) || elite || "boss".equals(st.type);
 		for (Dungeons.Marker m : st.room.markers) {
 			BlockPos at = at0.offset(m.x, m.y, m.z);
 			level.setBlock(at, Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE | net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS);
@@ -216,6 +228,7 @@ final class RogueRuns {
 				}
 				case "door", "exit" -> st.doors.add(new Door(at));
 				case "spawn" -> spawns.add(at);
+				case "shop" -> st.shops.add(at);
 				case "mob" -> {
 					if (fights) spawnLine(server, r, at, m.arg, false);
 				}
@@ -242,6 +255,7 @@ final class RogueRuns {
 			level.setBlock(at0.offset(c.x, c.y, c.z), state, 2);
 		}
 		if (spawns.isEmpty()) spawns.add(r.start);
+		for (BlockPos s : st.shops) floating(level, s, "🛒 Shop", "gold", r);
 		if ("boss".equals(st.type) && !bossMarker) {
 			List<String> lines = d.bosses.stream().filter(x -> MobLines.parse(x) != null).toList();
 			if (!lines.isEmpty()) {
@@ -331,6 +345,15 @@ final class RogueRuns {
 			if (!m.entityTags().contains(SCALED) && !m.entityTags().contains(BossFight.TAG)) toughen(m, st.more);
 			alive++;
 		}
+		if (server.getTickCount() % 100 == 0) for (ServerPlayer p : inside(server, r)) RogueBoons.keep(r, p);
+		RogueBoons.timeUp(server, r);
+		if ("shop".equals(st.type)) {
+			for (ServerPlayer p : inside(server, r)) {
+				boolean on = st.shops.stream().anyMatch(s -> onDoor(p, s));
+				if (on && st.atShop.add(p.getUUID())) RogueBoons.shop(r, p, null);
+				else if (!on) st.atShop.remove(p.getUUID());
+			}
+		}
 		if (!st.open) {
 			if (alive == 0 && System.currentTimeMillis() - st.roomAt > 1500) opened(server, level, r);
 			else if (server.getTickCount() % 20 == 0 && alive > 0) {
@@ -357,6 +380,11 @@ final class RogueRuns {
 			}
 			return;
 		}
+		if (RogueBoons.waiting(r)) {
+			st.doorTicks = 0;
+			if (server.getTickCount() % 20 == 0) picker.sendOverlayMessage(Words.lit("Waiting for everyone to choose a boon… (" + Math.max(0, (st.offersUntil - System.currentTimeMillis()) / 1000) + " s)").withStyle(ChatFormatting.AQUA));
+			return;
+		}
 		st.doorTicks += 5;
 		if (st.doorTicks < DOOR_TICKS) {
 			if (st.doorTicks % 20 == 5) {
@@ -369,7 +397,7 @@ final class RogueRuns {
 	}
 
 	/** The players of the run still in it, alive, in the dungeon dimension. */
-	private static List<ServerPlayer> inside(MinecraftServer server, Run r) {
+	static List<ServerPlayer> inside(MinecraftServer server, Run r) {
 		List<ServerPlayer> out = new ArrayList<>();
 		for (UUID id : r.players) {
 			ServerPlayer p = server.getPlayerList().getPlayer(id);
@@ -395,7 +423,7 @@ final class RogueRuns {
 		State st = r.rogue;
 		Dungeon d = r.dungeon;
 		st.open = true;
-		boolean fight = !"start".equals(st.type);
+		boolean fight = "fight".equals(st.type) || "elite".equals(st.type) || "boss".equals(st.type);
 		if (fight) {
 			st.cleared++;
 			DungeonRuntime.rewardInside(server, r, "rogueRoom", st.depth, false);
@@ -415,6 +443,7 @@ final class RogueRuns {
 			return;
 		}
 		for (Door door : st.doors) door.label = label(level, door, r);
+		if (fight || "treasure".equals(st.type)) RogueBoons.offerAll(server, r);
 		if (fight) {
 			DungeonRuntime.tellRun(server, r, Words.lit("✔ Room " + st.depth + " cleared! Step on a door to go on.").withStyle(ChatFormatting.GREEN));
 			level.playSound(null, r.start, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
@@ -463,6 +492,10 @@ final class RogueRuns {
 		return switch (type) {
 			case "elite" -> "☠ Elite";
 			case "boss" -> "♛ Boss";
+			case "treasure" -> "✦ Treasure";
+			case "shop" -> "🛒 Shop";
+			case "rest" -> "❤ Rest";
+			case "start" -> "Start";
 			default -> "⚔ Fight";
 		};
 	}
@@ -471,6 +504,9 @@ final class RogueRuns {
 		return switch (type) {
 			case "elite" -> ChatFormatting.LIGHT_PURPLE;
 			case "boss" -> ChatFormatting.GOLD;
+			case "treasure" -> ChatFormatting.AQUA;
+			case "shop" -> ChatFormatting.YELLOW;
+			case "rest" -> ChatFormatting.GREEN;
 			default -> ChatFormatting.RED;
 		};
 	}
@@ -479,19 +515,34 @@ final class RogueRuns {
 		return switch (type) {
 			case "elite" -> 0xC060FF;
 			case "boss" -> 0xFFB000;
+			case "treasure" -> 0x40E0FF;
+			case "shop" -> 0xFFFF55;
+			case "rest" -> 0x55FF55;
 			default -> 0xFF4040;
 		};
 	}
 
 	/** A floating label above the door (gone when the run moves on, or with the room). */
 	private static UUID label(ServerLevel level, Door door, Run r) {
-		String text = label(door.type).replace("\"", "");
-		String snbt = "{billboard:\"center\",see_through:1b,text:{text:\"" + text + "\",color:\"" + ("elite".equals(door.type) ? "light_purple" : "boss".equals(door.type) ? "gold" : "red") + "\",bold:1b},Tags:[\""
+		return floating(level, door.pos, label(door.type), switch (door.type) {
+			case "elite" -> "light_purple";
+			case "boss" -> "gold";
+			case "treasure" -> "aqua";
+			case "shop" -> "yellow";
+			case "rest" -> "green";
+			default -> "red";
+		}, r);
+	}
+
+	/** A text above the spot (wiped with the room). */
+	private static UUID floating(ServerLevel level, BlockPos at, String text0, String color, Run r) {
+		String text = text0.replace("\"", "");
+		String snbt = "{billboard:\"center\",see_through:1b,text:{text:\"" + text + "\",color:\"" + color + "\",bold:1b},Tags:[\""
 				+ DOOR_TAG + "\",\"" + tag(r) + "_label\",\"" + MobLines.NMM_EXCLUDE + "\"]}";
 		try {
 			CompoundTag tag = TagParser.parseCompoundFully(snbt);
 			Entity e = EntityType.loadEntityRecursive(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse("minecraft:text_display")), tag, level, EntitySpawnReason.COMMAND, made -> {
-				made.snapTo(door.pos.getX() + 0.5, door.pos.getY() + 2.3, door.pos.getZ() + 0.5, 0, 0);
+				made.snapTo(at.getX() + 0.5, at.getY() + 2.3, at.getZ() + 0.5, 0, 0);
 				return made;
 			});
 			if (e == null || !level.addFreshEntity(e)) return null;
@@ -585,6 +636,7 @@ final class RogueRuns {
 			p.connection.send(new ClientboundSetSubtitleTextPacket(Words.lit(label(st.type)).withStyle(ChatFormatting.GRAY)));
 		}
 		level.playSound(null, r.start, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 0.7f, 0.9f);
+		arrive(server, r);
 		// The old room goes a few pieces at a time (entities in it too: drops, arrows, labels).
 		st.wipeMin = oldMin;
 		st.wipeMax = oldMax;
@@ -593,9 +645,24 @@ final class RogueRuns {
 		}
 	}
 
-	/** For the HUD: " · room 4 ⚔". */
-	static String hud(Run r) {
+	/** Everyone is in the new room: rest rooms heal, shops open. */
+	private static void arrive(MinecraftServer server, Run r) {
 		State st = r.rogue;
-		return " · room " + st.depth + (st.open ? " ✔" : "");
+		for (ServerPlayer p : inside(server, r)) {
+			if ("rest".equals(st.type)) {
+				float heal = p.getMaxHealth() * DungeonRuntime.settings().rogue.restHeal / 100f;
+				p.heal(heal);
+				p.sendSystemMessage(Words.lit("❤ You rest a moment" + (heal > 0 ? " and heal." : ".")).withStyle(ChatFormatting.GREEN));
+				((ServerLevel) p.level()).sendParticles(net.minecraft.core.particles.ParticleTypes.HEART, p.getX(), p.getY() + 1.2, p.getZ(), 6, 0.4, 0.4, 0.4, 0);
+			} else if ("shop".equals(st.type) && st.shops.isEmpty()) {
+				RogueBoons.shop(r, p, null);
+			}
+		}
+	}
+
+	/** For the HUD: " · room 4 ✔ · 12 ⛁". */
+	static String hud(Run r, ServerPlayer p) {
+		State st = r.rogue;
+		return " · room " + st.depth + (st.open ? " ✔" : "") + " · " + st.coins.getOrDefault(p.getUUID(), 0) + " ⛁";
 	}
 }

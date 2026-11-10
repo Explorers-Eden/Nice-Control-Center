@@ -1,3 +1,5 @@
+## 1.87.0
+- Games: a Rogue runs tab of its own inside Games: the rogue runs' cards (moved from Dungeons, with treasure, shop and rest room groups and a boons switch), coins and room settings, the boons, the shop and the unlocks bought with points
 ## 1.86.0
 - Games → Dungeons: "New rogue run" makes a rogue run (no build of its own); its card has the room groups per type, how often each type comes, boss rooms, rooms to win, mobs, bosses and scaling instead of the dungeon-only fields. Best runs show the rooms cleared, running rogue runs the room they're in
 ## 1.85.3

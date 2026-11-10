@@ -26,9 +26,143 @@ public final class Dungeons {
 	/** Pieces are 16 × 16 columns (one chunk wide), as high as the box (its two corners). */
 	public static final int PIECE = 16;
 	/** Markers: data-mode structure blocks in the build, with one of these as their text. */
-	public static final List<String> MARKERS = List.of("start", "exit", "checkpoint", "mob", "boss", "door", "spawn");
+	public static final List<String> MARKERS = List.of("start", "exit", "checkpoint", "mob", "boss", "door", "spawn", "shop");
 	/** Rogue runs: the room types a door can lead to (rooms come from the group set for the type). */
-	public static final List<String> ROGUE_TYPES = List.of("fight", "elite", "boss");
+	public static final List<String> ROGUE_TYPES = List.of("fight", "elite", "boss", "treasure", "shop", "rest");
+	/** What a boon does: effect, attribute (modifier), item, heal, command. */
+	public static final List<String> BOON_KINDS = List.of("attribute", "effect", "item", "heal", "command");
+	/** What an unlock gives every run: coins at the start, a boon at the start, boon rerolls, one more boon to choose from. */
+	public static final List<String> UNLOCK_KINDS = List.of("coins", "boon", "reroll", "choice");
+
+	/** A boon: something a player gets for the rest of a rogue run (picked after a room, or bought in a shop). */
+	public static final class Boon {
+		public String id = "";
+		public boolean enabled = true;
+		public String name = "";
+		/** An item id for its look in menus. */
+		public String icon = "minecraft:nether_star";
+		public String kind = "attribute";
+		/** attribute: its id (max_health…); effect: its id (strength…); item: as in /give ("golden_apple"); command: without / ({player}). */
+		public String target = "";
+		/** attribute: per stack; item: how many; heal: health points (2 = a heart). Effects: the level grows with each stack. */
+		public double amount = 1;
+		/** attribute: "add" (a flat amount) or "percent" (0.1 = +10 %). */
+		public String op = "add";
+		/** How often one player can take it in a run (0 = no limit). */
+		public int maxStacks = 3;
+		/** How often it's offered (more = more often). */
+		public int weight = 10;
+		/** Shown in menus; empty = made from the above. */
+		public String description = "";
+	}
+
+	/** Something rogue shops sell: a boon at a price in run coins (more the deeper the run). */
+	public static final class ShopEntry {
+		public String id = "";
+		public boolean enabled = true;
+		public String boon = "";
+		public int price = 10;
+	}
+
+	/** Bought with points between runs, a level at a time; works in every rogue run. */
+	public static final class Unlock {
+		public String id = "";
+		public boolean enabled = true;
+		public String name = "";
+		public String icon = "minecraft:experience_bottle";
+		public String kind = "coins";
+		/** kind boon: the boon each level hands out at the start. */
+		public String boon = "";
+		/** kind coins: coins per level. */
+		public int amount = 5;
+		/** Points for the first level; each next level costs this much more (level 2 = twice). */
+		public int cost = 50;
+		public int maxLevel = 3;
+	}
+
+	/** Rogue runs' shared settings: coins, room effects, the boons, the shop and the unlocks. */
+	public static final class Rogue {
+		/** Coins every player still in gets per foe; elite rooms pay this many times as much, bosses a fixed amount. */
+		public int coinsPerKill = 1;
+		public int eliteCoins = 2;
+		public int bossCoins = 15;
+		/** Rest rooms heal this % of max health. */
+		public int restHeal = 50;
+		/** Shop prices grow by this % per room. */
+		public int priceGrowth = 10;
+		/** Boons to choose from after a room; seconds to choose before one is picked for them. */
+		public int choices = 3;
+		public int pickSeconds = 30;
+		public List<Boon> boons = defaultBoons();
+		public List<ShopEntry> shop = defaultShop();
+		public List<Unlock> unlocks = defaultUnlocks();
+
+		public Boon boon(String id) {
+			for (Boon b : boons) if (b.id.equals(id)) return b;
+			return null;
+		}
+	}
+
+	private static Boon boon(String id, String name, String icon, String kind, String target, double amount, String op, int max, int weight) {
+		Boon b = new Boon();
+		b.id = id;
+		b.name = name;
+		b.icon = icon;
+		b.kind = kind;
+		b.target = target;
+		b.amount = amount;
+		b.op = op;
+		b.maxStacks = max;
+		b.weight = weight;
+		return b;
+	}
+
+	static List<Boon> defaultBoons() {
+		return new ArrayList<>(List.of(
+				boon("vitality", "Vitality", "minecraft:golden_apple", "attribute", "minecraft:max_health", 4, "add", 5, 10),
+				boon("might", "Might", "minecraft:iron_sword", "attribute", "minecraft:attack_damage", 1, "add", 5, 10),
+				boon("swiftness", "Swiftness", "minecraft:feather", "attribute", "minecraft:movement_speed", 0.08, "percent", 3, 8),
+				boon("plating", "Plating", "minecraft:iron_chestplate", "attribute", "minecraft:armor", 2, "add", 5, 8),
+				boon("steadfast", "Steadfast", "minecraft:anvil", "attribute", "minecraft:knockback_resistance", 0.2, "add", 3, 5),
+				boon("regeneration", "Regeneration", "minecraft:ghast_tear", "effect", "minecraft:regeneration", 1, "add", 2, 4),
+				boon("resistance", "Resistance", "minecraft:shield", "effect", "minecraft:resistance", 1, "add", 2, 3),
+				boon("fireproof", "Fireproof", "minecraft:magma_cream", "effect", "minecraft:fire_resistance", 1, "add", 1, 4),
+				boon("snack", "Golden snack", "minecraft:golden_apple", "item", "minecraft:golden_apple", 2, "add", 0, 6),
+				boon("patch_up", "Patch up", "minecraft:glistering_melon_slice", "heal", "", 10, "add", 0, 8)));
+	}
+
+	private static ShopEntry shopEntry(String boon, int price) {
+		ShopEntry e = new ShopEntry();
+		e.boon = boon;
+		e.price = price;
+		return e;
+	}
+
+	static List<ShopEntry> defaultShop() {
+		return new ArrayList<>(List.of(shopEntry("patch_up", 5), shopEntry("snack", 8), shopEntry("vitality", 12), shopEntry("might", 15), shopEntry("plating", 12),
+				shopEntry("regeneration", 20)));
+	}
+
+	private static Unlock unlock(String id, String name, String icon, String kind, String boon, int amount, int cost, int max) {
+		Unlock u = new Unlock();
+		u.id = id;
+		u.name = name;
+		u.icon = icon;
+		u.kind = kind;
+		u.boon = boon;
+		u.amount = amount;
+		u.cost = cost;
+		u.maxLevel = max;
+		return u;
+	}
+
+	static List<Unlock> defaultUnlocks() {
+		return new ArrayList<>(List.of(
+				unlock("purse", "Coin purse", "minecraft:gold_nugget", "coins", "", 5, 30, 3),
+				unlock("tough_start", "Tough start", "minecraft:golden_apple", "boon", "vitality", 0, 60, 2),
+				unlock("second_thoughts", "Second thoughts", "minecraft:clock", "reroll", "", 0, 50, 2),
+				unlock("wider_choice", "Wider choice", "minecraft:chest", "choice", "", 0, 120, 1)));
+	}
 
 	/** A marker in a saved dungeon, relative to the box's lowest corner. */
 	public static final class Marker {
@@ -118,6 +252,8 @@ public final class Dungeons {
 		public java.util.Map<String, String> roomGroups = new java.util.LinkedHashMap<>();
 		/** Rogue: how often a door leads to each type (boss rooms come every bossEvery rooms instead). */
 		public java.util.Map<String, Integer> typeWeights = new java.util.LinkedHashMap<>();
+		/** Rogue: boons after rooms (and in shops) or not. */
+		public boolean rogueBoons = true;
 		/** Rogue: every n-th room is a boss room (0 = never). */
 		public int bossEvery = 5;
 		/** Rogue: rooms to clear for a win (0 = endless, until everyone is out). */
@@ -227,6 +363,8 @@ public final class Dungeons {
 		public int waitRadius = 8;
 		public List<Room> rooms = new ArrayList<>();
 		public List<Group> groups = new ArrayList<>();
+		/** Rogue runs: coins, boons, shop and unlocks (the same for every rogue run). */
+		public Rogue rogue = new Rogue();
 
 		public Room room(String idOrName) {
 			for (Room r : rooms) if (r.id.equals(idOrName) || r.name.equalsIgnoreCase(idOrName)) return r;
@@ -256,6 +394,64 @@ public final class Dungeons {
 			for (Dungeon d : dungeons) out.add(d.pool);
 			for (Pad p : pads) out.add(p.pool);
 			return out;
+		}
+
+		private void fillRogue() {
+			if (rogue == null) rogue = new Rogue();
+			Rogue g = rogue;
+			g.coinsPerKill = Math.max(0, Math.min(1000, g.coinsPerKill));
+			g.eliteCoins = Math.max(1, Math.min(10, g.eliteCoins));
+			g.bossCoins = Math.max(0, Math.min(10000, g.bossCoins));
+			g.restHeal = Math.max(0, Math.min(100, g.restHeal));
+			g.priceGrowth = Math.max(0, Math.min(100, g.priceGrowth));
+			g.choices = Math.max(1, Math.min(6, g.choices));
+			g.pickSeconds = Math.max(5, Math.min(300, g.pickSeconds));
+			if (g.boons == null) g.boons = new ArrayList<>();
+			if (g.shop == null) g.shop = new ArrayList<>();
+			if (g.unlocks == null) g.unlocks = new ArrayList<>();
+			g.boons.removeIf(b -> b == null);
+			g.shop.removeIf(b -> b == null);
+			g.unlocks.removeIf(b -> b == null);
+			Set<String> ids = new HashSet<>();
+			for (Boon b : g.boons) {
+				String want = b.id == null ? "" : b.id.strip().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+				if (want.isEmpty()) want = b.name == null ? "" : b.name.strip().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+				if (want.isEmpty() || ids.contains(want)) want = "boon_" + UUID.randomUUID().toString().substring(0, 6);
+				b.id = want.substring(0, Math.min(32, want.length()));
+				ids.add(b.id);
+				if (b.name == null || b.name.isBlank()) b.name = b.id;
+				if (b.icon == null || b.icon.isBlank()) b.icon = "minecraft:nether_star";
+				if (!BOON_KINDS.contains(b.kind)) b.kind = "attribute";
+				if (b.target == null) b.target = "";
+				if (!"percent".equals(b.op)) b.op = "add";
+				b.amount = Double.isFinite(b.amount) ? Math.max(-1000, Math.min(1000, b.amount)) : 1;
+				b.maxStacks = Math.max(0, Math.min(99, b.maxStacks));
+				b.weight = Math.max(0, Math.min(100, b.weight));
+				if (b.description == null) b.description = "";
+			}
+			ids.clear();
+			for (ShopEntry e : g.shop) {
+				if (e.id == null || e.id.isBlank() || !ids.add(e.id)) {
+					e.id = UUID.randomUUID().toString().substring(0, 8);
+					ids.add(e.id);
+				}
+				if (e.boon == null) e.boon = "";
+				e.price = Math.max(0, Math.min(100000, e.price));
+			}
+			ids.clear();
+			for (Unlock u : g.unlocks) {
+				String want = u.id == null ? "" : u.id.strip().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+				if (want.isEmpty() || ids.contains(want)) want = "unlock_" + UUID.randomUUID().toString().substring(0, 6);
+				u.id = want.substring(0, Math.min(32, want.length()));
+				ids.add(u.id);
+				if (u.name == null || u.name.isBlank()) u.name = u.id;
+				if (u.icon == null || u.icon.isBlank()) u.icon = "minecraft:experience_bottle";
+				if (!UNLOCK_KINDS.contains(u.kind)) u.kind = "coins";
+				if (u.boon == null) u.boon = "";
+				u.amount = Math.max(0, Math.min(10000, u.amount));
+				u.cost = Math.max(0, Math.min(1_000_000, u.cost));
+				u.maxLevel = Math.max(1, Math.min("choice".equals(u.kind) ? 3 : 20, u.maxLevel));
+			}
 		}
 
 		public Settings fill() {
@@ -309,7 +505,7 @@ public final class Dungeons {
 					String g = d.roomGroups == null ? null : d.roomGroups.get(t);
 					rg.put(t, g == null || g.isBlank() ? "" : pool(g));
 					Integer w = d.typeWeights == null ? null : d.typeWeights.get(t);
-					tw.put(t, Math.max(0, Math.min(100, w == null ? ("fight".equals(t) ? 70 : "elite".equals(t) ? 30 : 0) : w)));
+					tw.put(t, Math.max(0, Math.min(100, w == null ? ("fight".equals(t) ? 70 : "elite".equals(t) ? 30 : "boss".equals(t) ? 0 : 10) : w)));
 				}
 				d.roomGroups = rg;
 				d.typeWeights = tw;
@@ -368,6 +564,7 @@ public final class Dungeons {
 				kept.add(g);
 			}
 			groups = kept;
+			fillRogue();
 			ids.clear();
 			for (Pad p : pads) {
 				if (p.id == null || p.id.isBlank() || !ids.add(p.id)) {

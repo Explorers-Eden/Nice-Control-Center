@@ -1,4 +1,10 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.106.0
+- Rogue runs: boons. After a fight, elite, boss or treasure room every player picks one of 3 boons (more health, damage, speed or armor, effects, items, heals), kept for the rest of the run and taken off when the run ends for them; 30 seconds to choose, then one is picked for them, and the doors wait until everyone has chosen (/dungeon boon opens the choice again)
+- Rogue runs: run coins for every foe (elite rooms pay double, bosses 15), shop rooms (stand on the shop marker, or it opens on arriving; /dungeon shop) selling boons at prices that grow with the room, treasure rooms (a free boon) and rest rooms (heal 50 %)
+- Rogue runs: unlocks bought with points between runs (/dungeon unlocks): coins at the start, a boon at the start, boon rerolls, one more boon to choose from; a level at a time
+- Boons, the shop, coins and unlocks are set in the panel (Games → Rogue runs); defaults come with 10 boons, 6 shop entries and 4 unlocks
+- Tested on the console only (treasure, shop and rest rooms in a run); the boon and shop menus, coins, unlocks and taking boons off need players
 ## 1.105.0
 - Rogue runs (first part): a dungeon entry can be a rogue run, a chain of rooms instead of a build. Clear every foe in the room and its doors open, each showing what's behind it (fight, elite or boss room); the party leader stands on one to go on, the next room is pasted beside the old one (which is wiped), and each room has more and tougher mobs. Every few rooms is a boss room (any NCC or Katters boss, with more health the deeper the run is). One life: dead players watch their party until the run ends. Uses the dungeon pads, pools, queues, parties and kits. Rooms are dungeon rooms with the new markers door and spawn, picked from a group per room type. /dungeon rogue create <name> [pool] makes one; the guide is docs/ROGUE.md
 - Rogue runs: Rewards triggers rogueRoom, rogueBoss and rogueEnd; the best run per party size (most rooms, then time) is kept like dungeon best times (/dungeon top)
