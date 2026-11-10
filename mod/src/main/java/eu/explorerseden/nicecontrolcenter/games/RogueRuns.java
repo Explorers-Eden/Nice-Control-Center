@@ -97,6 +97,8 @@ final class RogueRuns {
 		final Map<UUID, Map<String, Integer>> stacks = new HashMap<>();
 		final Map<UUID, List<String>> offers = new HashMap<>();
 		final Map<UUID, Integer> rerolls = new HashMap<>();
+		/** Max health from room rewards (health points) per player. */
+		final Map<UUID, Integer> bonusHealth = new HashMap<>();
 		int offerToken;
 		long offersUntil;
 		/** Shop rooms: where the shop is, and who stands there (opened once per step on). */
@@ -255,7 +257,7 @@ final class RogueRuns {
 			level.setBlock(at0.offset(c.x, c.y, c.z), state, 2);
 		}
 		if (spawns.isEmpty()) spawns.add(r.start);
-		for (BlockPos s : st.shops) floating(level, s, "🛒 Shop", "gold", r);
+		for (BlockPos s : st.shops) RogueBoons.shopNpc(server, r, s, tag(r) + "_label");
 		if ("boss".equals(st.type) && !bossMarker) {
 			List<String> lines = d.bosses.stream().filter(x -> MobLines.parse(x) != null).toList();
 			if (!lines.isEmpty()) {
@@ -347,13 +349,6 @@ final class RogueRuns {
 		}
 		if (server.getTickCount() % 100 == 0) for (ServerPlayer p : inside(server, r)) RogueBoons.keep(r, p);
 		RogueBoons.timeUp(server, r);
-		if ("shop".equals(st.type)) {
-			for (ServerPlayer p : inside(server, r)) {
-				boolean on = st.shops.stream().anyMatch(s -> onDoor(p, s));
-				if (on && st.atShop.add(p.getUUID())) RogueBoons.shop(r, p, null);
-				else if (!on) st.atShop.remove(p.getUUID());
-			}
-		}
 		if (!st.open) {
 			if (alive == 0 && System.currentTimeMillis() - st.roomAt > 1500) opened(server, level, r);
 			else if (server.getTickCount() % 20 == 0 && alive > 0) {
@@ -443,7 +438,8 @@ final class RogueRuns {
 			return;
 		}
 		for (Door door : st.doors) door.label = label(level, door, r);
-		if (fight || "treasure".equals(st.type)) RogueBoons.offerAll(server, r);
+		if (fight) RogueBoons.roomReward(server, r);
+		else if ("treasure".equals(st.type)) RogueBoons.offerAll(server, r);
 		if (fight) {
 			DungeonRuntime.tellRun(server, r, Words.lit("✔ Room " + st.depth + " cleared! Step on a door to go on.").withStyle(ChatFormatting.GREEN));
 			level.playSound(null, r.start, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8f, 1.2f);
@@ -650,9 +646,32 @@ final class RogueRuns {
 		State st = r.rogue;
 		for (ServerPlayer p : inside(server, r)) {
 			if ("rest".equals(st.type)) {
-				float heal = p.getMaxHealth() * DungeonRuntime.settings().rogue.restHeal / 100f;
-				p.heal(heal);
-				p.sendSystemMessage(Words.lit("❤ You rest a moment" + (heal > 0 ? " and heal." : ".")).withStyle(ChatFormatting.GREEN));
+				Dungeons.Rogue g = DungeonRuntime.settings().rogue;
+				float heal = p.getMaxHealth() * g.restHeal / 100f;
+				if (heal > 0) p.heal(heal);
+				var food = p.getFoodData();
+				if (g.restFood > 0) food.setFoodLevel(Math.min(20, food.getFoodLevel() + g.restFood));
+				if (g.restSaturation > 0) food.setSaturation(Math.min(food.getFoodLevel(), food.getSaturationLevel() + g.restSaturation));
+				if (g.restCleanse) {
+					for (var e : List.copyOf(p.getActiveEffects())) {
+						if (e.getEffect().value().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL) p.removeEffect(e.getEffect());
+					}
+				}
+				for (String line : g.restEffects) {
+					String[] w = line.strip().split("\\s+");
+					try {
+						var eff = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(Identifier.parse(w[0])).orElse(null);
+						int secs = w.length > 1 ? Integer.parseInt(w[1]) : 10, lv = w.length > 2 ? Integer.parseInt(w[2]) : 1;
+						if (eff != null) p.addEffect(new net.minecraft.world.effect.MobEffectInstance(eff, Math.max(1, Math.min(3600, secs)) * 20, Math.max(0, Math.min(9, lv - 1))));
+					} catch (RuntimeException e) {
+						NiceControlCenter.LOGGER.warn("Dungeons: rest room effect \"{}\" doesn't work: {}", line, e.getMessage());
+					}
+				}
+				for (String c : g.restCommands) {
+					String cmd = c.strip().replaceFirst("^/", "").replace("{player}", p.getGameProfile().name());
+					if (!cmd.isEmpty()) eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Rogue");
+				}
+				p.sendSystemMessage(Words.lit(g.restMessage.isBlank() ? "❤ You rest a moment and catch your breath." : g.restMessage.replace("{player}", p.getGameProfile().name())).withStyle(ChatFormatting.GREEN));
 				((ServerLevel) p.level()).sendParticles(net.minecraft.core.particles.ParticleTypes.HEART, p.getX(), p.getY() + 1.2, p.getZ(), 6, 0.4, 0.4, 0.4, 0);
 			} else if ("shop".equals(st.type) && st.shops.isEmpty()) {
 				RogueBoons.shop(r, p, null);

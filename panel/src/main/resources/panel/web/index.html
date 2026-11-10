@@ -1367,9 +1367,27 @@
 						<label class="pn-field"><span>Elite rooms pay … times as much</span><input type="number" id="pn-rg-elite" min="1" max="10"></label>
 						<label class="pn-field"><span>Coins per boss</span><input type="number" id="pn-rg-boss" min="0" max="10000"></label>
 						<label class="pn-field"><span>Shop prices: % more per room</span><input type="number" id="pn-rg-growth" min="0" max="100"></label>
-						<label class="pn-field"><span>Rest rooms heal (% of max health)</span><input type="number" id="pn-rg-rest" min="0" max="100"></label>
 						<label class="pn-field"><span>Boons to choose from</span><input type="number" id="pn-rg-choices" min="1" max="6"></label>
 						<label class="pn-field"><span>Seconds to choose (then one is picked)</span><input type="number" id="pn-rg-seconds" min="5" max="300"></label>
+					</div>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-gift"></i> Room rewards</h3>
+					<p class="np-card-intro">What clearing a fight, elite or boss room gives the party: one of these, picked by weight. <b>Boon</b>: everyone picks one of a few boons. <b>Coins</b>: run coins for everyone (more per room). <b>Max health</b>: health points for the rest of the run (2 = a heart). <b>Food</b>: hunger points filled (2 = a drumstick; Minecraft's bar can't go above full). Treasure rooms always give a boon choice.</p>
+					<div id="pn-rg-rewards"></div>
+					<button type="button" class="np-btn small" id="pn-rg-reward-add"><i class="bi bi-plus-lg"></i> Add a reward</button>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-heart-pulse"></i> Rest rooms</h3>
+					<p class="np-card-intro">What a rest room does to everyone still in when they arrive (no mobs there; its doors open at once).</p>
+					<div class="pn-rw-grid">
+						<label class="pn-field"><span>Heal (% of max health)</span><input type="number" id="pn-rg-rest" min="0" max="100"></label>
+						<label class="pn-field"><span>Food (hunger points, 2 = one drumstick)</span><input type="number" data-rgk="restFood" data-rgt="num" min="0" max="20"></label>
+						<label class="pn-field"><span>Saturation</span><input type="number" data-rgk="restSaturation" data-rgt="num" min="0" max="20"></label>
+						<label class="pn-field"><span>Harmful effects (poison, slowness…)</span><select data-rgk="restCleanse" data-rgt="bool"><option value="true">taken away</option><option value="false">stay</option></select></label>
+						<label class="pn-field pn-field-wide"><span>Effects given (one per line: id, seconds, level, e.g. <code>minecraft:regeneration 5 1</code>)</span><textarea data-rgk="restEffects" data-rgt="lines" rows="2" spellcheck="false"></textarea></label>
+						<label class="pn-field pn-field-wide"><span>Message ({player}; empty = "You rest a moment and catch your breath.")</span><input type="text" data-rgk="restMessage" data-rgt="text" maxlength="200"></label>
+						<label class="pn-field pn-field-wide"><span>Commands (one per line, without /, as the server for each player: {player})</span><textarea data-rgk="restCommands" data-rgt="lines" rows="2" spellcheck="false" placeholder="e.g. particle minecraft:happy_villager ~ ~1 ~ 0.5 0.5 0.5 0 20"></textarea></label>
 					</div>
 				</section>
 				<section class="np-card">
@@ -1380,13 +1398,21 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-shop"></i> Shop</h3>
-					<p class="np-card-intro">What shop rooms sell, in run coins; prices grow with the room number (above). Players stand on the room's <code>shop</code> marker (or the shop opens when they arrive).</p>
+					<p class="np-card-intro">What shop rooms sell, in run coins; prices grow with the room number (above). The room's <code>shop</code> marker becomes this NPC; a right-click opens the shop (without a marker, the shop opens when they arrive).</p>
+					<div class="pn-rw-grid">
+						<label class="pn-field"><span>Shop NPC's name</span><input type="text" data-rgk="shopName" data-rgt="text" maxlength="40"></label>
+						<label class="pn-field pn-field-wide"><span>Its skin (a player name, a skin link or base64; empty = default)</span><input type="text" data-rgk="shopSkin" data-rgt="text" spellcheck="false"></label>
+					</div>
 					<div id="pn-rg-shop"></div>
 					<button type="button" class="np-btn small" id="pn-rg-shop-add"><i class="bi bi-plus-lg"></i> Add to the shop</button>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-unlock"></i> Unlocks</h3>
-					<p class="np-card-intro">Bought with points between runs (<code>/dungeon unlocks</code>), a level at a time: level 2 costs twice the price, level 3 three times. They work in every rogue run.</p>
+					<p class="np-card-intro">Bought with points between runs, a level at a time: level 2 costs twice the price, level 3 three times. They work in every rogue run. Players open them with <code>/dungeon unlocks</code>, or an NPC opens them on a right-click: pick <b>Rogue unlocks</b> as the NPC's shop (NPCs page) or <code>/npc shop &lt;npc&gt; rogue_unlocks</code>.</p>
+					<div class="pn-rw-grid">
+						<label class="pn-field"><span>Menu title</span><input type="text" data-rgk="unlocksTitle" data-rgt="text" maxlength="40"></label>
+						<label class="pn-field pn-field-wide"><span>Line on top (empty = none)</span><input type="text" data-rgk="unlocksGreeting" data-rgt="text" maxlength="200"></label>
+					</div>
 					<div id="pn-rg-unlocks"></div>
 					<button type="button" class="np-btn small" id="pn-rg-unlock-add"><i class="bi bi-plus-lg"></i> Add an unlock</button>
 				</section>

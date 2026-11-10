@@ -344,6 +344,50 @@ public final class RogueBoons {
 
 	// ---------------------------------------------------------------- coins and the shop
 
+	/** A fight, elite or boss room is cleared: one reward rolled for the party (a boon choice, coins, health or food). */
+	static void roomReward(MinecraftServer server, Run r) {
+		List<Dungeons.RoomReward> all = cfg().rewards.stream().filter(x -> x.enabled && x.weight > 0 && (!"boon".equals(x.kind) || r.dungeon.rogueBoons)).toList();
+		if (all.isEmpty()) return;
+		int total = all.stream().mapToInt(x -> x.weight).sum(), roll = random.nextInt(total);
+		Dungeons.RoomReward pick = all.get(0);
+		for (Dungeons.RoomReward x : all) {
+			roll -= x.weight;
+			if (roll < 0) {
+				pick = x;
+				break;
+			}
+		}
+		RogueRuns.State st = r.rogue;
+		switch (pick.kind) {
+			case "boon" -> offerAll(server, r);
+			case "coins" -> {
+				int coins = pick.amount + pick.perRoom * Math.max(0, st.depth - 1);
+				for (ServerPlayer p : RogueRuns.inside(server, r)) st.coins.merge(p.getUUID(), coins, Integer::sum);
+				DungeonRuntime.tellRun(server, r, Words.lit("✦ Room reward: +" + coins + " ⛁ for everyone").withStyle(ChatFormatting.GOLD));
+			}
+			case "health" -> {
+				for (ServerPlayer p : RogueRuns.inside(server, r)) {
+					int more = st.bonusHealth.merge(p.getUUID(), pick.amount, Integer::sum);
+					Holder<Attribute> a = attribute("minecraft:max_health");
+					AttributeInstance inst = a == null ? null : p.getAttribute(a);
+					if (inst != null) inst.addOrUpdateTransientModifier(new AttributeModifier(Identifier.fromNamespaceAndPath("nicecontrolcenter", PREFIX + "_health"), more, AttributeModifier.Operation.ADD_VALUE));
+					p.heal(pick.amount);
+				}
+				DungeonRuntime.tellRun(server, r, Words.lit("✦ Room reward: +" + num(pick.amount / 2.0) + (pick.amount == 2 ? " heart" : " hearts") + " of max health for everyone (this run)").withStyle(ChatFormatting.RED));
+			}
+			case "food" -> {
+				for (ServerPlayer p : RogueRuns.inside(server, r)) {
+					var food = p.getFoodData();
+					food.setFoodLevel(Math.min(20, food.getFoodLevel() + pick.amount));
+					food.setSaturation(Math.min(food.getFoodLevel(), food.getSaturationLevel() + pick.amount / 2f));
+				}
+				DungeonRuntime.tellRun(server, r, Words.lit("✦ Room reward: a meal, +" + num(pick.amount / 2.0) + " hunger for everyone").withStyle(ChatFormatting.GREEN));
+			}
+			default -> {
+			}
+		}
+	}
+
 	/** A foe of the run went down: coins for everyone still in. */
 	static void killed(MinecraftServer server, Run r, boolean boss) {
 		Dungeons.Rogue c = cfg();
@@ -358,6 +402,21 @@ public final class RogueBoons {
 	static int price(Run r, Dungeons.ShopEntry e) {
 		return (int) Math.round(e.price * (1 + cfg().priceGrowth / 100.0 * Math.max(0, r.rogue.depth - 1)));
 	}
+
+	/** The shop NPC on a shop marker (wiped with the room); a right-click opens the shop. */
+	static void shopNpc(MinecraftServer server, Run r, net.minecraft.core.BlockPos at, String roomTag) {
+		Dungeons.Rogue g = cfg();
+		String texture = eu.explorerseden.nicecontrolcenter.Pets.texture(g.shopSkin);
+		StringBuilder nbt = new StringBuilder("{Tags:[\"" + SHOP_TAG + "\",\"" + roomTag + "\",\"" + MobLines.NMM_EXCLUDE + "\"]");
+		nbt.append(",Invulnerable:1b,immovable:1b,NoGravity:1b,Silent:1b,CustomNameVisible:1b,PersistenceRequired:1b");
+		nbt.append(",CustomName:").append(Json.GSON.toJson(g.shopName));
+		nbt.append(",description:").append(Json.GSON.toJson("Run coins · right-click"));
+		if (texture != null) nbt.append(",profile:{properties:[{name:\"textures\",value:\"").append(texture).append("\"}]}");
+		nbt.append("}");
+		ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:mannequin %.2f %d %.2f %s", Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, nbt));
+	}
+
+	static final String SHOP_TAG = "ncc_rogue_shop";
 
 	/** The shop (in a shop room). */
 	static void shop(Run r, ServerPlayer p, String notice) {
@@ -385,27 +444,102 @@ public final class RogueBoons {
 		return u.cost * nextLevel;
 	}
 
-	/** /dungeon unlocks: what they have and what's next, bought with points. */
+	/** NPCs open the unlocks with this as their shop. */
+	public static final String NPC_SHOP = "rogue_unlocks";
+
+	private static net.minecraft.network.chat.MutableComponent link(String label, String hover, String action, CompoundTag args, ChatFormatting color) {
+		return Component.literal("[ " + label + " ]").withStyle(st -> st.withColor(color).withBold(true)
+				.withClickEvent(new net.minecraft.network.chat.ClickEvent.Custom(Identifier.fromNamespaceAndPath("nicecontrolcenter", "rogue/" + action), Optional.of(args)))
+				.withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal(hover))));
+	}
+
+	private static ItemStack icon(Dungeons.Unlock u) {
+		Identifier id = Identifier.tryParse(u.icon);
+		net.minecraft.world.item.Item item = id == null ? net.minecraft.world.item.Items.AIR : BuiltInRegistries.ITEM.getValue(id);
+		return new ItemStack(item == net.minecraft.world.item.Items.AIR ? net.minecraft.world.item.Items.EXPERIENCE_BOTTLE : item);
+	}
+
+	private static DialogBody row(Dungeons.Unlock u, Component description) {
+		return new net.minecraft.server.dialog.body.ItemBody(net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(icon(u)), Optional.of(new PlainMessage(description, TEXT_WIDTH - 30)), false, false, 16, 16);
+	}
+
+	private static void shopDialog(ServerPlayer p, String title, List<DialogBody> body, List<ActionButton> buttons, ActionButton exit) {
+		CommonDialogData common = new CommonDialogData(Component.literal(title), Optional.empty(), true, false, DialogAction.CLOSE, body, List.of());
+		if (buttons.isEmpty()) p.openDialog(Holder.direct(new net.minecraft.server.dialog.NoticeDialog(common, exit)));
+		else p.openDialog(Holder.direct(new MultiActionDialog(common, buttons, Optional.of(exit), 2)));
+	}
+
+	private static String describe(Dungeons.Unlock u) {
+		return u.description.isBlank() ? unlockText(u) : u.description;
+	}
+
+	/** The unlocks (/dungeon unlocks, or an NPC): balance on top, each unlock with its next level's price and a Buy link. */
 	public static void unlocksMenu(ServerPlayer p, String notice) {
+		unlocksMenu(p, notice, null);
+	}
+
+	public static void unlocksMenu(ServerPlayer p, String notice, String done) {
+		Points.Settings ps = PointsStore.settings();
+		Dungeons.Rogue g = cfg();
+		List<DialogBody> body = new ArrayList<>();
+		if (notice != null) {
+			body.add(text(notice, ChatFormatting.RED));
+			eu.explorerseden.nicecontrolcenter.core.Plop.play(p);
+		}
+		if (done != null) body.add(text(done, ChatFormatting.GREEN));
+		if (!g.unlocksGreeting.isBlank()) body.add(text(g.unlocksGreeting, ChatFormatting.GRAY));
+		long balance = PointsStore.balance(p.getStringUUID());
+		body.add(new PlainMessage(Component.literal("You have ").withStyle(ChatFormatting.GRAY).append(Component.literal(Points.amount(ps, balance)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)), TEXT_WIDTH));
+		boolean any = false;
+		for (Dungeons.Unlock u : g.unlocks) {
+			if (!u.enabled) continue;
+			any = true;
+			int lv = Math.min(u.maxLevel, level(p.getUUID(), u.id));
+			boolean full = lv >= u.maxLevel;
+			int price = cost(u, lv + 1);
+			boolean afford = balance >= price;
+			net.minecraft.network.chat.MutableComponent desc = Component.empty()
+					.append(Component.literal(u.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+					.append(Component.literal("  level " + lv + "/" + u.maxLevel).withStyle(full ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+			if (!full) desc.append(Component.literal("  " + (price == 0 ? "free" : Points.shortAmount(ps, price))).withStyle(afford ? ChatFormatting.GOLD : ChatFormatting.RED));
+			desc.append(Component.literal("\n" + describe(u)).withStyle(ChatFormatting.GRAY)).append(Component.literal("\n"));
+			if (full) desc.append(Component.literal("[ every level unlocked ]").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.BOLD));
+			else {
+				CompoundTag t = new CompoundTag();
+				t.putString("unlock", u.id);
+				desc.append(link("Buy", afford ? "See level " + (lv + 1) + " and buy it" : "You need " + Points.amount(ps, price - balance) + " more", "unlockview", t, afford ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+			}
+			body.add(row(u, desc));
+		}
+		if (!any) body.add(text("Nothing to unlock yet.", ChatFormatting.GRAY));
+		shopDialog(p, g.unlocksTitle, body, List.of(), new ActionButton(new CommonButtonData(Component.literal("Close"), 150), Optional.empty()));
+	}
+
+	/** One unlock up close, with the Buy button for its next level. */
+	private static void unlockView(ServerPlayer p, Dungeons.Unlock u) {
 		Points.Settings ps = PointsStore.settings();
 		List<DialogBody> body = new ArrayList<>();
-		if (notice != null) body.add(text(notice, notice.startsWith("✔") ? ChatFormatting.GREEN : ChatFormatting.RED));
-		body.add(text("Unlocks work in every rogue run. You have " + Points.amount(ps, PointsStore.balance(p.getStringUUID())) + ".", ChatFormatting.GOLD));
+		int lv = Math.min(u.maxLevel, level(p.getUUID(), u.id));
+		body.add(row(u, Component.literal(u.name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD)
+				.append(Component.literal("\n" + describe(u)).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
+		body.add(text("You have level " + lv + " of " + u.maxLevel + ".", ChatFormatting.AQUA));
+		long balance = PointsStore.balance(p.getStringUUID());
 		List<ActionButton> buttons = new ArrayList<>();
-		for (Dungeons.Unlock u : cfg().unlocks) {
-			if (!u.enabled) continue;
-			int lv = Math.min(u.maxLevel, level(p.getUUID(), u.id));
-			String what = unlockText(u);
-			if (lv >= u.maxLevel) {
-				body.add(text("✔ " + u.name + " " + lv + "/" + u.maxLevel + ": " + what, ChatFormatting.GREEN));
-				continue;
-			}
-			CompoundTag t = new CompoundTag();
-			t.putString("unlock", u.id);
-			buttons.add(button(u.name + " " + (lv + 1) + "/" + u.maxLevel + " · " + Points.amount(ps, cost(u, lv + 1)), what + (lv > 0 ? " (you have level " + lv + ")" : ""), "unlock", t));
+		CompoundTag back = new CompoundTag();
+		if (lv >= u.maxLevel) body.add(text("Every level is unlocked.", ChatFormatting.GREEN));
+		else {
+			int price = cost(u, lv + 1);
+			body.add(text("Level " + (lv + 1) + ": " + (price == 0 ? "free" : Points.amount(ps, price)) + " · you have " + Points.amount(ps, balance), balance >= price ? ChatFormatting.GOLD : ChatFormatting.RED));
+			if (balance >= price) {
+				CompoundTag t = new CompoundTag();
+				t.putString("unlock", u.id);
+				t.putInt("price", price);
+				buttons.add(new ActionButton(new CommonButtonData(Component.literal("Buy for " + Points.amount(ps, price)).withStyle(ChatFormatting.GREEN), Optional.of(Component.literal("Takes the " + ps.name + " and unlocks level " + (lv + 1))), 150),
+						Optional.of(new CustomAll(Identifier.fromNamespaceAndPath("nicecontrolcenter", "rogue/unlock"), Optional.of(t)))));
+			} else body.add(text("You need " + Points.amount(ps, price - balance) + " more.", ChatFormatting.RED));
 		}
-		if (buttons.isEmpty() && body.size() < 3) body.add(text("Nothing to unlock.", ChatFormatting.GRAY));
-		open(p, "Rogue unlocks", body, buttons, true);
+		shopDialog(p, cfg().unlocksTitle + " · " + u.name, body, buttons, new ActionButton(new CommonButtonData(Component.literal("Back"), Optional.of(Component.literal("Back to the unlocks")), 150),
+				Optional.of(new CustomAll(Identifier.fromNamespaceAndPath("nicecontrolcenter", "rogue/unlocks"), Optional.of(back)))));
 	}
 
 	private static String unlockText(Dungeons.Unlock u) {
@@ -427,8 +561,20 @@ public final class RogueBoons {
 	public static void handle(ServerPlayer me, String what, Optional<Tag> payload) {
 		MinecraftServer server = me.level().getServer();
 		CompoundTag in = payload.orElse(null) instanceof CompoundTag t ? t : new CompoundTag();
+		if ("unlocks".equals(what)) {
+			unlocksMenu(me, null);
+			return;
+		}
+		if ("unlockview".equals(what)) {
+			Dungeons.Unlock u = cfg().unlocks.stream().filter(x -> x.id.equals(in.getStringOr("unlock", "")) && x.enabled).findFirst().orElse(null);
+			if (u == null) unlocksMenu(me, "That unlock is gone.");
+			else unlockView(me, u);
+			return;
+		}
 		if ("unlock".equals(what)) {
-			unlocksMenu(me, buyUnlock(me, in.getStringOr("unlock", "")));
+			String r = buyUnlock(me, in.getStringOr("unlock", ""), in.getIntOr("price", -1));
+			if (r.startsWith("✔")) unlocksMenu(me, null, r);
+			else unlocksMenu(me, r);
 			return;
 		}
 		Run r = DungeonRuntime.runOf(me);
@@ -477,13 +623,15 @@ public final class RogueBoons {
 		return "✔ Bought " + b.name + " for " + price + " ⛁.";
 	}
 
-	private static String buyUnlock(ServerPlayer p, String id) {
+	private static String buyUnlock(ServerPlayer p, String id, int seenPrice) {
 		Dungeons.Unlock u = cfg().unlocks.stream().filter(x -> x.id.equals(id) && x.enabled).findFirst().orElse(null);
 		if (u == null) return "That unlock is gone.";
 		int lv = level(p.getUUID(), u.id);
 		if (lv >= u.maxLevel) return "You have every level of " + u.name + ".";
 		int price = cost(u, lv + 1);
 		Points.Settings ps = PointsStore.settings();
+		// (The price changed while the menu was open: nothing taken, the menu shows the new one.)
+		if (seenPrice >= 0 && seenPrice != price) return "The price of " + u.name + " changed: it's " + Points.amount(ps, price) + " now.";
 		if (!PointsStore.take(p.getStringUUID(), p.getGameProfile().name(), price, "Rogue unlock: " + u.name + " " + (lv + 1))) {
 			return "Not enough " + ps.name.toLowerCase(Locale.ROOT) + ": " + u.name + " " + (lv + 1) + " costs " + Points.amount(ps, price) + ".";
 		}

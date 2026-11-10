@@ -26,7 +26,7 @@ points that help in every run.
    | `spawn` | Where the run's mobs come (shared out over all spawn markers). |
    | `mob:<id> [xN]` | Fixed mobs, as in dungeons (they get tougher with the room too). |
    | `boss:<id>` | The boss of a boss room (else one from the run's boss list comes at a spawn marker). |
-   | `shop` | Shop rooms: players stand here to open the shop (without one, it opens when they arrive). |
+   | `shop` | Shop rooms: the shop NPC stands here; a right-click opens the shop (without one, it opens when they arrive). |
 
 3. Save each room into a group: `/dungeon room create <room>` at one corner, `/dungeon corner2` at the other, then
    `/dungeon room save <room> crypt_fight` (or `crypt_elite`, `crypt_boss`, `crypt_start`). A room can be in several
@@ -43,16 +43,18 @@ run starts in a fight room.
 
   | Room | |
   |---|---|
-  | ⚔ Fight | Mobs; a boon afterwards. |
-  | ☠ Elite | Tougher mobs, double coins; a boon afterwards. |
-  | ♛ Boss | A boss; coins and a boon afterwards. |
+  | ⚔ Fight | Mobs; a room reward afterwards. |
+  | ☠ Elite | Tougher mobs, double coins; a room reward afterwards. |
+  | ♛ Boss | A boss; coins and a room reward afterwards. |
   | ✦ Treasure | No mobs: a free boon (and whatever its chests hold: loot tables roll fresh). |
   | 🛒 Shop | No mobs: spend run coins. |
-  | ❤ Rest | No mobs: heals everyone (50 % of max health by default). |
+  | ❤ Rest | No mobs: heals and feeds everyone, takes harmful effects away (all set in the panel). |
 
   A type only shows up when its group has rooms, so a run with only fight rooms works too.
-- After a fight, elite, boss or treasure room every player picks a boon (30 seconds, then one is picked for them;
-  `/dungeon boon` opens the choice again). The doors wait until everyone has chosen.
+- A cleared fight, elite or boss room gives the party one **room reward**, picked by weight: a boon choice, run coins,
+  more max health for the run, or food. With a boon choice every player picks one (30 seconds, then one is picked
+  for them; `/dungeon boon` opens the choice again) and the doors wait until everyone has chosen. Treasure rooms
+  always give a boon choice.
 - The party leader picks by standing on a door for 2 seconds (playing solo, you pick yourself).
 - The next room is pasted next to the old one, everyone is brought there, and the old room is wiped.
 - Every few rooms (**Boss room every … rooms**), every door leads to a boss room.
@@ -84,10 +86,16 @@ These are the same for every rogue run.
 - **Boons**: what each one does (an attribute like `minecraft:max_health` added flat or as a percent, an effect whose
   level grows with each one taken, an item as in /give, a heal, or a command), how often one player can take it in a
   run, and how often it's offered (weight 0: only in the shop). They come off when the run ends for the player.
+- **Room rewards**: the kinds above with their weight and amount (coins can grow per room).
+- **Rest rooms**: heal %, food and saturation, harmful effects taken away or not, effects given
+  (`minecraft:regeneration 5 1`: id, seconds, level), a message and commands.
 - **Coins**: per foe for everyone still in (elite rooms pay more, bosses a fixed amount). They're only for the run.
-- **Shop**: which boons shop rooms sell and the price; prices grow with the room number.
-- **Unlocks**: bought with points between runs (`/dungeon unlocks`), a level at a time (level 2 costs twice the
-  price). Kinds: coins at the start of each run, a boon at the start, boon rerolls, one more boon to choose from.
+- **Shop**: which boons shop rooms sell and the price (prices grow with the room number), and the shop NPC's name and
+  skin.
+- **Unlocks**: bought with points between runs, a level at a time (level 2 costs twice the price). Kinds: coins at the
+  start of each run, a boon at the start, boon rerolls, one more boon to choose from. The menu looks like a reward
+  shop (each unlock with its icon, level, price and a Buy link). Players open it with `/dungeon unlocks`, or put it on
+  an NPC: pick **Rogue unlocks** as the NPC's shop (Community → NPCs) or `/npc shop <npc> rogue_unlocks`.
 
 ## 5. Rewards and the board
 

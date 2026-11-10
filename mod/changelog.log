@@ -1,4 +1,11 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.107.0
+- Rogue runs: cleared fight, elite and boss rooms give one room reward picked by weight instead of always a boon: a boon choice, run coins (more per room), more max health for the rest of the run, or food (hunger can't go above a full bar in Minecraft, so it fills it). Treasure rooms still give a boon choice
+- Rogue runs: shop rooms' shop marker is an NPC now (name and skin in the panel); a right-click opens the shop
+- Rogue runs: rest rooms can be set up: heal %, food and saturation, harmful effects taken away, effects given, a message and commands
+- Rogue unlocks: the menu looks like a reward shop (icon, level, price and a Buy link per unlock, then a page with the Buy button), with its own title, top line and a text per unlock; an NPC can open it (shop "rogue_unlocks", /npc shop <npc> rogue_unlocks)
+- Rogue runs: coins for kills could be missed when a mob had another rogue tag first
+- Tested on the console only (shop NPC in shop rooms, rewards after cleared rooms); menus and rewards need players
 ## 1.106.0
 - Rogue runs: boons. After a fight, elite, boss or treasure room every player picks one of 3 boons (more health, damage, speed or armor, effects, items, heals), kept for the rest of the run and taken off when the run ends for them; 30 seconds to choose, then one is picked for them, and the doors wait until everyone has chosen (/dungeon boon opens the choice again)
 - Rogue runs: run coins for every foe (elite rooms pay double, bosses 15), shop rooms (stand on the shop marker, or it opens on arriving; /dungeon shop) selling boons at prices that grow with the room, treasure rooms (a free boon) and rest rooms (heal 50 %)

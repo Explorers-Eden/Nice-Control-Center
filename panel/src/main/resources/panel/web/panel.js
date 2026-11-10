@@ -2656,7 +2656,7 @@
           ${field('Path', `<select data-n="pathMode">${opt('loop', n.pathMode, 'round and round')}${opt('back', n.pathMode, 'back and forth')}${opt('random', n.pathMode, 'to random checkpoints')}</select>`)}
           ${field('Walking speed (0.1–1)', num('walkSpeed', 0.1, 1, 0.05, n.walkSpeed))}
           <h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-hand-index"></i> Right-click and hit</h4>
-          ${field('Reward shop on a right-click', `<select data-n="shop">${opt('', n.shop, '(none)')}${nc.shops.map((x) => opt(x.id, n.shop, x.title || x.name)).join('')}</select>`)}
+          ${field('Reward shop on a right-click', `<select data-n="shop">${opt('', n.shop, '(none)')}${opt('rogue_unlocks', n.shop, 'Rogue unlocks (Games → Rogue runs)')}${nc.shops.map((x) => opt(x.id, n.shop, x.title || x.name)).join('')}</select>`)}
           ${field('Wait between two (s, per player)', num('cooldownSeconds', 0, 86400, 1, n.cooldownSeconds))}
           ${field('On a right-click (one per line: <code>say: Hello {player}!</code>, <code>player: spawn</code>, or a command as the server)', `<textarea data-n="onClick" rows="3" placeholder="say: Welcome, {player}!&#10;give {player} minecraft:cookie">${esc(ncActionsText(n.onClick))}</textarea>`, true)}
           ${field('On a hit (same as above)', `<textarea data-n="onHit" rows="2" placeholder="say: Ouch!">${esc(ncActionsText(n.onHit))}</textarea>`, true)}
@@ -3368,6 +3368,20 @@
       ${field('Elite rooms: % more on top', num('eliteToughness', 0, 500))}`;
   }
 
+  /** Rest room and unlock menu fields (data-rgk: key in the rogue settings, data-rgt: num, bool, text or lines). */
+  function rgField(el, g) {
+    const k = el.dataset.rgk;
+    const t = el.dataset.rgt;
+    if (g) {
+      const v = g[k];
+      el.value = t === 'lines' ? (v || []).join('\n') : t === 'bool' ? String(v !== false) : (v ?? '');
+      return;
+    }
+    const v = el.value;
+    dg.settings.rogue[k] = t === 'num' ? (Number(v) || 0) : t === 'bool' ? v === 'true' : t === 'lines' ? v.split('\n').map((x) => x.trim()).filter(Boolean) : v;
+  }
+  document.querySelectorAll('[data-rgk]').forEach((el) => el.addEventListener('input', () => { rgField(el); dgChanged(false); }));
+
   const RG_GLOBAL = { 'pn-rg-coins': 'coinsPerKill', 'pn-rg-elite': 'eliteCoins', 'pn-rg-boss': 'bossCoins', 'pn-rg-growth': 'priceGrowth', 'pn-rg-rest': 'restHeal', 'pn-rg-choices': 'choices', 'pn-rg-seconds': 'pickSeconds' };
   const RG_BOON_KINDS = [['attribute', 'Attribute'], ['effect', 'Effect'], ['item', 'Item'], ['heal', 'Heal'], ['command', 'Command']];
   const RG_UNLOCK_KINDS = [['coins', 'Coins at the start'], ['boon', 'A boon at the start'], ['reroll', 'Boon rerolls'], ['choice', 'One more boon to choose from']];
@@ -3376,6 +3390,7 @@
   function renderRogue(edit) {
     const g = dg.settings.rogue || (dg.settings.rogue = { boons: [], shop: [], unlocks: [] });
     Object.entries(RG_GLOBAL).forEach(([id, k]) => { $(id).value = g[k]; $(id).disabled = !edit; });
+    document.querySelectorAll('[data-rgk]').forEach((el) => { rgField(el, g); el.disabled = !edit; });
     const sel = (attrs, opts, cur) => `<select ${attrs}>${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
     const boonOpts = (g.boons || []).map((b) => [b.id, b.name || b.id]);
     const f = (label, html, wide) => `<label class="pn-field${wide ? ' pn-field-wide' : ''}"><span>${label}</span>${html}</label>`;
@@ -3399,6 +3414,19 @@
           ${f('Text in menus (empty = made from the above)', `<input type="text" ${a('description')} value="${esc(b.description)}" maxlength="100">`, true)}
         </div></section>`;
     }).join('') || '<p class="pn-hint">No boons: nothing to choose after rooms, nothing in shops.</p>';
+    const RW_KINDS = [['boon', 'Boon (each picks one)'], ['coins', 'Coins'], ['health', 'Max health'], ['food', 'Food']];
+    const rwTotal = (g.rewards || []).filter((x) => x.enabled).reduce((n, x) => n + x.weight, 0);
+    $('pn-rg-rewards').innerHTML = (g.rewards || []).length ? `<ul class="pn-dg-runs">${g.rewards.map((x, i) => {
+      const a = (k) => `data-ri="${i}" data-rk="${k}"`;
+      return `<li>
+        <label class="np-switch" title="On or off"><input type="checkbox" ${a('enabled')} ${x.enabled ? 'checked' : ''}><span></span></label>
+        ${sel(a('kind'), RW_KINDS, x.kind)}
+        <label class="pn-dg-inline">weight <input type="number" min="0" max="100" ${a('weight')} value="${x.weight}"></label>
+        ${x.kind === 'boon' ? '' : `<label class="pn-dg-inline">${x.kind === 'coins' ? 'coins' : x.kind === 'health' ? 'health points' : 'hunger points'} <input type="number" min="0" ${a('amount')} value="${x.amount}"></label>`}
+        ${x.kind === 'coins' ? `<label class="pn-dg-inline">+ per room <input type="number" min="0" ${a('perRoom')} value="${x.perRoom}"></label>` : ''}
+        <small>${x.enabled && rwTotal ? Math.round(x.weight * 100 / rwTotal) + ' %' : 'off'}</small>
+        <button type="button" class="np-btn small danger" data-rgdel="${i}" title="Remove"><i class="bi bi-trash"></i></button></li>`;
+    }).join('')}</ul>` : '<p class="pn-hint">No room rewards: clearing a room gives nothing.</p>';
     $('pn-rg-shop').innerHTML = (g.shop || []).length ? `<ul class="pn-dg-runs">${g.shop.map((e, i) => `<li>
         <label class="np-switch" title="For sale or not"><input type="checkbox" data-si="${i}" data-sk="enabled" ${e.enabled ? 'checked' : ''}><span></span></label>
         ${sel(`data-si="${i}" data-sk="boon"`, boonOpts.some(([v]) => v === e.boon) ? boonOpts : [[e.boon, e.boon ? e.boon + ' (gone)' : 'pick a boon'], ...boonOpts], e.boon)}
@@ -3416,16 +3444,18 @@
           ${f('What each level gives', sel(a('kind'), RG_UNLOCK_KINDS, u.kind))}
           ${u.kind === 'boon' ? f('Boon', sel(a('boon'), boonOpts.some(([v]) => v === u.boon) ? boonOpts : [[u.boon, 'pick a boon'], ...boonOpts], u.boon)) : ''}
           ${u.kind === 'coins' ? f('Coins per level', `<input type="number" min="0" max="10000" ${a('amount')} value="${u.amount}">`) : ''}
+          ${f('Icon item', `<input type="text" ${a('icon')} value="${esc(u.icon)}" spellcheck="false">`)}
+          ${f('Text in the menu (empty = made from the kind)', `<input type="text" ${a('description')} value="${esc(u.description || '')}" maxlength="120">`, true)}
           ${f(`Price of level 1 (${esc(po.settings?.name || 'points')})`, `<input type="number" min="0" ${a('cost')} value="${u.cost}">`)}
           ${f('Levels', `<input type="number" min="1" max="${u.kind === 'choice' ? 3 : 20}" ${a('maxLevel')} value="${u.maxLevel}">`)}
         </div></section>`;
     }).join('') || '<p class="pn-hint">No unlocks.</p>';
-    ['pn-rg-boons', 'pn-rg-shop', 'pn-rg-unlocks'].forEach((id) => $(id).querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; }));
-    ['pn-rg-boon-add', 'pn-rg-shop-add', 'pn-rg-unlock-add', 'pn-dg-rogue-name', 'pn-dg-rogue-add'].forEach((id) => { $(id).disabled = !edit; });
+    ['pn-rg-rewards', 'pn-rg-boons', 'pn-rg-shop', 'pn-rg-unlocks'].forEach((id) => $(id).querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; }));
+    ['pn-rg-reward-add', 'pn-rg-boon-add', 'pn-rg-shop-add', 'pn-rg-unlock-add', 'pn-dg-rogue-name', 'pn-dg-rogue-add'].forEach((id) => { $(id).disabled = !edit; });
   }
 
   Object.entries(RG_GLOBAL).forEach(([id, k]) => $(id).addEventListener('input', (e) => { dg.settings.rogue[k] = Number(e.target.value) || 0; dgChanged(false); }));
-  const RG_LISTS = { 'pn-rg-boons': ['boons', 'bi', 'bk'], 'pn-rg-shop': ['shop', 'si', 'sk'], 'pn-rg-unlocks': ['unlocks', 'ui', 'uk'] };
+  const RG_LISTS = { 'pn-rg-rewards': ['rewards', 'ri', 'rk'], 'pn-rg-boons': ['boons', 'bi', 'bk'], 'pn-rg-shop': ['shop', 'si', 'sk'], 'pn-rg-unlocks': ['unlocks', 'ui', 'uk'] };
   Object.entries(RG_LISTS).forEach(([id, [list, ia, ka]]) => {
     $(id).addEventListener('input', (e) => {
       const t = e.target;
@@ -3437,13 +3467,17 @@
       dgChanged(false);
     });
     // A new kind shows other fields; names show in the head.
-    $(id).addEventListener('change', (e) => { if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox' || e.target.dataset[ka] === 'name') renderRogue(can('settings.server')); });
+    $(id).addEventListener('change', (e) => { if (id === 'pn-rg-rewards' || e.target.tagName === 'SELECT' || e.target.type === 'checkbox' || e.target.dataset[ka] === 'name') renderRogue(can('settings.server')); });
     $(id).addEventListener('click', (e) => {
       const b = e.target.closest('[data-rgdel]');
       if (!b) return;
       dg.settings.rogue[list].splice(+b.dataset.rgdel, 1);
       dgChanged(true);
     });
+  });
+  $('pn-rg-reward-add').addEventListener('click', () => {
+    dg.settings.rogue.rewards.push({ enabled: true, kind: 'coins', weight: 10, amount: 10, perRoom: 0 });
+    dgChanged(true);
   });
   $('pn-rg-boon-add').addEventListener('click', () => {
     dg.settings.rogue.boons.push({ id: '', enabled: true, name: 'New boon', icon: 'minecraft:nether_star', kind: 'attribute', target: 'minecraft:max_health', amount: 2, op: 'add', maxStacks: 3, weight: 10, description: '' });
@@ -3454,7 +3488,7 @@
     dgChanged(true);
   });
   $('pn-rg-unlock-add').addEventListener('click', () => {
-    dg.settings.rogue.unlocks.push({ id: '', enabled: true, name: 'New unlock', icon: 'minecraft:experience_bottle', kind: 'coins', boon: '', amount: 5, cost: 50, maxLevel: 3 });
+    dg.settings.rogue.unlocks.push({ id: '', enabled: true, name: 'New unlock', icon: 'minecraft:experience_bottle', kind: 'coins', boon: '', description: '', amount: 5, cost: 50, maxLevel: 3 });
     dgChanged(true);
   });
 

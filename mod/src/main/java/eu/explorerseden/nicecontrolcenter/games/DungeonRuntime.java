@@ -406,6 +406,14 @@ public final class DungeonRuntime {
 			if (entity instanceof ServerPlayer p && playing.containsKey(p.getUUID())) died(p.level().getServer(), playing.get(p.getUUID()), p);
 			return true;
 		});
+		// Rogue runs: the shop NPC opens the shop (only for players of that run, in its shop room).
+		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player, lvl, hand, entity, hit) -> {
+			if (!(player instanceof ServerPlayer p) || !entity.entityTags().contains(RogueBoons.SHOP_TAG)) return net.minecraft.world.InteractionResult.PASS;
+			if (hand != net.minecraft.world.InteractionHand.MAIN_HAND) return net.minecraft.world.InteractionResult.SUCCESS;
+			Run r = playing.get(p.getUUID());
+			if (r != null && r.rogue != null && "shop".equals(r.rogue.type) && !r.out.contains(p.getUUID())) RogueBoons.shop(r, p, null);
+			return net.minecraft.world.InteractionResult.SUCCESS;
+		});
 		// Rogue runs: a foe of the room down pays coins to everyone still in.
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof ServerPlayer || !DungeonRuntime.dungeonWorld(entity.level())) return;
@@ -414,10 +422,10 @@ public final class DungeonRuntime {
 				try {
 					Run r = slots.get(Integer.parseInt(t.substring("ncc_rogue_".length())));
 					if (r != null && r.rogue != null && r.state == State.RUNNING) RogueBoons.killed(entity.level().getServer(), r, entity.entityTags().contains(r.bossTag()));
+					return;
 				} catch (NumberFormatException e) {
-					// Another rogue tag (scaled, door).
+					// Another rogue tag (scaled, labels): look on.
 				}
-				return;
 			}
 		});
 		ServerPlayerEvents.AFTER_RESPAWN.register((old, now, alive) -> {

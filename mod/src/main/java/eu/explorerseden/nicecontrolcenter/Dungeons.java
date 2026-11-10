@@ -56,6 +56,29 @@ public final class Dungeons {
 		public String description = "";
 	}
 
+	/** What clearing a room can give (one rolled per room for the party): boon (each picks one), coins, health, food. */
+	public static final List<String> REWARD_KINDS = List.of("boon", "coins", "health", "food");
+
+	/** One kind of room reward and how likely it is. */
+	public static final class RoomReward {
+		public boolean enabled = true;
+		public String kind = "boon";
+		public int weight = 10;
+		/** coins: coins; health: max health points (2 = a heart) for the run; food: hunger points (saturation half as much). */
+		public int amount;
+		/** coins: this many more per room. */
+		public int perRoom;
+	}
+
+	private static RoomReward reward(String kind, int weight, int amount, int perRoom) {
+		RoomReward r = new RoomReward();
+		r.kind = kind;
+		r.weight = weight;
+		r.amount = amount;
+		r.perRoom = perRoom;
+		return r;
+	}
+
 	/** Something rogue shops sell: a boon at a price in run coins (more the deeper the run). */
 	public static final class ShopEntry {
 		public String id = "";
@@ -73,6 +96,8 @@ public final class Dungeons {
 		public String kind = "coins";
 		/** kind boon: the boon each level hands out at the start. */
 		public String boon = "";
+		/** Shown in the unlocks menu; empty = made from the kind. */
+		public String description = "";
 		/** kind coins: coins per level. */
 		public int amount = 5;
 		/** Points for the first level; each next level costs this much more (level 2 = twice). */
@@ -88,11 +113,28 @@ public final class Dungeons {
 		public int bossCoins = 15;
 		/** Rest rooms heal this % of max health. */
 		public int restHeal = 50;
+		/** Rest rooms: hunger points filled (0-20), saturation given, harmful effects taken away. */
+		public int restFood = 6;
+		public int restSaturation = 0;
+		public boolean restCleanse = true;
+		/** Rest rooms: effects given ("minecraft:regeneration 10 1": id, seconds, level). */
+		public List<String> restEffects = new ArrayList<>(List.of("minecraft:regeneration 5 1"));
+		/** Rest rooms: told to each player on arriving (empty = the default line); commands run as the server per player ({player}). */
+		public String restMessage = "";
+		public List<String> restCommands = new ArrayList<>();
+		/** The unlocks menu: its title and the line on top. */
+		public String unlocksTitle = "Rogue unlocks";
+		public String unlocksGreeting = "Unlocks help in every rogue run, a level at a time.";
 		/** Shop prices grow by this % per room. */
 		public int priceGrowth = 10;
 		/** Boons to choose from after a room; seconds to choose before one is picked for them. */
 		public int choices = 3;
 		public int pickSeconds = 30;
+		/** What clearing a fight, elite or boss room gives (treasure rooms always give a boon choice). */
+		public List<RoomReward> rewards = new ArrayList<>(List.of(reward("boon", 60, 0, 0), reward("coins", 20, 8, 2), reward("health", 10, 2, 0), reward("food", 10, 8, 0)));
+		/** The shop NPC on a shop room's shop marker: its name and skin (a player name, a skin link or base64; empty = default). */
+		public String shopName = "Merchant";
+		public String shopSkin = "";
 		public List<Boon> boons = defaultBoons();
 		public List<ShopEntry> shop = defaultShop();
 		public List<Unlock> unlocks = defaultUnlocks();
@@ -403,9 +445,28 @@ public final class Dungeons {
 			g.eliteCoins = Math.max(1, Math.min(10, g.eliteCoins));
 			g.bossCoins = Math.max(0, Math.min(10000, g.bossCoins));
 			g.restHeal = Math.max(0, Math.min(100, g.restHeal));
+			g.restFood = Math.max(0, Math.min(20, g.restFood));
+			g.restSaturation = Math.max(0, Math.min(20, g.restSaturation));
+			if (g.restEffects == null) g.restEffects = new ArrayList<>();
+			g.restEffects.removeIf(x -> x == null || x.isBlank());
+			if (g.restCommands == null) g.restCommands = new ArrayList<>();
+			g.restCommands.removeIf(x -> x == null || x.isBlank());
+			if (g.restMessage == null) g.restMessage = "";
+			if (g.unlocksTitle == null || g.unlocksTitle.isBlank()) g.unlocksTitle = "Rogue unlocks";
+			if (g.unlocksGreeting == null) g.unlocksGreeting = "";
 			g.priceGrowth = Math.max(0, Math.min(100, g.priceGrowth));
 			g.choices = Math.max(1, Math.min(6, g.choices));
 			g.pickSeconds = Math.max(5, Math.min(300, g.pickSeconds));
+			if (g.rewards == null) g.rewards = new ArrayList<>();
+			g.rewards.removeIf(x -> x == null);
+			for (RoomReward x : g.rewards) {
+				if (!REWARD_KINDS.contains(x.kind)) x.kind = "boon";
+				x.weight = Math.max(0, Math.min(100, x.weight));
+				x.amount = Math.max(0, Math.min(10000, x.amount));
+				x.perRoom = Math.max(0, Math.min(1000, x.perRoom));
+			}
+			if (g.shopName == null || g.shopName.isBlank()) g.shopName = "Merchant";
+			if (g.shopSkin == null) g.shopSkin = "";
 			if (g.boons == null) g.boons = new ArrayList<>();
 			if (g.shop == null) g.shop = new ArrayList<>();
 			if (g.unlocks == null) g.unlocks = new ArrayList<>();
@@ -448,6 +509,7 @@ public final class Dungeons {
 				if (u.icon == null || u.icon.isBlank()) u.icon = "minecraft:experience_bottle";
 				if (!UNLOCK_KINDS.contains(u.kind)) u.kind = "coins";
 				if (u.boon == null) u.boon = "";
+				if (u.description == null) u.description = "";
 				u.amount = Math.max(0, Math.min(10000, u.amount));
 				u.cost = Math.max(0, Math.min(1_000_000, u.cost));
 				u.maxLevel = Math.max(1, Math.min("choice".equals(u.kind) ? 3 : 20, u.maxLevel));

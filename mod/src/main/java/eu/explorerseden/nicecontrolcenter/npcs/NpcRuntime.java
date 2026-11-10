@@ -188,7 +188,9 @@ public final class NpcRuntime {
 				String line = n.lines.get(st.clickLine++ % n.lines.size());
 				say(n, st, line, List.of(p));
 			}
-			if (!n.shop.isBlank()) {
+			if (eu.explorerseden.nicecontrolcenter.games.RogueBoons.NPC_SHOP.equals(n.shop)) {
+				eu.explorerseden.nicecontrolcenter.games.RogueBoons.unlocksMenu(p, null);
+			} else if (!n.shop.isBlank()) {
 				Points.Shop shop = PointsStore.settings().shop(n.shop);
 				if (shop != null && PointsStore.settings().enabled) RewardShops.open(p, shop, null, null);
 				else p.sendOverlayMessage(Component.literal("This shop is closed").withStyle(ChatFormatting.GRAY));
@@ -1156,7 +1158,7 @@ public final class NpcRuntime {
 							return saved(ctx, n.name + " stands on its spot again.");
 						}))))
 				.then(Commands.literal("shop").then(npcArg.get().then(Commands.argument("shop", StringArgumentType.word())
-						.suggests((ctx, b) -> SharedSuggestionProvider.suggest(java.util.stream.Stream.concat(java.util.stream.Stream.of("none"), PointsStore.settings().shops.stream().map(x -> x.name)), b))
+						.suggests((ctx, b) -> SharedSuggestionProvider.suggest(java.util.stream.Stream.concat(java.util.stream.Stream.of("none", eu.explorerseden.nicecontrolcenter.games.RogueBoons.NPC_SHOP), PointsStore.settings().shops.stream().map(x -> x.name)), b))
 						.executes(ctx -> {
 							Npc n = npc(ctx);
 							if (n == null) return fail(ctx, "There's no such NPC.");
@@ -1164,6 +1166,10 @@ public final class NpcRuntime {
 							if (s.equalsIgnoreCase("none")) {
 								n.shop = "";
 								return saved(ctx, n.name + " has no shop now.");
+							}
+							if (s.equalsIgnoreCase(eu.explorerseden.nicecontrolcenter.games.RogueBoons.NPC_SHOP)) {
+								n.shop = eu.explorerseden.nicecontrolcenter.games.RogueBoons.NPC_SHOP;
+								return saved(ctx, n.name + " opens the rogue unlocks on a right-click.");
 							}
 							Points.Shop shop = PointsStore.settings().shop(s);
 							if (shop == null) return fail(ctx, "There's no such reward shop.");
