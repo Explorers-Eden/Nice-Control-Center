@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.104.4
+- Games, wave arenas and dungeons: players start with the hunger bar at 9.5 (half a bar short of full) instead of 8.5, still without saturation
 ## 1.104.3
 - Pregen: the memory pause could last for hours although memory wasn't short: Distant Horizons keeps gigabytes of pooled arrays that the Java collector frees whenever it needs room, but while the pregen waits hardly anything is allocated, so the collector never ran and the heap stayed above the 60 % needed to carry on (5 hours at 75 % on 2026-11-09). Now after 2 minutes paused it asks for one full collection, and when memory then holds steady for 5 minutes it carries on, pausing again only 10 points higher (at most 90 %). A save queue that keeps growing still stops it as before
 ## 1.104.2

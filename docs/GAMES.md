@@ -48,8 +48,7 @@ Explosions (creepers and the like) break no blocks inside any game's box, whethe
 Block fields (parkour blocks, maze walls and floors, colour floor colours, claim border markers) take block ids,
 tags (`#minecraft:wool`) and comma-separated lists, mixed at random.
 
-Every game starts with full health and the hunger bar at 17 without saturation (one short of where health comes
-back by itself): players heal by eating, not just by having a full bar. Anvil rain keeps hunger and saturation full.
+Every game starts with full health and the hunger bar at 9.5 of 10 (half a bar short of full) without saturation. Anvil rain keeps hunger and saturation full.
 
 Ender pearls don't work in games. After a round or run, a pad takes the player again after 1 second (every game).
 

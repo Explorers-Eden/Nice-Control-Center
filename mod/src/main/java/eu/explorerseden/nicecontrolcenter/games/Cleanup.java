@@ -13,13 +13,13 @@ final class Cleanup {
 	}
 
 	/**
-	 * A game starts with full health (no fire or missing air) and the hunger bar at 17 without saturation: enough to
-	 * sprint, one short of what heals by itself (18), so health only comes back by eating, not as if they couldn't die.
+	 * A game starts with full health (no fire or missing air) and the hunger bar half a bar short of full (19, 9.5
+	 * bars) without saturation, so the quick healing of a full, saturated bar doesn't carry them through the game.
 	 */
 	static void refresh(net.minecraft.server.level.ServerPlayer p) {
 		if (!p.isAlive()) return;
 		p.setHealth(p.getMaxHealth());
-		p.getFoodData().setFoodLevel(17);
+		p.getFoodData().setFoodLevel(19);
 		p.getFoodData().setSaturation(0f);
 		p.clearFire();
 		p.setAirSupply(p.getMaxAirSupply());
