@@ -72,6 +72,7 @@ public class NiceControlCenter implements ModInitializer {
 		eu.explorerseden.nicecontrolcenter.claims.GameClaims.register();
 		eu.explorerseden.nicecontrolcenter.games.GameRuntime.register();
 		eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.register();
+		eu.explorerseden.nicecontrolcenter.core.QuickActions.register();
 		eu.explorerseden.nicecontrolcenter.games.WaveRuntime.register();
 		eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.register();
 		eu.explorerseden.nicecontrolcenter.games.MobLines.register();

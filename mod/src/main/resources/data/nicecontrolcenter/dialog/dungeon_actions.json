@@ -1,0 +1,5 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Actions" },
+  "body": { "type": "minecraft:plain_message", "contents": { "text": "Nice Actions is not installed." } }
+}

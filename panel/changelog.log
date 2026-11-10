@@ -1,3 +1,5 @@
+## 1.89.0
+- Games → Games: "Quick actions menu in the game worlds": the Party button on or off, and which Nice Actions buttons to leave out in Flying Fair and the dungeons (the list comes from the server)
 ## 1.88.2
 - Games → Dungeons and Rogue runs: easier to read. Dungeon, rogue run, room, boon and unlock cards fold to one line (open one by clicking its header) with a summary in it (pool, players, best run, groups, what a boon does); inside, the fields are grouped under headings (Players, Rooms, Mobs and how hard it gets, Gear, Messages and commands)
 - Rogue runs: the room types are one small table (type, group, rooms in it, how often) instead of twelve separate fields

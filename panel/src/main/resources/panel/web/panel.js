@@ -2099,6 +2099,7 @@
       gm.scores = d.scores || null;
       gm.headSkins = d.headSkins || {};
       gm.songs = d.songs || [];
+      gm.quickActions = d.quickActions || [];
       try { gm.npcs = (await api('api/npcs')).settings.npcs; } catch (e) { gm.npcs = []; }
       gm.dirty = false;
       gm.removed = { arenas: [], points: [] };
@@ -2114,6 +2115,12 @@
     const s = gm.settings;
     $('pn-gm-enabled').checked = s.enabled;
     $('pn-gm-enabled').disabled = !edit;
+    const qm = s.quickMenu || (s.quickMenu = { party: true, hide: [] });
+    $('pn-gm-qparty').checked = qm.party !== false;
+    $('pn-gm-qparty').disabled = !edit;
+    const qa = gm.quickActions.length ? gm.quickActions : qm.hide.map((id) => ({ id, label: id }));
+    $('pn-gm-qhide').innerHTML = qa.length ? qa.map((b) => `<label class="np-check"><input type="checkbox" data-qhide="${esc(b.id)}" ${qm.hide.includes(b.id) ? 'checked' : ''} ${edit ? '' : 'disabled'}> ${esc(b.label)}</label>`).join('')
+      : '<p class="pn-hint">The list of buttons appears once the server has started with Nice Actions installed.</p>';
     const hub = s.hub;
     $('pn-gm-hub').innerHTML = (hub
       ? `<i class="bi bi-geo-alt"></i> ${esc(dimShort(hub.dim))} · ${Math.round(hub.x)}, ${Math.round(hub.y)}, ${Math.round(hub.z)} <button type="button" class="np-btn small" id="pn-gm-hub-clear" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i> Clear</button>`
@@ -2535,6 +2542,15 @@
     }
   });
   $('pn-gm-enabled').addEventListener('change', (e) => { gm.settings.enabled = e.target.checked; gmChanged(false); });
+  $('pn-gm-qparty').addEventListener('change', (e) => { gm.settings.quickMenu.party = e.target.checked; gmChanged(false); });
+  $('pn-gm-qhide').addEventListener('change', (e) => {
+    const id = e.target.dataset.qhide;
+    if (!id) return;
+    const q = gm.settings.quickMenu;
+    q.hide = q.hide.filter((x) => x !== id);
+    if (e.target.checked) q.hide.push(id);
+    gmChanged(false);
+  });
   $('pn-gm-hub').addEventListener('click', (e) => {
     if (!e.target.closest('#pn-gm-hub-clear')) return;
     gm.settings.hub = null;

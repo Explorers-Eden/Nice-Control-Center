@@ -377,6 +377,16 @@ public final class Games {
 		public Pos pos;
 	}
 
+	/**
+	 * The quick actions menu in the game worlds: a Party button, and buttons left out there (by id: "sethome",
+	 * "rtp", "claim"…). What doesn't work there anyway (homes where they can't be set, teleports in the dungeons) is
+	 * left out on its own. Built when the server starts.
+	 */
+	public static final class QuickMenu {
+		public boolean party = true;
+		public List<String> hide = new ArrayList<>();
+	}
+
 	public static final class Settings {
 		public boolean enabled = true;
 		/** Entrances to arena pools (placed in game: /game pool <pool> entrance add). */
@@ -399,6 +409,8 @@ public final class Games {
 		 * dimension, come back here. Null = their home or vanilla respawn.
 		 */
 		public Pos hub;
+		/** The quick actions menu (Nice Actions, the G key) in Flying Fair, the game hub and the dungeons. */
+		public QuickMenu quickMenu = new QuickMenu();
 		public List<Arena> arenas = new ArrayList<>();
 
 		public Arena arena(String idOrName) {
@@ -407,6 +419,9 @@ public final class Games {
 		}
 
 		public Settings fill() {
+			if (quickMenu == null) quickMenu = new QuickMenu();
+			if (quickMenu.hide == null) quickMenu.hide = new ArrayList<>();
+			quickMenu.hide.removeIf(x -> x == null || x.isBlank());
 			if (arenas == null) arenas = new ArrayList<>();
 			if (poolPads == null) poolPads = new ArrayList<>();
 			poolPads.removeIf(p -> p == null || p.pos == null || p.pos.dim == null || poolName(p.pool).isEmpty());

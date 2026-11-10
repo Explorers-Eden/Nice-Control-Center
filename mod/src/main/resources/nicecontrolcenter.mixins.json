@@ -28,6 +28,7 @@
 		"TextDisplayAccessor",
 		"AnimalBreedingMixin",
 		"QuickActionsMixin",
+		"QuickActionsLoaderMixin",
 		"GrindstoneMenuAccessor",
 		"GrindstoneMenuMixin",
 		"GrindstoneResultMixin",

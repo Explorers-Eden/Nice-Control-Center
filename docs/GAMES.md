@@ -227,6 +227,14 @@ done. The full setup guide (markers, pads and parties, gear, random rooms, all c
 [DUNGEONS.md](DUNGEONS.md). Rogue runs (a chain of random rooms, one life, harder each room) are in
 [ROGUE.md](ROGUE.md).
 
+## Quick actions menu in the game worlds
+The Nice Actions menu (the G key) is different in Flying Fair, the game hub and the dungeons: it has a **Party**
+button, and leaves out what doesn't work there. Set Home is left out where homes can't be set, and Land Claims where
+claiming isn't allowed. The dungeons also leave out the teleports (random, spawn, home, back), Set Home, Claims,
+Pets, Market and Inbox. More buttons to leave out, and the Party button itself, are set in the panel (Games →
+Games, "Quick actions menu in the game worlds"); they apply after a restart. The data pack stays as it is: the
+server sends players there a different menu and the usual one again when they leave.
+
 ## Game worlds
 Performance → per-dimension tuning (the Flying Fair preset sets these): no pet perks, and **random looks**: mobs
 there get random colours and kinds once (llamas, parrots, horses, rabbits, sheep…; villagers a random job; named

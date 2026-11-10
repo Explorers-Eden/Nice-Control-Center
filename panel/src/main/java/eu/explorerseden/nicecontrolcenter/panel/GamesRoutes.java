@@ -62,6 +62,15 @@ final class GamesRoutes {
 				songs = java.util.List.of();
 			}
 			out.put("songs", songs);
+			// The Nice Actions menu's buttons, for what to leave out in the game worlds (written by the mod when the server starts).
+			Object quick = java.util.List.of();
+			try {
+				java.nio.file.Path f = serverDir.resolve("config").resolve("nicecontrolcenter-quick-actions.json");
+				if (java.nio.file.Files.exists(f)) quick = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(f));
+			} catch (Exception e) {
+				quick = java.util.List.of();
+			}
+			out.put("quickActions", quick);
 			// Live (players in each arena now, top 10) while the server runs; else the saved scores.
 			JsonElement live = null;
 			try {
