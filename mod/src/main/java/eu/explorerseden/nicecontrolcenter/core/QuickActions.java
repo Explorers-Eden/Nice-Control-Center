@@ -55,8 +55,8 @@ public final class QuickActions {
 	private static final Identifier TAG = Identifier.withDefaultNamespace("quick_actions");
 	/** Left out in the in-game menu (dungeons, Rogue Runs, and anyone playing a game): all blocked while playing. */
 	private static final Set<String> NOT_IN_DUNGEONS = Set.of("rtp", "tpspawn", "sethome", "tphome", "teleport_back", "claim", "pets", "market", "inbox");
-	/** Left out anywhere in the game worlds (Flying Fair, the game hub's dimension…): the teleports and Set Home don't work there. */
-	private static final Set<String> NOT_IN_GAME_WORLDS = Set.of("rtp", "tpspawn", "sethome", "tphome", "teleport_back");
+	/** Left out anywhere in the game worlds (Flying Fair, the game hub's dimension…): random, back and Set Home don't work there (home and spawn do, outside a game). */
+	private static final Set<String> NOT_IN_GAME_WORLDS = Set.of("rtp", "sethome", "teleport_back");
 
 	/** The resources the dialogs are loaded from (to read Nice Actions' menu for the game worlds' menus). */
 	private static volatile ResourceManager resources;
