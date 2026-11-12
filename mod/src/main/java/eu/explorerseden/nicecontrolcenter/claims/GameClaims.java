@@ -833,7 +833,9 @@ public final class GameClaims {
 		Objective obj = server.getScoreboard().getObjective(TRIGGER);
 		if (obj == null) return;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			boolean playing = playingNow(p);
+			// Playing a game, or anywhere in the game worlds (Flying Fair, the game hub's dimension, dungeons, Rogue Runs).
+			boolean world = eu.explorerseden.nicecontrolcenter.games.Parties.here(p);
+			boolean playing = playingNow(p) || world;
 			// A teleport counting down when the game started (or started meanwhile) is called off.
 			if (playing && p.entityTags().contains("nice_actions.warmup.active")) {
 				eu.explorerseden.nicecontrolcenter.log.ConsoleRunner.quiet(server, "execute as " + p.getStringUUID() + " run function nice_actions:warmup/cancel");
@@ -845,7 +847,7 @@ public final class GameClaims {
 			// Teleports (random, spawn, home, back) and setting a home don't run while they play.
 			if (playing && (v == 3 || v == 4 || v == 6 || v == 15 || v == 5 || v == 16)) {
 				server.getScoreboard().getOrCreatePlayerScore(p, obj).set(0);
-				p.sendOverlayMessage(Component.literal("Not during a game").withStyle(ChatFormatting.RED));
+				p.sendOverlayMessage(Component.literal(world ? "Not in the game worlds" : "Not during a game").withStyle(ChatFormatting.RED));
 				continue;
 			}
 			if (v == 5 || v == 16) {

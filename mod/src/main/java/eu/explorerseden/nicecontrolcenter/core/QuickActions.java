@@ -55,6 +55,8 @@ public final class QuickActions {
 	private static final Identifier TAG = Identifier.withDefaultNamespace("quick_actions");
 	/** Left out in the in-game menu (dungeons, Rogue Runs, and anyone playing a game): all blocked while playing. */
 	private static final Set<String> NOT_IN_DUNGEONS = Set.of("rtp", "tpspawn", "sethome", "tphome", "teleport_back", "claim", "pets", "market", "inbox");
+	/** Left out anywhere in the game worlds (Flying Fair, the game hub's dimension…): the teleports and Set Home don't work there. */
+	private static final Set<String> NOT_IN_GAME_WORLDS = Set.of("rtp", "tpspawn", "sethome", "tphome", "teleport_back");
 
 	/** The resources the dialogs are loaded from (to read Nice Actions' menu for the game worlds' menus). */
 	private static volatile ResourceManager resources;
@@ -164,6 +166,7 @@ public final class QuickActions {
 		Path config = FabricLoader.getInstance().getConfigDir();
 		java.util.Set<String> hide = new java.util.HashSet<>();
 		String dim = dungeon ? Dungeons.DIMENSION : "eden:flying_fair";
+		hide.addAll(NOT_IN_GAME_WORLDS);
 		if (dungeon) hide.addAll(NOT_IN_DUNGEONS);
 		var homes = Tweaks.read(config.resolve(Tweaks.FILE)).homes.dimensions;
 		if (!homes.isEmpty() && !homes.contains(dim)) hide.add("sethome");

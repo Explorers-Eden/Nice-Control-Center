@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.112.5
+- Game worlds (Flying Fair, the game hub's dimension, the dungeons, Rogue Runs): the Nice Actions teleports (random, spawn, home, back) and Set Home don't work anywhere there any more, not only during a game ("Not in the game worlds"; a countdown going is called off), and the quick actions menu there leaves them out
 ## 1.112.4
 - Anti-xray works with Lithium again: hiding ores threw in Lithium's section hook ("data" is null), so every chunk went out with its ores showing. The hidden ores are now written straight into the sent copy
 ## 1.112.3
