@@ -138,7 +138,7 @@ public final class MobLines {
 	/** Nice Mob Manager leaves mobs with this tag alone. */
 	public static final String NMM_EXCLUDE = "mob_manager.settings.exclude";
 	/** Where Nice Mob Manager changes nothing at all: the game dimension and the dungeons. */
-	private static final java.util.Set<String> NO_MOB_MANAGER = java.util.Set.of("eden:flying_fair", eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION);
+	private static final java.util.Set<String> NO_MOB_MANAGER = java.util.Set.of("eden:flying_fair", eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION, eu.explorerseden.nicecontrolcenter.Dungeons.ROGUE_DIMENSION);
 
 	/**
 	 * Every entity in Flying Fair and the dungeon dimension gets Nice Mob Manager's exclude tag the moment it's there

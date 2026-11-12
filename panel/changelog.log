@@ -1,3 +1,6 @@
+## 1.92.0
+- Games → Quick actions menu: the list only offers buttons that aren't left out anyway (with a note when one world leaves it out already); the "trigger" entries are gone
+- The Rogue Runs dimension is left out of the tuning and map lists, like the dungeons'
 ## 1.91.1
 - "Rogue Runs" is written as a name: the tab, its headings, the on/off switch, the guide
 ## 1.91.0

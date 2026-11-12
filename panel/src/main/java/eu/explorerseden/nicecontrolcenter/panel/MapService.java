@@ -226,7 +226,7 @@ public final class MapService {
 	 */
 	public List<Dim> dimensions() {
 		List<String> roofs = settings.roofs == null ? List.of() : settings.roofs;
-		return found().stream().filter(d -> !d.id().equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)).map(d -> d.ceiling() || !roofs.contains(d.id()) ? d : new Dim(d.key(), d.id(), d.name(), d.regions(), true, d.info())).toList();
+		return found().stream().filter(d -> !eu.explorerseden.nicecontrolcenter.Dungeons.runDimension(d.id())).map(d -> d.ceiling() || !roofs.contains(d.id()) ? d : new Dim(d.key(), d.id(), d.name(), d.regions(), true, d.info())).toList();
 	}
 
 	private List<Dim> found() {

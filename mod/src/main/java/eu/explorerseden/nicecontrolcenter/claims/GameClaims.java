@@ -258,10 +258,14 @@ public final class GameClaims {
 		return eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.inRun(p) || eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) || eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p) || gameClaimFor(p) != null;
 	}
 
-	/** True (with a message) when the player is in a game area, so {@code what} is refused. */
+	/**
+	 * True (with a message) when {@code what} (the market, the inbox, pets) is refused: in a game area, a dungeon run
+	 * or Rogue Run, a wave arena, a quick round, or a parkour, race or maze run.
+	 */
 	public static boolean refuse(ServerPlayer p, String what) {
-		if (!inGame(p)) return false;
-		p.sendOverlayMessage(Component.literal(what + " can't be used in this game area").withStyle(ChatFormatting.RED));
+		boolean area = gameClaimFor(p) != null;
+		if (!inGame(p) && !eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p)) return false;
+		p.sendOverlayMessage(Component.literal(what + (area ? " can't be used in this game area" : " can't be used while you're in a game")).withStyle(ChatFormatting.RED));
 		return true;
 	}
 
@@ -842,7 +846,7 @@ public final class GameClaims {
 			} else if (v == 15) {
 				CompoundTag back = playerData(server, p.getUUID()).getCompoundOrEmpty("back");
 				String dim = back.getStringOr("dimension", "");
-				if (dim.equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)) why = "The back teleport can't take you into the dungeons.";
+				if (eu.explorerseden.nicecontrolcenter.Dungeons.runDimension(dim)) why = "The back teleport can't take you into the dungeons or Rogue Runs.";
 				else if (!dim.isEmpty() && gameClaimAt(dim, (int) Math.floor(number(back, "x")), (int) Math.floor(number(back, "z"))) != null) why = "The back teleport can't take you back into a game area.";
 			}
 			if (why == null) continue;

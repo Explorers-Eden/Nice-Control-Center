@@ -142,15 +142,23 @@ public final class QuickActions {
 		return idOf(button);
 	}
 
-	/** The buttons the menu has (id and label) for the panel's list. */
+	/**
+	 * The buttons the panel can leave out (id, label, and where they're left out anyway). Not the ones left out in both
+	 * game worlds already, nor /trigger buttons (they'd all be called "trigger" and couldn't be told apart).
+	 */
 	private static void writeButtons(JsonArray actions) {
 		List<Map<String, String>> out = new ArrayList<>();
+		java.util.Set<String> fair = autoHidden(false), dungeon = autoHidden(true);
 		for (JsonElement e : actions) {
 			if (!(e instanceof JsonObject b)) continue;
+			String id = idOf(b);
+			if (id.isEmpty() || id.equals("trigger") || fair.contains(id) && dungeon.contains(id)) continue;
 			Map<String, String> m = new LinkedHashMap<>();
-			m.put("id", idOf(b));
+			m.put("id", id);
 			m.put("label", labelOf(b));
-			if (!m.get("id").isEmpty()) out.add(m);
+			if (fair.contains(id)) m.put("note", "left out in Flying Fair anyway");
+			if (dungeon.contains(id)) m.put("note", "left out in the dungeons anyway");
+			out.add(m);
 		}
 		try {
 			Files.writeString(FabricLoader.getInstance().getConfigDir().resolve(BUTTONS), Json.GSON.toJson(out));
@@ -177,12 +185,7 @@ public final class QuickActions {
 		Path config = FabricLoader.getInstance().getConfigDir();
 		Games.QuickMenu q = Games.read(config.resolve(Games.FILE)).quickMenu;
 		java.util.Set<String> hide = new java.util.HashSet<>(q.hide);
-		String dim = dungeon ? Dungeons.DIMENSION : "eden:flying_fair";
-		if (dungeon) hide.addAll(NOT_IN_DUNGEONS);
-		var homes = Tweaks.read(config.resolve(Tweaks.FILE)).homes.dimensions;
-		if (!homes.isEmpty() && !homes.contains(dim)) hide.add("sethome");
-		Claims.Settings claims = Claims.read(config.resolve(Claims.FILE));
-		if (!claims.dimensions.contains(dim)) hide.add("claim");
+		hide.addAll(autoHidden(dungeon));
 		JsonArray kept = new JsonArray();
 		int gone = 0;
 		for (JsonElement e : actions) {
@@ -193,6 +196,18 @@ public final class QuickActions {
 		menu.add("actions", kept);
 		NiceControlCenter.LOGGER.info("Nice Actions: the {} menu has {} buttons ({} left out there)", dungeon ? "dungeon" : "Flying Fair", kept.size(), gone);
 		return json;
+	}
+
+	/** What a game world's menu always leaves out: what doesn't work there (homes, claims; in the dungeons more). */
+	private static java.util.Set<String> autoHidden(boolean dungeon) {
+		Path config = FabricLoader.getInstance().getConfigDir();
+		java.util.Set<String> hide = new java.util.HashSet<>();
+		String dim = dungeon ? Dungeons.DIMENSION : "eden:flying_fair";
+		if (dungeon) hide.addAll(NOT_IN_DUNGEONS);
+		var homes = Tweaks.read(config.resolve(Tweaks.FILE)).homes.dimensions;
+		if (!homes.isEmpty() && !homes.contains(dim)) hide.add("sethome");
+		if (!Claims.read(config.resolve(Claims.FILE)).dimensions.contains(dim)) hide.add("claim");
+		return hide;
 	}
 
 	/** Merl's button too (the Nice Merl mod adds it to the usual menu the same way), when that mod is there. */
@@ -209,7 +224,7 @@ public final class QuickActions {
 
 	private static Identifier wanted(MinecraftServer server, ServerPlayer p) {
 		String dim = p.level().dimension().identifier().toString();
-		if (dim.equals(Dungeons.DIMENSION)) return DUNGEON;
+		if (Dungeons.runDimension(dim)) return DUNGEON;
 		if (eu.explorerseden.nicecontrolcenter.games.Parties.here(p)) return FAIR;
 		return MENU;
 	}

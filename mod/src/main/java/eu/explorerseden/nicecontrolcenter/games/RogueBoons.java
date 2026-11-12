@@ -409,7 +409,7 @@ public final class RogueBoons {
 		nbt.append(",description:").append(Json.GSON.toJson("Run coins · right-click"));
 		if (texture != null) nbt.append(",profile:{properties:[{name:\"textures\",value:\"").append(texture).append("\"}]}");
 		nbt.append("}");
-		ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:mannequin %.2f %d %.2f %s", Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, nbt));
+		ConsoleRunner.quiet(server, String.format(Locale.ROOT, "execute in %s run summon minecraft:mannequin %.2f %d %.2f %s", Dungeons.ROGUE_DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, nbt));
 	}
 
 	static final String SHOP_TAG = "ncc_rogue_shop";

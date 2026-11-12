@@ -4,7 +4,9 @@ A rogue run is a chain of rooms. Players clear a room and pick a door. The next 
 last, and so on until everyone is out (or until a set number of rooms is cleared). There's no box to build for the
 run itself: its rooms are picked at random from room groups. Rogue runs are their own thing: they have their own
 rooms, room groups, pads, pools and waiting areas (all made with `/rogue …`), kept apart from the dungeons' (dungeons
-never get rogue rooms, rogue runs never get dungeon rooms). Parties, kits and the dungeon dimension work as in
+never get rogue rooms, rogue runs never get dungeon rooms). They're played in their own dimension,
+`nicecontrolcenter:rogue` (shown as "Rogue Runs" in purple in the tab list), set up like the dungeons' one (a void
+world with its own light setup, no tweaks or tuning, the dungeon quick actions menu). Parties and kits work as in
 [DUNGEONS.md](DUNGEONS.md). Room names are shared with dungeon rooms (their blocks are kept by name), so a rogue room
 can't have the name of a dungeon room. Since 1.110 they're kept in their own file (`nicecontrolcenter-rogue.json`);
 rogue runs made before are moved there on the first start.

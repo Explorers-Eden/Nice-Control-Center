@@ -147,6 +147,8 @@ public final class Tweaks {
 	public static Dimension dimension(TabList t, String id) {
 		// The dungeon dimension isn't listed in the panel: it always shows like this (red copper brown).
 		if (Dungeons.DIMENSION.equals(id)) return new Dimension("Dungeons", "#B4532A");
+		// The same for the Rogue Runs dimension (amethyst purple).
+		if (Dungeons.ROGUE_DIMENSION.equals(id)) return new Dimension("Rogue Runs", "#9B6BDF");
 		Dimension d = t.dimensions.get(id);
 		if (d != null && !d.name.isBlank()) return d;
 		String path = id.substring(id.indexOf(':') + 1).replaceFirst("^the_", "").replace('_', ' ');

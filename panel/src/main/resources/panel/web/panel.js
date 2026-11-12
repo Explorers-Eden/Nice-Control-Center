@@ -2234,8 +2234,10 @@
     const qm = s.quickMenu || (s.quickMenu = { party: true, hide: [] });
     $('pn-gm-qparty').checked = qm.party !== false;
     $('pn-gm-qparty').disabled = !edit;
-    const qa = gm.quickActions.length ? gm.quickActions : qm.hide.map((id) => ({ id, label: id }));
-    $('pn-gm-qhide').innerHTML = qa.length ? qa.map((b) => `<label class="np-check"><input type="checkbox" data-qhide="${esc(b.id)}" ${qm.hide.includes(b.id) ? 'checked' : ''} ${edit ? '' : 'disabled'}> ${esc(b.label)}</label>`).join('')
+    // "/trigger" buttons all share the id "trigger" (they can't be told apart): not offered (older lists still have them).
+    qm.hide = (qm.hide || []).filter((id) => id !== 'trigger');
+    const qa = (gm.quickActions.length ? gm.quickActions : qm.hide.map((id) => ({ id, label: id }))).filter((b) => b.id !== 'trigger');
+    $('pn-gm-qhide').innerHTML = qa.length ? qa.map((b) => `<label class="np-check"><input type="checkbox" data-qhide="${esc(b.id)}" ${qm.hide.includes(b.id) ? 'checked' : ''} ${edit ? '' : 'disabled'}> ${esc(b.label)}${b.note ? ` <small class="pn-hint">(${esc(b.note)})</small>` : ''}</label>`).join('')
       : '<p class="pn-hint">The list of buttons appears once the server has started with Nice Actions installed.</p>';
     const cards = s.arenas.map((a, i) => gmCard(a, i));
     // Wave arenas on the Arenas page, every other game here; sorted as picked above the list.
@@ -6713,7 +6715,7 @@
   function renderDimTune() {
     const set = (perfSettings && perfSettings.dimensions) || {};
     // The dungeon dimension runs with its own setup (mod), so it's never listed here.
-    const ids = [...new Set([...dimTuneDims.map((d) => d.id), ...Object.keys(set)])].filter((id) => id !== 'nicecontrolcenter:dungeons');
+    const ids = [...new Set([...dimTuneDims.map((d) => d.id), ...Object.keys(set)])].filter((id) => id !== 'nicecontrolcenter:dungeons' && id !== 'nicecontrolcenter:rogue');
     const name = (id) => (dimTuneDims.find((d) => d.id === id) || {}).name || id;
     const editable = can('settings.server');
     $('pn-dimtune').innerHTML = ids.map((id) => {

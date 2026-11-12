@@ -274,8 +274,9 @@ public final class Performance {
 			if (spawning == null) spawning = new Spawning();
 			if (dimensions == null) dimensions = new java.util.LinkedHashMap<>();
 			dimensions.values().removeIf(d -> d == null);
-			// The dungeon dimension has its own setup; settings for it are dropped.
+			// The dungeon and Rogue Runs dimensions have their own setup; settings for them are dropped.
 			dimensions.remove(Dungeons.DIMENSION);
+			dimensions.remove(Dungeons.ROGUE_DIMENSION);
 			for (DimTuning d : dimensions.values()) d.itemDespawnSeconds = Math.max(0, Math.min(3600, d.itemDespawnSeconds));
 			spawning.monstersEvery = Math.max(1, Math.min(40, spawning.monstersEvery));
 			spawning.waterEvery = Math.max(1, Math.min(40, spawning.waterEvery));

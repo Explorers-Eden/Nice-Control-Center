@@ -80,7 +80,7 @@ public final class Aggro {
 	 */
 	public static boolean gameMob(net.minecraft.world.entity.Entity e) {
 		if (e.entityTags().stream().anyMatch(t -> t.startsWith("ncc_"))) return true;
-		if (e.level().dimension().identifier().toString().equals(eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION)) return true;
+		if (eu.explorerseden.nicecontrolcenter.Dungeons.runDimension(e.level().dimension().identifier().toString())) return true;
 		return GameRuntime.inArenaBox(e.level(), e.blockPosition());
 	}
 

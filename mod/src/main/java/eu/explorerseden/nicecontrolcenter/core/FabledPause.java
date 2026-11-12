@@ -36,7 +36,7 @@ import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
  */
 public final class FabledPause {
 	public static final String TAG = "fabled_roots.paused";
-	private static final Set<String> DIMENSIONS = Set.of("eden:flying_fair", eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION);
+	private static final Set<String> DIMENSIONS = Set.of("eden:flying_fair", eu.explorerseden.nicecontrolcenter.Dungeons.DIMENSION, eu.explorerseden.nicecontrolcenter.Dungeons.ROGUE_DIMENSION);
 	/** What its races and classes set as base values (waypoint ranges and the player's size left alone). */
 	private static final List<String> ATTRIBUTES = List.of("armor", "armor_toughness", "attack_damage", "attack_knockback", "attack_speed", "block_break_speed",
 			"block_interaction_range", "burning_time", "fall_damage_multiplier", "gravity", "jump_strength", "knockback_resistance", "movement_speed", "oxygen_bonus",

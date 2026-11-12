@@ -310,12 +310,12 @@ final class RogueRuns {
 		if (KatterBosses.is(e.id())) {
 			BlockPos o = origin(r, r.rogue.spot);
 			AABB bounds = new AABB(o.getX(), o.getY(), o.getZ(), o.getX() + r.rogue.room.sizeX, o.getY() + r.rogue.room.sizeY, o.getZ() + r.rogue.room.sizeZ);
-			KatterBosses.spawn(server, e.id(), Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(tag(r)), boss ? r.bossTag() : null, false,
+			KatterBosses.spawn(server, e.id(), Dungeons.ROGUE_DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(tag(r)), boss ? r.bossTag() : null, false,
 					p -> r.players.contains(p.getUUID()), bounds, (float) (1 + r.rogue.more));
 			return;
 		}
 		String tags = "Tags:[\"" + tag(r) + "\"" + (boss ? ",\"" + r.bossTag() + "\"" : "") + "]";
-		MobLines.summon(server, Dungeons.DIMENSION, at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, e, tags);
+		MobLines.summon(server, Dungeons.ROGUE_DIMENSION, at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, e, tags);
 	}
 
 	/** More health and damage (the room's share), once per mob. */

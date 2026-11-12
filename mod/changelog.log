@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.111.0
+- Rogue Runs have their own dimension, nicecontrolcenter:rogue, set up like the dungeons' one (void, own light setup, no tweaks or tuning there, the dungeon quick actions menu, random looks, Fabled Roots paused, Nice Mob Manager kept out); "Rogue Runs" in purple in the tab list. Copies left from before a restart are wiped in the right dimension
+- The market, the inbox and pets can't be used in parkour, race and maze runs either (they already couldn't in dungeons, Rogue Runs, wave arenas, quick rounds and game areas)
+- Quick actions menu list for the panel: no /trigger buttons (they all looked alike as "trigger"), nothing that both game worlds leave out anyway, and a note on what one of them leaves out anyway
 ## 1.110.1
 - "Rogue Runs" is written as a name: pad labels, queue and pool lines, "Rogue Runs are closed"
 ## 1.110.0

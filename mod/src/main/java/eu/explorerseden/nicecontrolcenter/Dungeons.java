@@ -29,6 +29,18 @@ public final class Dungeons {
 	public static final String ROGUE_FILE = "nicecontrolcenter-rogue.json";
 	/** The void dimension the copies are made in (shipped with the mod). */
 	public static final String DIMENSION = "nicecontrolcenter:dungeons";
+	/** The void dimension Rogue Runs are played in (shipped with the mod, set up like the dungeons'). */
+	public static final String ROGUE_DIMENSION = "nicecontrolcenter:rogue";
+
+	/** The dimension runs of this kind are played in. */
+	public static String dimension(boolean rogue) {
+		return rogue ? ROGUE_DIMENSION : DIMENSION;
+	}
+
+	/** One of the two run dimensions (dungeons or Rogue Runs). */
+	public static boolean runDimension(String id) {
+		return DIMENSION.equals(id) || ROGUE_DIMENSION.equals(id);
+	}
 	/** Pieces are 16 × 16 columns (one chunk wide), as high as the box (its two corners). */
 	public static final int PIECE = 16;
 	/** Markers: data-mode structure blocks in the build, with one of these as their text. */

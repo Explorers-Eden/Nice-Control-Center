@@ -538,15 +538,17 @@ public final class DungeonRuntime {
 	 * doesn't list it); it runs with its own light setup instead (PerfControl.dim).
 	 */
 	public static boolean dungeonWorld(net.minecraft.world.level.Level level) {
-		return level != null && level.dimension().identifier().toString().equals(Dungeons.DIMENSION);
+		return level != null && Dungeons.runDimension(level.dimension().identifier().toString());
 	}
 
+	/** In the dungeon dimension or the Rogue Runs one. */
 	public static boolean inDungeonDimension(ServerPlayer p) {
-		return p.level().dimension().identifier().toString().equals(Dungeons.DIMENSION);
+		return Dungeons.runDimension(p.level().dimension().identifier().toString());
 	}
 
-	static ServerLevel level(MinecraftServer server) {
-		return server.getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(Dungeons.DIMENSION)));
+	/** The dungeons' dimension, or the Rogue Runs' one. */
+	static ServerLevel level(MinecraftServer server, boolean rogue) {
+		return server.getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(Dungeons.dimension(rogue))));
 	}
 
 	/** For the panel: the runs going on and the best clears. */
@@ -607,7 +609,7 @@ public final class DungeonRuntime {
 	}
 
 	private static void step(MinecraftServer server, Run r) {
-		ServerLevel level = level(server);
+		ServerLevel level = level(server, r.dungeon.rogue());
 		if (level == null) return;
 		switch (r.state) {
 			case LOADING -> {
@@ -1009,8 +1011,8 @@ public final class DungeonRuntime {
 
 	/** A run of this dungeon (no players: a copy that stands for a minute, for trying it from the console). */
 	static String start(MinecraftServer server, List<ServerPlayer> party, Dungeon d) {
-		ServerLevel level = level(server);
-		if (level == null) return "The dungeon dimension isn't loaded; it appears after the server restarts with this version.";
+		ServerLevel level = level(server, d.rogue());
+		if (level == null) return "The " + (d.rogue() ? "Rogue Runs" : "dungeon") + " dimension isn't loaded; it appears after the server restarts with this version.";
 		if (!d.rogue() && !d.saved()) return d.name + " has no saved blocks yet: /dungeon save " + d.name;
 		if (!d.rogue() && !d.hasMarker("start")) return d.name + " needs a start marker (a data structure block with the text start).";
 		int slot = -1;
@@ -1148,14 +1150,14 @@ public final class DungeonRuntime {
 		if (e == null) return;
 		// A Katters boss (katters:theron…): the whole fight; its bodies get the run's boss tag.
 		if (eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.is(e.id())) {
-			eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(server, e.id(), Dungeons.DIMENSION, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(), boss ? r.bossTag() : null, !boss, p -> r.players.contains(p.getUUID()),
+			eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(server, e.id(), Dungeons.dimension(r.dungeon.rogue()), at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(), boss ? r.bossTag() : null, !boss, p -> r.players.contains(p.getUUID()),
 					new AABB(r.min.getX(), r.min.getY(), r.min.getZ(), r.max.getX() + 1, r.max.getY() + 1, r.max.getZ() + 1), 1);
 			return;
 		}
 		int count = boss ? 1 : e.count();
 		for (int i = 0; i < count; i++) {
 			double ox = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0, oz = count > 1 ? (random.nextDouble() - 0.5) * 2 : 0;
-			MobLines.summon(server, Dungeons.DIMENSION, at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, e, boss ? "Tags:[\"" + r.bossTag() + "\"]" : "");
+			MobLines.summon(server, Dungeons.dimension(r.dungeon.rogue()), at.getX() + 0.5 + ox, at.getY(), at.getZ() + 0.5 + oz, e, boss ? "Tags:[\"" + r.bossTag() + "\"]" : "");
 		}
 	}
 
@@ -1212,7 +1214,7 @@ public final class DungeonRuntime {
 		}
 		Run r = playing.get(p.getUUID());
 		if (r == null || !r.respawnInside.remove(p.getUUID())) return;
-		ServerLevel level = level(server);
+		ServerLevel level = level(server, r.dungeon.rogue());
 		if (level == null || r.state != State.RUNNING) {
 			leaveRun(server, r, p);
 			playing.remove(p.getUUID());
@@ -1440,7 +1442,8 @@ public final class DungeonRuntime {
 	private static void saveSlots() {
 		if (slotsFile == null) return;
 		List<int[]> boxes = new ArrayList<>();
-		for (Run r : slots.values()) boxes.add(new int[] {r.slot, r.min.getX(), r.min.getY(), r.min.getZ(), r.max.getX(), r.max.getY(), r.max.getZ()});
+		// (The 8th number: 1 = in the Rogue Runs dimension.)
+		for (Run r : slots.values()) boxes.add(new int[] {r.slot, r.min.getX(), r.min.getY(), r.min.getZ(), r.max.getX(), r.max.getY(), r.max.getZ(), r.dungeon.rogue() ? 1 : 0});
 		AsyncFiles.write(slotsFile, Json.GSON.toJson(boxes));
 	}
 
@@ -1455,11 +1458,12 @@ public final class DungeonRuntime {
 				if (b.length < 7) continue;
 				Dungeon placeholder = new Dungeon();
 				placeholder.name = "leftover";
+				if (b.length > 7 && b[7] == 1) placeholder.mode = "rogue";
 				Run r = new Run(b[0], placeholder);
 				r.min = new BlockPos(b[1], b[2], b[3]);
 				r.max = new BlockPos(b[4], b[5], b[6]);
 				startWipe(r);
-				ServerLevel level = level(server);
+				ServerLevel level = level(server, placeholder.rogue());
 				if (level != null) forceChunks(level, r, true);
 				slots.put(r.slot, r);
 			}
