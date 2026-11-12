@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.112.4
+- Anti-xray works with Lithium again: hiding ores threw in Lithium's section hook ("data" is null), so every chunk went out with its ores showing. The hidden ores are now written straight into the sent copy
 ## 1.112.3
 - Fabled Roots paused in Flying Fair, the dungeons and Rogue Runs: players there can't reset, pick a race or pick a class (the data pack's triggers are cleared before it runs, with a note). A player who lost their race while paused (an admin reset) doesn't get the old race's values back on leaving
 ## 1.112.2

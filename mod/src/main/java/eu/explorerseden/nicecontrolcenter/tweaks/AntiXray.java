@@ -135,7 +135,9 @@ public final class AntiXray {
 			BlockState state = section.getBlockState(x, y, z);
 			if (!hide.contains(state.getBlock())) continue;
 			if (copy == null) copy = section.copy();
-			copy.setBlockState(x, y, z, cover(level, state), false);
+			// Straight into the copy's block storage: LevelChunkSection.setBlockState is hooked by mods (Lithium keeps
+			// per-section tick data a copy doesn't have, and threw). An ore swapped for stone changes no counts that matter.
+			copy.getStates().set(x, y, z, cover(level, state));
 		}
 		return copy;
 	}
