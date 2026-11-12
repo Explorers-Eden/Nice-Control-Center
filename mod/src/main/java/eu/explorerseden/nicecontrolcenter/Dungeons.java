@@ -298,8 +298,10 @@ public final class Dungeons {
 		public boolean rogue;
 		/** %: the chance a spot of this group gets a room at all (else it stays closed). */
 		public int fillChance = 100;
-		/** Rooms of this group come only this many levels in (0 = right away; 1 = only inside another room…). */
+		/** Rooms of this group come only this many levels in (0 = right away; 1 = only inside another room…); Rogue Runs: from this room number. */
 		public int minDepth;
+		/** Rogue Runs: up to this room number (0 = no end). */
+		public int maxDepth;
 	}
 
 	public static final class Dungeon {
@@ -310,9 +312,12 @@ public final class Dungeons {
 		 * the room, pick a door, the next one is harder) until everyone is out.
 		 */
 		public String mode = "dungeon";
-		/** Rogue: the group of the first room (a safe room, its doors open at once); empty = a fight room first. */
+		/** Rogue: the group(s) of the first room (a safe room, its doors open at once); empty = a fight room first. */
 		public String startGroup = "";
-		/** Rogue: room type (fight, elite, boss) → the group its rooms come from. */
+		/**
+		 * Rogue: room type (fight, elite, boss…) → the group its rooms come from, or several ("crypt_easy,crypt_hard"):
+		 * each room draws from the groups whose room range (a group's minDepth to maxDepth) covers it.
+		 */
 		public java.util.Map<String, String> roomGroups = new java.util.LinkedHashMap<>();
 		/** Rogue: how often a door leads to each type (boss rooms come every bossEvery rooms instead). */
 		public java.util.Map<String, Integer> typeWeights = new java.util.LinkedHashMap<>();
@@ -631,12 +636,12 @@ public final class Dungeons {
 				d.roomDepth = Math.max(1, Math.min(8, d.roomDepth));
 				d.maxRooms = Math.max(1, Math.min(200, d.maxRooms));
 				if (!"rogue".equals(d.mode)) d.mode = "dungeon";
-				d.startGroup = d.startGroup == null || d.startGroup.isBlank() ? "" : pool(d.startGroup);
+				d.startGroup = groupList(d.startGroup);
 				java.util.Map<String, String> rg = new java.util.LinkedHashMap<>();
 				java.util.Map<String, Integer> tw = new java.util.LinkedHashMap<>();
 				for (String t : ROGUE_TYPES) {
 					String g = d.roomGroups == null ? null : d.roomGroups.get(t);
-					rg.put(t, g == null || g.isBlank() ? "" : pool(g));
+					rg.put(t, groupList(g));
 					Integer w = d.typeWeights == null ? null : d.typeWeights.get(t);
 					tw.put(t, Math.max(0, Math.min(100, w == null ? ("fight".equals(t) ? 70 : "elite".equals(t) ? 30 : "boss".equals(t) ? 0 : 10) : w)));
 				}
@@ -686,8 +691,8 @@ public final class Dungeons {
 					if (d.rogue() != rogueKind) continue;
 					for (Connector c : d.connectors) if (c.spot()) named.add(c.pool);
 					if (!d.rogue()) continue;
-					if (!d.startGroup.isEmpty()) named.add(d.startGroup);
-					for (String g : d.roomGroups.values()) if (!g.isEmpty()) named.add(g);
+					named.addAll(groupNames(d.startGroup));
+					for (String g : d.roomGroups.values()) named.addAll(groupNames(g));
 				}
 				for (String n : named) {
 					Group g = groups.stream().filter(x -> x != null && n.equals(x.name) && x.rogue == rogueKind).findFirst().orElse(null);
@@ -697,7 +702,9 @@ public final class Dungeons {
 						g.rogue = rogueKind;
 					}
 					g.fillChance = Math.max(0, Math.min(100, g.fillChance));
-					g.minDepth = Math.max(0, Math.min(8, g.minDepth));
+					// Dungeons nest rooms up to 8 levels; Rogue Runs count rooms.
+					g.minDepth = Math.max(0, Math.min(rogueKind ? 999 : 8, g.minDepth));
+					g.maxDepth = rogueKind ? Math.max(0, Math.min(999, g.maxDepth)) : 0;
 					kept.add(g);
 				}
 			}
@@ -739,6 +746,23 @@ public final class Dungeons {
 			// Empty.
 		}
 		return new java.util.LinkedHashMap<>();
+	}
+
+	/** Rogue room groups as written: "a, b" → "a,b" (each a pool name; empty parts dropped). */
+	public static String groupList(String text) {
+		return String.join(",", groupNames(text));
+	}
+
+	/** The groups of a list ("a,b"), each a pool name; none for an empty one. */
+	public static List<String> groupNames(String text) {
+		List<String> out = new ArrayList<>();
+		if (text == null) return out;
+		for (String part : text.split("[,\\s]+")) {
+			if (part.isBlank()) continue;
+			String g = pool(part);
+			if (!out.contains(g)) out.add(g);
+		}
+		return out;
 	}
 
 	/** Pool names are one lower-case word. */
@@ -853,8 +877,8 @@ public final class Dungeons {
 		Set<String> rogueOnlyPools = new HashSet<>();
 		for (Dungeon d : s.dungeons) {
 			if (!d.rogue()) continue;
-			if (d.startGroup != null && !d.startGroup.isBlank()) rogueGroups.add(d.startGroup);
-			if (d.roomGroups != null) for (String g : d.roomGroups.values()) if (g != null && !g.isBlank()) rogueGroups.add(g);
+			rogueGroups.addAll(groupNames(d.startGroup));
+			if (d.roomGroups != null) for (String g : d.roomGroups.values()) rogueGroups.addAll(groupNames(g));
 			rogueOnlyPools.add(d.pool);
 		}
 		for (Dungeon d : s.dungeons) if (!d.rogue()) rogueOnlyPools.remove(d.pool);

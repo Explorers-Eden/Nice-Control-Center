@@ -70,18 +70,24 @@ run starts in a fight room.
 
 | Setting | What it does |
 |---|---|
-| First room group, fight/elite/boss groups | Where each room type's rooms come from. |
+| First room group, fight/elite/boss groups | Where each room type's rooms come from: one group, or several (`crypt_easy, crypt_hard`). |
 | How often (weight) | How often a door leads to each room type. |
 | Boons | Boons after rooms and in shops, or none in this run. |
 | Boss room every … rooms | 5 = rooms 5, 10, 15… are boss rooms (0 = never). |
 | Rooms to win | 0 = endless. |
-| Mobs | The mobs spawn markers draw from (`zombie`, `skeleton x2`, `npc:…`). |
-| Bosses | One of these at random in a boss room (`ncc:…`, `katters:…`, any mob). |
+| Mobs | The mobs spawn markers draw from (`zombie`, `skeleton x2`, `npc:…`; `w5` = five times as often). |
+| Bosses | One of these at random in a boss room (`ncc:…`, `katters:…`, any mob; `w5` = five times as often). |
 | Mobs in the first room, more per room, % per extra player | How many mobs a room gets (at most 40). |
 | % more health and damage per room, elite % on top | How much tougher each room gets. Bosses get the same as more health. |
 
-Party size, kit, time limit, messages and commands work as for dungeons. Room weight, chance, "at most per run" and a
-group's "from level" (here: from room number …) are on the Rooms page.
+Party size, kit, time limit, messages and commands work as for dungeons. Room weight, chance and "at most per run" are
+on each rogue room; each rogue room group has a **room range**: from room … to room … (0 = no end), under Rogue Runs
+room groups.
+
+**Rooms that change as the run goes deeper:** give a room type several groups, each with its own range. For example
+fight rooms from `crypt_fight_easy, crypt_fight_hard`, with `crypt_fight_easy` from room 0 to room 5 and
+`crypt_fight_hard` from room 6 on: rooms 1–5 come from the easy group, then the hard one. Overlapping ranges mix them.
+A room type only comes up while one of its groups has rooms for that room number.
 
 Messages can use `{depth}`, the number of rooms cleared.
 

@@ -128,14 +128,20 @@ final class RogueRuns {
 
 	// ---------------------------------------------------------------- picking rooms
 
-	/** Rooms of the group that can come at this depth (on, saved, with a start marker, under their per-run limit). */
-	private static List<Dungeons.Room> candidates(Dungeons.Settings s, State st, String group, int depth) {
-		if (group == null || group.isEmpty() || s.group(group, true).minDepth > depth) return List.of();
+	/**
+	 * Rooms that can come at this room number from the group, or groups ("easy,hard"): only groups whose range (from
+	 * minDepth to maxDepth, 0 = no end) covers it; rooms on, saved, with a start marker, under their per-run limit.
+	 */
+	private static List<Dungeons.Room> candidates(Dungeons.Settings s, State st, String groups, int depth) {
 		List<Dungeons.Room> out = new ArrayList<>();
-		for (Dungeons.Room room : s.roomsIn(group, true)) {
-			if (!room.enabled || !room.saved() || room.markers.stream().noneMatch(m -> "start".equals(m.type))) continue;
-			if (room.maxPerCopy > 0 && st != null && st.used.getOrDefault(room.name, 0) >= room.maxPerCopy) continue;
-			out.add(room);
+		for (String group : Dungeons.groupNames(groups)) {
+			Dungeons.Group g = s.group(group, true);
+			if (g.minDepth > depth || g.maxDepth > 0 && depth > g.maxDepth) continue;
+			for (Dungeons.Room room : s.roomsIn(group, true)) {
+				if (out.contains(room) || !room.enabled || !room.saved() || room.markers.stream().noneMatch(m -> "start".equals(m.type))) continue;
+				if (room.maxPerCopy > 0 && st != null && st.used.getOrDefault(room.name, 0) >= room.maxPerCopy) continue;
+				out.add(room);
+			}
 		}
 		return out;
 	}

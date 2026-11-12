@@ -490,8 +490,9 @@ public final class DungeonRuntime {
 			NiceControlCenter.LOGGER.info("Dungeons: rogue runs have their own file now ({} run(s), {} room(s), {} pad(s) moved to {})", settings.dungeons(true).size(),
 					settings.rooms(true).size(), settings.pads(true).size(), Dungeons.ROGUE_FILE);
 			for (Dungeon d : settings.dungeons(true)) {
-				List<String> groups = new ArrayList<>(d.roomGroups.values());
-				groups.add(d.startGroup);
+				List<String> groups = new ArrayList<>();
+				for (String g : d.roomGroups.values()) groups.addAll(Dungeons.groupNames(g));
+				groups.addAll(Dungeons.groupNames(d.startGroup));
 				for (String g : groups) {
 					if (g.isEmpty() || !settings.roomsIn(g, true).isEmpty() || settings.roomsIn(g, false).isEmpty()) continue;
 					NiceControlCenter.LOGGER.warn("Dungeons: the rogue run {} uses the room group {}, whose rooms dungeons use too: they stay dungeon rooms; save rogue copies with /rogue room save", d.name, g);

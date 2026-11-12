@@ -1,3 +1,5 @@
+## 1.93.0
+- Rogue Runs: room types and the first room take several groups (comma-separated); Rogue Runs room groups have "from room" and "to room"
 ## 1.92.1
 - Games → Quick actions menu: the list of buttons to leave out is gone (what's blocked is left out on its own); only the Party button switch is left
 ## 1.92.0

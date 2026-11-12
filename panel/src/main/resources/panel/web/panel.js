@@ -3684,9 +3684,14 @@
   }
 
   /** Rooms a rogue group has (on and saved, with a start marker). */
+  /** A rogue group list as written ("easy, hard" → ['easy', 'hard']). */
+  const dgGroups = (text) => String(text || '').split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+
+  /** Rogue rooms (on, saved, with a start marker) in a group or any group of a list. */
   function dgGroupRooms(g) {
-    if (!g) return 0;
-    return (dg.settings.rooms || []).filter((r) => r.rogue && r.enabled && r.savedAt && r.groups.includes(g) && (r.markers || []).some((m) => m.type === 'start')).length;
+    const names = dgGroups(g);
+    if (!names.length) return 0;
+    return (dg.settings.rooms || []).filter((r) => r.rogue && r.enabled && r.savedAt && r.groups.some((x) => names.includes(x)) && (r.markers || []).some((m) => m.type === 'start')).length;
   }
 
   function dgRogueWarn(d) {
@@ -3704,15 +3709,15 @@
       ['treasure', '✦ Treasure', 'a free boon'], ['shop', '🛒 Shop', 'spend run coins'], ['rest', '❤ Rest', 'heal up']];
     const rooms = (g) => (g ? dgGroupRooms(g) : 0);
     const rows = types.map(([t, label, what]) => `<tr><td><b>${label}</b><small>${what}</small></td>
-        <td><input type="text" data-rg="${t}" value="${esc(rg[t] || '')}" placeholder="${esc(d.name.toLowerCase() + '_' + t)}" spellcheck="false"></td>
+        <td><input type="text" data-rg="${t}" value="${esc(String(rg[t] || '').split(',').join(', '))}" placeholder="${esc(d.name.toLowerCase() + '_' + t)}" spellcheck="false"></td>
         <td class="${rg[t] && !rooms(rg[t]) ? 'pn-dg-warn' : ''}">${rg[t] ? rooms(rg[t]) : '–'}</td>
         <td>${t === 'boss' ? '<small>every … rooms</small>' : `<input type="number" data-tw="${t}" min="0" max="100" value="${tw[t] ?? 0}">`}</td></tr>`).join('');
     return `${H('bi-shuffle', 'Rooms')}
-      <p class="pn-hint pn-field-wide">Rooms are rogue rooms saved into a group (<code>/rogue room save &lt;room&gt; &lt;group&gt;</code>, listed under Rogue Runs rooms below) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms.</p>
-      ${field('First room (optional, a safe start), group <small>(' + rooms(d.startGroup) + ' rooms)</small>', `<input type="text" data-d="startGroup" value="${esc(d.startGroup || '')}" placeholder="${esc(d.name.toLowerCase())}_start" spellcheck="false">`)}
+      <p class="pn-hint pn-field-wide">Rooms are rogue rooms saved into a group (<code>/rogue room save &lt;room&gt; &lt;group&gt;</code>, listed under Rogue Runs rooms below) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms. A type can draw from several groups (<code>crypt_easy, crypt_hard</code>): each room uses the groups whose room range covers it (set the range on the group under Rogue Runs room groups: from room … to room …), so rooms can change as the run goes deeper.</p>
+      ${field('First room (optional, a safe start), group <small>(' + rooms(d.startGroup) + ' rooms)</small>', `<input type="text" data-d="startGroup" value="${esc(String(d.startGroup || '').split(',').join(', '))}" placeholder="${esc(d.name.toLowerCase())}_start" spellcheck="false">`)}
       ${field('Boss room every … rooms (0 = never)', num('bossEvery', 0, 100))}
       ${field('Rooms to win (0 = endless)', num('maxDepth', 0, 999))}
-      <div class="pn-field pn-field-wide"><table class="pn-rg-types"><thead><tr><th>Room type</th><th>Group</th><th>Rooms</th><th>How often</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="pn-field pn-field-wide"><table class="pn-rg-types"><thead><tr><th>Room type</th><th>Group (or several: <code>easy, hard</code>)</th><th>Rooms</th><th>How often</th></tr></thead><tbody>${rows}</tbody></table></div>
       ${field('Boons', `<select data-d="rogueBoons"><option value="true" ${d.rogueBoons !== false ? 'selected' : ''}>after rooms and in shops</option><option value="false" ${d.rogueBoons === false ? 'selected' : ''}>none in this run</option></select>`)}
       ${H('bi-bug', 'Mobs and how hard it gets')}
       ${field('Mobs at spawn markers (one per line: <code>zombie</code>, <code>skeleton x2</code>, <code>npc:…</code>; <code>w5</code> = five times as often)', lines('mobs'), true)}
@@ -3903,10 +3908,13 @@
       const shares = inGroup.map((r) => `${esc(r.name)} ${Math.round(r.weight * 100 / total)}%`).join(', ');
       return `<li data-group="${i}"><b>${esc(g.name)}</b>
         <label class="pn-dg-inline">filled <input type="number" min="0" max="100" data-g="fillChance" value="${g.fillChance}"> %</label>
-        <label class="pn-dg-inline" title="Dungeons: 0 = right away, 1 = only in rooms inside another room… Rogue Runs: the room number it can come from">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
+        ${k.rogue
+          ? `<label class="pn-dg-inline" title="Its rooms come from this room number on (0 = from the start)">from room <input type="number" min="0" max="999" data-g="minDepth" value="${g.minDepth}"></label>
+        <label class="pn-dg-inline" title="Its rooms come up to this room number (0 = no end)">to room <input type="number" min="0" max="999" data-g="maxDepth" value="${g.maxDepth || 0}"></label>`
+          : `<label class="pn-dg-inline" title="0 = right away, 1 = only in rooms inside another room…">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>`}
         <small>${inGroup.length ? shares : '<span class="pn-dg-warn">no rooms (that are on)</span>'}${(() => {
-          const runs = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup === g.name || Object.values(d.roomGroups || {}).includes(g.name))).map((d) => {
-            const t = d.startGroup === g.name ? 'first room' : Object.entries(d.roomGroups || {}).filter(([, v]) => v === g.name).map(([k]) => k).join(', ');
+          const runs = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && (dgGroups(d.startGroup).includes(g.name) || Object.values(d.roomGroups || {}).some((v) => dgGroups(v).includes(g.name)))).map((d) => {
+            const t = [...(dgGroups(d.startGroup).includes(g.name) ? ['first room'] : []), ...Object.entries(d.roomGroups || {}).filter(([, v]) => dgGroups(v).includes(g.name)).map(([t]) => t)].join(', ');
             return `${esc(d.name)} (${esc(t)})`;
           });
           return runs.length ? ` · rogue run: ${runs.join(', ')}` : '';
@@ -3922,7 +3930,7 @@
       const rogueRoom = (r.markers || []).some((m) => m.type === 'door' || m.type === 'spawn' || m.type === 'shop');
       const info = [Object.entries(doors).map(([k, n]) => `jigsaw door ${esc(k)}${n > 1 ? ' ×' + n : ''}`).join(', ') || (rogueRoom ? '' : '<span class="pn-dg-warn">no jigsaw doors</span>'),
         spots.length ? 'spots: ' + spots.map(esc).join(', ') : '', Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ')].filter(Boolean).join(' · ');
-      const usedBy = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup && r.groups.includes(d.startGroup) || Object.values(d.roomGroups || {}).some((g) => g && r.groups.includes(g)))).map((d) => d.name);
+      const usedBy = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && [d.startGroup, ...Object.values(d.roomGroups || {})].some((v) => dgGroups(v).some((g) => r.groups.includes(g)))).map((d) => d.name);
       return `<section class="pn-gm-card ${r.enabled ? '' : 'off'}${rmOpen.has(r.id || r.name) ? '' : ' collapsed'}" data-room="${i}">
         <div class="pn-rw-head pn-gm-toggle" title="Open or close">
           <i class="bi bi-chevron-right pn-gm-chevron"></i>
@@ -3992,7 +4000,7 @@
     if (card && e.target.dataset.rg) {
       const dd = dg.settings.dungeons[+card.dataset.dungeon];
       dd.roomGroups = dd.roomGroups || {};
-      dd.roomGroups[e.target.dataset.rg] = e.target.value.trim().toLowerCase();
+      dd.roomGroups[e.target.dataset.rg] = dgGroups(e.target.value).join(',');
       dgChanged(false);
       return;
     }
@@ -4010,6 +4018,7 @@
     else if (e.target.type === 'number') d[k] = Number(v) || 0;
     else if (e.target.dataset.lines) d[k] = v.split('\n').map((x) => x.trim()).filter(Boolean);
     else if (v === 'true' || v === 'false') d[k] = v === 'true';
+    else if (k === 'startGroup') d[k] = dgGroups(v).join(',');
     else d[k] = v;
     if (k === 'enabled') card.classList.toggle('off', !d.enabled);
     dgChanged(k === 'gear');

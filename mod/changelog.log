@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.112.0
+- Rogue Runs: a room type (and the first room) can draw from several room groups ("crypt_easy, crypt_hard"), and each rogue room group has a room range, from room … to room … (0 = no end): each room uses only the groups whose range covers it, so rooms can change as the run goes deeper
 ## 1.111.2
 - Creative players who start a game (a dungeon run, a Rogue Run, a wave fight, a quick round, a parkour, race or maze run) play it in adventure mode (or the game area's own mode) like everyone else, and are in creative again afterwards. Walking through a game area in creative without playing still leaves them as they are
 ## 1.111.1
