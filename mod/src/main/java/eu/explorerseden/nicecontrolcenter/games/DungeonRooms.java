@@ -68,12 +68,12 @@ public final class DungeonRooms {
 		while (!open.isEmpty() && placed.size() < d.maxRooms) {
 			Spot sp = open.poll();
 			if (sp.level > d.roomDepth) continue;
-			Dungeons.Group g = s.group(sp.pool);
+			Dungeons.Group g = s.group(sp.pool, false);
 			int chance = sp.chance != null ? sp.chance : g.fillChance;
 			if (chance < 100 && rnd.nextInt(100) >= chance) continue;
 			if (sp.level - 1 < g.minDepth) continue;
 			List<Dungeons.Room> fresh = new ArrayList<>(), again = new ArrayList<>();
-			for (Dungeons.Room r : s.roomsIn(sp.pool)) {
+			for (Dungeons.Room r : s.roomsIn(sp.pool, false)) {
 				if (!r.enabled || !r.saved()) continue;
 				int n = used.getOrDefault(r.id, 0);
 				if (r.maxPerCopy > 0 && n >= r.maxPerCopy) continue;

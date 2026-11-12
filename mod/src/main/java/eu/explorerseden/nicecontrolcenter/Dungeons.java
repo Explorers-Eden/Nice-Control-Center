@@ -21,6 +21,12 @@ import java.util.UUID;
  */
 public final class Dungeons {
 	public static final String FILE = "nicecontrolcenter-dungeons.json";
+	/**
+	 * Rogue runs live in a file of their own: the runs, their rooms and room groups, pads and waiting areas, and the
+	 * shared rogue settings (boons, shop, unlocks). In memory they sit next to the dungeons, marked rogue, and nothing
+	 * of one kind is seen by the other (rooms, groups, pads and pools are looked up per kind).
+	 */
+	public static final String ROGUE_FILE = "nicecontrolcenter-rogue.json";
 	/** The void dimension the copies are made in (shipped with the mod). */
 	public static final String DIMENSION = "nicecontrolcenter:dungeons";
 	/** Pieces are 16 × 16 columns (one chunk wide), as high as the box (its two corners). */
@@ -245,6 +251,8 @@ public final class Dungeons {
 	public static final class Room {
 		public String id = "";
 		public String name = "";
+		/** A rogue run room (kept in the rogue file; only rogue runs use it). */
+		public boolean rogue;
 		public List<String> groups = new ArrayList<>();
 		public boolean enabled = true;
 		/** How often it's picked in its group, against the others (1–100). */
@@ -274,6 +282,8 @@ public final class Dungeons {
 	/** A room group's tunables (made when a block or room names one). */
 	public static final class Group {
 		public String name = "";
+		/** A rogue run room group (rogue groups and dungeon groups can share a name). */
+		public boolean rogue;
 		/** %: the chance a spot of this group gets a room at all (else it stays closed). */
 		public int fillChance = 100;
 		/** Rooms of this group come only this many levels in (0 = right away; 1 = only inside another room…). */
@@ -382,6 +392,8 @@ public final class Dungeons {
 	/** A spot that starts a run when a player stands on it. */
 	public static final class Pad {
 		public String id = "";
+		/** Starts a rogue run of its pool (else a dungeon of its pool). */
+		public boolean rogue;
 		public String pool = "default";
 		public Games.Pos pos;
 	}
@@ -402,39 +414,79 @@ public final class Dungeons {
 		public List<Pad> pads = new ArrayList<>();
 		/** Optional waiting areas per pool: when every copy is in use, a party queues there and starts once one is free. */
 		public java.util.Map<String, Games.Pos> waiting = new java.util.LinkedHashMap<>();
+		/** The same for rogue run pools. */
+		public java.util.Map<String, Games.Pos> rogueWaiting = new java.util.LinkedHashMap<>();
 		public int waitRadius = 8;
+		/** Rogue runs on (pads start them); dungeons have {@code enabled}. */
+		public boolean rogueEnabled = true;
 		public List<Room> rooms = new ArrayList<>();
 		public List<Group> groups = new ArrayList<>();
 		/** Rogue runs: coins, boons, shop and unlocks (the same for every rogue run). */
 		public Rogue rogue = new Rogue();
 
+		/** A room of either kind by id or name (names are unique across both, since their blocks are kept by name). */
 		public Room room(String idOrName) {
 			for (Room r : rooms) if (r.id.equals(idOrName) || r.name.equalsIgnoreCase(idOrName)) return r;
 			return null;
 		}
 
-		public List<Room> roomsIn(String group) {
-			return rooms.stream().filter(r -> r.groups.contains(group)).toList();
+		/** A room of this kind (dungeon rooms or rogue rooms). */
+		public Room room(String idOrName, boolean rogue) {
+			Room r = room(idOrName);
+			return r != null && r.rogue == rogue ? r : null;
+		}
+
+		public List<Room> rooms(boolean rogue) {
+			return rooms.stream().filter(r -> r.rogue == rogue).toList();
+		}
+
+		public List<Room> roomsIn(String group, boolean rogue) {
+			return rooms.stream().filter(r -> r.rogue == rogue && r.groups.contains(group)).toList();
+		}
+
+		public List<Group> groups(boolean rogue) {
+			return groups.stream().filter(g -> g.rogue == rogue).toList();
 		}
 
 		/** The group's tunables (defaults when it has none yet). */
-		public Group group(String name) {
-			for (Group g : groups) if (g.name.equals(name)) return g;
+		public Group group(String name, boolean rogue) {
+			for (Group g : groups) if (g.name.equals(name) && g.rogue == rogue) return g;
 			Group g = new Group();
 			g.name = name;
+			g.rogue = rogue;
 			return g;
 		}
 
+		/** A dungeon or rogue run by id or name (names are unique across both). */
 		public Dungeon dungeon(String idOrName) {
 			for (Dungeon d : dungeons) if (d.id.equals(idOrName) || d.name.equalsIgnoreCase(idOrName)) return d;
 			return null;
 		}
 
-		/** Every pool a dungeon or a pad names. */
-		public Set<String> pools() {
+		/** A dungeon (rogue false) or a rogue run (rogue true) by id or name. */
+		public Dungeon dungeon(String idOrName, boolean rogue) {
+			Dungeon d = dungeon(idOrName);
+			return d != null && d.rogue() == rogue ? d : null;
+		}
+
+		public List<Dungeon> dungeons(boolean rogue) {
+			return dungeons.stream().filter(d -> d.rogue() == rogue).toList();
+		}
+
+		public List<Pad> pads(boolean rogue) {
+			return pads.stream().filter(p -> p.rogue == rogue).toList();
+		}
+
+		/** The waiting areas of dungeon pools or of rogue run pools. */
+		public java.util.Map<String, Games.Pos> waiting(boolean rogue) {
+			return rogue ? rogueWaiting : waiting;
+		}
+
+		/** Every pool a dungeon (or rogue run) or a pad of that kind names. */
+		public Set<String> pools(boolean rogue) {
 			Set<String> out = new TreeSet<>();
-			for (Dungeon d : dungeons) out.add(d.pool);
-			for (Pad p : pads) out.add(p.pool);
+			for (Dungeon d : dungeons) if (d.rogue() == rogue) out.add(d.pool);
+			for (Pad p : pads) if (p.rogue == rogue) out.add(p.pool);
 			return out;
 		}
 
@@ -526,6 +578,8 @@ public final class Dungeons {
 			if (pads == null) pads = new ArrayList<>();
 			if (waiting == null) waiting = new java.util.LinkedHashMap<>();
 			waiting.values().removeIf(p -> p == null || p.dim == null);
+			if (rogueWaiting == null) rogueWaiting = new java.util.LinkedHashMap<>();
+			rogueWaiting.values().removeIf(p -> p == null || p.dim == null);
 			waitRadius = Math.max(2, Math.min(64, waitRadius));
 			dungeons.removeIf(d -> d == null);
 			pads.removeIf(p -> p == null || p.pos == null);
@@ -607,28 +661,33 @@ public final class Dungeons {
 				if (r.markers == null) r.markers = new ArrayList<>();
 				if (r.connectors == null) r.connectors = new ArrayList<>();
 			}
-			// Every group a room or a spot names gets an entry; ones nothing names any more go.
-			Set<String> named = new TreeSet<>();
-			for (Room r : rooms) {
-				named.addAll(r.groups);
-				for (Connector c : r.connectors) if (c.spot()) named.add(c.pool);
-			}
-			for (Dungeon d : dungeons) for (Connector c : d.connectors) if (c.spot()) named.add(c.pool);
-			for (Dungeon d : dungeons) {
-				if (!d.rogue()) continue;
-				if (!d.startGroup.isEmpty()) named.add(d.startGroup);
-				for (String g : d.roomGroups.values()) if (!g.isEmpty()) named.add(g);
-			}
+			// Every group a room or a spot of its kind names gets an entry; ones nothing names any more go.
 			List<Group> kept = new ArrayList<>();
-			for (String n : named) {
-				Group g = groups.stream().filter(x -> x != null && n.equals(x.name)).findFirst().orElse(null);
-				if (g == null) {
-					g = new Group();
-					g.name = n;
+			for (boolean rogueKind : new boolean[] { false, true }) {
+				Set<String> named = new TreeSet<>();
+				for (Room r : rooms) {
+					if (r.rogue != rogueKind) continue;
+					named.addAll(r.groups);
+					for (Connector c : r.connectors) if (c.spot()) named.add(c.pool);
 				}
-				g.fillChance = Math.max(0, Math.min(100, g.fillChance));
-				g.minDepth = Math.max(0, Math.min(8, g.minDepth));
-				kept.add(g);
+				for (Dungeon d : dungeons) {
+					if (d.rogue() != rogueKind) continue;
+					for (Connector c : d.connectors) if (c.spot()) named.add(c.pool);
+					if (!d.rogue()) continue;
+					if (!d.startGroup.isEmpty()) named.add(d.startGroup);
+					for (String g : d.roomGroups.values()) if (!g.isEmpty()) named.add(g);
+				}
+				for (String n : named) {
+					Group g = groups.stream().filter(x -> x != null && n.equals(x.name) && x.rogue == rogueKind).findFirst().orElse(null);
+					if (g == null) {
+						g = new Group();
+						g.name = n;
+						g.rogue = rogueKind;
+					}
+					g.fillChance = Math.max(0, Math.min(100, g.fillChance));
+					g.minDepth = Math.max(0, Math.min(8, g.minDepth));
+					kept.add(g);
+				}
 			}
 			groups = kept;
 			fillRogue();
@@ -681,17 +740,29 @@ public final class Dungeons {
 		s.fill();
 		Set<String> names = new HashSet<>();
 		for (Dungeon d : s.dungeons) {
-			if (!d.name.matches("[A-Za-z0-9_-]{1,32}")) return "A dungeon needs a one-word name (letters, digits, - and _).";
-			if (!names.add(d.name.toLowerCase(Locale.ROOT))) return "Two dungeons are called \"" + d.name + "\".";
+			if (!d.name.matches("[A-Za-z0-9_-]{1,32}")) return (d.rogue() ? "A rogue run" : "A dungeon") + " needs a one-word name (letters, digits, - and _).";
+			if (!names.add(d.name.toLowerCase(Locale.ROOT))) return "Two dungeons or rogue runs are called \"" + d.name + "\" (the name is shared by both).";
 		}
 		names.clear();
 		for (Room r : s.rooms) {
 			if (!r.name.matches("[A-Za-z0-9_-]{1,32}")) return "A room needs a one-word name (letters, digits, - and _).";
-			if (!names.add(r.name.toLowerCase(Locale.ROOT))) return "Two rooms are called \"" + r.name + "\".";
+			if (!names.add(r.name.toLowerCase(Locale.ROOT))) return "Two rooms are called \"" + r.name + "\" (dungeon and rogue rooms can't share a name).";
 		}
 		return null;
 	}
 
+	/** What the rogue file holds. */
+	public static final class RogueFile {
+		public boolean enabled = true;
+		public List<Dungeon> runs = new ArrayList<>();
+		public List<Room> rooms = new ArrayList<>();
+		public List<Group> groups = new ArrayList<>();
+		public List<Pad> pads = new ArrayList<>();
+		public java.util.Map<String, Games.Pos> waiting = new java.util.LinkedHashMap<>();
+		public Rogue rogue = new Rogue();
+	}
+
+	/** The dungeons file alone (rogue runs from before 1.110 still in it, as they were). */
 	public static Settings read(Path file) {
 		try {
 			if (!Files.exists(file)) return new Settings().fill();
@@ -701,6 +772,131 @@ public final class Dungeons {
 		} catch (IOException | RuntimeException e) {
 			return new Settings().fill();
 		}
+	}
+
+	/**
+	 * Dungeons and rogue runs together. Without a rogue file yet (before 1.110), the rogue runs, the rooms only they
+	 * use, and the pads and waiting areas of pools with only rogue runs are taken out of the dungeons file: they're
+	 * marked rogue and go to the rogue file on the next write.
+	 */
+	public static Settings readAll(Path file, Path rogueFile) {
+		Settings s = read(file);
+		RogueFile r = null;
+		try {
+			if (Files.exists(rogueFile)) r = Json.GSON.fromJson(Files.readString(rogueFile), RogueFile.class);
+		} catch (IOException | RuntimeException e) {
+			r = null;
+		}
+		if (r == null) {
+			if (!Files.exists(rogueFile)) splitOld(s);
+			return s.fill();
+		}
+		// Anything rogue left in the dungeons file is the rogue file's now.
+		s.dungeons.removeIf(Dungeon::rogue);
+		s.rooms.removeIf(x -> x.rogue);
+		s.groups.removeIf(x -> x.rogue);
+		s.pads.removeIf(x -> x.rogue);
+		s.rogueEnabled = r.enabled;
+		if (r.runs != null) for (Dungeon d : r.runs) if (d != null) {
+			d.mode = "rogue";
+			s.dungeons.add(d);
+		}
+		if (r.rooms != null) for (Room x : r.rooms) if (x != null) {
+			x.rogue = true;
+			s.rooms.add(x);
+		}
+		if (r.groups != null) for (Group x : r.groups) if (x != null) {
+			x.rogue = true;
+			s.groups.add(x);
+		}
+		if (r.pads != null) for (Pad x : r.pads) if (x != null) {
+			x.rogue = true;
+			s.pads.add(x);
+		}
+		s.rogueWaiting = r.waiting == null ? new java.util.LinkedHashMap<>() : new java.util.LinkedHashMap<>(r.waiting);
+		if (r.rogue != null) s.rogue = r.rogue;
+		// Never drop either file's entries (the next write would lose them): a rogue run named like a dungeon (only by
+		// editing the files) gets "_rogue" added; anything else odd stays for the panel to point out.
+		Set<String> taken = new HashSet<>();
+		for (Dungeon d : s.dungeons) if (!d.rogue()) taken.add(d.name.toLowerCase(Locale.ROOT));
+		for (Dungeon d : s.dungeons) {
+			if (!d.rogue()) continue;
+			String n = d.name == null ? "" : d.name;
+			String base = n.substring(0, Math.min(24, n.length()));
+			for (int i = 1; taken.contains(n.toLowerCase(Locale.ROOT)); i++) n = base + "_rogue" + (i == 1 ? "" : String.valueOf(i));
+			d.name = n;
+			taken.add(n.toLowerCase(Locale.ROOT));
+		}
+		return s.fill();
+	}
+
+	/** True once the rogue runs have a file of their own (else the next write makes it). */
+	public static boolean hasRogueFile(Path rogueFile) {
+		return Files.exists(rogueFile);
+	}
+
+	/** Before 1.110 rogue runs shared the dungeons' rooms, pads and pools: what only they use becomes theirs. */
+	private static void splitOld(Settings s) {
+		Set<String> rogueGroups = new HashSet<>();
+		Set<String> rogueOnlyPools = new HashSet<>();
+		for (Dungeon d : s.dungeons) {
+			if (!d.rogue()) continue;
+			if (d.startGroup != null && !d.startGroup.isBlank()) rogueGroups.add(d.startGroup);
+			if (d.roomGroups != null) for (String g : d.roomGroups.values()) if (g != null && !g.isBlank()) rogueGroups.add(g);
+			rogueOnlyPools.add(d.pool);
+		}
+		for (Dungeon d : s.dungeons) if (!d.rogue()) rogueOnlyPools.remove(d.pool);
+		// Groups a dungeon's own spots use stay with the dungeons.
+		Set<String> dungeonGroups = new HashSet<>();
+		for (Dungeon d : s.dungeons) if (!d.rogue() && d.connectors != null) for (Connector c : d.connectors) if (c.spot()) dungeonGroups.add(c.pool);
+		for (Room r : s.rooms) {
+			if (r == null || r.groups == null || r.groups.isEmpty()) continue;
+			boolean rogueRoom = r.groups.stream().anyMatch(rogueGroups::contains) && r.groups.stream().noneMatch(dungeonGroups::contains);
+			if (rogueRoom) r.rogue = true;
+		}
+		for (Group g : s.groups) if (g != null && rogueGroups.contains(g.name) && !dungeonGroups.contains(g.name)) g.rogue = true;
+		for (Pad p : s.pads) if (p != null && rogueOnlyPools.contains(pool(p.pool))) p.rogue = true;
+		for (String pool : rogueOnlyPools) {
+			Games.Pos w = s.waiting.remove(pool);
+			if (w != null) s.rogueWaiting.put(pool, w);
+		}
+	}
+
+	/** Writes the dungeons file and the rogue file (each with its own kind only). */
+	public static void writeAll(Path file, Path rogueFile, Settings settings) throws IOException {
+		Settings d = new Settings();
+		d.enabled = settings.enabled;
+		d.maxParty = settings.maxParty;
+		d.maxSlots = settings.maxSlots;
+		d.slotSpacing = settings.slotSpacing;
+		d.piecesPerTick = settings.piecesPerTick;
+		d.cooldown = settings.cooldown;
+		d.waitRadius = settings.waitRadius;
+		d.dungeons = new ArrayList<>(settings.dungeons(false));
+		d.rooms = new ArrayList<>(settings.rooms(false));
+		d.groups = new ArrayList<>(settings.groups(false));
+		d.pads = new ArrayList<>(settings.pads(false));
+		d.waiting = settings.waiting;
+		d.rogueWaiting = null;
+		d.rogue = null;
+		RogueFile r = new RogueFile();
+		r.enabled = settings.rogueEnabled;
+		r.runs = new ArrayList<>(settings.dungeons(true));
+		r.rooms = new ArrayList<>(settings.rooms(true));
+		r.groups = new ArrayList<>(settings.groups(true));
+		r.pads = new ArrayList<>(settings.pads(true));
+		r.waiting = settings.rogueWaiting;
+		r.rogue = settings.rogue;
+		// The rogue file first: a dungeons file without rogue runs is only written once they're safe in theirs.
+		writeJson(rogueFile, r);
+		writeJson(file, d);
+	}
+
+	private static void writeJson(Path file, Object what) throws IOException {
+		Files.createDirectories(file.getParent());
+		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+		Files.writeString(tmp, Json.GSON.newBuilder().setPrettyPrinting().create().toJson(what), StandardCharsets.UTF_8);
+		Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 	}
 
 	public static void write(Path file, Settings settings) throws IOException {

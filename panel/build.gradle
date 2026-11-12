@@ -75,6 +75,13 @@ processResources {
 		expand "version": version
 	}
 
+	// The boss, dungeon and rogue guides shown in the panel are the ones in the repo's docs.
+	from(rootProject.file("../docs")) {
+		include "BOSSES.md", "DUNGEONS.md", "ROGUE.md"
+		rename { it.toLowerCase() }
+		into "panel/web/guides"
+	}
+
 	// The dashboard's look (Explorer's Eden style) comes from the mod.
 	from(modWeb) {
 		include "app.css", "img/**"

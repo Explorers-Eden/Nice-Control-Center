@@ -314,7 +314,7 @@ public final class RogueBoons {
 		p.openDialog(Holder.direct(new MultiActionDialog(common, buttons, Optional.of(close), 1)));
 	}
 
-	/** The boon choice (again with /dungeon boon). */
+	/** The boon choice (again with /rogue boon). */
 	static void menu(Run r, ServerPlayer p, String notice) {
 		RogueRuns.State st = r.rogue;
 		List<String> offer = st.offers.get(p.getUUID());
@@ -322,7 +322,7 @@ public final class RogueBoons {
 		List<DialogBody> body = new ArrayList<>();
 		if (notice != null) body.add(text(notice, ChatFormatting.RED));
 		long left = Math.max(0, (st.offersUntil - System.currentTimeMillis()) / 1000);
-		body.add(text("Pick a boon for the rest of this run (" + left + " s, then one is picked for you). Closed this by mistake? /dungeon boon", ChatFormatting.GRAY));
+		body.add(text("Pick a boon for the rest of this run (" + left + " s, then one is picked for you). Closed this by mistake? /rogue boon", ChatFormatting.GRAY));
 		List<ActionButton> buttons = new ArrayList<>();
 		for (int i = 0; i < offer.size(); i++) {
 			Dungeons.Boon b = cfg().boon(offer.get(i));
@@ -419,7 +419,7 @@ public final class RogueBoons {
 		List<DialogBody> body = new ArrayList<>();
 		if (notice != null) body.add(text(notice, notice.startsWith("✔") ? ChatFormatting.GREEN : ChatFormatting.RED));
 		int coins = r.rogue.coins.getOrDefault(p.getUUID(), 0);
-		body.add(text("You have " + coins + " ⛁ (coins are for this run only). Reopen: /dungeon shop", ChatFormatting.GOLD));
+		body.add(text("You have " + coins + " ⛁ (coins are for this run only). Reopen: /rogue shop", ChatFormatting.GOLD));
 		List<ActionButton> buttons = new ArrayList<>();
 		for (Dungeons.ShopEntry e : cfg().shop) {
 			Dungeons.Boon b = cfg().boon(e.boon);
@@ -469,7 +469,7 @@ public final class RogueBoons {
 		return u.description.isBlank() ? unlockText(u) : u.description;
 	}
 
-	/** The unlocks (/dungeon unlocks, or an NPC): balance on top, each unlock with its next level's price and a Buy link. */
+	/** The unlocks (/rogue unlocks, or an NPC): balance on top, each unlock with its next level's price and a Buy link. */
 	public static void unlocksMenu(ServerPlayer p, String notice) {
 		unlocksMenu(p, notice, null);
 	}

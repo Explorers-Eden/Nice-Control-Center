@@ -348,7 +348,10 @@ final class PetReactions {
 		return false;
 	}
 
-	/** Two pets close together greet each other (each pair once in a while). */
+	/**
+	 * Two players' pets close together greet each other (each pair of players once in a while). Only pets of other
+	 * players count: a player's own pets out at once (more slots) never greet each other.
+	 */
 	private static void meet(ServerPlayer player, long time) {
 		for (ServerPlayer other : player.level().players()) {
 			if (other == player || other.distanceToSqr(player) > 16 || PetFollowers.shownOwned(other.getUUID()) == null) continue;

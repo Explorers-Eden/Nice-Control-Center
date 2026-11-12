@@ -16,8 +16,8 @@ Contents:
 6. [Rules, messages and rewards (panel)](#6-rules-messages-and-rewards-panel)
 7. [Command list](#7-command-list)
 
-Rogue runs (room after room, one life, harder each room) use the same rooms, pads and pools: see
-[ROGUE.md](ROGUE.md).
+Rogue runs (room after room, one life, harder each room) are their own thing, with their own rooms, groups, pads and
+pools and the `/rogue` command: see [ROGUE.md](ROGUE.md).
 
 ---
 
@@ -219,7 +219,6 @@ Inside a dungeon the market, inbox, pets, homes and Nice Actions teleports don't
 | `/dungeon room list` / `/dungeon room delete <name>` | admin | List or remove rooms |
 | `/dungeon pad add <pool>` / `/dungeon pad remove` | admin | Add a pad here / remove the nearest |
 | `/dungeon pad wait <pool> [radius]` / `… clear` | admin | Waiting area for a full pool |
-| `/dungeon rogue create <name> [pool]` | admin | A rogue run ([ROGUE.md](ROGUE.md)) |
 | `/dungeon runs` | admin | Runs going on right now |
 | `/dungeon list` | everyone | Pools, their dungeons and pads |
 | `/dungeon top <name>` | everyone | Best times (solo, 2, 3, 4 players) |

@@ -5,6 +5,7 @@ FROM eclipse-temurin:25-jdk AS build
 WORKDIR /src
 COPY mod/src/main/java mod/src/main/java
 COPY mod/src/main/resources/assets/nicecontrolcenter/web mod/src/main/resources/assets/nicecontrolcenter/web
+COPY docs/BOSSES.md docs/DUNGEONS.md docs/ROGUE.md docs/
 COPY panel panel
 WORKDIR /src/panel
 RUN --mount=type=cache,target=/root/.gradle ./gradlew shadowJar --no-daemon -q

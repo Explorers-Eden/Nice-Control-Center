@@ -232,54 +232,54 @@ public final class Pets {
 	 * admins can change). Warnings also tell the owner on their screen.
 	 */
 	public enum Reaction {
-		TOOL("Tool about to break", true, 60, "It's breaking!", "Careful with that!", "That tool looks tired…", "Repair it soon!", "One more swing…?"),
-		HEALTH("Low health", true, 60, "Careful…", "Ouch…", "Heal up!", "Eat something!", "You okay?", "Let's rest a bit…"),
-		HUNGER("Hungry", true, 120, "Food?", "Snack time?", "*rumble*", "I hear your tummy!", "Bread? Steak? Anything?"),
-		DANGER("Danger", true, 30, "Behind you!", "Look out!", "!!", "Something's coming!", "Watch out!", "Eek, monsters!"),
-		AIR("Low air", true, 20, "Air!", "Up, up!", "Breathe!", "Swim up!"),
-		INVENTORY("Inventory full", true, 120, "Full!", "No room!", "Pockets are full!", "Drop some junk?", "Too much stuff!"),
-		FIRE("Fire or lava", true, 30, "Hot hot!", "Fire!", "Get out of there!", "Water! Water!", "You're smoking!"),
-		HURT("Owner hurt", false, 10, "!", "Hey!", "Ow!", "Leave them alone!", "Are you hurt?"),
-		NIGHTFALL("Nightfall", false, 600, "☾", "Night's coming…", "Torches ready?", "Monsters soon…", "Time for bed?"),
-		UNDERWATER("Under water", false, 120, "blub", "o o o", "Bubbles!", "Fishy friends!", "Glub glub"),
-		NETHER("Into the Nether", false, 60, "Hot!", "So warm…", "Mind the lava!", "Smells like fire…", "Hold my paw…"),
-		END("Into the End", false, 60, "…?", "Whoa…", "So many eyes…", "Where are we?", "Don't look at them!"),
-		FISH("Fish caught", false, 10, "!", "Fish!", "Yum!", "A big one!", "Dinner!", "Nice catch!"),
-		HARVEST("Harvest", false, 60, "Nice!", "Crops!", "Farmer life!", "Fresh food!", "Good harvest!"),
-		DEEP("Deep down", false, 600, "Dig dig", "So deep…", "Diamonds here?", "It's quiet down here", "Mind the drops…"),
-		SNOW("Snow", false, 600, "Brr", "Cold!", "Snowball fight?", "My paws are cold!", "So pretty…"),
-		HELLO("Taken out", false, 0, "Hi!", "Hello!", "Let's go!", "Adventure time!", "I'm here!", "Where to?"),
-		BYE("Put away", false, 0, "Bye!", "See you!", "Nap time!", "Call me soon!", "Take care!"),
-		JOIN("Owner joins", false, 0, "Missed you!", "You're back!", "Hello again!", "Yay, you're here!", "Where were you?"),
-		EAT("Eating", false, 30, "Yum!", "Share?", "Smells good!", "Can I have some?", "Nom nom"),
-		SLEEP("Sleeping", false, 60, "zZz", "Sweet dreams…", "Night night", "*snore*"),
-		MORNING("Morning", false, 600, "☀", "Morning!", "Rise and shine!", "New day!", "Good morning!"),
-		RESPAWN("Owner died", false, 0, "…", "Don't do that again…", "You scared me!", "Let's get your stuff", "Back in one piece?"),
-		ADVANCEMENT("Advancement", false, 5, "★", "Well done!", "Woo!", "Amazing!", "So proud!", "Look at you go!"),
-		LEVEL30("Level 30", false, 60, "Whoa!", "So much XP!", "Enchant time!", "Glowing!", "Spend it wisely!"),
-		SHINY("Rare find", false, 10, "Shiny!", "Ooh!", "Treasure!", "Lucky!", "Keep it safe!"),
-		RAIN("Rain", false, 600, "☂", "Rain…", "Wet fur…", "Pitter patter", "Puddles!"),
-		THUNDER("Thunder", false, 120, "!!", "Eek!", "So loud!", "Hide me!", "Boom!"),
-		FLYING("Flying or falling", false, 30, "Wheee!", "Whoosh!", "Look, no hands!", "Wings!", "Weee!"),
-		RIDING("Riding", false, 60, "Giddy up!", "♪", "Faster!", "What a ride!", "Hold on!"),
-		TRADE("Trading", false, 60, "$", "Good deal!", "Bargain!", "Shopping!", "Hmm, fair?"),
-		BREED("Breeding", false, 60, "♥", "Babies!", "So cute!", "Aww!", "Family!"),
-		MEET("Meeting another pet", false, 600, "♥", "Hi friend!", "A new friend!", "Play with me!", "Nice to meet you!"),
-		IDLE("Owner idle", false, 300, "…", "Bored…", "What now?", "Let's go somewhere!", "*yawn*"),
-		AFK("Owner AFK", false, 60, "zZz", "I'll wait here…", "Still there?", "…hello?"),
-		PAT("Pat", false, 3, "♥", "Hehe", "More!", "That tickles!", "Purr…"),
-		LEVEL_UP("Bond level up", false, 0, "Level {level}!", "Yay!", "We're closer now!", "Best friends!", "Level up!"),
-		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦", "Cake?", "Another year!", "Hooray!"),
-		TOTEM("Totem used", false, 0, "That was close!", "Phew…", "Lucky totem!", "Don't scare me!", "Saved!"),
-		KILL("Monster beaten", false, 120, "Got it!", "Take that!", "Bye bye!", "Nice hit!", "We win!"),
-		BOSS("Boss beaten", false, 0, "WE DID IT!", "Champion!", "Legendary!", "Unstoppable!", "Hero!"),
-		ENCHANT("Enchanting", false, 60, "Sparkly!", "Magic!", "Ooh, glowing!", "Abracadabra!", "Lucky roll?"),
-		MUSIC("Music playing", false, 120, "♪", "♫ ♪", "Dance!", "Catchy!", "I love this one!"),
-		BELL("Bell rung", false, 60, "Ding!", "Dong!", "Who's there?", "Ring ring!"),
-		DARK("Pitch dark", false, 300, "It's dark…", "Light?", "I can't see!", "Torch, please?", "Spooky…"),
-		HIGH("Way up high", false, 600, "So high!", "Don't fall!", "Great view!", "Clouds!", "Hold on tight!"),
-		SUNNY("Rain stops", false, 600, "☀", "Sun's back!", "Dry at last!", "Rainbow?", "Warm again!"),
-		RAID("Raid", false, 300, "Raid!", "Here they come!", "Ring the bell!", "Protect the village!", "To arms!");
+		TOOL("Tool about to break", true, 60, "It's breaking!", "Careful with that!", "That tool looks tired…", "Repair it soon!", "One more swing…?", "Treat it gently!", "It's had a long life…", "Got a spare?"),
+		HEALTH("Low health", true, 60, "Careful…", "Ouch…", "Heal up!", "Eat something!", "You okay?", "Let's rest a bit…", "Hearts are low!", "Drink a potion?", "Back off a little!", "Don't you dare faint!"),
+		HUNGER("Hungry", true, 120, "Food?", "Snack time?", "*rumble*", "I hear your tummy!", "Bread? Steak? Anything?", "Lunch break?", "My tummy's growling too", "Eat, then adventure!", "You need fuel!"),
+		DANGER("Danger", true, 30, "Behind you!", "Look out!", "!!", "Something's coming!", "Watch out!", "Eek, monsters!", "They're close!", "Weapons up!", "I smell trouble…", "Run or fight?"),
+		AIR("Low air", true, 20, "Air!", "Up, up!", "Breathe!", "Swim up!", "Bubbles running out!", "Surface, quick!", "Gasp!", "Need air!!"),
+		INVENTORY("Inventory full", true, 120, "Full!", "No room!", "Pockets are full!", "Drop some junk?", "Too much stuff!", "Bag's bursting!", "Chest time?", "Nothing else fits!", "Sort your stuff?"),
+		FIRE("Fire or lava", true, 30, "Hot hot!", "Fire!", "Get out of there!", "Water! Water!", "You're smoking!", "We're on fire!", "Stop, drop and roll!", "Too toasty!", "Hot paws, hot paws!"),
+		HURT("Owner hurt", false, 10, "!", "Hey!", "Ow!", "Leave them alone!", "Are you hurt?", "Who did that?!", "I'll get them!", "Hang in there!", "That looked painful"),
+		NIGHTFALL("Nightfall", false, 600, "☾", "Night's coming…", "Torches ready?", "Monsters soon…", "Time for bed?", "Stars are out!", "Stay close tonight", "Spooky time…", "Bed or adventure?"),
+		UNDERWATER("Under water", false, 120, "blub", "o o o", "Bubbles!", "Fishy friends!", "Glub glub", "Swim swim!", "Hi, squid!", "Is that a shipwreck?", "I'm a fish now!"),
+		NETHER("Into the Nether", false, 60, "Hot!", "So warm…", "Mind the lava!", "Smells like fire…", "Hold my paw…", "It's so red here", "Watch for ghasts!", "Gold, gold everywhere", "Piglins look grumpy"),
+		END("Into the End", false, 60, "…?", "Whoa…", "So many eyes…", "Where are we?", "Don't look at them!", "Ender dragon?!", "So quiet here…", "Pearls everywhere", "Watch the void!"),
+		FISH("Fish caught", false, 10, "!", "Fish!", "Yum!", "A big one!", "Dinner!", "Nice catch!", "Fishy!", "Hooked it!", "Cook it later?", "You're a pro!"),
+		HARVEST("Harvest", false, 60, "Nice!", "Crops!", "Farmer life!", "Fresh food!", "Good harvest!", "Bread incoming!", "Smells like fields", "Plant some more?", "Green thumbs!"),
+		DEEP("Deep down", false, 600, "Dig dig", "So deep…", "Diamonds here?", "It's quiet down here", "Mind the drops…", "Echo… echo…", "Hear that lava?", "Is that a cave?", "Ancient stuff here?"),
+		SNOW("Snow", false, 600, "Brr", "Cold!", "Snowball fight?", "My paws are cold!", "So pretty…", "Snow angel time!", "Footprints!", "Hot cocoa later?", "Everything's white!"),
+		HELLO("Taken out", false, 0, "Hi!", "Hello!", "Let's go!", "Adventure time!", "I'm here!", "Where to?", "Missed the sun!", "Reporting for duty!", "What's the plan?", "Ready when you are!"),
+		BYE("Put away", false, 0, "Bye!", "See you!", "Nap time!", "Call me soon!", "Take care!", "I'll be waiting!", "Don't forget me!", "Rest well!", "Back to the bag…"),
+		JOIN("Owner joins", false, 0, "Missed you!", "You're back!", "Hello again!", "Yay, you're here!", "Where were you?", "Welcome back!", "I kept watch!", "Took you long enough!", "Let's play!"),
+		EAT("Eating", false, 30, "Yum!", "Share?", "Smells good!", "Can I have some?", "Nom nom", "Crumbs for me?", "Delicious?", "Chew slowly!", "Save me a bite!"),
+		SLEEP("Sleeping", false, 60, "zZz", "Sweet dreams…", "Night night", "*snore*", "Night!", "Dream of cake…", "I'll keep watch", "Cozy…"),
+		MORNING("Morning", false, 600, "☀", "Morning!", "Rise and shine!", "New day!", "Good morning!", "Breakfast?", "The birds are up!", "Let's do great things!", "Big day ahead!"),
+		RESPAWN("Owner died", false, 0, "…", "Don't do that again…", "You scared me!", "Let's get your stuff", "Back in one piece?", "Never again, okay?", "I was so worried!", "Your stuff's waiting", "Deep breath…"),
+		ADVANCEMENT("Advancement", false, 5, "★", "Well done!", "Woo!", "Amazing!", "So proud!", "Look at you go!", "Achievement!", "You're on fire!", "Brag about it!", "Another one!"),
+		LEVEL30("Level 30", false, 60, "Whoa!", "So much XP!", "Enchant time!", "Glowing!", "Spend it wisely!", "Glowing like a torch!", "Book time!", "XP overflow!", "Shiny you!"),
+		SHINY("Rare find", false, 10, "Shiny!", "Ooh!", "Treasure!", "Lucky!", "Keep it safe!", "Jackpot!", "Rich!", "Don't lose it!", "Sparkles!"),
+		RAIN("Rain", false, 600, "☂", "Rain…", "Wet fur…", "Pitter patter", "Puddles!", "Splash!", "Umbrella?", "Mushy ground", "I smell rain"),
+		THUNDER("Thunder", false, 120, "!!", "Eek!", "So loud!", "Hide me!", "Boom!", "Make it stop!", "Hold me!", "Stay indoors?", "Scary sky…"),
+		FLYING("Flying or falling", false, 30, "Wheee!", "Whoosh!", "Look, no hands!", "Wings!", "Weee!", "Up and away!", "I can see my house!", "Higher!", "Mind the landing!"),
+		RIDING("Riding", false, 60, "Giddy up!", "♪", "Faster!", "What a ride!", "Hold on!", "Yeehaw!", "Wind in my fur!", "Don't fall off!", "Trot trot!"),
+		TRADE("Trading", false, 60, "$", "Good deal!", "Bargain!", "Shopping!", "Hmm, fair?", "Emeralds well spent?", "Haggle!", "Ooh, new stuff", "Is that a deal?"),
+		BREED("Breeding", false, 60, "♥", "Babies!", "So cute!", "Aww!", "Family!", "New friends!", "Tiny ones!", "The family grows!", "Love is in the air"),
+		MEET("Meeting another pet", false, 600, "♥", "Hi friend!", "A new friend!", "Play with me!", "Nice to meet you!", "Hello there!", "Wanna play?", "Sniff sniff!", "Best buds?"),
+		IDLE("Owner idle", false, 300, "…", "Bored…", "What now?", "Let's go somewhere!", "*yawn*", "Hellooo?", "Let's go!", "I'm getting sleepy", "Adventure awaits!"),
+		AFK("Owner AFK", false, 60, "zZz", "I'll wait here…", "Still there?", "…hello?", "Guarding your stuff", "Take your time", "*waits patiently*", "Come back soon!"),
+		PAT("Pat", false, 3, "♥", "Hehe", "More!", "That tickles!", "Purr…", "Again!", "Best owner!", "Happy!", "Scritches!"),
+		LEVEL_UP("Bond level up", false, 0, "Level {level}!", "Yay!", "We're closer now!", "Best friends!", "Level up!", "Our bond grows!", "Unbreakable!", "Friends forever!", "Stronger together!"),
+		BIRTHDAY("Pet's birthday", false, 0, "Happy pet day!", "✦ Party! ✦", "Cake?", "Another year!", "Hooray!", "Presents?", "Blow the candles!", "Best day ever!", "Party time!"),
+		TOTEM("Totem used", false, 0, "That was close!", "Phew…", "Lucky totem!", "Don't scare me!", "Saved!", "Second chance!", "Don't waste it!", "Wow, that glow!", "Close one!"),
+		KILL("Monster beaten", false, 120, "Got it!", "Take that!", "Bye bye!", "Nice hit!", "We win!", "One down!", "Nice moves!", "Good riddance!", "Easy!"),
+		BOSS("Boss beaten", false, 0, "WE DID IT!", "Champion!", "Legendary!", "Unstoppable!", "Hero!", "We're legends!", "Epic!", "Victory!", "Tell everyone!"),
+		ENCHANT("Enchanting", false, 60, "Sparkly!", "Magic!", "Ooh, glowing!", "Abracadabra!", "Lucky roll?", "What did you get?", "Glowy!", "Is it good?", "Magic words!"),
+		MUSIC("Music playing", false, 120, "♪", "♫ ♪", "Dance!", "Catchy!", "I love this one!", "What a tune!", "Turn it up!", "Groovy!", "My favourite!"),
+		BELL("Bell rung", false, 60, "Ding!", "Dong!", "Who's there?", "Ring ring!", "Hello?", "Clang!", "Someone's calling", "Bells!"),
+		DARK("Pitch dark", false, 300, "It's dark…", "Light?", "I can't see!", "Torch, please?", "Spooky…", "Hold my paw", "Where's the torch?", "What was that?", "Too dark…"),
+		HIGH("Way up high", false, 600, "So high!", "Don't fall!", "Great view!", "Clouds!", "Hold on tight!", "Wheee, high!", "Mind your step!", "Tiny world down there", "Windy up here!"),
+		SUNNY("Rain stops", false, 600, "☀", "Sun's back!", "Dry at last!", "Rainbow?", "Warm again!", "Sunshine!", "Blue skies!", "Let's dry off", "Much better!"),
+		RAID("Raid", false, 300, "Raid!", "Here they come!", "Ring the bell!", "Protect the village!", "To arms!", "Defend!", "Stay together!", "Pillagers!", "For the village!");
 
 		public final String label;
 		/** Also tells the owner on their screen (and doesn't wait for the gap between reactions). */
@@ -308,7 +308,7 @@ public final class Pets {
 	}
 
 	/** Bump when Reaction's default lines grow, so saved settings get the new ones once. */
-	static final int LINES_VERSION = 2;
+	static final int LINES_VERSION = 3;
 
 	public static final class ReactionSettings {
 		public boolean enabled = true;
@@ -330,7 +330,8 @@ public final class Pets {
 					list.put(r.name(), e);
 				} else if (merge && e.lines != null) {
 					// More lines came with an update: add the ones that aren't there yet.
-					for (String l : r.lines) if (!e.lines.contains(l)) e.lines.add(l);
+					// (At most 10 lines a reaction: the panel's limit.)
+					for (String l : r.lines) if (!e.lines.contains(l) && e.lines.size() < 10) e.lines.add(l);
 				}
 				if (e.lines == null) e.lines = new ArrayList<>();
 				e.lines.replaceAll(l -> l == null ? "" : l.replaceAll("\\s+", " ").strip());

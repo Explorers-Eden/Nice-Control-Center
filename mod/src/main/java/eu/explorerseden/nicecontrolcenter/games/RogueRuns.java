@@ -130,9 +130,9 @@ final class RogueRuns {
 
 	/** Rooms of the group that can come at this depth (on, saved, with a start marker, under their per-run limit). */
 	private static List<Dungeons.Room> candidates(Dungeons.Settings s, State st, String group, int depth) {
-		if (group == null || group.isEmpty() || s.group(group).minDepth > depth) return List.of();
+		if (group == null || group.isEmpty() || s.group(group, true).minDepth > depth) return List.of();
 		List<Dungeons.Room> out = new ArrayList<>();
-		for (Dungeons.Room room : s.roomsIn(group)) {
+		for (Dungeons.Room room : s.roomsIn(group, true)) {
 			if (!room.enabled || !room.saved() || room.markers.stream().noneMatch(m -> "start".equals(m.type))) continue;
 			if (room.maxPerCopy > 0 && st != null && st.used.getOrDefault(room.name, 0) >= room.maxPerCopy) continue;
 			out.add(room);
@@ -165,7 +165,7 @@ final class RogueRuns {
 		return !candidates(s, null, d.startGroup, 0).isEmpty() || !candidates(s, null, groupOf(d, "fight"), 1).isEmpty();
 	}
 
-	/** Why a rogue entry can't start yet (for the panel and /dungeon list), or null. */
+	/** Why a rogue entry can't start yet (for the panel and /rogue list), or null. */
 	static String problem(Dungeons.Settings s, Dungeon d) {
 		if (ready(s, d)) return null;
 		String g = groupOf(d, "fight");
@@ -581,7 +581,7 @@ final class RogueRuns {
 		DungeonRuntime.tellRun(server, r, Words.lit("→ " + (by == null ? "" : by + " chose ") + label(door.type) + " room").withStyle(color(door.type)));
 	}
 
-	/** By number (1 = the first door): for /dungeon rogue pick from the console. */
+	/** By number (1 = the first door): for /rogue pick from the console. */
 	static String chooseNumber(MinecraftServer server, Run r, int n) {
 		State st = r.rogue;
 		if (st == null) return "That run is no rogue run.";

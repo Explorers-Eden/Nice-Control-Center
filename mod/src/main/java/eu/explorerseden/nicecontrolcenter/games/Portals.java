@@ -290,14 +290,16 @@ public final class Portals {
 			out.put(key("pool", pp.pool, pp.pos), new Label(pp.pos, 2.2, poolText(pp.pool, in)));
 		}
 		Dungeons.Settings d = DungeonRuntime.settings();
-		if (d.enabled) {
-			for (Dungeons.Pad pad : d.pads) {
+		for (boolean rogue : new boolean[] { false, true }) {
+			if (!(rogue ? d.rogueEnabled : d.enabled)) continue;
+			String title = rogue ? "Rogue run" : "Dungeon";
+			for (Dungeons.Pad pad : d.pads(rogue)) {
 				if (pad.pos == null) continue;
-				out.put(key("dungeon", pad.pool, pad.pos), new Label(pad.pos, 2.2, Words.lit("Dungeon").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
+				out.put(key(rogue ? "rogue" : "dungeon", pad.pool, pad.pos), new Label(pad.pos, 2.2, Words.lit(title).withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
 						.append(Words.lit("\n" + cap(pad.pool) + " · Party leader steps on").withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			}
-			for (Map.Entry<String, Games.Pos> w : d.waiting.entrySet()) {
-				out.put(key("dqueue", w.getKey(), w.getValue()), new Label(w.getValue(), 2.4, Words.lit("Dungeon queue").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
+			for (Map.Entry<String, Games.Pos> w : d.waiting(rogue).entrySet()) {
+				out.put(key(rogue ? "rqueue" : "dqueue", w.getKey(), w.getValue()), new Label(w.getValue(), 2.4, Words.lit(title + " queue").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)
 						.append(Words.lit("\n" + cap(w.getKey())).withStyle(st -> st.withBold(false).withColor(ChatFormatting.GRAY)))));
 			}
 		}

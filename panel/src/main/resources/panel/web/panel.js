@@ -1165,9 +1165,34 @@
     pollServer.timer = setTimeout(pollServer, 1500);
   }
 
+  /** A styled yes/no question (resolves true on OK). Cancel has the focus, so Enter or a stray click doesn't confirm. */
+  function confirmDialog({ title, text, ok = 'OK', icon = 'bi-exclamation-octagon', danger = true }) {
+    const dlg = $('pn-confirm');
+    $('pn-confirm-title').textContent = title;
+    $('pn-confirm-text').textContent = text;
+    $('pn-confirm-ok').innerHTML = `<i class="bi ${icon}"></i> ${esc(ok)}`;
+    $('pn-confirm-ok').className = 'np-btn ' + (danger ? 'danger' : 'primary');
+    $('pn-confirm-icon').innerHTML = `<i class="bi ${icon}"></i>`;
+    $('pn-confirm-icon').classList.toggle('danger', danger);
+    return new Promise((resolve) => {
+      const done = (v) => { dlg.close(); $('pn-confirm-ok').onclick = $('pn-confirm-cancel').onclick = dlg.oncancel = dlg.onclick = null; resolve(v); };
+      $('pn-confirm-ok').onclick = () => done(true);
+      $('pn-confirm-cancel').onclick = () => done(false);
+      dlg.oncancel = (e) => { e.preventDefault(); done(false); };
+      dlg.onclick = (e) => { if (e.target === dlg) done(false); };
+      dlg.showModal();
+      $('pn-confirm-cancel').focus();
+    });
+  }
+
+  const POWER_ASK = {
+    kill: { title: 'Kill the server?', text: 'This ends the server process at once, without saving: anything players did since the last save is lost. Use Stop for a normal shutdown.', ok: 'Kill it', icon: 'bi-x-octagon' },
+    stop: { title: 'Stop the server?', text: 'Everyone online is disconnected; the world is saved first.', ok: 'Stop', icon: 'bi-stop-fill' },
+    restart: { title: 'Restart the server?', text: 'Everyone online is disconnected for a moment; the world is saved first.', ok: 'Restart', icon: 'bi-arrow-repeat', danger: false },
+  };
   document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', async () => {
     const action = button.dataset.action;
-    if (action === 'kill' && !confirm('Kill the server process? Unsaved world changes are lost.')) return;
+    if (POWER_ASK[action] && !(await confirmDialog(POWER_ASK[action]))) return;
     button.disabled = true;
     try {
       await api('api/server/' + action, {});
@@ -1232,8 +1257,9 @@
     switch (conFilter) {
       case 'errors': return level === 'ERROR' || level === 'FATAL';
       case 'warnings': return level === 'WARN';
-      // The mod's lines and the panel's own notes.
-      case 'ncc': return level === 'PANEL' || /Nice Control Center|nicecontrolcenter/.test(div.textContent);
+      // The mod's lines ("[panel] Section: …", warnings and errors too) and the panel's own notes; not other mods' lines
+      // that only name an NCC dimension (Distant Horizons' "…[nicecontrolcenter:dungeons]…").
+      case 'ncc': return level === 'PANEL' || MOD_PANEL.test(unstamped(div.textContent));
       default: return true;
     }
   }
@@ -2101,6 +2127,7 @@
       gm.songs = d.songs || [];
       gm.quickActions = d.quickActions || [];
       try { gm.npcs = (await api('api/npcs')).settings.npcs; } catch (e) { gm.npcs = []; }
+      await bossInfo();
       gm.dirty = false;
       gm.removed = { arenas: [], points: [] };
       renderArenas();
@@ -2110,128 +2137,259 @@
     }
   }
 
-  function renderArenas() {
-    const edit = can('settings.server');
+  /** The game templates: tiles on top of the Games tab; each opens its guide (guides/<type>.md). */
+  const GM_TEMPLATES = [
+    ['parkour', 'Infinite parkour', 'Jumps appear ahead, harder as you go; a lane per player.', 'solo'],
+    ['race', 'Race course', 'Checkpoints in order, then the finish: running, boat or elytra.', 'solo'],
+    ['maze', 'Maze', 'Generated; made new every day or after each finished run.', 'solo'],
+    ['waves', 'Wave fight', 'A party of 1–4 fights waves of mobs and bosses (Arenas tab).', 'solo'],
+    ['heads', 'Head hunt', 'Heads hidden in the world; a reward every few found.', 'solo'],
+    ['ghasts', 'Ghast deflect', 'Hit the ghasts\' fireballs back with snowballs.', 'quick'],
+    ['colorfloor', 'Colour floor', 'The called colour vanishes from a 3×3 grid, faster each refill.', 'quick'],
+    ['anvils', 'Anvil rain', 'Dodge falling anvils; the last one standing wins.', 'quick'],
+    ['treasure', 'Treasure grab', 'Grab the most glowing treasure before time\'s up.', 'quick'],
+    ['fishing', 'Fishing frenzy', 'Every catch scores: fish, rare fish, treasure.', 'quick'],
+    ['moles', 'Whack-a-mole', 'Hit the heads popping out of holes, not the bad ones.', 'quick'],
+    ['targets', 'Target practice', 'Shoot targets; farther away and bullseyes score more.', 'quick'],
+    ['gallery', 'Snowball gallery', 'Mobs walk past on lanes; hit them, spare the villagers.', 'quick'],
+    ['chef', 'Cauldron chef', 'Cook what the cook NPC orders and serve it.', 'quick'],
+    ['lava', 'Rising lava', 'Lava fills the tower from below; the last one standing wins.', 'quick'],
+  ];
+  /** Per card: the open tab (General, the game's own, Mobs, Bosses, Music, Rewards). */
+  const gmTab = {};
+  /** The list tools per tab (search, type, status, sort); kept across reloads, the search box not. */
+  const gmView = (() => { try { return JSON.parse(localStorage.getItem('pn-gm-view')) || {}; } catch (e) { return {}; } })();
+  const gmViewOf = (list) => (gmView[list] = { q: '', type: '', status: '', sort: 'name', ...(gmView[list] || {}) });
+  const gmKeepView = () => {
+    try { localStorage.setItem('pn-gm-view', JSON.stringify(Object.fromEntries(Object.entries(gmView).map(([k, v]) => [k, { ...v, q: '' }])))); } catch (e) { /* private window */ }
+  };
+  /** A setup step: done or still to do; "optional" ones don't count as to do. */
+  const gmOk = (done, label, how, optional) => `<li class="${done ? 'done' : optional ? 'opt' : 'todo'}"><i class="bi ${done ? 'bi-check-circle-fill' : optional ? 'bi-dash-circle' : 'bi-circle'}"></i> <span>${label}${how ? ` <code>${how}</code>` : ''}</span></li>`;
+  const gmBox = (min, max) => min && max ? `${Math.abs(max.x - min.x) + 1} × ${Math.abs(max.y - min.y) + 1} × ${Math.abs(max.z - min.z) + 1}` : '';
+  const gmAt = (p) => p ? `${esc(dimShort(p.dim))} · ${Math.round(p.x)}, ${Math.round(p.y)}, ${Math.round(p.z)}` : '';
+
+  /** The top of the Games tab: games on, the hub spawn, counts, and the template tiles. */
+  function gmRenderTop(edit) {
     const s = gm.settings;
     $('pn-gm-enabled').checked = s.enabled;
     $('pn-gm-enabled').disabled = !edit;
+    const games = s.arenas.filter((a) => a.type !== 'waves');
+    const on = games.filter((a) => a.enabled).length;
+    const playing = (gm.live || []).filter((x) => x.playing && games.some((a) => a.id === x.id)).reduce((n, x) => n + x.playing, 0);
+    $('pn-gm-count').innerHTML = `<b>${games.length}</b> game${games.length === 1 ? '' : 's'} · <b>${on}</b> on${playing ? ` · <b class="pn-gm-live">${playing}</b> playing now` : ''}`;
+    const hub = s.hub;
+    $('pn-gm-hub').innerHTML = hub
+      ? `<i class="bi bi-house-door"></i> Hub spawn <b>${gmAt(hub)}</b> <button type="button" class="np-btn small" id="pn-gm-hub-clear" title="Clear the hub spawn" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i></button>`
+      : `<i class="bi bi-house-door"></i> Hub spawn <b class="pn-dg-warnchip">not set</b> <code>/game spawn set</code>`;
+    const count = (t) => s.arenas.filter((a) => a.type === t).length;
+    const tile = ([t, label, desc]) => `<button type="button" class="pn-gm-tile" data-guide="${t}" title="Open the ${esc(label)} guide">
+        <i class="bi ${GAME_ICONS[t]}"></i><span><b>${esc(label)}</b><small>${esc(desc)}</small></span>${count(t) ? `<span class="np-chip">${count(t)}</span>` : ''}</button>`;
+    const group = (g, title) => `<div class="pn-gm-tgroup"><h4>${title}</h4><div class="pn-gm-templates">${GM_TEMPLATES.filter((x) => x[3] === g).map(tile).join('')}</div></div>`;
+    $('pn-gm-tiles').innerHTML = group('solo', 'Games') + group('quick', 'Quick rounds <small>everyone there during the join window plays the same round</small>');
+    // The Arenas tab's top line.
+    const arenas = s.arenas.filter((a) => a.type === 'waves');
+    const fights = (gm.live || []).filter((x) => x.playing && arenas.some((a) => a.id === x.id)).length;
+    $('pn-ar-count').innerHTML = `<b>${arenas.length}</b> arena${arenas.length === 1 ? '' : 's'} · <b>${arenas.filter((a) => a.enabled).length}</b> on${fights ? ` · <b class="pn-gm-live">${fights}</b> fight${fights === 1 ? '' : 's'} running` : ''}`;
+  }
+
+  /** The search, filter and sort bar above a list of game cards. */
+  function gmRenderTools(list, types) {
+    const v = gmViewOf(list);
+    const opt = (val, label, cur) => `<option value="${val}" ${cur === val ? 'selected' : ''}>${label}</option>`;
+    const box = $(list === 'pn-gm-list' ? 'pn-gm-tools' : 'pn-ar-tools');
+    if (box.dataset.ready) return;
+    box.dataset.ready = '1';
+    box.innerHTML = `<div class="pn-search-input pn-gm-search"><i class="bi bi-search"></i><input type="search" data-gv="q" placeholder="Search by name…" value="${esc(v.q)}" spellcheck="false"></div>
+      ${types ? `<select data-gv="type" aria-label="Type">${opt('', 'All types', v.type)}${GM_TEMPLATES.filter(([t]) => t !== 'waves').map(([t, l]) => opt(t, l, v.type)).join('')}</select>` : ''}
+      <select data-gv="status" aria-label="Show">${opt('', 'All', v.status)}${opt('on', 'On', v.status)}${opt('off', 'Off', v.status)}${opt('todo', 'Setup to do', v.status)}${opt('live', 'Playing now', v.status)}</select>
+      <select data-gv="sort" aria-label="Sort">${opt('name', 'Name A–Z', v.sort)}${types ? opt('type', 'Type', v.sort) : ''}${opt('on', 'On first', v.sort)}${opt('todo', 'Setup to do first', v.sort)}${opt('runs', 'Most played', v.sort)}</select>
+      <span class="pn-gm-tools-end"><span class="pn-hint" data-gv-count></span>
+      <button type="button" class="np-btn small" data-gv-all="open" title="Open every card"><i class="bi bi-arrows-expand"></i></button>
+      <button type="button" class="np-btn small" data-gv-all="close" title="Close every card"><i class="bi bi-arrows-collapse"></i></button></span>`;
+  }
+
+  /** Shows the cards that match the search and filters (no re-render). */
+  function gmFilter(list) {
+    const v = gmViewOf(list);
+    const q = v.q.trim().toLowerCase();
+    let shown = 0, all = 0;
+    $(list).querySelectorAll('[data-arena]').forEach((card) => {
+      const a = gm.settings.arenas[+card.dataset.arena];
+      all++;
+      const ok = (!q || `${a.name} ${a.title || ''} ${GAME_LABELS[a.type] || a.type} ${a.arenaPool || ''}`.toLowerCase().includes(q))
+        && (!v.type || a.type === v.type)
+        && (!v.status || (v.status === 'on' ? a.enabled : v.status === 'off' ? !a.enabled : v.status === 'todo' ? +card.dataset.todo > 0 : +card.dataset.live > 0));
+      card.hidden = !ok;
+      if (ok) shown++;
+    });
+    const tools = $(list === 'pn-gm-list' ? 'pn-gm-tools' : 'pn-ar-tools');
+    tools.querySelector('[data-gv-count]').textContent = all ? (shown === all ? `${all} shown` : `${shown} of ${all} shown`) : '';
+    tools.hidden = !all;
+  }
+
+  function renderArenas() {
+    const edit = can('settings.server');
+    const s = gm.settings;
+    gmRenderTop(edit);
     const qm = s.quickMenu || (s.quickMenu = { party: true, hide: [] });
     $('pn-gm-qparty').checked = qm.party !== false;
     $('pn-gm-qparty').disabled = !edit;
     const qa = gm.quickActions.length ? gm.quickActions : qm.hide.map((id) => ({ id, label: id }));
     $('pn-gm-qhide').innerHTML = qa.length ? qa.map((b) => `<label class="np-check"><input type="checkbox" data-qhide="${esc(b.id)}" ${qm.hide.includes(b.id) ? 'checked' : ''} ${edit ? '' : 'disabled'}> ${esc(b.label)}</label>`).join('')
       : '<p class="pn-hint">The list of buttons appears once the server has started with Nice Actions installed.</p>';
-    const hub = s.hub;
-    $('pn-gm-hub').innerHTML = (hub
-      ? `<i class="bi bi-geo-alt"></i> ${esc(dimShort(hub.dim))} · ${Math.round(hub.x)}, ${Math.round(hub.y)}, ${Math.round(hub.z)} <button type="button" class="np-btn small" id="pn-gm-hub-clear" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i> Clear</button>`
-      : 'Not set: players go to their home or respawn point.')
-      + `<br><small>Players who log out or die in a game area or anywhere in its dimension come back here. Set it in game with <code>/game spawn set</code>.</small>`;
-    const cards = s.arenas.map((a, i) => {
-      const live = gm.live ? gm.live.find((x) => x.id === a.id) : null;
-      const top = live ? live.top : Object.values((gm.scores || {})[a.id] || {}).sort((x, y) => gmHigher(a.type) ? y.best - x.best : x.best - y.best).slice(0, 10);
-      const where = a.start ? `${dimShort(a.start.dim)} · ${Math.round(a.start.x)}, ${Math.round(a.start.y)}, ${Math.round(a.start.z)}` : 'no start yet';
-      const field = (k, label, html) => `<label class="pn-field"><span>${label}</span>${html}</label>`;
-      const num = (k, min, max, step) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}"${step ? ` step="${step}"` : ''}>`;
-      const text = (k, label, hint) => field(k, label, `<input type="text" data-g="${k}" value="${esc(a[k] || '')}" placeholder="${esc(hint)}">`);
-      const lines = (k, label) => `<label class="pn-field pn-field-wide"><span>${label}</span><textarea data-g="${k}" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a[k] || []).join('\n'))}</textarea></label>`;
-      const waves = a.type === 'waves';
-      const quick = GM_QUICK.includes(a.type);
-      const heads = a.type === 'heads';
-      const own = heads
-        ? text('finishMessage', 'Message when all heads are found', 'default line')
-          + lines('finishCommands', 'Commands when all heads are found ({player}, {found}, {total})')
-        : text('startMessage', 'Start message', 'default line')
-        + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : quick ? 'Message when their score counts ({score})' : 'Finish message ({score})', 'default line')
-        + lines('startCommands', 'Commands on start ({player}, {game})')
-        + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves): clearing rewards'
-          : quick ? 'Commands for each player whose score counts ({score}): round rewards'
-          : a.type === 'parkour' ? 'Commands when a run ends (they fell; {score} = jumps made, only with at least one)' : 'Commands when they finish ({score} = their time)');
-      const winner = quick ? lines('winnerCommands', 'Commands for the winner, with 2 or more players ({player}, {score}); also the Rewards trigger "Wins a round"') : '';
-      const fields = {
-        parkour: { play: field('palette', 'Blocks (ids or #tags, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`)
-          + `<p class="pn-hint pn-field-wide"><i class="bi bi-bounding-box"></i> ${a.areaMin && a.areaMax
-            ? `Kept in a box ${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}: lanes share it (9 blocks wide each) and the jumps turn at its walls.`
-            : `No box: lanes go off along +X from the start pad, jumps along +Z without end. Keep it in a box with <code>/game edit ${esc(a.name)} corner1</code> + <code>corner2</code>.`}</p>`
-          + field('difficulty', 'Gets harder', `<select data-g="difficulty">${[['easy', 'easy (a level every 25 jumps, up to level 3)'], ['normal', 'normal (every 15, up to 5)'], ['hard', 'hard (every 10, from level 2 up to 6)'], ['extreme', 'extreme (every 8, from level 3 up to 7)']].map(([v, l]) => `<option value="${v}" ${a.difficulty === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
-          + '<p class="pn-hint pn-field-wide">Levels add up and down, diagonal jumps, longer gaps, slabs, then glass panes and iron bars; only jumps a sprinting player can make, never longer than the longest gap below.</p>'
-          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes (without a box)', num('laneSpacing', 16, 256))
+    const cards = s.arenas.map((a, i) => gmCard(a, i));
+    // Wave arenas on the Arenas page, every other game here; sorted as picked above the list.
+    const fill = (list, waves, empty) => {
+      gmRenderTools(list, !waves);
+      const v = gmViewOf(list);
+      const name = (c) => (s.arenas[c.i].title || s.arenas[c.i].name).toLowerCase();
+      const by = {
+        name: (x, y) => name(x).localeCompare(name(y)),
+        type: (x, y) => (GAME_LABELS[s.arenas[x.i].type] || s.arenas[x.i].type).localeCompare(GAME_LABELS[s.arenas[y.i].type] || s.arenas[y.i].type) || name(x).localeCompare(name(y)),
+        on: (x, y) => (s.arenas[y.i].enabled - s.arenas[x.i].enabled) || name(x).localeCompare(name(y)),
+        todo: (x, y) => (y.todo - x.todo) || name(x).localeCompare(name(y)),
+        runs: (x, y) => (y.runs - x.runs) || name(x).localeCompare(name(y)),
+      }[v.sort] || (() => 0);
+      const mine = cards.filter((c) => (s.arenas[c.i].type === 'waves') === waves).sort(by);
+      $(list).innerHTML = mine.map((c) => c.html).join('') || empty;
+      gmFilter(list);
+    };
+    fill('pn-gm-list', false, '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or any type above; click a tile for its guide).</p>');
+    fill('pn-ar-list', true, '<p class="np-empty">No wave arenas yet. Stand where players should appear in game and type <code>/game create waves MyArena</code>.</p>');
+    GM_LISTS.forEach((id) => $(id).querySelectorAll('input, select, button:not([data-guide]):not([data-gtab])').forEach((el) => { el.disabled = !edit; }));
+    GM_SAVES.forEach(([b]) => { $(b).disabled = !edit; });
+    gmRenderPools(edit);
+  }
+
+  /** One game's card: { i, html, todo (setup steps left), runs, live }. */
+  function gmCard(a, i) {
+    const live = gm.live ? gm.live.find((x) => x.id === a.id) : null;
+    const scores = Object.values((gm.scores || {})[a.id] || {});
+    const top = live ? live.top : scores.sort((x, y) => gmHigher(a.type) ? y.best - x.best : x.best - y.best).slice(0, 10);
+    const runs = scores.reduce((n, x) => n + (x.runs || 0), 0);
+    const field = (k, label, html, cls) => `<label class="pn-field${cls ? ' ' + cls : ''}"><span>${label}</span>${html}</label>`;
+    const num = (k, min, max, step) => `<input type="number" data-g="${k}" value="${a[k]}" min="${min}" max="${max}"${step ? ` step="${step}"` : ''}>`;
+    const text = (k, label, hint) => field(k, label, `<input type="text" data-g="${k}" value="${esc(a[k] || '')}" placeholder="${esc(hint)}">`);
+    const lines = (k, label) => `<label class="pn-field pn-field-half"><span>${label}</span><textarea data-g="${k}" data-lines="1" rows="3" spellcheck="false" placeholder="one per line, without /">${esc((a[k] || []).join('\n'))}</textarea></label>`;
+    const waves = a.type === 'waves';
+    const quick = GM_QUICK.includes(a.type);
+    const heads = a.type === 'heads';
+    const n = esc(a.name);
+    const box = gmBox(a.areaMin, a.areaMax);
+    const fields = {
+      parkour: {
+        setup: [gmOk(!!box, box ? `Box ${box}: lanes share it (9 blocks wide each), the jumps turn at its walls` : 'Box (optional; without one the lanes go off along +X from the start, jumps along +Z without end):', box ? '' : `/game edit ${n} corner1` + ' + corner2', true)],
+        play: field('palette', 'Blocks (ids or #tags, comma-separated)', `<input type="text" data-g="palette" value="${esc((a.palette || []).join(', '))}">`, 'pn-field-half')
+          + field('difficulty', 'Gets harder <span class="pn-comment">Levels add up and down, diagonal jumps, longer gaps, slabs, then glass panes and iron bars; only jumps a sprinting player can make, never longer than the longest gap.</span>', `<select data-g="difficulty">${[['easy', 'easy (a level every 25 jumps, up to 3)'], ['normal', 'normal (every 15, up to 5)'], ['hard', 'hard (every 10, from 2 up to 6)'], ['extreme', 'extreme (every 8, from 3 up to 7)']].map(([v, l]) => `<option value="${v}" ${a.difficulty === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`, 'pn-field-half')
+          + field('lanes', 'Players at once (lanes)', num('lanes', 1, 32)) + field('laneSpacing', 'Blocks between lanes <span class="pn-comment">Only without a box.</span>', num('laneSpacing', 16, 256))
           + field('ahead', 'Jumps shown ahead', num('ahead', 1, 8)) + field('maxGap', 'Longest gap (blocks)', num('maxGap', 2, 5)),
-          rewards: field('everyJumps', 'A reward every … jumps (0 = none)', num('everyJumps', 0, 10000))
+        rewards: field('everyJumps', 'A reward every … jumps (0 = none)', num('everyJumps', 0, 10000))
           + lines('everyCommands', 'Commands every … jumps ({jumps}, {player}, {game}); also the Rewards trigger "Makes jumps in parkour"') },
-        race: field('mode', 'Race by', `<select data-g="mode">${[['run', 'running'], ['boat', 'boat'], ['elytra', 'elytra']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
-          + field('timeLimit', 'Time limit (seconds, 0 = none)', num('timeLimit', 0, 3600))
-          + lines('checkpointCommands', 'Commands at each checkpoint ({checkpoint}, {player}, {game})')
-          + `<p class="pn-hint">${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}${a.finish ? ' and a finish' : ', no finish yet'}. Set in game: <code>/game edit ${esc(a.name)} checkpoint add &lt;radius&gt;</code>, <code>… finish &lt;radius&gt;</code>.</p>`,
-        maze: field('size', `Cells per side (${a.size * ((a.mazePath || 1) + 1) + 1} × ${a.size * ((a.mazePath || 1) + 1) + 1} blocks)`, num('size', 4, 256))
-          + field('mazePath', 'Path width (1–5)', num('mazePath', 1, 5))
-          + field('wall', 'Wall blocks (mixed at random)', `<input type="text" data-g="wall" value="${esc(a.wall)}" placeholder="minecraft:stone_bricks, minecraft:mossy_stone_bricks">`)
-          + field('floor', 'Floor blocks', `<input type="text" data-g="floor" value="${esc(a.floor)}" placeholder="minecraft:smooth_stone">`)
-          + field('wallHeight', 'Wall height', num('wallHeight', 1, 8))
-          + field('mazeLight', 'Light of the paths (0–15)', num('mazeLight', 0, 15))
-          + field('mazeCeiling', 'Ceiling blocks (empty = open sky)', `<input type="text" data-g="mazeCeiling" value="${esc(a.mazeCeiling || '')}" placeholder="minecraft:deepslate_tiles">`)
-          + field('mazeGoal', 'Blocks under the goal', `<input type="text" data-g="mazeGoal" value="${esc(a.mazeGoal || 'minecraft:sea_lantern')}" placeholder="minecraft:sea_lantern">`)
-          + field('mazeCrossings', 'Crossroads: extra openings, mostly T-junctions (%, 0–50)', num('mazeCrossings', 0, 50))
+      race: {
+        setup: [gmOk(a.checkpoints.length > 0, a.checkpoints.length ? `${a.checkpoints.length} checkpoint${a.checkpoints.length === 1 ? '' : 's'}; more, in order:` : 'Checkpoints, in order:', `/game edit ${n} checkpoint add <radius>`),
+          gmOk(!!a.finish, a.finish ? 'Finish set' : 'Finish:', a.finish ? '' : `/game edit ${n} finish <radius>`)],
+        play: field('mode', 'Race by', `<select data-g="mode">${[['run', 'running'], ['boat', 'boat'], ['elytra', 'elytra']].map(([v, l]) => `<option value="${v}" ${a.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`)
+          + field('timeLimit', 'Time limit (s, 0 = none)', num('timeLimit', 0, 3600))
+          + lines('checkpointCommands', 'Commands at each checkpoint ({checkpoint}, {player}, {game})') },
+      maze: {
+        setup: [gmOk(true, `${a.size} × ${a.size} cells (${a.size * ((a.mazePath || 1) + 1) + 1} × ${a.size * ((a.mazePath || 1) + 1) + 1} blocks); after changing the layout, build it again:`, `/game edit ${n} build`)],
+        play: field('size', 'Cells per side', num('size', 4, 256)) + field('mazePath', 'Path width (1–5)', num('mazePath', 1, 5))
+          + field('wallHeight', 'Wall height', num('wallHeight', 1, 8)) + field('mazeLight', 'Light of the paths (0–15)', num('mazeLight', 0, 15))
+          + field('wall', 'Wall blocks (mixed at random)', `<input type="text" data-g="wall" value="${esc(a.wall)}" placeholder="minecraft:stone_bricks, minecraft:mossy_stone_bricks">`, 'pn-field-half')
+          + field('floor', 'Floor blocks', `<input type="text" data-g="floor" value="${esc(a.floor)}" placeholder="minecraft:smooth_stone">`, 'pn-field-half')
+          + field('mazeCeiling', 'Ceiling blocks (empty = open sky)', `<input type="text" data-g="mazeCeiling" value="${esc(a.mazeCeiling || '')}" placeholder="minecraft:deepslate_tiles">`, 'pn-field-half')
+          + field('mazeGoal', 'Blocks under the goal', `<input type="text" data-g="mazeGoal" value="${esc(a.mazeGoal || 'minecraft:sea_lantern')}" placeholder="minecraft:sea_lantern">`, 'pn-field-half')
+          + field('mazeCrossings', 'Crossroads (%, 0–50) <span class="pn-comment">Extra openings, mostly T-junctions, so ways meet and loop.</span>', num('mazeCrossings', 0, 50))
           + field('mazeChests', 'Dead ends with a chest (%)', num('mazeChests', 0, 100))
-          + field('mazeLoot', 'Chest loot table', `<input type="text" data-g="mazeLoot" value="${esc(a.mazeLoot || 'minecraft:chests/simple_dungeon')}" placeholder="minecraft:chests/simple_dungeon">`)
           + field('regenerate', 'Made new', `<select data-g="regenerate"><option value="daily" ${a.regenerate === 'daily' ? 'selected' : ''}>every day</option><option value="run" ${a.regenerate === 'run' ? 'selected' : ''}>after each finished run</option></select>`)
-          + `<p class="pn-hint pn-field-wide">Blocks: ids or #tags, comma-separated; one named twice comes twice as often. After changing the size, path width, crossroads, blocks, light or chests: <code>/game edit ${esc(a.name)} build</code> in game. The goal has an exit ring in the game's colour.</p>`,
-        waves: gmWaveFields(a, field, num, text, lines),
-        heads: gmHeadFields(a, field, num, lines),
-      }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : '');
-      const part = typeof fields === 'string' ? { play: fields } : fields;
-      const mobs = a.type === 'maze' ? gmMobs(a, field, num, { label: 'Mobs roaming it while someone runs it', count: 'Mobs at once', hint: 'They come out 12–32 blocks from a runner and go when nobody runs it. Empty = none.' }) : part.mobs || '';
-      const H = (icon, title) => `<h4 class="pn-ps-sub pn-field-wide"><i class="bi ${icon}"></i> ${title}</h4>`;
-      const allFields = H('bi-tag', 'Name and look') + field('name', 'Name (one word, for commands)', `<input type="text" data-g="name" value="${esc(a.name)}" maxlength="32" pattern="[A-Za-z0-9_-]+">`)
-        + field('title', 'Display name (spaces allowed)', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
-        + field('subtitle', 'Line under it on entrances (optional)', `<input type="text" data-g="subtitle" value="${esc(a.subtitle || '')}" maxlength="80" placeholder="e.g. Beat the record!">`)
-        + field('color', 'Colour (titles, particles)', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`)
-        + (part.setup ? H('bi-tools', 'Setup in game') + part.setup : '')
-        + (part.play ? H(GAME_ICONS[a.type] || 'bi-controller', (GAME_LABELS[a.type] || a.type).replace(/^./, (c) => c.toUpperCase())) + part.play : '')
-        + (mobs ? H('bi-bug', 'Mobs') + mobs : '')
-        + (heads ? '' : H('bi-music-note-beamed', 'Music')
-          + field('loopSong', 'For everyone playing (a jukebox song, looped)', gmSongSelect(a, 'loopSong'))
-          + field('loopVolume', 'Volume (0.05–1)', `<input type="number" data-g="loopVolume" value="${a.loopVolume || 0.5}" min="0.05" max="1" step="0.05">`)
-          + '<span class="pn-break"></span>'
-          + field('spectateSong', `In the spectator area${a.spectate ? '' : ' (none set yet)'}`, gmSongSelect(a, 'spectateSong'))
-          + field('spectateVolume', 'Volume (0.05–1)', `<input type="number" data-g="spectateVolume" value="${a.spectateVolume || 0.5}" min="0.05" max="1" step="0.05">`)
-          + '<p class="pn-hint pn-field-wide">Players hear it on their Music/Jukebox slider; it starts again when it ends. Spectator music plays to everyone standing in the area: the queue, players who are out, visitors from a watch point.</p>')
-        + H('bi-gift', 'Rewards and messages') + gmPoints(a, field) + (part.rewards || '') + own + winner;
-      const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length} heads` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs} run${t.runs === 1 ? '' : 's'}`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
-      const padHint = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} player${live.finished === 1 ? '' : 's'} found them all` : ''}. Players check how far they are with <code>/game join ${esc(a.name)}</code>.`
-        : waves || quick
-          ? `<i class="bi bi-geo-alt"></i> Players appear at the spawn${a.spawn ? `: ${esc(dimShort(a.spawn.dim))} · ${Math.round(a.spawn.x)}, ${Math.round(a.spawn.y)}, ${Math.round(a.spawn.z)}` : ' (not set yet)'}${waves ? '; the party leader stands there to start' : `; everyone there within ${a.joinSeconds} s plays the same round`}. Move it with <code>/game edit ${esc(a.name)} spawn</code>.`
-          : `<i class="bi bi-geo-alt"></i> Start point (where the game begins): ${esc(where)}. Move it with <code>/game edit ${esc(a.name)} start</code>.`;
-      // Entrances, watch points and back points: placed in game, listed (and removable) here.
-      const pts = (list, k) => (list || []).map((x, xi) => `<li><span>${esc(dimShort(x.dim))} · ${Math.round(x.x)}, ${Math.round(x.y)}, ${Math.round(x.z)}</span><button type="button" class="np-btn small danger" data-gact="ptrm" data-pk="${k}" data-pi="${xi}" title="Take it away"><i class="bi bi-x-lg"></i></button></li>`).join('');
-      const way = (k, icon, label, how, list, note) => `<div class="pn-gm-way"><b><i class="bi ${icon}"></i> ${label} <span class="np-chip">${(list || []).length}</span></b>
-        <small>${note} <code>/game edit ${esc(a.name)} ${how} add</code> where you stand (<code>remove</code> next to one).</small>${(list || []).length ? `<ul class="pn-gm-heads">${pts(list, k)}</ul>` : ''}</div>`;
-      const ways = `<div class="pn-gm-ways">
-        ${way('entrances', 'bi-door-open', 'Entrances', 'entrance', a.entrances, 'Anywhere, e.g. in the hub: particles, the name and top 3 above it; stepping in takes players to the game.')}
-        ${heads ? '' : way('watchEntrances', 'bi-eye', 'Watch points', 'watch', a.watchEntrances, `To the spectator area${a.spectate ? '' : ` (none yet: <code>/game edit ${esc(a.name)} spectate</code>)`}.`)}
-        ${heads ? '' : way('exitPads', 'bi-box-arrow-left', 'Back points', 'back', a.exitPads, 'The way out of spectator areas and the like, to the game hub spawn' + (waves || quick ? '; inside the game, 5 seconds on one leaves it.' : '.'))}
-      </div><p class="pn-hint">After a game everyone goes to the game hub spawn (above; <code>/game spawn set</code>), else back where they came from.</p>`;
-      return `<section class="pn-gm-card ${a.enabled ? '' : 'off'}${gmOpen.has(a.id || a.name) ? '' : ' collapsed'}" data-arena="${i}">
+          + field('mazeLoot', 'Chest loot table', `<input type="text" data-g="mazeLoot" value="${esc(a.mazeLoot || 'minecraft:chests/simple_dungeon')}" placeholder="minecraft:chests/simple_dungeon">`)
+          + '<p class="pn-hint pn-field-wide">Blocks: ids or #tags, comma-separated; one named twice comes twice as often. After changing the size, path width, crossroads, blocks, light or chests, build it again in game. The goal has an exit ring in the game\'s colour.</p>' },
+      waves: gmWaveFields(a, field, num, text, lines),
+      heads: gmHeadFields(a, field, num, lines),
+    }[a.type] || (quick ? gmQuickFields(a, field, num, lines) : {});
+    // Getting in: an entrance (pooled wave arenas use their pool's; head hunts need none).
+    const pooled = waves && String(a.arenaPool || '').trim();
+    const steps = [...(fields.setup || []),
+      heads ? '' : gmOk(a.entrances.length > 0 || pooled, pooled ? `Players get in through the pool "${esc(pooled)}" (Arena pools above)` : a.entrances.length ? `${a.entrances.length} entrance${a.entrances.length === 1 ? '' : 's'}` : 'An entrance where players step in (or they use /game join):', a.entrances.length || pooled ? '' : `/game edit ${n} entrance add`)].filter(Boolean);
+    const setupHtml = `<ul class="pn-gm-setup">${steps.join('')}</ul>${waves || quick ? `<p class="pn-hint">Test it with <code>/game try ${n}</code>: a round with only you.</p>` : ''}`;
+    const todo = (setupHtml.match(/<li class="todo">/g) || []).length;
+    const mobs = a.type === 'maze' ? gmMobs(a, field, num, { label: 'Mobs roaming it while someone runs it', count: 'Mobs at once', hint: 'They come out 12–32 blocks from a runner and go when nobody runs it. Empty = none.' }) : fields.mobs || '';
+    // Messages and commands.
+    const msgs = heads
+      ? text('finishMessage', 'Message when all heads are found', 'default line')
+      : text('startMessage', 'Start message', 'default line')
+        + text('finishMessage', waves ? 'Message when cleared ({score} = waves)' : quick ? 'Message when their score counts ({score})' : 'Finish message ({score})', 'default line')
+        + (waves ? text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line') : '');
+    const cmds = heads
+      ? lines('finishCommands', 'Commands when all heads are found ({player}, {found}, {total})')
+      : lines('startCommands', 'Commands on start ({player}, {game})')
+        + lines('finishCommands', waves ? 'Commands when cleared, or when an endless game ends ({score} = waves)'
+          : quick ? 'Commands for each player whose score counts ({score})'
+          : a.type === 'parkour' ? 'Commands when a run ends (they fell; {score} = jumps made, at least one)' : 'Commands when they finish ({score} = their time)')
+        + (quick ? lines('winnerCommands', 'Commands for the winner, with 2 or more players ({player}, {score}); also the trigger "Wins a round"') : '');
+    // Entrances, watch points and back points: placed in game, listed (and removable) here.
+    const pts = (list, k) => (list || []).map((x, xi) => `<li><span>${gmAt(x)}</span><button type="button" class="np-btn small danger" data-gact="ptrm" data-pk="${k}" data-pi="${xi}" title="Take it away"><i class="bi bi-x-lg"></i></button></li>`).join('');
+    const way = (k, icon, label, how, list, note) => `<div class="pn-gm-way"><b><i class="bi ${icon}"></i> ${label} <span class="np-chip">${(list || []).length}</span></b>
+        <small>${note}</small><code>/game edit ${n} ${how} add</code>${(list || []).length ? `<ul class="pn-gm-heads">${pts(list, k)}</ul>` : ''}</div>`;
+    const ways = `<div class="pn-gm-ways">
+        ${way('entrances', 'bi-door-open', 'Entrances', 'entrance', a.entrances, 'Where players step in, e.g. in the hub; the name and top 3 float above it.')}
+        ${heads ? '' : way('watchEntrances', 'bi-eye', 'Watch points', 'watch', a.watchEntrances, `Take visitors to the spectator area${a.spectate ? '.' : ' (needs one first).'}`)}
+        ${heads ? '' : way('exitPads', 'bi-box-arrow-left', 'Back points', 'back', a.exitPads, 'The way out of the spectator area' + (waves || quick ? '; inside the game, 5 s on one leaves it.' : '.'))}
+      </div>`;
+    const where = heads ? `<i class="bi bi-person-bounding-box"></i> ${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden${live && live.finished ? ` · ${live.finished} found them all` : ''}`
+      : waves || quick ? `<i class="bi bi-geo-alt"></i> Spawn ${a.spawn ? gmAt(a.spawn) : '<span class="pn-dg-warnchip">not set</span>'} <code>/game edit ${n} spawn</code>`
+      : `<i class="bi bi-geo-alt"></i> Start ${a.start ? gmAt(a.start) : '<span class="pn-dg-warnchip">not set</span>'} <code>/game edit ${n} start</code>`;
+    const general = `<h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-tools"></i> Set up in game ${todo ? `<span class="np-chip pn-dg-warnchip">${todo} to do</span>` : '<span class="np-chip pn-gm-ready"><i class="bi bi-check2"></i> ready</span>'}</h4>
+      <p class="pn-gm-where">${where}</p>${setupHtml}${ways}
+      <h4 class="pn-ps-sub"><i class="bi bi-tag"></i> Name and look</h4>
+      <div class="pn-rw-grid">${field('name', 'Name <span class="pn-comment">One word, used in commands. Players see the display name.</span>', `<input type="text" data-g="name" value="${esc(a.name)}" maxlength="32" pattern="[A-Za-z0-9_-]+">`)
+        + field('title', 'Display name', `<input type="text" data-g="title" value="${esc(a.title || '')}" maxlength="48" placeholder="${esc(a.name)}">`)
+        + field('subtitle', 'Line under it on entrances', `<input type="text" data-g="subtitle" value="${esc(a.subtitle || '')}" maxlength="80" placeholder="e.g. Beat the record!">`)
+        + field('color', 'Colour <span class="pn-comment">Titles and particles.</span>', `<input type="color" data-g="color" value="${esc(a.color || '#ffc83d')}">`, 'pn-field-color')}</div>`;
+    // A section's long hints go under its heading, so its fields can sit side by side.
+    const grid = (html) => {
+      const hints = [];
+      html = html.replace(/<p class="pn-hint pn-field-wide">([\s\S]*?)<\/p>/g, (m, t) => { hints.push(t); return ''; });
+      return (hints.length ? `<div class="pn-gm-hints">${hints.map((h) => `<p>${h}</p>`).join('')}</div>` : '') + `<div class="pn-rw-grid">${html}</div>`;
+    };
+    const sub = (icon, title, html) => html ? `<h4 class="pn-ps-sub"><i class="bi ${icon}"></i> ${title}</h4>${grid(html)}` : '';
+    const music = heads ? '' : grid(field('loopSong', 'For everyone playing (looped)', gmSongSelect(a, 'loopSong'), 'pn-field-half')
+      + field('loopVolume', 'Volume (0.05–1)', `<input type="number" data-g="loopVolume" value="${a.loopVolume || 0.5}" min="0.05" max="1" step="0.05">`)
+      + '<span class="pn-break"></span>'
+      + field('spectateSong', `In the spectator area${a.spectate ? '' : ' (none set yet)'}`, gmSongSelect(a, 'spectateSong'), 'pn-field-half')
+      + field('spectateVolume', 'Volume (0.05–1)', `<input type="number" data-g="spectateVolume" value="${a.spectateVolume || 0.5}" min="0.05" max="1" step="0.05">`)
+      + '<p class="pn-hint pn-field-wide">A jukebox song, heard on the Music/Jukebox slider; it starts again when it ends. Spectator music plays to everyone standing in the area: the queue, players who are out, visitors from a watch point.</p>');
+    const label = (GAME_LABELS[a.type] || a.type).replace(/^./, (c) => c.toUpperCase());
+    const panes = [
+      ['general', 'bi-sliders', 'General', general],
+      ['play', GAME_ICONS[a.type] || 'bi-controller', waves ? 'Fight' : label, fields.play ? grid(fields.play) : ''],
+      ['mobs', 'bi-bug', 'Mobs', mobs ? grid(mobs) : ''],
+      ['bosses', 'bi-emoji-angry', 'Bosses', fields.bosses ? grid(fields.bosses) : ''],
+      ['music', 'bi-music-note-beamed', 'Music', music],
+      ['rewards', 'bi-gift', 'Rewards', sub('bi-coin', 'Points', gmPoints(a, field)) + sub('bi-terminal', 'Commands', (fields.rewards || '') + cmds) + sub('bi-chat-left-text', 'Messages', msgs)],
+    ].filter((p) => p[3]);
+    const key = a.id || a.name;
+    const cur = panes.some((p) => p[0] === gmTab[key]) ? gmTab[key] : 'general';
+    const board = top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${heads ? `${t.best} / ${a.heads.length}` : gmScore(a.type, t.best)}</span><small>${heads ? '' : `${t.runs}×`}</small></li>`).join('')}</ol>` : `<p class="pn-hint">${heads ? 'Nobody found one yet.' : 'No runs yet.'}</p>`;
+    const best = top.length && !heads ? `<span class="np-chip" title="Best: ${esc(top[0].name)}"><i class="bi bi-trophy"></i> ${esc(gmScore(a.type, top[0].best))}</span>` : '';
+    const html = `<section class="pn-gm-card ${a.enabled ? '' : 'off'}${gmOpen.has(key) ? '' : ' collapsed'}" data-arena="${i}" data-todo="${todo}" data-live="${live && live.playing ? 1 : 0}">
         <div class="pn-rw-head pn-gm-toggle" title="Open or close">
           <i class="bi bi-chevron-right pn-gm-chevron"></i>
           <label class="np-switch" title="On or off"><input type="checkbox" data-g="enabled" ${a.enabled ? 'checked' : ''}><span></span></label>
           <span class="pn-rw-give-icon" style="color:${esc(a.color || '#ffc83d')}"><i class="bi ${GAME_ICONS[a.type] || 'bi-controller'}"></i></span>
-          <b class="pn-gm-name">${esc(a.title || a.name)}</b>${a.title && a.title !== a.name ? `<span class="pn-hint">${esc(a.name)}</span>` : ''}<span class="np-chip">${esc(GAME_LABELS[a.type] || a.type)}</span>${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting to start' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
+          <span class="pn-gm-title"><b class="pn-gm-name">${esc(a.title || a.name)}</b><small>${a.title && a.title !== a.name ? `${n} · ` : ''}${esc(GAME_LABELS[a.type] || a.type)}${pooled ? ` · pool ${esc(pooled)}` : ''}</small></span>
+          ${todo ? `<span class="np-chip pn-dg-warnchip" title="Steps left on the General tab"><i class="bi bi-exclamation-circle"></i> ${todo} to do</span>` : ''}${best}${live && live.playing ? `<span class="np-chip gold">${live.playing} ${live.waiting ? 'waiting' : 'playing'}${live.wave ? ` · wave ${live.wave}` : ''}</span>` : ''}${live && live.queued ? `<span class="np-chip">${live.queued} queued</span>` : ''}
           <span class="pn-rw-actions">
+            <button type="button" class="np-btn small" data-guide="${a.type}" title="How this game works"><i class="bi bi-book"></i> Guide</button>
             <button type="button" class="np-btn small" data-gact="reset" title="Clear the best scores"><i class="bi bi-trophy"></i> Reset scores</button>
-            <button type="button" class="np-btn small danger" data-gact="delete" title="Remove the arena (what it built stays)"><i class="bi bi-trash"></i></button>
+            <button type="button" class="np-btn small danger" data-gact="delete" title="Remove the game (what it built stays)"><i class="bi bi-trash"></i></button>
           </span>
         </div>
-        <p class="pn-hint">${padHint}</p>
-        ${ways}
-        <div class="pn-gm-body"><div class="pn-rw-grid">${allFields}</div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}</div></div>
+        <div class="pn-subtabs pn-gm-tabs">${panes.map(([k, icon, l]) => `<button type="button" class="pn-subtab${k === cur ? ' active' : ''}" data-gtab="${k}"><i class="bi ${icon}"></i> ${l}</button>`).join('')}</div>
+        <div class="pn-gm-body"><div>${panes.map(([k, , , h]) => `<div class="pn-gm-pane" data-pane="${k}"${k === cur ? '' : ' hidden'}>${h}</div>`).join('')}</div>
+          <aside class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}${runs ? `<small class="pn-hint">${runs} run${runs === 1 ? '' : 's'} in all</small>` : ''}</aside></div>
       </section>`;
-    });
-    // Wave arenas on the Arenas page, every other game here.
-    $('pn-gm-list').innerHTML = cards.filter((c, i) => s.arenas[i].type !== 'waves').join('') || '<p class="np-empty">No games yet. Stand where it should be in game and type <code>/game create parkour MyParkour</code> (or race, maze, ghasts, colorfloor, anvils, treasure, fishing, moles, targets, gallery, chef, lava, heads; wave fights are on the Arenas page).</p>';
-    $('pn-ar-list').innerHTML = cards.filter((c, i) => s.arenas[i].type === 'waves').join('') || '<p class="np-empty">No wave arenas yet. Stand where players should appear in game and type <code>/game create waves MyArena</code>.</p>';
-    GM_LISTS.forEach((id) => $(id).querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; }));
-    GM_SAVES.forEach(([b]) => { $(b).disabled = !edit; });
-    gmRenderPools(edit);
+    return { i, html, todo, runs, live: live && live.playing ? 1 : 0 };
   }
 
   /** Arena pools: their wave arenas, entrances (placed in game, removable here) and who's waiting. */
@@ -2265,23 +2423,21 @@
   /** The wave arena's own fields, and what's still to be set up in game. */
   function gmWaveFields(a, field, num, text, lines) {
     const p = (pos) => pos ? `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}` : '';
-    const box = a.areaMin && a.areaMax
-      ? `${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}` : '';
-    const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
+    const box = gmBox(a.areaMin, a.areaMax);
     const n = esc(a.name);
-    const setup = `<ul class="pn-gm-setup">${[
-      ok(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
-      ok(!!box, box ? `Fight box ${box} (${p(a.areaMin)} → ${p(a.areaMax)})` : 'Fight box (two corners, height included):', box ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
-      ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'} (${['melee', 'ranged', 'boss', ''].map((k) => [k || 'any', a.mobSpawns.filter((m) => (m.kind || '') === k).length]).filter(([, c]) => c).map(([k, c]) => `${k} ${c}`).join(', ')})` : 'Mob spawns:',
+    const setup = [
+      gmOk(!!a.spawn, a.spawn ? `Player spawn ${p(a.spawn)}` : 'Player spawn:', a.spawn ? '' : `/game edit ${n} spawn`),
+      gmOk(!!box, box ? `Fight box ${box} (${p(a.areaMin)} → ${p(a.areaMax)})` : 'Fight box (two corners, height included):', box ? '' : `/game edit ${n} corner1 [x y z]` + ' + corner2'),
+      gmOk(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} mob spawn${a.mobSpawns.length === 1 ? '' : 's'} (${['melee', 'ranged', 'boss', ''].map((k) => [k || 'any', a.mobSpawns.filter((m) => (m.kind || '') === k).length]).filter(([, c]) => c).map(([k, c]) => `${k} ${c}`).join(', ')}); more:` : 'Mob spawns:',
         `/game edit ${n} mobspawn add [melee|ranged|boss]`),
-      ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}${gmSpecSpawns(a)}` : 'Spectator area (optional; without it the dead watch a teammate), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
-      ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
-      ok(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks${(a.moreKits || []).length ? ` (+${a.moreKits.length} more kit${a.moreKits.length === 1 ? '' : 's'}: a random one each)` : ''}` : 'Kit:', a.gear === 'own' ? '' : `/game edit ${n} kit` + ' (more: kit add)'),
-    ].join('')}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (wave 1 with nobody in it).</p>`;
+      gmOk(a.gear === 'own' || a.kit.length > 0, a.gear === 'own' ? 'Players fight with their own gear' : a.kit.length ? `Kit: ${a.kit.length} stacks${(a.moreKits || []).length ? ` (+${a.moreKits.length} more kit${a.moreKits.length === 1 ? '' : 's'}: a random one each)` : ''}; another:` : 'Kit (what you carry becomes it):', a.gear === 'own' ? '' : a.kit.length ? `/game edit ${n} kit add` : `/game edit ${n} kit`),
+      gmOk(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}${gmSpecSpawns(a)}` : 'Spectator area (optional; without it the dead watch a teammate), a box or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`, true),
+      gmOk(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', a.exitPads.length ? '' : `/game edit ${n} back add`, true),
+    ];
     const sel = (k, opts) => `<select data-g="${k}"${typeof a[k] === 'boolean' ? ' data-bool="1"' : ''}>${opts.map(([v, l]) => `<option value="${v}" ${String(a[k]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     const overrides = Object.entries(a.waveLines || {}).sort((x, y) => x[0] - y[0]).map(([w, l]) => `${w}: ${l}`).join('\n');
     return {
-      setup: `<div class="pn-field-wide">${setup}</div>`,
+      setup,
       play: field('arenaPool', 'Arena pool (empty = none)', `<input type="text" data-g="arenaPool" list="pn-gm-pool-names" value="${esc(a.arenaPool || '')}" placeholder="none" maxlength="32">`)
         + field('rounds', 'Waves to clear (0 = endless)', num('rounds', 0, 1000))
         + field('minParty', 'Players, at least', num('minParty', 1, 4)) + field('maxParty', 'Players, at most', num('maxParty', 1, 4))
@@ -2289,22 +2445,40 @@
         + field('breakSeconds', 'Break between waves (s)', num('breakSeconds', 3, 300))
         + field('gear', 'Gear', sel('gear', [['kit', 'kit (their things are kept safe)'], ['own', 'their own']]))
         + (a.gear === 'kit' ? field('removePickups', 'Items found inside', sel('removePickups', [[true, 'vanish afterwards'], [false, 'go to their inbox']])) : ''),
-      mobs: gmMobs(a, field, num, { label: 'Mob pool (generated waves pick from it)', count: 'Mobs alive at once (the rest come as these fall)' })
+      mobs: gmMobs(a, field, num, { label: 'Mob pool (generated waves pick from it)', count: 'Mobs alive at once <span class="pn-comment">The rest of the wave comes as these fall.</span>' })
         + field('firstWave', 'Mobs in wave 1', num('firstWave', 1, 200)) + field('perWave', 'More each wave', num('perWave', 0, 100))
         + field('perPlayer', '% more per extra player', num('perPlayer', 0, 500))
         + field('toughness', '% more health and damage per wave', num('toughness', 0, 500))
-        + field('bossEvery', 'Boss wave every … waves: the boss alone (0 = never)', num('bossEvery', 0, 1000))
-        + field('bossOrder', 'Which boss', sel('bossOrder', [['random', 'a random one from the list'], ['order', 'in order (then round again)']]))
-        + `<label class="pn-field pn-field-wide"><span>Bosses (one pool line each: <code>mob {data}</code>; <code>w5</code> makes a random pick take it five times as often)</span><textarea data-g="bosses" data-lines="1" rows="3" spellcheck="false" placeholder="ravager&#10;wither_skeleton {CustomName:'Bone King'}">${esc((a.bosses || []).join('\n'))}</textarea></label>`
+        + `<label class="pn-field pn-field-wide"><span>Hand-written waves (replace the generated ones), one per line: <code>5: husk x6, skeleton x2</code></span><textarea data-g="waveLines" rows="3" spellcheck="false" placeholder="10: wither_skeleton x4, blaze x2">${esc(overrides)}</textarea></label>`,
+      bosses: field('bossEvery', 'Boss wave every … waves <span class="pn-comment">The boss comes alone. 0 = never.</span>', num('bossEvery', 0, 1000))
+        + field('bossOrder', 'Which boss', sel('bossOrder', [['random', 'at random (by weight)'], ['order', 'in order, then again']]))
+        + `<label class="pn-field pn-field-wide"><span>Bosses: one line each, <code>mob {data}</code>; <code>w5</code> = five times as likely</span><textarea data-g="bosses" data-lines="1" rows="3" spellcheck="false" placeholder="ravager&#10;wither_skeleton {CustomName:'Bone King'}">${esc((a.bosses || []).join('\n'))}</textarea></label>`
+        + `<div class="pn-field pn-field-wide"><span>In the list <button type="button" class="np-btn small" data-guide="bosses" title="Every built-in boss and what it does"><i class="bi bi-book"></i> All bosses</button></span><ul class="pn-gm-bosslist">${gmBossList(a)}</ul></div>`
         + field('katters', 'Add a built-in boss', `<select data-katters="1"><option value="">(pick one to add it)</option>`
           + `<optgroup label="NCC">${[['frost_warden', 'The Frost Warden'], ['hive_queen', 'The Hive Queen'], ['ember_colossus', 'The Ember Colossus'], ['tempest', 'The Tempest'], ['drowned_admiral', 'The Drowned Admiral'], ['bone_architect', 'The Bone Architect'], ['creeper_king', 'The Creeper King'], ['echo_shepherd', 'The Echo Shepherd'], ['coven_matron', 'The Coven Matron'], ['phantom_monarch', 'The Phantom Monarch'], ['piglin_warlord', 'The Piglin Warlord'], ['ender_stalker', 'The Ender Stalker'], ['iron_tyrant', 'The Iron Tyrant'], ['purpur_sentinel', 'The Purpur Sentinel'], ['cinder_lord', 'The Cinder Lord'], ['weeping_ghast', 'The Weeping Ghast'], ['dire_alpha', 'The Dire Alpha'], ['heartwood_creaking', 'The Heartwood Creaking'], ['abyssal_eye', 'The Abyssal Eye'], ['rotting_giant', 'The Rotting Giant'], ['arch_evoker', 'The Arch-Evoker'], ['oxidized_engine', 'The Oxidized Engine'], ['ramlord', 'The Ramlord'], ['llama_matriarch', 'The Llama Matriarch'], ['panda_grandmaster', 'The Panda Grandmaster'], ['trickster_fox', 'The Trickster Fox'], ['glacier_bear', 'The Glacier Bear'], ['elder_sniffer', 'The Elder Sniffer'], ['shellguard', 'The Shellguard'], ['village_elder', 'The Village Elder'], ['master_smith', 'The Master Smith'], ['grand_librarian', 'The Grand Librarian'], ['harvest_keeper', 'The Harvest Keeper'], ['raid_captain', 'The Raid Captain'], ['headsman', 'The Headsman'], ['siege_engineer', 'The Siege Engineer'], ['beastmaster', 'The Beastmaster']].map(([k, l]) => `<option value="ncc:${k}">${l}</option>`).join('')}</optgroup>`
           + `<optgroup label="Katters Structures">${[['arachne', 'Arachne, Mother of Spiders'], ['raj', 'Raj Raksha'], ['rusta', 'Rústa, Chieftain of the Ravaged Lands'], ['tenku', 'Tenkū Mizu Gami (hovers on land)'], ['theron', 'Magus Theron the Betrayer']].map(([k, l]) => `<option value="katters:${k}">${l}</option>`).join('')}</optgroup></select>`)
-        + '<p class="pn-hint pn-field-wide">Built-in bosses (NCC\'s own, and Katters Structures\' by Katter) fight with their own attacks, get the "% more health per wave" on their health, stay inside the fight box and drop nothing. Try one where you stand: <code>/game boss &lt;name&gt;</code>, gone again with <code>/game boss clear</code>.</p>'
-        + `<label class="pn-field pn-field-wide"><span>Hand-written waves (replace the generated ones), one per line: <code>5: husk x6, skeleton x2</code></span><textarea data-g="waveLines" rows="3" spellcheck="false" placeholder="10: wither_skeleton x4, blaze x2">${esc(overrides)}</textarea></label>`,
-      rewards: `<label class="pn-field pn-field-wide"><span>Commands after each cleared wave ({wave}, {player}, {game}): wave rewards</span><textarea data-g="waveCommands" data-lines="1" rows="2" spellcheck="false" placeholder="one per line, without /">${esc((a.waveCommands || []).join('\n'))}</textarea></label>`
-        + text('loseMessage', 'Message when the party loses ({score} = waves)', 'default line')
-        + '<p class="pn-hint pn-field-wide">Clearing the game runs the finish message and commands below (and the Rewards triggers "Finishes a game" / "Clears a wave in a wave arena").</p>',
+        + '<p class="pn-hint pn-field-wide">Built-in bosses (NCC\'s own, and Katters Structures\' by Katter) fight with their own attacks, get the "% more health per wave" on their health, stay inside the fight box and drop nothing. Try one where you stand: <code>/game boss &lt;name&gt;</code>, gone again with <code>/game boss clear</code>. What each one does: <a href="#" data-guide="bosses">the boss guide</a>.</p>',
+      rewards: lines('waveCommands', 'Commands after each cleared wave ({wave}, {player}, {game}): wave rewards')
+        + '<p class="pn-hint pn-field-wide">Clearing the game runs the finish message and commands (and the Rewards triggers "Finishes a game" / "Clears a wave in a wave arena").</p>',
     };
+  }
+
+  /** The bosses on a wave arena's list: the built-in ones with what they do, a link to their part of the guide. */
+  function gmBossList(a) {
+    const info = gm.bossInfo || {};
+    const all = (a.bosses || []).filter((x) => x.trim());
+    const weights = all.map((x) => { const m = x.match(/\s[wW](\d{1,4})(\s|$|\{)/); return m ? +m[1] : 1; });
+    const total = weights.reduce((n, w) => n + w, 0);
+    if (!all.length) return '<li class="pn-hint">No bosses yet: pick one below or write a line.</li>';
+    return all.map((line, i) => {
+      const key = line.trim().split(/[\s{]/)[0].toLowerCase();
+      const full = key.includes(':') ? key : 'minecraft:' + key;
+      const b = info[full];
+      const chance = a.bossOrder === 'order' ? `#${i + 1}` : total ? `${Math.round(weights[i] / total * 100)} %` : '0 %';
+      return `<li><span class="np-chip" title="${a.bossOrder === 'order' ? 'Its turn in the order' : 'Chance to be picked'}">${chance}</span>
+        <span><b>${esc(b ? b.name : full)}</b><small>${b ? esc(b.line) : full.startsWith('minecraft:') ? 'A vanilla mob, with the data on its line.' : 'Not a built-in boss (a mob from a mod or pack?).'}</small></span>
+        ${b ? `<button type="button" class="np-btn small" data-guide="bosses" data-anchor="${esc(full)}">Read more</button>` : ''}</li>`;
+    }).join('');
   }
 
   /**
@@ -2360,9 +2534,8 @@
     const p = (pos) => pos ? `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}` : '';
     const n = esc(a.name);
     const floor = a.type === 'colorfloor';
-    const box = a.areaMin && a.areaMax
-      ? `${Math.abs(a.areaMax.x - a.areaMin.x) + 1} × ${Math.abs(a.areaMax.y - a.areaMin.y) + 1} × ${Math.abs(a.areaMax.z - a.areaMin.z) + 1}` : '';
-    const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
+    const box = gmBox(a.areaMin, a.areaMax);
+    const ok = gmOk;
     const span = a.platformSize * 3 + a.platformGap * 2;
     const moles = a.type === 'moles';
     const lanes = (a.galleryLanes || []).filter((l) => l.from && l.to).length;
@@ -2377,13 +2550,13 @@
       a.type === 'chef' ? ok(cook, cook ? `The cook: ${esc(a.chefNpc)}` : 'The cook: an NPC (Community → NPCs) standing in the kitchen, picked below', '') : '',
       a.type === 'chef' ? ok((a.chefStations || []).length > 0, (a.chefStations || []).length ? `${a.chefStations.length} supply chest${a.chefStations.length === 1 ? '' : 's'} (filled with what they held when set; again: station add)` : 'Supply chests (fill a chest with ingredients, look at it):', `/game edit ${n} station add`) : '',
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
-      ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', `/game edit ${n} exitpad add`),
       ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here${gmSpecSpawns(a)}`
-        : 'Spectator area (optional; where the queue for the next round waits and players who are out watch), a box from two corners or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`),
-    ].join('');
+        : 'Spectator area (optional; where the queue for the next round waits and players who are out watch), a box or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`, true),
+      ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', a.exitPads.length ? '' : `/game edit ${n} back add`, true),
+    ].filter(Boolean);
     const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)',
       targets: ' (a bow and arrows are handed out, arrows refilled)', gallery: ' (snowballs are handed out and refilled anyway)' }[a.type] || '';
-    const setup = `<ul class="pn-gm-setup">${steps}</ul><p class="pn-hint">Test it with <code>/game try ${n}</code> (a round with only you).${floor ? ` After changing the size: <code>/game edit ${n} build</code>.` : ''}</p>`;
+    if (floor) steps.push(ok(true, 'After changing the platform size or gap, build the grid again:', `/game edit ${n} build`));
     const survival = floor || a.type === 'anvils' || a.type === 'lava';
     const mobs = {
       gallery: gmMobs(a, field, num, { label: 'Mobs walking the lanes', count: 'Mobs walking at once', peaceful: false, hint: 'They walk without fighting and can only be hit by shots. NPCs can\'t walk lanes.' }),
@@ -2426,7 +2599,7 @@
     }[a.type] || '';
     const gear = `<select data-g="gear"><option value="kit" ${a.gear === 'kit' ? 'selected' : ''}>kit (their things are kept safe)</option><option value="own" ${a.gear === 'own' ? 'selected' : ''}>their own</option></select>`;
     return {
-      setup: `<div class="pn-field-wide">${setup}</div>`,
+      setup: steps,
       play: field('joinSeconds', 'Join window (seconds)', num('joinSeconds', 0, 120)) + field('maxPlayers', 'Players at most', num('maxPlayers', 1, 32))
         + field('timeLimit', survival ? 'Longest round (seconds, 0 = until the last one is out)' : 'Round length (seconds)', num('timeLimit', 0, 3600))
         + field('gear', `Gear${starter}`, gear) + own
@@ -2439,18 +2612,19 @@
   function gmHeadFields(a, field, num, lines) {
     const n = esc(a.name);
     const skin = gm.headSkins[a.id];
-    const ok = (done, label, how) => `<li class="${done ? 'done' : ''}"><i class="bi ${done ? 'bi-check-circle-fill' : 'bi-circle'}"></i> ${label}${how ? ` <code>${how}</code>` : ''}</li>`;
-    const setup = `<ul class="pn-gm-setup">${[
-      ok(!!skin, skin ? 'Head skin set' : 'Head skin (below, or in game):', skin ? '' : `/game edit ${n} texture <url>`),
-      ok(a.heads.length > 0, a.heads.length ? `${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden; more:` : 'Hide heads: take some and place them', `/game edit ${n} headitem`),
-    ].join('')}</ul><p class="pn-hint">Placing a head from <code>headitem</code> adds it; <code>/game edit ${n} head add</code> adds a player head you look at. Break one in creative (as an admin) to take it out; players can't break them.</p>`;
+    const setup = [
+      gmOk(!!skin, skin ? 'Head skin set' : 'Head skin (on the Head hunt tab, or in game):', skin ? '' : `/game edit ${n} texture <url>`),
+      gmOk(a.heads.length > 0, a.heads.length ? `${a.heads.length} head${a.heads.length === 1 ? '' : 's'} hidden; more (placing one adds it):` : 'Hide heads: take some and place them', `/game edit ${n} headitem`),
+      gmOk(true, 'A player head you look at joins with', `/game edit ${n} head add`),
+    ];
     const face = skin ? `<img class="pn-gm-headface" src="info/heads/${esc(skin)}" alt="" width="32" height="32">` : '';
     const list = a.heads.length
       ? `<ul class="pn-gm-heads">${a.heads.map((h, hi) => `<li><span>${esc(dimShort(h.dim))} · ${Math.round(h.x)}, ${Math.round(h.y)}, ${Math.round(h.z)}</span><button type="button" class="np-btn small danger" data-gact="headrm" data-h="${hi}" title="Take this head out of the hunt (the block stays)"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>`
       : '<p class="pn-hint">No heads hidden yet.</p>';
     return {
-      setup: `<div class="pn-field-wide">${setup}</div>`,
-      play: `<label class="pn-field pn-field-wide"><span>Head skin (textures.minecraft.net URL, its hash, or the base64 value)</span><span class="pn-gm-skin">${face}<input type="text" data-g="headTexture" value="${esc(a.headTexture || '')}" placeholder="http://textures.minecraft.net/texture/…"></span></label>`
+      setup,
+      play: '<p class="pn-hint pn-field-wide">Break a head in creative (as an admin) to take it out; players can\'t break them.</p>'
+        + `<label class="pn-field pn-field-wide"><span>Head skin (textures.minecraft.net URL, its hash, or the base64 value)</span><span class="pn-gm-skin">${face}<input type="text" data-g="headTexture" value="${esc(a.headTexture || '')}" placeholder="http://textures.minecraft.net/texture/…"></span></label>`
       + `<div class="pn-field pn-field-wide"><span>Where the heads are</span>${list}</div>`,
       rewards: field('rewardEvery', 'A reward every … heads (0 = none)', num('rewardEvery', 0, 10000))
         + lines('everyCommands', 'Commands every few heads ({player}, {found}, {total})')
@@ -2500,9 +2674,20 @@
     else if (e.target.dataset.lines) a[k] = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
     else a[k] = e.target.value;
     if (k === 'enabled') card.classList.toggle('off', !a.enabled);
+    if (k === 'bosses' || k === 'bossOrder') { const ul = card.querySelector('.pn-gm-bosslist'); if (ul) ul.innerHTML = gmBossList(a); }
     gmChanged(k === 'gear');
   });
   gmOn('click', async (e) => {
+    // A card's own tabs.
+    const tb = e.target.closest('[data-gtab]');
+    if (tb) {
+      const card = tb.closest('[data-arena]');
+      const a = gm.settings.arenas[+card.dataset.arena];
+      gmTab[a.id || a.name] = tb.dataset.gtab;
+      card.querySelectorAll('[data-gtab]').forEach((x) => x.classList.toggle('active', x === tb));
+      card.querySelectorAll('[data-pane]').forEach((x) => { x.hidden = x.dataset.pane !== tb.dataset.gtab; });
+      return;
+    }
     // The card's header opens and closes it (not its switch or buttons).
     const head = e.target.closest('.pn-gm-toggle');
     if (head && !e.target.closest('input, button, label, select, a')) {
@@ -2541,6 +2726,28 @@
       }
     }
   });
+  // Search, filters and sorting above the game lists (not settings: never counted as a change).
+  [['pn-gm-tools', 'pn-gm-list'], ['pn-ar-tools', 'pn-ar-list']].forEach(([tools, list]) => {
+    const set = (e) => {
+      const k = e.target.dataset.gv;
+      if (!k) return;
+      gmViewOf(list)[k] = e.target.value;
+      gmKeepView();
+      if (k === 'sort') renderArenas(); else gmFilter(list);
+    };
+    $(tools).addEventListener('input', set);
+    $(tools).addEventListener('click', (e) => {
+      const b = e.target.closest('[data-gv-all]');
+      if (!b) return;
+      const open = b.dataset.gvAll === 'open';
+      $(list).querySelectorAll('[data-arena]:not([hidden])').forEach((card) => {
+        const a = gm.settings.arenas[+card.dataset.arena];
+        card.classList.toggle('collapsed', !open);
+        if (open) gmOpen.add(a.id || a.name); else gmOpen.delete(a.id || a.name);
+      });
+      gmKeepOpen();
+    });
+  });
   $('pn-gm-enabled').addEventListener('change', (e) => { gm.settings.enabled = e.target.checked; gmChanged(false); });
   $('pn-gm-qparty').addEventListener('change', (e) => { gm.settings.quickMenu.party = e.target.checked; gmChanged(false); });
   $('pn-gm-qhide').addEventListener('change', (e) => {
@@ -2566,6 +2773,124 @@
       formMsg(msg, err.message, false);
     }
   }));
+
+  // ── Guides (Markdown, shown in a dialog) ──
+
+  /** A small Markdown subset: headings, paragraphs, lists, tables, code, quotes as tips, bold, italics, links. */
+  function mdToHtml(md) {
+    const inline = (t) => esc(t)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+      .replace(/(^|[^*\w])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>')
+      // Links to the other docs (ROGUE.md, BOSSES.md…) open their guide here; anything else that isn't http(s) stays text.
+      .replace(/\[([^\]]+)\]\(([A-Z]+)\.md(?:#[^)]*)?\)/g, (m, t, f) => ({ BOSSES: 1, DUNGEONS: 1, ROGUE: 1 }[f] ? `<a href="guide:${f.toLowerCase()}">${t}</a>` : f === 'GAMES' ? `<a href="guide:basics">${t}</a>` : t))
+      .replace(/\[([^\]]+)\]\((https?:[^)\s]+|guide:[a-z]+)\)/g, (m, t, u) => u.startsWith('guide:') ? `<a href="${u}">${t}</a>` : `<a href="${u}" target="_blank" rel="noopener">${t} <i class="bi bi-box-arrow-up-right"></i></a>`)
+      // In-page links ([Random rooms](#5-random-rooms)) stay text.
+      .replace(/\[([^\]]+)\]\(#[^)]*\)/g, '$1');
+    const out = [];
+    const lines = md.replace(/\r/g, '').split('\n');
+    for (let i = 0; i < lines.length;) {
+      const l = lines[i];
+      if (!l.trim()) { i++; continue; }
+      if (l.startsWith('```')) {
+        const body = [];
+        for (i++; i < lines.length && !lines[i].startsWith('```'); i++) body.push(lines[i]);
+        i++;
+        out.push(`<pre><code>${esc(body.join('\n'))}</code></pre>`);
+        continue;
+      }
+      const h = l.match(/^(#{1,4})\s+(.*)$/);
+      if (h) {
+        // A heading naming a boss or the like (`ncc:frost_warden`) can be jumped to: id g-ncc-frost_warden.
+        const key = h[2].match(/`([a-z0-9_]+:[a-z0-9_]+)`/);
+        out.push(`<h${h[1].length + 1}${key ? ` id="g-${key[1].replace(':', '-')}"` : ''}>${inline(h[2])}</h${h[1].length + 1}>`);
+        i++;
+        continue;
+      }
+      if (/^\s*\|/.test(l)) {
+        const rows = [];
+        for (; i < lines.length && /^\s*\|/.test(lines[i]); i++) rows.push(lines[i].trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
+        const head = rows.shift();
+        const body = rows.filter((r) => !r.every((c) => /^:?-+:?$/.test(c)));
+        out.push(`<div class="pn-md-table"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+        continue;
+      }
+      if (/^>\s?/.test(l)) {
+        const body = [];
+        for (; i < lines.length && /^>\s?/.test(lines[i]); i++) body.push(lines[i].replace(/^>\s?/, ''));
+        out.push(`<div class="pn-md-tip"><i class="bi bi-lightbulb"></i><div>${inline(body.join(' '))}</div></div>`);
+        continue;
+      }
+      const li = /^(\s*)([-*]|\d+\.)\s+/;
+      if (li.test(l)) {
+        const ordered = /^\s*\d+\./.test(l);
+        const items = [];
+        for (; i < lines.length && (li.test(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && items.length)); i++) {
+          if (li.test(lines[i])) items.push(lines[i].replace(li, '')); else items[items.length - 1] += ' ' + lines[i].trim();
+        }
+        out.push(`<${ordered ? 'ol' : 'ul'}>${items.map((x) => `<li>${inline(x)}</li>`).join('')}</${ordered ? 'ol' : 'ul'}>`);
+        continue;
+      }
+      const para = [];
+      for (; i < lines.length && lines[i].trim() && !/^(#{1,4}\s|```|\s*\||>|\s*([-*]|\d+\.)\s)/.test(lines[i]); i++) para.push(lines[i].trim());
+      out.push(`<p>${inline(para.join(' '))}</p>`);
+    }
+    return out.join('');
+  }
+
+  const guideCache = {};
+  /** A guide's Markdown (fetched once). */
+  async function guideText(name) {
+    if (!guideCache[name]) {
+      const res = await fetch(`guides/${encodeURIComponent(name)}.md?v=${encodeURIComponent((me && me.version) || '')}`);
+      if (!res.ok) throw new Error('No guide for this yet.');
+      guideCache[name] = await res.text();
+    }
+    return guideCache[name];
+  }
+  /** The built-in bosses from the boss guide: key → { name, line } (its first line under the heading). */
+  async function bossInfo() {
+    if (gm.bossInfo) return gm.bossInfo;
+    const out = {};
+    try {
+      const lines = (await guideText('bosses')).split('\n');
+      lines.forEach((l, i) => {
+        const m = l.match(/^###\s+(.+?)\s+—\s+`([a-z0-9_]+:[a-z0-9_]+)`/);
+        if (m) out[m[2]] = { name: m[1], line: (lines.slice(i + 1).find((x) => x.trim()) || '').replace(/[*`]/g, '').trim() };
+      });
+    } catch (e) { /* the list just shows the keys */ }
+    return (gm.bossInfo = out);
+  }
+  /** Opens guides/<name>.md in the guide dialog. */
+  async function openGuide(name, anchor) {
+    const dlg = $('pn-guide');
+    const tpl = GM_TEMPLATES.find((t) => t[0] === name);
+    $('pn-guide-icon').className = `bi ${GAME_ICONS[name] || 'bi-book'}`;
+    $('pn-guide-title').textContent = tpl ? tpl[1] : { basics: 'How games work', bosses: 'Bosses', dungeons: 'Dungeons', rogue: 'Rogue runs', slots: 'Slot Machines' }[name] || name;
+    const icon = { bosses: 'bi-emoji-angry', dungeons: 'bi-door-closed', rogue: 'bi-shuffle', slots: 'bi-dice-5' }[name];
+    if (icon) $('pn-guide-icon').className = 'bi ' + icon;
+    $('pn-guide-body').innerHTML = '<p class="pn-hint">Loading…</p>';
+    if (!dlg.open) dlg.showModal();
+    try {
+      await guideText(name);
+      // The first heading is the dialog's title already.
+      $('pn-guide-body').innerHTML = mdToHtml(guideCache[name].replace(/^#\s+.*\n/, ''));
+      $('pn-guide-body').scrollTop = 0;
+      const to = anchor && document.getElementById('g-' + anchor.replace(':', '-'));
+      if (to) { to.scrollIntoView({ block: 'start' }); to.classList.add('pn-md-hit'); }
+    } catch (err) {
+      $('pn-guide-body').innerHTML = `<p class="pn-hint">${esc(err.message)}</p>`;
+    }
+  }
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-guide]');
+    if (g) { e.preventDefault(); openGuide(g.dataset.guide, g.dataset.anchor); return; }
+    // Links between guides: guide:<name>.
+    const link = e.target.closest('#pn-guide-body a[href^="guide:"]');
+    if (link) { e.preventDefault(); openGuide(link.getAttribute('href').slice(6)); }
+  });
+  $('pn-guide-close').addEventListener('click', () => $('pn-guide').close());
+  $('pn-guide').addEventListener('click', (e) => { if (e.target === $('pn-guide')) $('pn-guide').close(); });
 
   // ── NPCs ────────────────────────────────────────────────────────────────
 
@@ -3240,7 +3565,11 @@
   const dgOpen = new Set();
   /** Room cards that are open (by id). */
   const rmOpen = new Set();
-  const dg = { settings: null, runs: [], scores: {}, dirty: false, removed: { dungeons: [], rooms: [], pads: [], waiting: [] } };
+  const dg = { settings: null, runs: [], scores: {}, dirty: false, removed: { dungeons: [], rooms: [], pads: [], waiting: [], rogueWaiting: [] } };
+  /** Dungeons and rogue runs each have their own rooms, groups, pads and waiting areas, listed on their own tab. */
+  const DG_KINDS = [{ rogue: false, groups: 'pn-dg-groups', rooms: 'pn-dg-rooms', pads: 'pn-dg-pads', runs: 'pn-dg-runs', cmd: '/dungeon', what: 'dungeon' },
+    { rogue: true, groups: 'pn-rg-groups', rooms: 'pn-rg-rooms', pads: 'pn-rg-pads', runs: 'pn-rg-runs', cmd: '/rogue', what: 'rogue run' }];
+  const dgIsRogue = (d) => d && d.mode === 'rogue';
   const DG_TABS = ['dungeons', 'rogue'];
   const DG_SAVES = [['pn-dg-save', 'pn-dg-msg'], ['pn-rg-save', 'pn-rg-msg']];
   const dgNote = (text, ok) => formMsg('pn-dg-note', text, ok);
@@ -3253,7 +3582,7 @@
       const fresh = !dg.dirty || !dg.settings;
       if (fresh) {
         dg.settings = d.settings;
-        dg.removed = { dungeons: [], rooms: [], pads: [], waiting: [] };
+        dg.removed = { dungeons: [], rooms: [], pads: [], waiting: [], rogueWaiting: [] };
         dg.dirty = false;
       }
       renderDungeons();
@@ -3267,18 +3596,22 @@
     const edit = can('settings.server');
     const s = dg.settings;
     $('pn-dg-enabled').checked = s.enabled;
+    $('pn-rg-enabled').checked = s.rogueEnabled !== false;
     $('pn-dg-slots').value = s.maxSlots;
     $('pn-dg-party').value = s.maxParty;
     $('pn-dg-pieces').value = s.piecesPerTick;
-    ['pn-dg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces', 'pn-dg-rogue-name', 'pn-dg-rogue-add'].forEach((id) => { $(id).disabled = !edit; });
+    ['pn-dg-enabled', 'pn-rg-enabled', 'pn-dg-slots', 'pn-dg-party', 'pn-dg-pieces', 'pn-dg-rogue-name', 'pn-dg-rogue-add'].forEach((id) => { $(id).disabled = !edit; });
     DG_SAVES.forEach(([b]) => { $(b).disabled = !edit; });
 
-    $('pn-dg-runs').innerHTML = dg.runs.length ? `<ul class="pn-dg-runs">${dg.runs.map((r) => `<li>
+    DG_KINDS.forEach((k) => {
+      const runs = dg.runs.filter((r) => dgIsRogue(s.dungeons.find((d) => d.name === r.dungeon)) === k.rogue);
+      $(k.runs).innerHTML = runs.length ? `<ul class="pn-dg-runs">${runs.map((r) => `<li>
         <b>${esc(r.dungeon)}</b><span class="np-chip">${esc(r.state)}</span><span class="np-chip">slot ${r.slot}</span>${r.depth != null ? `<span class="np-chip">room ${r.depth}</span>` : ''}
         <span class="pn-dg-who">${r.players.map((p) => `<span class="${p.out ? 'out' : ''}">${esc(p.name)}${p.out ? ' (out)' : p.lives ? ` ❤${p.lives}` : ''}</span>`).join('') || '<em>nobody (tried from the console)</em>'}</span>
         <span class="pn-dg-time">${gmClock(r.millis)}</span>
         <button type="button" class="np-btn small danger" data-dgclose="${r.slot}" ${edit ? '' : 'disabled'}><i class="bi bi-x-lg"></i> Close</button></li>`).join('')}</ul>`
-      : '<p class="pn-hint">No dungeon runs right now.</p>';
+        : `<p class="pn-hint">No ${k.what}s going right now.</p>`;
+    });
 
     const opt = (v, cur, label) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${label}</option>`;
     const dgCard = (d, i) => {
@@ -3346,23 +3679,26 @@
 
     renderRooms(edit);
 
-    $('pn-dg-pads').innerHTML = s.pads.length ? `<ul class="pn-dg-runs">${s.pads.map((p, i) => `<li><span class="np-chip">${esc(p.pool)}</span>
+    DG_KINDS.forEach((k) => {
+      const pads = s.pads.map((p, i) => ({ p, i })).filter((x) => !!x.p.rogue === k.rogue);
+      $(k.pads).innerHTML = pads.length ? `<ul class="pn-dg-runs">${pads.map(({ p, i }) => `<li><span class="np-chip">${esc(p.pool)}</span>
         <span>${esc(dimShort(p.pos.dim))} · ${Math.round(p.pos.x)}, ${Math.round(p.pos.y)}, ${Math.round(p.pos.z)}</span>
-        ${s.dungeons.some((d) => d.pool === p.pool && d.enabled) ? '' : '<span class="pn-dg-warn">no dungeon in this pool</span>'}
+        ${s.dungeons.some((d) => dgIsRogue(d) === k.rogue && d.pool === p.pool && d.enabled) ? '' : `<span class="pn-dg-warn">no ${k.what} in this pool</span>`}
         <button type="button" class="np-btn small danger" data-dgpad="${i}" ${edit ? '' : 'disabled'}><i class="bi bi-trash"></i></button></li>`).join('')}</ul>`
-      : '<p class="pn-hint">No pads yet: stand where players should start and type <code>/dungeon pad add &lt;pool&gt;</code>.</p>';
-    // Waiting areas: where parties queue when every copy is in use (set in game, per pool).
-    const areas = Object.entries(s.waiting || {});
-    $('pn-dg-pads').innerHTML += `<p class="pn-hint pn-dg-wait-head"><i class="bi bi-hourglass-split"></i> Waiting areas (optional): when every copy is in use, a party on the pad queues there and starts as soon as one is free. Without one, they try again later. Set one with <code>/dungeon pad wait &lt;pool&gt; [radius]</code> (radius ${Number(s.waitRadius || 8)}).</p>`
-      + (areas.length ? `<ul class="pn-dg-runs">${areas.map(([pool, a]) => `<li><span class="np-chip">${esc(pool)}</span><span>${esc(dimShort(a.dim))} · ${Math.round(a.x)}, ${Math.round(a.y)}, ${Math.round(a.z)}</span>
+        : `<p class="pn-hint">No pads yet: stand where players should start and type <code>${k.cmd} pad add &lt;pool&gt;</code>.</p>`;
+      // Waiting areas: where parties queue when every copy is in use (set in game, per pool).
+      const areas = Object.entries((k.rogue ? s.rogueWaiting : s.waiting) || {});
+      $(k.pads).innerHTML += `<p class="pn-hint pn-dg-wait-head"><i class="bi bi-hourglass-split"></i> Waiting areas (optional): when every copy is in use, a party on the pad queues there and starts as soon as one is free. Without one, they try again later. Set one with <code>${k.cmd} pad wait &lt;pool&gt; [radius]</code> (radius ${Number(s.waitRadius || 8)}).</p>`
+        + (areas.length ? `<ul class="pn-dg-runs">${areas.map(([pool, a]) => `<li><span class="np-chip">${esc(pool)}</span><span>${esc(dimShort(a.dim))} · ${Math.round(a.x)}, ${Math.round(a.y)}, ${Math.round(a.z)}</span>
         <button type="button" class="np-btn small danger" data-dgwait="${esc(pool)}" ${edit ? '' : 'disabled'} title="No waiting area for this pool"><i class="bi bi-trash"></i></button></li>`).join('')}</ul>` : '');
+    });
     ['pn-dg-list', 'pn-rg-list'].forEach((id) => $(id).querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; }));
   }
 
   /** Rooms a rogue group has (on and saved, with a start marker). */
   function dgGroupRooms(g) {
     if (!g) return 0;
-    return (dg.settings.rooms || []).filter((r) => r.enabled && r.savedAt && r.groups.includes(g) && (r.markers || []).some((m) => m.type === 'start')).length;
+    return (dg.settings.rooms || []).filter((r) => r.rogue && r.enabled && r.savedAt && r.groups.includes(g) && (r.markers || []).some((m) => m.type === 'start')).length;
   }
 
   function dgRogueWarn(d) {
@@ -3384,7 +3720,7 @@
         <td class="${rg[t] && !rooms(rg[t]) ? 'pn-dg-warn' : ''}">${rg[t] ? rooms(rg[t]) : '–'}</td>
         <td>${t === 'boss' ? '<small>every … rooms</small>' : `<input type="number" data-tw="${t}" min="0" max="100" value="${tw[t] ?? 0}">`}</td></tr>`).join('');
     return `${H('bi-shuffle', 'Rooms')}
-      <p class="pn-hint pn-field-wide">Rooms are dungeon rooms saved into a group (<code>/dungeon room save &lt;room&gt; &lt;group&gt;</code>) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms.</p>
+      <p class="pn-hint pn-field-wide">Rooms are rogue rooms saved into a group (<code>/rogue room save &lt;room&gt; &lt;group&gt;</code>, listed under Rogue rooms below) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms.</p>
       ${field('First room (optional, a safe start), group <small>(' + rooms(d.startGroup) + ' rooms)</small>', `<input type="text" data-d="startGroup" value="${esc(d.startGroup || '')}" placeholder="${esc(d.name.toLowerCase())}_start" spellcheck="false">`)}
       ${field('Boss room every … rooms (0 = never)', num('bossEvery', 0, 100))}
       ${field('Rooms to win (0 = endless)', num('maxDepth', 0, 999))}
@@ -3565,9 +3901,15 @@
   }
 
   function renderRooms(edit) {
+    DG_KINDS.forEach((k) => renderRoomsOf(edit, k));
+  }
+
+  /** One kind's room groups and rooms (indexes stay those of the whole lists). */
+  function renderRoomsOf(edit, k) {
     const s = dg.settings;
-    const rooms = s.rooms || [];
-    $('pn-dg-groups').innerHTML = (s.groups || []).length ? `<ul class="pn-dg-runs">${s.groups.map((g, i) => {
+    const rooms = (s.rooms || []).filter((r) => !!r.rogue === k.rogue);
+    const groups = (s.groups || []).map((g, i) => ({ g, i })).filter((x) => !!x.g.rogue === k.rogue);
+    $(k.groups).innerHTML = groups.length ? `<ul class="pn-dg-runs">${groups.map(({ g, i }) => {
       const inGroup = rooms.filter((r) => r.groups.includes(g.name) && r.enabled);
       const total = inGroup.reduce((n, r) => n + r.weight, 0);
       const shares = inGroup.map((r) => `${esc(r.name)} ${Math.round(r.weight * 100 / total)}%`).join(', ');
@@ -3575,14 +3917,15 @@
         <label class="pn-dg-inline">filled <input type="number" min="0" max="100" data-g="fillChance" value="${g.fillChance}"> %</label>
         <label class="pn-dg-inline" title="Dungeons: 0 = right away, 1 = only in rooms inside another room… Rogue runs: the room number it can come from">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
         <small>${inGroup.length ? shares : '<span class="pn-dg-warn">no rooms (that are on)</span>'}${(() => {
-          const runs = s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup === g.name || Object.values(d.roomGroups || {}).includes(g.name))).map((d) => {
+          const runs = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup === g.name || Object.values(d.roomGroups || {}).includes(g.name))).map((d) => {
             const t = d.startGroup === g.name ? 'first room' : Object.entries(d.roomGroups || {}).filter(([, v]) => v === g.name).map(([k]) => k).join(', ');
             return `${esc(d.name)} (${esc(t)})`;
           });
           return runs.length ? ` · rogue run: ${runs.join(', ')}` : '';
         })()}</small></li>`;
-    }).join('')}</ul>` : '<p class="pn-hint">No groups yet: a spot\'s target pool or a room\'s group makes one.</p>';
-    $('pn-dg-rooms').innerHTML = rooms.map((r, i) => {
+    }).join('')}</ul>` : `<p class="pn-hint">No groups yet: ${k.rogue ? 'a rogue run\'s room types or a room\'s group make one' : 'a spot\'s target pool or a room\'s group makes one'}.</p>`;
+    $(k.rooms).innerHTML = (s.rooms || []).map((r, i) => {
+      if (!!r.rogue !== k.rogue) return '';
       const doors = {};
       (r.connectors || []).filter((c) => !c.pool).forEach((c) => { doors[c.name] = (doors[c.name] || 0) + 1; });
       const spots = (r.connectors || []).filter((c) => c.pool).map((c) => c.pool);
@@ -3591,7 +3934,7 @@
       const rogueRoom = (r.markers || []).some((m) => m.type === 'door' || m.type === 'spawn' || m.type === 'shop');
       const info = [Object.entries(doors).map(([k, n]) => `jigsaw door ${esc(k)}${n > 1 ? ' ×' + n : ''}`).join(', ') || (rogueRoom ? '' : '<span class="pn-dg-warn">no jigsaw doors</span>'),
         spots.length ? 'spots: ' + spots.map(esc).join(', ') : '', Object.entries(counts).map(([k, n]) => `${n} ${k}`).join(', ')].filter(Boolean).join(' · ');
-      const usedBy = s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup && r.groups.includes(d.startGroup) || Object.values(d.roomGroups || {}).some((g) => g && r.groups.includes(g)))).map((d) => d.name);
+      const usedBy = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup && r.groups.includes(d.startGroup) || Object.values(d.roomGroups || {}).some((g) => g && r.groups.includes(g)))).map((d) => d.name);
       return `<section class="pn-gm-card ${r.enabled ? '' : 'off'}${rmOpen.has(r.id || r.name) ? '' : ' collapsed'}" data-room="${i}">
         <div class="pn-rw-head pn-gm-toggle" title="Open or close">
           <i class="bi bi-chevron-right pn-gm-chevron"></i>
@@ -3609,8 +3952,8 @@
           <label class="pn-field"><span>At most per copy (0 = no limit)</span><input type="number" data-r="maxPerCopy" min="0" max="99" value="${r.maxPerCopy}"></label>
         </div>
       </section>`;
-    }).join('') || '<p class="pn-hint">No rooms yet: build one, then <code>/dungeon room create &lt;name&gt;</code> at a corner in game.</p>';
-    ['pn-dg-groups', 'pn-dg-rooms'].forEach((id) => $(id).querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; }));
+    }).join('') || `<p class="pn-hint">No rooms yet: build one, then <code>${k.cmd} room create &lt;name&gt;</code> at a corner in game.</p>`;
+    [k.groups, k.rooms].forEach((id) => $(id).querySelectorAll('input, select, button').forEach((el) => { el.disabled = !edit; }));
   }
 
   function dgChanged(rerender) {
@@ -3634,11 +3977,12 @@
   const DG_GLOBAL = { 'pn-dg-slots': 'maxSlots', 'pn-dg-party': 'maxParty', 'pn-dg-pieces': 'piecesPerTick' };
   Object.entries(DG_GLOBAL).forEach(([id, k]) => $(id).addEventListener('input', (e) => { dg.settings[k] = Number(e.target.value) || 0; dgChanged(false); }));
   $('pn-dg-enabled').addEventListener('change', (e) => { dg.settings.enabled = e.target.checked; dgChanged(false); });
-  // A rogue run: no build of its own (its rooms come from groups), so it's made here or with /dungeon rogue create.
+  $('pn-rg-enabled').addEventListener('change', (e) => { dg.settings.rogueEnabled = e.target.checked; dgChanged(false); });
+  // A rogue run: no build of its own (its rooms come from groups), so it's made here or with /rogue create.
   $('pn-dg-rogue-add').addEventListener('click', () => {
     const name = $('pn-dg-rogue-name').value.trim();
     if (!/^[A-Za-z0-9_-]{1,32}$/.test(name)) { formMsg('pn-rg-note', 'A one-word name (letters, digits, - and _).', false); return; }
-    if (dg.settings.dungeons.some((d) => d.name.toLowerCase() === name.toLowerCase())) { formMsg('pn-rg-note', 'There is one with that name already.', false); return; }
+    if (dg.settings.dungeons.some((d) => d.name.toLowerCase() === name.toLowerCase())) { formMsg('pn-rg-note', 'There is a dungeon or rogue run with that name already (they share names).', false); return; }
     const low = name.toLowerCase();
     dg.settings.dungeons.push({
       id: '', name, mode: 'rogue', enabled: true, pool: 'default', minParty: 1, maxParty: 4, lives: 0, outSpectate: true, timeLimit: 0, peacefulFight: true,
@@ -3691,13 +4035,14 @@
     else d.spotChances[spot] = Math.max(0, Math.min(100, Number(e.target.value) || 0));
     dgChanged(false);
   });
-  $('pn-dg-groups').addEventListener('input', (e) => {
+  const dgEach = (key, type, fn) => DG_KINDS.forEach((k) => $(k[key]).addEventListener(type, fn));
+  dgEach('groups', 'input', (e) => {
     const li = e.target.closest('[data-group]');
     if (!li || !e.target.dataset.g) return;
     dg.settings.groups[+li.dataset.group][e.target.dataset.g] = Number(e.target.value) || 0;
     dgChanged(false);
   });
-  $('pn-dg-rooms').addEventListener('input', (e) => {
+  dgEach('rooms', 'input', (e) => {
     const card = e.target.closest('[data-room]');
     const k = e.target.dataset.r;
     if (!card || !k) return;
@@ -3713,7 +4058,7 @@
     dgChanged(false);
   });
   // Group shares and warnings follow the room fields once a field is left.
-  $('pn-dg-rooms').addEventListener('change', () => renderRooms(can('settings.server')));
+  dgEach('rooms', 'change', () => renderRooms(can('settings.server')));
   const dgResave = async (e) => {
     const b = e.target.closest('[data-dgresave]');
     if (!b) return false;
@@ -3730,7 +4075,7 @@
     }
     return true;
   };
-  $('pn-dg-rooms').addEventListener('click', async (e) => {
+  dgEach('rooms', 'click', async (e) => {
     const head = e.target.closest('.pn-gm-toggle');
     if (head && !e.target.closest('input, button, label, select, a')) {
       const card = head.closest('[data-room]');
@@ -3763,11 +4108,12 @@
       dgChanged(true);
     }
   });
-  $('pn-dg-pads').addEventListener('click', (e) => {
+  dgEach('pads', 'click', (e) => {
     const w = e.target.closest('[data-dgwait]');
     if (w) {
-      dg.removed.waiting.push(w.dataset.dgwait);
-      delete dg.settings.waiting[w.dataset.dgwait];
+      const rogue = e.currentTarget.id === 'pn-rg-pads';
+      dg.removed[rogue ? 'rogueWaiting' : 'waiting'].push(w.dataset.dgwait);
+      delete dg.settings[rogue ? 'rogueWaiting' : 'waiting'][w.dataset.dgwait];
       dgChanged(true);
       return;
     }
@@ -3778,7 +4124,7 @@
     dg.settings.pads.splice(+b.dataset.dgpad, 1);
     dgChanged(true);
   });
-  $('pn-dg-runs').addEventListener('click', async (e) => {
+  dgEach('runs', 'click', async (e) => {
     const b = e.target.closest('[data-dgclose]');
     if (!b || !confirm('Close this run? Everyone in it is sent back.')) return;
     try {
@@ -8854,13 +9200,22 @@
       <span class="pn-cl-dot" style="background:${esc(c)}"></span>${esc(n)}</label>`).join('');
     f.reactionsOn.checked = s.reactions.enabled;
     f.gapSeconds.value = s.reactions.gapSeconds;
-    $('pn-pk-reactions').innerHTML = `<thead><tr><th>Reaction</th><th>On</th><th>Bubble lines (separated by |)</th></tr></thead><tbody>${(ptData.reactions || []).map((r) => {
+    $('pn-pk-reactions').innerHTML = `<thead><tr><th>Reaction</th><th>On</th><th>Bubble lines (one per line, up to 10, 32 characters each; a random one is said)</th></tr></thead><tbody>${(ptData.reactions || []).map((r) => {
       const e = s.reactions.list[r.id] || { on: true, lines: r.lines };
       return `<tr data-reaction="${esc(r.id)}"><td>${esc(r.label)}${r.warning ? ' <span class="np-tag">warning</span>' : ''}</td>
         <td><label class="np-switch"><input type="checkbox" data-r="on" ${e.on ? 'checked' : ''}><span></span></label></td>
-        <td><input type="text" data-r="lines" value="${esc(e.lines.join(' | '))}" placeholder="${esc(r.lines.join(' | '))}"></td></tr>`;
+        <td><div class="pn-pk-lines"><textarea data-r="lines" rows="${Math.max(2, Math.min(10, e.lines.length))}" spellcheck="false" placeholder="${esc(r.lines.join('\n'))}">${esc(e.lines.join('\n'))}</textarea><small data-r-count>${e.lines.length}/10</small></div></td></tr>`;
     }).join('')}</tbody>`;
   }
+
+  // The line count next to each reaction's lines (the server takes at most 10 of up to 32 characters).
+  $('pn-pk-reactions').addEventListener('input', (e) => {
+    if (e.target.dataset.r !== 'lines') return;
+    const lines = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const c = e.target.parentElement.querySelector('[data-r-count]');
+    c.textContent = `${lines.length}/10`;
+    c.classList.toggle('pn-dg-warn', lines.length > 10 || lines.some((l) => l.length > 32));
+  });
 
   $('pn-pk-gift-add').addEventListener('click', () => {
     $('pn-pk-gifts').querySelector('tbody').insertAdjacentHTML('beforeend', pkGiftRow({ item: '', min: 1, max: 1, weight: 1 }));
@@ -8882,7 +9237,7 @@
     if (!Object.keys(nameColors).length) return formMsg('pn-pk-msg', 'Pick at least one name colour.', false);
     const list = {};
     $('pn-pk-reactions').querySelectorAll('tr[data-reaction]').forEach((tr) => {
-      list[tr.dataset.reaction] = { on: tr.querySelector('[data-r=on]').checked, lines: tr.querySelector('[data-r=lines]').value.split('|').map((l) => l.trim()).filter(Boolean) };
+      list[tr.dataset.reaction] = { on: tr.querySelector('[data-r=on]').checked, lines: tr.querySelector('[data-r=lines]').value.split(/\n|\|/).map((l) => l.trim()).filter(Boolean) };
     });
     const body = { perks, names: f.names.checked, nameColors, reactions: { enabled: f.reactionsOn.checked, gapSeconds: Number(f.gapSeconds.value), list } };
     try {

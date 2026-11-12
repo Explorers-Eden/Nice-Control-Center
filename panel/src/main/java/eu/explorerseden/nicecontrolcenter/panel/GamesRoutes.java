@@ -36,6 +36,10 @@ final class GamesRoutes {
 		return serverDir.resolve("config").resolve(Dungeons.FILE);
 	}
 
+	private Path rogueFile() {
+		return serverDir.resolve("config").resolve(Dungeons.ROGUE_FILE);
+	}
+
 	/** What the file has, without the spots the page deleted. */
 	private static java.util.List<Games.Pos> minus(java.util.List<Games.Pos> was, String owner, String field, java.util.Set<String> gone) {
 		return new java.util.ArrayList<>(was.stream().filter(p -> !gone.contains(Removed.spot(owner, field, p))).toList());
@@ -164,7 +168,7 @@ final class GamesRoutes {
 		// Dungeons: their settings (config file; what /dungeon save found stays as the mod wrote it), runs going on and best clears.
 		routes.get("/api/dungeons", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			Map<String, Object> out = new LinkedHashMap<>();
-			out.put("settings", Dungeons.read(dungeonsFile()));
+			out.put("settings", Dungeons.readAll(dungeonsFile(), rogueFile()));
 			JsonElement live = null;
 			try {
 				live = dashboard.getElement("/api/dungeons");
@@ -193,7 +197,7 @@ final class GamesRoutes {
 				return;
 			}
 			// What the mod found when saving the build is taken from the file, never from the page.
-			Dungeons.Settings now = Dungeons.read(dungeonsFile());
+			Dungeons.Settings now = Dungeons.readAll(dungeonsFile(), rogueFile());
 			for (Dungeons.Dungeon d : next.dungeons) {
 				Dungeons.Dungeon was = now.dungeon(d.id);
 				if (was == null) continue;
@@ -221,8 +225,9 @@ final class GamesRoutes {
 			for (Dungeons.Room r : next.rooms) {
 				Dungeons.Room was = now.room(r.id);
 				if (was == null) continue;
-				// Renaming would lose the room's file (named after it): the name stays.
+				// Renaming would lose the room's file (named after it): the name stays; so does its kind (dungeon or rogue room).
 				r.name = was.name;
+				r.rogue = was.rogue;
 				r.sourceDim = was.sourceDim;
 				r.from = was.from;
 				r.to = was.to;
@@ -242,8 +247,14 @@ final class GamesRoutes {
 			for (Dungeons.Room was : now.rooms) if (!goneRooms.contains(was.id) && next.room(was.id) == null) next.rooms.add(was);
 			if (next.pads == null) next.pads = new java.util.ArrayList<>();
 			for (Dungeons.Pad was : now.pads) if (!gonePads.contains(was.id) && next.pads.stream().noneMatch(x -> x.id.equals(was.id))) next.pads.add(was);
+			// Pads are placed in game: their kind is the file's.
+			next.pads.removeIf(x -> now.pads.stream().noneMatch(w -> w.id.equals(x.id)));
+			for (Dungeons.Pad x : next.pads) now.pads.stream().filter(w -> w.id.equals(x.id)).findFirst().ifPresent(w -> x.rogue = w.rogue);
 			next.waiting = new java.util.LinkedHashMap<>();
 			for (var e : now.waiting.entrySet()) if (!goneWaiting.contains(e.getKey())) next.waiting.put(e.getKey(), e.getValue());
+			java.util.Set<String> goneRogueWaiting = removed.of("rogueWaiting");
+			next.rogueWaiting = new java.util.LinkedHashMap<>();
+			for (var e : now.rogueWaiting.entrySet()) if (!goneRogueWaiting.contains(e.getKey())) next.rogueWaiting.put(e.getKey(), e.getValue());
 			for (Dungeons.Room was : now.rooms) {
 				if (next.room(was.id) != null || !was.name.matches("[A-Za-z0-9_-]{1,32}")) continue;
 				try {
@@ -264,8 +275,8 @@ final class GamesRoutes {
 					// Not there or not removable: the folder stays, nothing else depends on it.
 				}
 			}
-			Dungeons.write(dungeonsFile(), next);
-			audit.log(me.name(), "dungeons.settings", next.dungeons.size() + " dungeons, " + next.rooms.size() + " rooms, " + next.pads.size() + " pads", clientIp(ctx));
+			Dungeons.writeAll(dungeonsFile(), rogueFile(), next);
+			audit.log(me.name(), "dungeons.settings", next.dungeons(false).size() + " dungeons, " + next.dungeons(true).size() + " rogue runs, " + next.rooms.size() + " rooms, " + next.pads.size() + " pads", clientIp(ctx));
 			json(ctx, Map.of("ok", true));
 		}));
 		// Saves a dungeon or a room again from the build it was made from (the mod reads the world).

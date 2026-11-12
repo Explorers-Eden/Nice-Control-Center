@@ -5,6 +5,8 @@ Built-in boss fights for wave arenas and dungeons. Write one like a mob:
 - **Wave arenas:** add it to the arena's **Bosses** list (the panel has a picker under it), or put it in a
   hand-written wave. With "Boss wave every … waves", each boss wave brings the boss on its own.
 - **Dungeons:** use it in a boss marker, for example `/dungeon tool marker boss:ncc:frost_warden`.
+- **Rogue runs:** add it to the run's bosses (picked at random for boss rooms; `w3` makes one more likely), or a boss
+  marker in a rogue room: `/rogue tool marker boss:ncc:frost_warden`.
 - **Trying one:** `/game boss <name>` summons it where you stand. `/game boss clear` takes it away again. Names can be
   written in full (`ncc:tempest`) or short (`tempest`).
 

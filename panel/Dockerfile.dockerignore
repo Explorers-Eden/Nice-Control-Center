@@ -3,5 +3,8 @@
 !mod/src/main/java/**
 !mod/src/main/resources/assets/nicecontrolcenter/web/**
 !panel/**
+!docs/BOSSES.md
+!docs/DUNGEONS.md
+!docs/ROGUE.md
 panel/build
 panel/.gradle

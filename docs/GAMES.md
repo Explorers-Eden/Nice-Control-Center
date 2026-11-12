@@ -226,8 +226,12 @@ Players who play together, in Flying Fair and the dungeons (and the game hub's d
 ## Dungeons
 Built anywhere in the world, copied fresh for every party into the dungeon dimension and wiped again when they're
 done. The full setup guide (markers, pads and parties, gear, random rooms, all commands) is in
-[DUNGEONS.md](DUNGEONS.md). Rogue runs (a chain of random rooms, one life, harder each room) are in
-[ROGUE.md](ROGUE.md).
+[DUNGEONS.md](DUNGEONS.md).
+
+## Rogue runs
+A chain of random rooms, one life, harder each room, with boons, run coins, a shop and unlocks bought with points.
+Their own thing: their own rooms, room groups, pads and pools, and the `/rogue` command (Games → Rogue runs in the
+panel). The full guide is in [ROGUE.md](ROGUE.md).
 
 ## Quick actions menu in the game worlds
 The Nice Actions menu (the G key) is different in Flying Fair, the game hub and the dungeons: it has a **Party**

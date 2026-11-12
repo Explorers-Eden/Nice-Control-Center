@@ -1239,39 +1239,22 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="games" hidden>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-controller"></i> Games</h3>
-					<p class="np-card-intro">Mini-games made from ready templates (wave fights are on the Arenas tab). Build one where you stand in game, then set its entrances (e.g. in your hub): players step in there and are taken to the game; after it they're back at the game hub spawn.</p>
-					<div class="pn-gm-templates">
-						<div><i class="bi bi-bricks"></i><b>Infinite parkour</b><span>Jumps appear ahead, harder as you go; every player gets their own lane.</span></div>
-						<div><i class="bi bi-flag"></i><b>Race course</b><span>Checkpoints in order, then the finish: running, by boat or elytra.</span></div>
-						<div><i class="bi bi-grid-3x3"></i><b>Maze</b><span>Generated; made new every day or after each finished run.</span></div>
-						<div><i class="bi bi-shield-shaded"></i><b>Wave fight</b><span>A party of 1–4 fights waves of mobs in an arena you built; rewards per wave and for clearing.</span></div>
-						<div><i class="bi bi-fire"></i><b>Ghast deflect</b><span>Quick round: hit the ghasts' fireballs back with snowballs; every ghast they kill counts.</span></div>
-						<div><i class="bi bi-grid-3x3-gap"></i><b>Colour floor</b><span>Quick round on a 3×3 grid of coloured platforms: the called colour vanishes, faster after each refill.</span></div>
-						<div><i class="bi bi-cloud-hail"></i><b>Anvil rain</b><span>Quick round: dodge falling anvils for as long as you can; last one standing wins.</span></div>
-						<div><i class="bi bi-gem"></i><b>Treasure grab</b><span>Quick round: glowing treasure appears in the arena; grab the most points before time's up.</span></div>
-						<div><i class="bi bi-water"></i><b>Fishing frenzy</b><span>Quick round: every catch scores points (fish, rare fish, treasure).</span></div>
-						<div><i class="bi bi-hammer"></i><b>Whack-a-mole</b><span>Quick round: heads pop out of a grid of holes; hit them before they go, but not the bad ones.</span></div>
-						<div><i class="bi bi-bullseye"></i><b>Target practice</b><span>Quick round: shoot targets that appear in the arena; further away and bullseyes score more.</span></div>
-						<div><i class="bi bi-snow"></i><b>Snowball gallery</b><span>Quick round: mobs walk past on lanes; hit them with snowballs, leave the villagers alone.</span></div>
-						<div><i class="bi bi-cup-hot"></i><b>Cauldron chef</b><span>Quick round: gather and cook what the cook NPC orders, then serve it; the most orders served wins.</span></div>
-						<div><i class="bi bi-thermometer-high"></i><b>Rising lava</b><span>Quick round: lava fills your tower from below, faster and faster; last one standing wins.</span></div>
-						<div><i class="bi bi-person-bounding-box"></i><b>Head hunt</b><span>Heads with your own skin hidden in the world; right-click to find them, a reward every few.</span></div>
+				<section class="np-card pn-gm-hero">
+					<div class="pn-gm-hero-head">
+						<div>
+							<h3 class="np-card-title"><i class="bi bi-controller"></i> Games</h3>
+							<p class="np-card-intro">Mini-games built from ready templates. Click a template for its guide; then stand where the game should be in game and type <code>/game create &lt;type&gt; &lt;name&gt;</code>.</p>
+						</div>
+						<button type="button" class="np-btn" data-guide="basics"><i class="bi bi-book"></i> How games work</button>
 					</div>
-					<dl class="pn-gm-howto">
-						<dt>Set up</dt><dd><code>/game create &lt;type&gt; &lt;name&gt;</code> where it should be, then follow the hints it gives</dd>
-						<dt>Entrances</dt><dd><code>/game edit &lt;name&gt; entrance add</code> where players should step in (particles, the name and top 3 float above it); <code>watch add</code> for a way to the spectator area, <code>back add</code> for the way out of it</dd>
-						<dt>Play</dt><dd>Step into an entrance or <code>/game join &lt;name&gt;</code> (quick rounds: everyone there during the join window plays together); <code>/game top &lt;name&gt;</code> shows the best</dd>
-						<dt>Names</dt><dd>Commands use the one-word name; players see the display name (spaces allowed): <code>/game edit &lt;name&gt; title Sky Run</code> or the field below</dd>
-						<dt>Rewards</dt><dd>"Finishes a game" and "Sets a personal best", with <code>{score}</code> and <code>{game}</code></dd>
-						<dt>Safe inventories</dt><dd>Put the arena in a server claim with game-area options (Claims page); the market, inbox and pets don't work there. Wave fights and quick rounds bring their own kit option.</dd>
-						<dt>Hub spawn</dt><dd id="pn-gm-hub"></dd>
-					</dl>
-					<div class="np-filters">
+					<div class="pn-gm-status">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-gm-enabled"><span></span></span> Games on</label>
+						<span class="pn-gm-stat" id="pn-gm-count"></span>
+						<span class="pn-gm-stat" id="pn-gm-hub"></span>
+						<span class="pn-comment">Players who log out or die in a game area, or anywhere in its dimension, come back to the hub spawn; after a game everyone goes there. Set it in game with /game spawn set.</span>
 						<span class="np-form-msg" id="pn-gm-note"></span>
 					</div>
+					<div id="pn-gm-tiles"></div>
 				</section>
 				<section class="np-card" data-folded>
 					<h3 class="np-card-title"><i class="bi bi-grid-3x3-gap"></i> Quick actions menu in the game worlds</h3>
@@ -1280,16 +1263,28 @@
 					<p class="pn-hint">Also leave out in the game worlds:</p>
 					<div id="pn-gm-qhide" class="pn-gm-qhide"></div>
 				</section>
-				<div id="pn-gm-list" class="pn-rw-list"></div>
+				<div class="pn-gm-tools" id="pn-gm-tools" data-dirty-ignore></div>
+				<div id="pn-gm-list" class="pn-rw-list" data-dirty-ignore></div>
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-gm-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-gm-msg"></span></div>
 			</div>
 
 			<div class="np-tab-panel" data-tab="arenas" hidden>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-shield-shaded"></i> Wave arenas</h3>
-					<p class="np-card-intro">A party of 1–4 fights waves of mobs in an arena you built; rewards per wave and for clearing. Make one where players should appear: <code>/game create waves &lt;name&gt;</code>, then follow the setup list on its card. Bosses: <a href="https://github.com/Explorers-Eden/Nice-Control-Center/blob/main/docs/BOSSES.md" target="_blank" rel="noopener">the boss guide <i class="bi bi-box-arrow-up-right"></i></a></p>
-					<p class="pn-hint">Games on/off and the game hub spawn are on the Games tab.</p>
-					<div class="np-filters"><span class="np-form-msg" id="pn-ar-note"></span></div>
+				<section class="np-card pn-gm-hero">
+					<div class="pn-gm-hero-head">
+						<div>
+							<h3 class="np-card-title"><i class="bi bi-shield-shaded"></i> Wave arenas</h3>
+							<p class="np-card-intro">A party of 1–4 fights waves of mobs and bosses in an arena you built; rewards per wave and for clearing. Make one where players should appear: <code>/game create waves &lt;name&gt;</code>, then follow the steps on its card.</p>
+						</div>
+						<span class="pn-gm-hero-btns">
+							<button type="button" class="np-btn" data-guide="waves"><i class="bi bi-book"></i> Wave fight guide</button>
+							<button type="button" class="np-btn" data-guide="bosses"><i class="bi bi-emoji-angry"></i> Bosses</button>
+						</span>
+					</div>
+					<div class="pn-gm-status">
+						<span class="pn-gm-stat" id="pn-ar-count"></span>
+						<span class="pn-hint">Games on/off and the hub spawn are on the Games tab.</span>
+						<span class="np-form-msg" id="pn-ar-note"></span>
+					</div>
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-collection"></i> Arena pools</h3>
@@ -1301,7 +1296,8 @@
 					<div id="pn-gm-pools" class="pn-gm-ways"></div>
 				</section>
 				<datalist id="pn-gm-pool-names"></datalist>
-				<div id="pn-ar-list" class="pn-rw-list"></div>
+				<div class="pn-gm-tools" id="pn-ar-tools" data-dirty-ignore></div>
+				<div id="pn-ar-list" class="pn-rw-list" data-dirty-ignore></div>
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-ar-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-ar-msg"></span></div>
 			</div>
 
@@ -1328,14 +1324,14 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="slots" hidden>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-dice-5"></i> Slot Machines</h3>
-					<p class="np-card-intro">Machines players spend points at: pulling the lever costs the type's price, the shelf above the lever's block spins and stops on a row, and a winning row pays out. Each machine is one of the five built-in looks and uses one type below; changing a type changes all its machines. Anyone can pull the lever, also in claims; the machine itself can't be changed or broken (admins in creative can).</p>
-					<dl class="pn-gm-howto">
-						<dt>Place one</dt><dd><code>/slots place &lt;type&gt; [acacia|bamboo|mangrove|poplar|warped]</code>: a glowing preview appears two blocks ahead, its front toward you; click <b>Place</b>, <b>Turn</b>, <b>Look</b>, move it a block at a time, or <b>Cancel</b></dd>
-						<dt>Change</dt><dd><code>/slots type &lt;type&gt;</code> next to one; <code>/slots remove</code> takes the nearest away (blocks too); <code>/slots list</code></dd>
-						<dt>Odds</dt><dd>Each win has its own chance per pull; together they're the chance of any win, the rest are losses showing a mixed row. The return shows how much of what's put in comes back on average</dd>
-					</dl>
+				<section class="np-card pn-gm-hero">
+					<div class="pn-gm-hero-head">
+						<div>
+							<h3 class="np-card-title"><i class="bi bi-dice-5"></i> Slot Machines</h3>
+							<p class="np-card-intro">Machines players spend points at. Each one uses a type below (its price, spin and wins); changing a type changes all its machines. Place one in game with <code>/slots place &lt;type&gt;</code>.</p>
+						</div>
+						<button type="button" class="np-btn" data-guide="slots"><i class="bi bi-book"></i> Slot machine guide</button>
+					</div>
 					<div class="np-filters">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-sm-enabled"><span></span></span> Slot Machines on</label>
 						<button type="button" class="np-btn small" id="pn-sm-add"><i class="bi bi-plus-lg"></i> Add a type</button>
@@ -1351,22 +1347,39 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="rogue" hidden>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-shuffle"></i> Rogue runs</h3>
-					<p class="np-card-intro">Room after room: clear every foe and the doors open, each showing what's behind it (fight, elite, boss, treasure, shop or rest). The party leader picks; each room is harder. Boons picked after a room or bought with run coins last for the run. One life: dead players watch until the run ends. Runs use the dungeon pads, pools, parties and kits.</p>
-					<dl class="pn-gm-howto">
-						<dt>Rooms</dt><dd>Dungeon rooms (<code>/dungeon room create &lt;room&gt;</code>, <code>/dungeon corner2</code>, <code>/dungeon room save &lt;room&gt; &lt;group&gt;</code>) with markers: <code>start</code>, <code>door</code>, <code>spawn</code>, <code>shop</code> (shop rooms), <code>mob:…</code>, <code>boss:…</code></dd>
-						<dt>Start</dt><dd>A pad in the run's pool: <code>/dungeon pad add &lt;pool&gt;</code>; test with <code>/dungeon try &lt;name&gt;</code></dd>
-						<dt>Players</dt><dd><code>/dungeon boon</code> (the boon choice again), <code>/dungeon shop</code>, <code>/dungeon unlocks</code> (bought with points, for every run), <code>/dungeon top &lt;name&gt;</code></dd>
-					</dl>
-					<p class="pn-hint">The whole guide: <a href="https://github.com/Explorers-Eden/Nice-Control-Center/blob/main/docs/ROGUE.md" target="_blank" rel="noopener">rogue runs <i class="bi bi-box-arrow-up-right"></i></a></p>
-					<div class="np-filters" data-dirty-ignore>
-						<input type="text" id="pn-dg-rogue-name" placeholder="name of the new run" maxlength="32">
-						<button type="button" class="np-btn" id="pn-dg-rogue-add"><i class="bi bi-plus-lg"></i> New rogue run</button>
+				<section class="np-card pn-gm-hero">
+					<div class="pn-gm-hero-head">
+						<div>
+							<h3 class="np-card-title"><i class="bi bi-shuffle"></i> Rogue runs</h3>
+							<p class="np-card-intro">Room after room, each harder than the last, with one life. Boons picked after a room or bought with run coins last for the run; unlocks bought with points last for every run. Parties work as in dungeons; rooms, pads and pools are the rogue runs' own (<code>/rogue …</code>).</p>
+						</div>
+						<button type="button" class="np-btn" data-guide="rogue"><i class="bi bi-book"></i> Rogue run guide</button>
+					</div>
+					<div class="pn-gm-status">
+						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-rg-enabled"><span></span></span> Rogue runs on</label>
+						<span class="pn-gm-stat" data-dirty-ignore><input type="text" id="pn-dg-rogue-name" placeholder="name of the new run" maxlength="32">
+						<button type="button" class="np-btn small" id="pn-dg-rogue-add"><i class="bi bi-plus-lg"></i> New rogue run</button></span>
 						<span class="np-form-msg" id="pn-rg-note"></span>
 					</div>
+					<p class="pn-hint">Their rooms, room groups and pads are below; dungeons don't see them, and they don't see the dungeons'. Copies at once is on the Dungeons tab (both share the dungeon dimension).</p>
+				</section>
+				<section class="np-card">
+					<h3 class="np-card-title"><i class="bi bi-activity"></i> Running now</h3>
+					<div id="pn-rg-runs"></div>
 				</section>
 				<div id="pn-rg-list" class="pn-rw-list"></div>
+				<section class="np-card" data-folded>
+					<h3 class="np-card-title"><i class="bi bi-diagram-3"></i> Rogue room groups</h3>
+					<div id="pn-rg-groups"></div>
+				</section>
+				<section class="np-card" data-folded>
+					<h3 class="np-card-title"><i class="bi bi-bounding-box"></i> Rogue rooms</h3>
+					<div id="pn-rg-rooms" class="pn-rw-list"></div>
+				</section>
+				<section class="np-card" data-folded>
+					<h3 class="np-card-title"><i class="bi bi-geo-alt"></i> Rogue run pads</h3>
+					<div id="pn-rg-pads"></div>
+				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-coin"></i> Coins and rooms (every rogue run)</h3>
 					<div class="pn-rw-grid">
@@ -1415,7 +1428,7 @@
 				</section>
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-unlock"></i> Unlocks</h3>
-					<p class="np-card-intro">Bought with points between runs, a level at a time: level 2 costs twice the price, level 3 three times. They work in every rogue run. Players open them with <code>/dungeon unlocks</code>, or an NPC opens them on a right-click: pick <b>Rogue unlocks</b> as the NPC's shop (NPCs page) or <code>/npc shop &lt;npc&gt; rogue_unlocks</code>.</p>
+					<p class="np-card-intro">Bought with points between runs, a level at a time: level 2 costs twice the price, level 3 three times. They work in every rogue run. Players open them with <code>/rogue unlocks</code>, or an NPC opens them on a right-click: pick <b>Rogue unlocks</b> as the NPC's shop (NPCs page) or <code>/npc shop &lt;npc&gt; rogue_unlocks</code>.</p>
 					<div class="pn-rw-grid">
 						<label class="pn-field"><span>Menu title</span><input type="text" data-rgk="unlocksTitle" data-rgt="text" maxlength="40"></label>
 						<label class="pn-field pn-field-wide"><span>Line on top (empty = none)</span><input type="text" data-rgk="unlocksGreeting" data-rgt="text" maxlength="200"></label>
@@ -1427,9 +1440,14 @@
 			</div>
 
 			<div class="np-tab-panel" data-tab="dungeons" hidden>
-				<section class="np-card">
-					<h3 class="np-card-title"><i class="bi bi-door-closed"></i> Dungeons</h3>
-					<p class="np-card-intro">Dungeons you build yourself. Every player or party gets a fresh copy in the dungeon dimension when they step on a pad; it's wiped again when they're done.</p>
+				<section class="np-card pn-gm-hero">
+					<div class="pn-gm-hero-head">
+						<div>
+							<h3 class="np-card-title"><i class="bi bi-door-closed"></i> Dungeons</h3>
+							<p class="np-card-intro">Dungeons you build yourself. Every player or party gets a fresh copy in the dungeon dimension when they step on a pad; it's wiped again when they're done.</p>
+						</div>
+						<button type="button" class="np-btn" data-guide="dungeons"><i class="bi bi-book"></i> Dungeon guide</button>
+					</div>
 					<ol class="pn-dg-steps">
 						<li><b>Build it</b> anywhere, then mark the box: <code>/dungeon create &lt;name&gt;</code> at one corner, <code>/dungeon corner2</code> at the opposite one.</li>
 						<li><b>Place a start</b> (and an exit): <code>/dungeon tool marker start</code>, <code>/dungeon tool marker exit</code>. Mobs: <code>/dungeon tool marker mob:zombie x3</code>.</li>
@@ -1437,15 +1455,15 @@
 						<li><b>Add a pad</b> where players start: <code>/dungeon pad add default</code>. Parties: <code>/party invite &lt;player&gt;</code>, the leader steps on the pad.</li>
 						<li><b>Set the rules below</b>: lives, time limit, gear and kit (<code>/dungeon kit &lt;name&gt;</code>), messages; rewards in Rewards: clearing, checkpoints, bosses.</li>
 					</ol>
-					<p class="pn-hint">Random rooms, checkpoints, bosses, game-only items and every command: <a href="https://github.com/Explorers-Eden/Nice-Control-Center/blob/main/docs/DUNGEONS.md" target="_blank" rel="noopener">the dungeon guide <i class="bi bi-box-arrow-up-right"></i></a></p>
+					<p class="pn-hint">Random rooms, checkpoints, bosses, game-only items and every command: <a href="#" data-guide="dungeons">the dungeon guide</a>.</p>
 					<div class="pn-rw-grid pn-dg-global">
 						<label class="pn-field"><span>Copies at once</span><input type="number" id="pn-dg-slots" min="1" max="64"></label>
 						<label class="pn-field"><span>Players per party</span><input type="number" id="pn-dg-party" min="1" max="4"></label>
 						<label class="pn-field"><span>Pieces copied per tick</span><input type="number" id="pn-dg-pieces" min="1" max="16"></label>
 					</div>
-					<div class="np-filters">
+					<div class="pn-gm-status">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-dg-enabled"><span></span></span> Dungeons on</label>
-						<button type="button" class="np-btn" id="pn-dg-refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+						<span class="pn-gm-stat"><button type="button" class="np-btn small" id="pn-dg-refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button></span>
 						<span class="np-form-msg" id="pn-dg-note"></span>
 					</div>
 				</section>
@@ -2177,7 +2195,20 @@
 		</div>
 	</main>
 
-	<footer class="np-footer">Nice Control Center Panel <span id="pn-version"></span> · made by <a href="https://explorerseden.eu" target="_blank" rel="noopener">Explorer's Eden</a></footer>
+	<dialog class="pn-confirm" id="pn-confirm" aria-labelledby="pn-confirm-title">
+		<div class="pn-confirm-icon" id="pn-confirm-icon"><i class="bi bi-exclamation-octagon"></i></div>
+		<h3 id="pn-confirm-title"></h3>
+		<p id="pn-confirm-text"></p>
+		<div class="np-form-actions">
+			<button type="button" class="np-btn" id="pn-confirm-cancel">Cancel</button>
+			<button type="button" class="np-btn danger" id="pn-confirm-ok"></button>
+		</div>
+	</dialog>
+	<dialog class="pn-guide" id="pn-guide" aria-labelledby="pn-guide-title">
+		<div class="pn-guide-head"><i class="bi bi-book" id="pn-guide-icon"></i><h3 id="pn-guide-title">Guide</h3><button type="button" class="np-btn small" id="pn-guide-close" title="Close"><i class="bi bi-x-lg"></i></button></div>
+		<div class="pn-guide-body pn-md" id="pn-guide-body"></div>
+	</dialog>
+	<footer class="np-footer">Nice Control Center Panel <span id="pn-version"></span> · <a href="https://explorerseden.eu" target="_blank" rel="noopener">Explorer's Eden</a></footer>
 
 	<script src="panel.js"></script>
 </body>
