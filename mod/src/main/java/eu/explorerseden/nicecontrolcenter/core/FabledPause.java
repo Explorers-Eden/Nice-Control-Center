@@ -27,11 +27,13 @@ import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 
 /**
- * Fabled Roots (Explorer's Eden's race and class data pack) is paused in Flying Fair and the dungeon dimension, so
+ * Fabled Roots (Explorer's Eden's race and class data pack) is paused in Flying Fair, the dungeons and Rogue Runs, so
  * everyone plays the games on equal terms: players there get the tag {@code fabled_roots.paused} (the data pack skips
  * their race and class effects and abilities), and the base attributes their race set (armour, jump, gravity…; their
  * size stays)
- * plus its attack-speed modifiers are put back to vanilla, saved, and restored when they leave. The saved values are
+ * plus its fabled_roots modifiers are put back to a player's vanilla values, saved, and restored when they leave; the
+ * race's and class's running effects end on entering. The data pack needs its paused guards for the rest (it skips
+ * paused players' effects, abilities and class advancements). The saved values are
  * kept in a file, so a restart in between loses nothing.
  */
 public final class FabledPause {
@@ -41,6 +43,13 @@ public final class FabledPause {
 	private static final List<String> ATTRIBUTES = List.of("armor", "armor_toughness", "attack_damage", "attack_knockback", "attack_speed", "block_break_speed",
 			"block_interaction_range", "burning_time", "fall_damage_multiplier", "gravity", "jump_strength", "knockback_resistance", "movement_speed", "oxygen_bonus",
 			"safe_fall_distance", "sneaking_speed", "submerged_mining_speed");
+
+	/**
+	 * The effects races and classes give their own players (a few seconds, renewed every second, particles hidden):
+	 * gone on entering, so nothing carries over; the data pack then skips paused players.
+	 */
+	private static final Set<String> EFFECTS = Set.of("regeneration", "strength", "luck", "night_vision", "conduit_power", "haste", "fire_resistance",
+			"invisibility", "speed", "levitation", "glowing", "resistance", "jump_boost", "slow_falling", "water_breathing", "dolphins_grace");
 
 	/** Per player: attribute → [base, then its fabled_roots modifiers as id, amount, operation …]. */
 	private static Map<String, Map<String, List<String>>> saved = new HashMap<>();
@@ -127,6 +136,11 @@ public final class FabledPause {
 		}
 		// (Nothing to keep from an earlier pause that wasn't restored: that one wins.)
 		saved.putIfAbsent(p.getStringUUID(), mine);
+		// The race's and class's running effects (short, renewed by the data pack, particles hidden) end now.
+		for (var e : List.copyOf(p.getActiveEffects())) {
+			String id = e.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("");
+			if (EFFECTS.contains(id) && !e.isInfiniteDuration() && e.getDuration() <= 20 * 20 && !e.isVisible()) p.removeEffect(e.getEffect());
+		}
 		p.addTag(TAG);
 		save();
 	}
