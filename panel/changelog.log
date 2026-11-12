@@ -1,3 +1,5 @@
+## 1.92.1
+- Games → Quick actions menu: the list of buttons to leave out is gone (what's blocked is left out on its own); only the Party button switch is left
 ## 1.92.0
 - Games → Quick actions menu: the list only offers buttons that aren't left out anyway (with a note when one world leaves it out already); the "trigger" entries are gone
 - The Rogue Runs dimension is left out of the tuning and map lists, like the dungeons'

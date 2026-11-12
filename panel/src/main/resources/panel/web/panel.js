@@ -2125,7 +2125,6 @@
       gm.scores = d.scores || null;
       gm.headSkins = d.headSkins || {};
       gm.songs = d.songs || [];
-      gm.quickActions = d.quickActions || [];
       try { gm.npcs = (await api('api/npcs')).settings.npcs; } catch (e) { gm.npcs = []; }
       await bossInfo();
       gm.dirty = false;
@@ -2234,11 +2233,6 @@
     const qm = s.quickMenu || (s.quickMenu = { party: true, hide: [] });
     $('pn-gm-qparty').checked = qm.party !== false;
     $('pn-gm-qparty').disabled = !edit;
-    // "/trigger" buttons all share the id "trigger" (they can't be told apart): not offered (older lists still have them).
-    qm.hide = (qm.hide || []).filter((id) => id !== 'trigger');
-    const qa = (gm.quickActions.length ? gm.quickActions : qm.hide.map((id) => ({ id, label: id }))).filter((b) => b.id !== 'trigger');
-    $('pn-gm-qhide').innerHTML = qa.length ? qa.map((b) => `<label class="np-check"><input type="checkbox" data-qhide="${esc(b.id)}" ${qm.hide.includes(b.id) ? 'checked' : ''} ${edit ? '' : 'disabled'}> ${esc(b.label)}${b.note ? ` <small class="pn-hint">(${esc(b.note)})</small>` : ''}</label>`).join('')
-      : '<p class="pn-hint">The list of buttons appears once the server has started with Nice Actions installed.</p>';
     const cards = s.arenas.map((a, i) => gmCard(a, i));
     // Wave arenas on the Arenas page, every other game here; sorted as picked above the list.
     const fill = (list, waves, empty) => {
@@ -2752,14 +2746,6 @@
   });
   $('pn-gm-enabled').addEventListener('change', (e) => { gm.settings.enabled = e.target.checked; gmChanged(false); });
   $('pn-gm-qparty').addEventListener('change', (e) => { gm.settings.quickMenu.party = e.target.checked; gmChanged(false); });
-  $('pn-gm-qhide').addEventListener('change', (e) => {
-    const id = e.target.dataset.qhide;
-    if (!id) return;
-    const q = gm.settings.quickMenu;
-    q.hide = q.hide.filter((x) => x !== id);
-    if (e.target.checked) q.hide.push(id);
-    gmChanged(false);
-  });
   $('pn-gm-hub').addEventListener('click', (e) => {
     if (!e.target.closest('#pn-gm-hub-clear')) return;
     gm.settings.hub = null;

@@ -3,10 +3,7 @@ package eu.explorerseden.nicecontrolcenter.core;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -19,7 +16,6 @@ import com.google.gson.JsonParser;
 import eu.explorerseden.nicecontrolcenter.Claims;
 import eu.explorerseden.nicecontrolcenter.Dungeons;
 import eu.explorerseden.nicecontrolcenter.Games;
-import eu.explorerseden.nicecontrolcenter.Json;
 import eu.explorerseden.nicecontrolcenter.Market;
 import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import eu.explorerseden.nicecontrolcenter.Pets;
@@ -57,9 +53,7 @@ public final class QuickActions {
 	private static final Identifier FAIR = Identifier.fromNamespaceAndPath("nicecontrolcenter", "fair_actions");
 	private static final Identifier DUNGEON = Identifier.fromNamespaceAndPath("nicecontrolcenter", "dungeon_actions");
 	private static final Identifier TAG = Identifier.withDefaultNamespace("quick_actions");
-	/** What can be left out in the game worlds (written for the panel when the server starts). */
-	public static final String BUTTONS = "nicecontrolcenter-quick-actions.json";
-	/** Always left out in the dungeons (every player there is in a run, where they're blocked). */
+	/** Left out in the in-game menu (dungeons, Rogue Runs, and anyone playing a game): all blocked while playing. */
 	private static final Set<String> NOT_IN_DUNGEONS = Set.of("rtp", "tpspawn", "sethome", "tphome", "teleport_back", "claim", "pets", "market", "inbox");
 
 	/** The resources the dialogs are loaded from (to read Nice Actions' menu for the game worlds' menus). */
@@ -92,7 +86,6 @@ public final class QuickActions {
 			try {
 				int added = ours(actions);
 				if (added > 0) NiceControlCenter.LOGGER.info("Nice Actions: added {} button(s) to the Nice Actions menu", added);
-				writeButtons(actions);
 			} catch (RuntimeException e) {
 				NiceControlCenter.LOGGER.warn("Nice Actions: couldn't add buttons to the Nice Actions menu: {}", e.toString());
 			}
@@ -135,38 +128,6 @@ public final class QuickActions {
 		return "";
 	}
 
-	private static String labelOf(JsonObject button) {
-		JsonElement l = button.get("label");
-		if (l instanceof JsonObject o) return o.has("fallback") ? o.get("fallback").getAsString() : o.has("text") ? o.get("text").getAsString() : idOf(button);
-		if (l instanceof JsonArray a) for (JsonElement e : a) if (e instanceof JsonObject o && o.has("text") && !o.get("text").getAsString().isBlank()) return o.get("text").getAsString();
-		return idOf(button);
-	}
-
-	/**
-	 * The buttons the panel can leave out (id, label, and where they're left out anyway). Not the ones left out in both
-	 * game worlds already, nor /trigger buttons (they'd all be called "trigger" and couldn't be told apart).
-	 */
-	private static void writeButtons(JsonArray actions) {
-		List<Map<String, String>> out = new ArrayList<>();
-		java.util.Set<String> fair = autoHidden(false), dungeon = autoHidden(true);
-		for (JsonElement e : actions) {
-			if (!(e instanceof JsonObject b)) continue;
-			String id = idOf(b);
-			if (id.isEmpty() || id.equals("trigger") || fair.contains(id) && dungeon.contains(id)) continue;
-			Map<String, String> m = new LinkedHashMap<>();
-			m.put("id", id);
-			m.put("label", labelOf(b));
-			if (fair.contains(id)) m.put("note", "left out in Flying Fair anyway");
-			if (dungeon.contains(id)) m.put("note", "left out in the dungeons anyway");
-			out.add(m);
-		}
-		try {
-			Files.writeString(FabricLoader.getInstance().getConfigDir().resolve(BUTTONS), Json.GSON.toJson(out));
-		} catch (java.io.IOException | RuntimeException e) {
-			// Only the panel's list.
-		}
-	}
-
 	/** Nice Actions' menu read again, with our buttons and Merl's, then the game world's changes; null without Nice Actions. */
 	private static JsonElement gameMenu(boolean dungeon) throws RuntimeException {
 		ResourceManager rm = resources;
@@ -184,8 +145,8 @@ public final class QuickActions {
 		merl(json);
 		Path config = FabricLoader.getInstance().getConfigDir();
 		Games.QuickMenu q = Games.read(config.resolve(Games.FILE)).quickMenu;
-		java.util.Set<String> hide = new java.util.HashSet<>(q.hide);
-		hide.addAll(autoHidden(dungeon));
+		// Only what doesn't work there (no list to pick from: what's blocked is left out, the rest stays).
+		java.util.Set<String> hide = autoHidden(dungeon);
 		JsonArray kept = new JsonArray();
 		int gone = 0;
 		for (JsonElement e : actions) {
@@ -194,7 +155,7 @@ public final class QuickActions {
 		}
 		if (q.party) add(kept, "item/cake", "Party", "Play together: invite players, see your party, leave it. The leader starts dungeons and wave fights for everyone.", "party");
 		menu.add("actions", kept);
-		NiceControlCenter.LOGGER.info("Nice Actions: the {} menu has {} buttons ({} left out there)", dungeon ? "dungeon" : "Flying Fair", kept.size(), gone);
+		NiceControlCenter.LOGGER.info("Nice Actions: the {} menu has {} buttons ({} left out there)", dungeon ? "in-game" : "Flying Fair", kept.size(), gone);
 		return json;
 	}
 
@@ -224,7 +185,8 @@ public final class QuickActions {
 
 	private static Identifier wanted(MinecraftServer server, ServerPlayer p) {
 		String dim = p.level().dimension().identifier().toString();
-		if (Dungeons.runDimension(dim)) return DUNGEON;
+		// In a run or a game anywhere (a round, a wave fight, a parkour, race or maze run): the in-game menu, without what's blocked then.
+		if (Dungeons.runDimension(dim) || eu.explorerseden.nicecontrolcenter.claims.GameClaims.playingNow(p)) return DUNGEON;
 		if (eu.explorerseden.nicecontrolcenter.games.Parties.here(p)) return FAIR;
 		return MENU;
 	}

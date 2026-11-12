@@ -378,9 +378,9 @@ public final class Games {
 	}
 
 	/**
-	 * The quick actions menu in the game worlds: a Party button, and buttons left out there (by id: "sethome",
-	 * "rtp", "claim"…). What doesn't work there anyway (homes where they can't be set, teleports in the dungeons) is
-	 * left out on its own. Built when the server starts.
+	 * The quick actions menu in the game worlds: a Party button or not. What doesn't work there is left out on its own
+	 * (no list to pick from any more; {@code hide} from before 1.111.1 is kept in the file but not used). Built when the
+	 * server starts.
 	 */
 	public static final class QuickMenu {
 		public boolean party = true;
