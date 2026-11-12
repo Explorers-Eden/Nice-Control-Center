@@ -1,4 +1,4 @@
-# Rogue runs
+# Rogue Runs
 
 A rogue run is a chain of rooms. Players clear a room and pick a door. The next room comes up, a bit harder than the
 last, and so on until everyone is out (or until a set number of rooms is cleared). There's no box to build for the
@@ -17,7 +17,7 @@ points that help in every run.
 
 ## 1. Your first rogue run
 
-1. Make the run: `/rogue create Crypt` (or in the panel, **Games → Rogue runs**, type a name and press
+1. Make the run: `/rogue create Crypt` (or in the panel, **Games → Rogue Runs**, type a name and press
    **New rogue run**). It gets groups named after it: `crypt_start`, `crypt_fight`, `crypt_elite`, `crypt_boss`,
    and the optional `crypt_treasure`, `crypt_shop` and `crypt_rest`.
 2. Build a few rooms (at most 64 × 64 × 64 each) and put markers in them. The markers are data structure blocks, the
@@ -64,7 +64,7 @@ run starts in a fight room.
 - Every few rooms (**Boss room every … rooms**), every door leads to a boss room.
 - The run ends when everyone is out. A win: **Rooms to win** cleared (0 = endless), or no room left to go to.
 
-## 3. Settings (panel, Games → Rogue runs, on the run's card)
+## 3. Settings (panel, Games → Rogue Runs, on the run's card)
 
 | Setting | What it does |
 |---|---|
@@ -83,7 +83,7 @@ group's "from level" (here: from room number …) are on the Rooms page.
 
 Messages can use `{depth}`, the number of rooms cleared.
 
-## 4. Boons, coins, the shop and unlocks (panel, Games → Rogue runs)
+## 4. Boons, coins, the shop and unlocks (panel, Games → Rogue Runs)
 
 These are the same for every rogue run.
 

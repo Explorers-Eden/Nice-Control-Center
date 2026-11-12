@@ -820,7 +820,7 @@ public final class DungeonRuntime {
 			if (ticks < PAD_TICKS) {
 				if (ticks % 20 == 2) {
 					String who = party.size() == 1 ? "" : " with " + String.join(", ", party.subList(1, party.size()).stream().map(x -> x.getGameProfile().name()).toList());
-					p.sendOverlayMessage(Words.lit((pad.rogue ? "Rogue run (" : "Dungeon (") + pad.pool + ")" + who + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.LIGHT_PURPLE));
+					p.sendOverlayMessage(Words.lit((pad.rogue ? "Rogue Run (" : "Dungeon (") + pad.pool + ")" + who + " in " + ((PAD_TICKS - ticks) / 20 + 1) + "… step off to cancel").withStyle(ChatFormatting.LIGHT_PURPLE));
 					p.level().playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.6f, 0.8f);
 				}
 				continue;
@@ -924,7 +924,7 @@ public final class DungeonRuntime {
 			for (List<UUID> party : e.getValue()) {
 				for (UUID id : party) {
 					ServerPlayer p = server.getPlayerList().getPlayer(id);
-					if (p != null) p.sendOverlayMessage(Words.lit((rogue ? "Rogue run queue: " : "Dungeon queue: ") + ordinal(place) + " in line").withStyle(ChatFormatting.LIGHT_PURPLE));
+					if (p != null) p.sendOverlayMessage(Words.lit((rogue ? "Rogue Runs queue: " : "Dungeon queue: ") + ordinal(place) + " in line").withStyle(ChatFormatting.LIGHT_PURPLE));
 				}
 				place++;
 			}
@@ -995,7 +995,7 @@ public final class DungeonRuntime {
 
 	/** Starts a run for these players with a random dungeon (or rogue run) of the pool; returns why not, or null. */
 	static String start(MinecraftServer server, List<ServerPlayer> party, String pool, boolean rogue) {
-		if (!(rogue ? settings.rogueEnabled : settings.enabled)) return (rogue ? "Rogue runs" : "Dungeons") + " are closed right now.";
+		if (!(rogue ? settings.rogueEnabled : settings.enabled)) return (rogue ? "Rogue Runs" : "Dungeons") + " are closed right now.";
 		int size = party.size();
 		List<Dungeon> fits = new ArrayList<>();
 		for (Dungeon d : settings.dungeons) {
@@ -1556,7 +1556,7 @@ public final class DungeonRuntime {
 				long pads = settings.pads(rogue).stream().filter(x -> x.pool.equals(pool)).count();
 				b.append("\n").append(pool).append(": ").append(names.isEmpty() ? "no " + what(rogue) + "s" : String.join(", ", names)).append(" · ").append(pads).append(pads == 1 ? " pad" : " pads");
 			}
-			ctx.getSource().sendSuccess(() -> Words.lit((rogue ? "Rogue run pools:" : "Dungeon pools:") + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
+			ctx.getSource().sendSuccess(() -> Words.lit((rogue ? "Rogue Runs pools:" : "Dungeon pools:") + (b.isEmpty() ? " none yet." : b)).withStyle(ChatFormatting.LIGHT_PURPLE), false);
 			return 1;
 		}));
 		root.then(Commands.literal("top").then(dungeonArg.get().executes(ctx -> {
@@ -1767,7 +1767,7 @@ public final class DungeonRuntime {
 				if (r.dungeon.rogue() != rogue) continue;
 				b.append("\nslot ").append(r.slot).append(": ").append(r.dungeon.name).append(" · ").append(r.state.name().toLowerCase(Locale.ROOT)).append(" · ").append(String.join(", ", r.names.values()));
 			}
-			ctx.getSource().sendSuccess(() -> Words.lit(b.isEmpty() ? "No " + what(rogue) + "s going right now." : (rogue ? "Rogue runs:" : "Dungeon runs:") + b), false);
+			ctx.getSource().sendSuccess(() -> Words.lit(b.isEmpty() ? "No " + what(rogue) + "s going right now." : (rogue ? "Rogue Runs:" : "Dungeon runs:") + b), false);
 			return 1;
 		}));
 		d.register(root);
@@ -1795,7 +1795,7 @@ public final class DungeonRuntime {
 		ctx.getSource().sendSuccess(() -> Words.lit("Made the rogue run " + name + " in the " + d.pool + " pool. Its rooms come from the groups " + d.startGroup + " (first room, optional), "
 				+ d.roomGroups.get("fight") + ", " + d.roomGroups.get("elite") + ", " + d.roomGroups.get("boss") + " (and _treasure, _shop, _rest, optional)"
 				+ ": build rooms with a start marker, door markers (where players pick the next room) and spawn markers (where its mobs come), then /rogue room save <room> <group>."
-				+ " Mobs, bosses, scaling, boons and the shop are in the panel (Games → Rogue runs).").withStyle(ChatFormatting.LIGHT_PURPLE), true);
+				+ " Mobs, bosses, scaling, boons and the shop are in the panel (Games → Rogue Runs).").withStyle(ChatFormatting.LIGHT_PURPLE), true);
 		return 1;
 	}
 

@@ -292,7 +292,7 @@ public final class Portals {
 		Dungeons.Settings d = DungeonRuntime.settings();
 		for (boolean rogue : new boolean[] { false, true }) {
 			if (!(rogue ? d.rogueEnabled : d.enabled)) continue;
-			String title = rogue ? "Rogue run" : "Dungeon";
+			String title = rogue ? "Rogue Run" : "Dungeon";
 			for (Dungeons.Pad pad : d.pads(rogue)) {
 				if (pad.pos == null) continue;
 				out.put(key(rogue ? "rogue" : "dungeon", pad.pool, pad.pos), new Label(pad.pos, 2.2, Words.lit(title).withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD)

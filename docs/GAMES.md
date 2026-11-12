@@ -228,9 +228,9 @@ Built anywhere in the world, copied fresh for every party into the dungeon dimen
 done. The full setup guide (markers, pads and parties, gear, random rooms, all commands) is in
 [DUNGEONS.md](DUNGEONS.md).
 
-## Rogue runs
+## Rogue Runs
 A chain of random rooms, one life, harder each room, with boons, run coins, a shop and unlocks bought with points.
-Their own thing: their own rooms, room groups, pads and pools, and the `/rogue` command (Games → Rogue runs in the
+Their own thing: their own rooms, room groups, pads and pools, and the `/rogue` command (Games → Rogue Runs in the
 panel). The full guide is in [ROGUE.md](ROGUE.md).
 
 ## Quick actions menu in the game worlds

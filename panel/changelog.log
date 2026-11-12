@@ -1,3 +1,5 @@
+## 1.91.1
+- "Rogue Runs" is written as a name: the tab, its headings, the on/off switch, the guide
 ## 1.91.0
 - Games tab: a cleaner top (games on, game count, hub spawn) and template tiles that open a guide for each game (Markdown, shown in the panel), plus "How games work"
 - Game and arena cards: their own tabs (General, the game's settings, Mobs, Bosses, Music, Rewards), hints under the section headings so fields sit side by side, commands in two columns, a "to do" count for setup steps left, the best score in the header, and a Guide button

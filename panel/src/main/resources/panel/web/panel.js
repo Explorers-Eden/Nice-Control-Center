@@ -174,7 +174,7 @@
         { tab: 'games', label: 'Games', perm: 'server.view', desc: 'Mini-games (parkour, races, mazes, quick rounds, head hunts): settings and the best players; games on/off and the hub spawn.' },
         { tab: 'arenas', label: 'Arenas', perm: 'server.view', desc: 'Wave fight arenas and their pools: waves, bosses, kits, lives, spawns, rewards and the best parties.' },
         { tab: 'dungeons', label: 'Dungeons', perm: 'server.view', desc: 'Dungeons you build: a fresh copy for every player or party, pools, pads, lives, kits and messages.' },
-        { tab: 'rogue', label: 'Rogue runs', perm: 'server.view', desc: 'Room after room, harder each time, one life: rogue runs, their boons, the coin shop and the unlocks bought with points.' },
+        { tab: 'rogue', label: 'Rogue Runs', perm: 'server.view', desc: 'Room after room, harder each time, one life: rogue runs, their boons, the coin shop and the unlocks bought with points.' },
         { tab: 'slots', label: 'Slot Machines', perm: 'server.view', desc: 'Slot Machines players spend points at: what a pull costs, what it can win and how likely, and where they stand.' }] },
       { id: 'rewards', hue: '#7ee0a1', label: 'Rewards', icon: 'bi-gift', subs: [
         { tab: 'rewards', label: 'Rules', perm: 'server.view', desc: 'Commands and messages that run when players join, explore, level up, play games, and at in-game times.' },
@@ -2866,7 +2866,7 @@
     const dlg = $('pn-guide');
     const tpl = GM_TEMPLATES.find((t) => t[0] === name);
     $('pn-guide-icon').className = `bi ${GAME_ICONS[name] || 'bi-book'}`;
-    $('pn-guide-title').textContent = tpl ? tpl[1] : { basics: 'How games work', bosses: 'Bosses', dungeons: 'Dungeons', rogue: 'Rogue runs', slots: 'Slot Machines' }[name] || name;
+    $('pn-guide-title').textContent = tpl ? tpl[1] : { basics: 'How games work', bosses: 'Bosses', dungeons: 'Dungeons', rogue: 'Rogue Runs', slots: 'Slot Machines' }[name] || name;
     const icon = { bosses: 'bi-emoji-angry', dungeons: 'bi-door-closed', rogue: 'bi-shuffle', slots: 'bi-dice-5' }[name];
     if (icon) $('pn-guide-icon').className = 'bi ' + icon;
     $('pn-guide-body').innerHTML = '<p class="pn-hint">Loading…</p>';
@@ -2997,7 +2997,7 @@
           ${field('Path', `<select data-n="pathMode">${opt('loop', n.pathMode, 'round and round')}${opt('back', n.pathMode, 'back and forth')}${opt('random', n.pathMode, 'to random checkpoints')}</select>`)}
           ${field('Walking speed (0.1–1)', num('walkSpeed', 0.1, 1, 0.05, n.walkSpeed))}
           <h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-hand-index"></i> Right-click and hit</h4>
-          ${field('Reward shop on a right-click', `<select data-n="shop">${opt('', n.shop, '(none)')}${opt('rogue_unlocks', n.shop, 'Rogue unlocks (Games → Rogue runs)')}${nc.shops.map((x) => opt(x.id, n.shop, x.title || x.name)).join('')}</select>`)}
+          ${field('Reward shop on a right-click', `<select data-n="shop">${opt('', n.shop, '(none)')}${opt('rogue_unlocks', n.shop, 'Rogue unlocks (Games → Rogue Runs)')}${nc.shops.map((x) => opt(x.id, n.shop, x.title || x.name)).join('')}</select>`)}
           ${field('Wait between two (s, per player)', num('cooldownSeconds', 0, 86400, 1, n.cooldownSeconds))}
           ${field('On a right-click (one per line: <code>say: Hello {player}!</code>, <code>player: spawn</code>, or a command as the server)', `<textarea data-n="onClick" rows="3" placeholder="say: Welcome, {player}!&#10;give {player} minecraft:cookie">${esc(ncActionsText(n.onClick))}</textarea>`, true)}
           ${field('On a hit (same as above)', `<textarea data-n="onHit" rows="2" placeholder="say: Ouch!">${esc(ncActionsText(n.onHit))}</textarea>`, true)}
@@ -3720,7 +3720,7 @@
         <td class="${rg[t] && !rooms(rg[t]) ? 'pn-dg-warn' : ''}">${rg[t] ? rooms(rg[t]) : '–'}</td>
         <td>${t === 'boss' ? '<small>every … rooms</small>' : `<input type="number" data-tw="${t}" min="0" max="100" value="${tw[t] ?? 0}">`}</td></tr>`).join('');
     return `${H('bi-shuffle', 'Rooms')}
-      <p class="pn-hint pn-field-wide">Rooms are rogue rooms saved into a group (<code>/rogue room save &lt;room&gt; &lt;group&gt;</code>, listed under Rogue rooms below) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms.</p>
+      <p class="pn-hint pn-field-wide">Rooms are rogue rooms saved into a group (<code>/rogue room save &lt;room&gt; &lt;group&gt;</code>, listed under Rogue Runs rooms below) with markers <code>start</code>, <code>door</code>, <code>spawn</code> (and <code>shop</code> in shop rooms). A type only comes up when its group has rooms.</p>
       ${field('First room (optional, a safe start), group <small>(' + rooms(d.startGroup) + ' rooms)</small>', `<input type="text" data-d="startGroup" value="${esc(d.startGroup || '')}" placeholder="${esc(d.name.toLowerCase())}_start" spellcheck="false">`)}
       ${field('Boss room every … rooms (0 = never)', num('bossEvery', 0, 100))}
       ${field('Rooms to win (0 = endless)', num('maxDepth', 0, 999))}
@@ -3915,7 +3915,7 @@
       const shares = inGroup.map((r) => `${esc(r.name)} ${Math.round(r.weight * 100 / total)}%`).join(', ');
       return `<li data-group="${i}"><b>${esc(g.name)}</b>
         <label class="pn-dg-inline">filled <input type="number" min="0" max="100" data-g="fillChance" value="${g.fillChance}"> %</label>
-        <label class="pn-dg-inline" title="Dungeons: 0 = right away, 1 = only in rooms inside another room… Rogue runs: the room number it can come from">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
+        <label class="pn-dg-inline" title="Dungeons: 0 = right away, 1 = only in rooms inside another room… Rogue Runs: the room number it can come from">from level <input type="number" min="0" max="8" data-g="minDepth" value="${g.minDepth}"></label>
         <small>${inGroup.length ? shares : '<span class="pn-dg-warn">no rooms (that are on)</span>'}${(() => {
           const runs = !k.rogue ? [] : s.dungeons.filter((d) => d.mode === 'rogue' && (d.startGroup === g.name || Object.values(d.roomGroups || {}).includes(g.name))).map((d) => {
             const t = d.startGroup === g.name ? 'first room' : Object.entries(d.roomGroups || {}).filter(([, v]) => v === g.name).map(([k]) => k).join(', ');

@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.110.1
+- "Rogue Runs" is written as a name: pad labels, queue and pool lines, "Rogue Runs are closed"
 ## 1.110.0
 - Rogue runs are their own thing now, apart from the dungeons: their own rooms and room groups, pads, pools and waiting areas, and their own command, /rogue (create, room create/save/group/weight/delete/list, corner2, tool marker, pad add/remove/wait, kit, pool, try, delete, list, top, runs, pick, leave, boon, shop, unlocks). Dungeons never get rogue rooms and rogue runs never get dungeon rooms; /dungeon only shows dungeons. Room names are still shared by both (their blocks are kept by name)
 - Rogue runs are kept in their own file, nicecontrolcenter-rogue.json, with their own on/off switch. On the first start, rogue runs made before move there with the rooms only they use and the pads and waiting areas of pools that only have rogue runs (logged; rooms dungeons use too stay dungeon rooms, with a warning)
