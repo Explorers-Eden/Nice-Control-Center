@@ -95,7 +95,11 @@ public final class Parties {
 
 	/** Flying Fair, the dungeon dimension, or the game hub's dimension: where parties are a thing. */
 	public static boolean here(ServerPlayer p) {
-		String dim = p.level().dimension().identifier().toString();
+		return gameWorld(p.level().dimension().identifier().toString());
+	}
+
+	/** One of the game worlds: Flying Fair, the dungeon or Rogue Runs dimension, or the game hub's dimension. */
+	public static boolean gameWorld(String dim) {
 		if (dim.equals("eden:flying_fair") || eu.explorerseden.nicecontrolcenter.Dungeons.runDimension(dim)) return true;
 		var hub = GameRuntime.settings().hub;
 		return hub != null && dim.equals(hub.dim);

@@ -862,7 +862,7 @@ public final class GameClaims {
 			} else if (v == 15) {
 				CompoundTag back = playerData(server, p.getUUID()).getCompoundOrEmpty("back");
 				String dim = back.getStringOr("dimension", "");
-				if (eu.explorerseden.nicecontrolcenter.Dungeons.runDimension(dim)) why = "The back teleport can't take you into the dungeons or Rogue Runs.";
+				if (!dim.isEmpty() && eu.explorerseden.nicecontrolcenter.games.Parties.gameWorld(dim)) why = "The back teleport can't take you into the game worlds.";
 				else if (!dim.isEmpty() && gameClaimAt(dim, (int) Math.floor(number(back, "x")), (int) Math.floor(number(back, "z"))) != null) why = "The back teleport can't take you back into a game area.";
 			}
 			if (why == null) continue;

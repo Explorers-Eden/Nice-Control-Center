@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.112.8
+- Teleport Back can't take players into any game world (Flying Fair, the game hub's dimension, the dungeons, Rogue Runs), not only into the dungeons and game areas
 ## 1.112.7
 - Teleport Home and Teleport to Spawn also work during a game and are in the in-game menu (dungeons, Rogue Runs, anyone playing): using one leaves the game first (things back, as with /game leave or /dungeon leave), then the teleport goes on
 ## 1.112.6
