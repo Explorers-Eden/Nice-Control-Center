@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.112.1
+- Fabled Roots paused in Flying Fair, the dungeons and Rogue Runs: players got the attributes' general defaults instead of a player's own, so movement speed 0.7 instead of 0.1 (seven times as fast) and attack damage 2 instead of 1. Now a player's vanilla values, checked every second while there, which also mends everyone already paused with the wrong ones; their race values still come back when they leave
 ## 1.112.0
 - Rogue Runs: a room type (and the first room) can draw from several room groups ("crypt_easy, crypt_hard"), and each rogue room group has a room range, from room … to room … (0 = no end): each room uses only the groups whose range covers it, so rooms can change as the run goes deeper
 ## 1.111.2

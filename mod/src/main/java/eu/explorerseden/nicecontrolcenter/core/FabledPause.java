@@ -73,11 +73,37 @@ public final class FabledPause {
 			boolean paused = p.entityTags().contains(TAG);
 			if (there && !paused) pause(p);
 			else if (!there && paused) resume(p);
+			// Kept at a player's vanilla values while there (also mends ones paused before 1.112.1, which got the
+			// attribute's general default: 0.7 movement speed, 2 attack damage).
+			else if (there) vanilla(p);
 		}
 	}
 
 	private static Holder<Attribute> attribute(String name) {
 		return BuiltInRegistries.ATTRIBUTE.get(Identifier.withDefaultNamespace(name)).map(h -> (Holder<Attribute>) h).orElse(null);
+	}
+
+	/**
+	 * A player's own vanilla base value: players are made with other values than the attribute's general default
+	 * (movement speed 0.1, not 0.7; attack damage 1, not 2).
+	 */
+	private static double playerDefault(Holder<Attribute> a) {
+		if (playerAttributes == null) playerAttributes = net.minecraft.world.entity.player.Player.createAttributes().build();
+		return playerAttributes.hasAttribute(a) ? playerAttributes.getBaseValue(a) : a.value().getDefaultValue();
+	}
+
+	private static net.minecraft.world.entity.ai.attributes.AttributeSupplier playerAttributes;
+
+	/** Paused players' base values back to vanilla if anything changed them (and fabled_roots modifiers off). */
+	private static void vanilla(ServerPlayer p) {
+		for (String name : ATTRIBUTES) {
+			Holder<Attribute> a = attribute(name);
+			AttributeInstance inst = a == null ? null : p.getAttribute(a);
+			if (inst == null) continue;
+			double want = playerDefault(a);
+			if (Math.abs(inst.getBaseValue() - want) > 1e-6) inst.setBaseValue(want);
+			for (AttributeModifier m : List.copyOf(inst.getModifiers())) if (m.id().getNamespace().equals("fabled_roots")) inst.removeModifier(m.id());
+		}
 	}
 
 	/** Into a game dimension: the race's values saved, vanilla ones set, the data pack told to skip them. */
@@ -96,7 +122,7 @@ public final class FabledPause {
 				keep.add(m.operation().name());
 				inst.removeModifier(m.id());
 			}
-			inst.setBaseValue(a.value().getDefaultValue());
+			inst.setBaseValue(playerDefault(a));
 			mine.put(name, keep);
 		}
 		// (Nothing to keep from an earlier pause that wasn't restored: that one wins.)
