@@ -1117,7 +1117,6 @@ body .pn-own-head select { -webkit-appearance: none; appearance: none; height: 3
 .pn-rg-types td input[type=text] { width: 100%; }
 .pn-rg-types td input[type=number] { width: 5.5em; }
 .pn-dg-warnchip { color: #ffb84d; }
-.pn-gm-qhide { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 14px; }
 .pn-gm-card .pn-rw-head .pn-hint { font-size: var(--fs-sm); }
 @media (max-width: 640px) { .pn-rg-types td:first-child small { display: none; } }
 .pn-dg-who { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text); }
