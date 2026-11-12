@@ -1883,6 +1883,17 @@ public final class GameRuntime {
 		return sessions.containsKey(p.getUUID());
 	}
 
+	/** Out of whatever game they're in (a wave fight, a quick round, a parkour, race or maze run, a dungeon or Rogue Run), as if they'd left it. */
+	public static boolean leaveAny(MinecraftServer server, ServerPlayer p, String why) {
+		if (WaveRuntime.leave(server, p)) return true;
+		if (QuickRuntime.leave(server, p)) return true;
+		if (DungeonRuntime.leave(server, p, why)) return true;
+		Session s = sessions.get(p.getUUID());
+		if (s == null) return false;
+		end(server, s, why, false);
+		return true;
+	}
+
 	/** The best players of an arena. */
 	public static List<Games.Score> top(Arena a, int n) {
 		List<Games.Score> list = new ArrayList<>(scores.getOrDefault(a.id, Map.of()).values());

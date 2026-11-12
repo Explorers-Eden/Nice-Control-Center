@@ -237,7 +237,7 @@ panel). The full guide is in [ROGUE.md](ROGUE.md).
 The Nice Actions menu (the G key) is different in Flying Fair, the game hub and the dungeons: it has a **Party**
 button, and leaves out what doesn't work there. Set Home is left out where homes can't be set, and Land Claims where
 claiming isn't allowed. Random teleport, Teleport Back and Set Home are left out everywhere in the game worlds and
-don't work there; Teleport Home and Teleport to Spawn do (outside a game). The dungeons, Rogue Runs and anyone playing a game (a round, a wave fight, a parkour, race
+don't work there; Teleport Home and Teleport to Spawn do, also during a game (they leave the game first). The dungeons, Rogue Runs and anyone playing a game (a round, a wave fight, a parkour, race
 or maze run) get the in-game menu, which also leaves out the teleports (random, spawn, home, back), Set Home, Claims,
 Pets, Market and Inbox. What's blocked is always left out on its own; the panel only switches the Party button
 (Games → Games, "Quick actions menu in the game worlds"), after a restart. The data pack stays as it is: the

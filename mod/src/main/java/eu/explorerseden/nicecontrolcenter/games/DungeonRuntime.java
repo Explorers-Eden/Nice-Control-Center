@@ -513,6 +513,14 @@ public final class DungeonRuntime {
 	// ---------------------------------------------------------------- for others
 
 	/** In a dungeon run (a game area: no market, pets or inbox; the hub spawn takes over). */
+	/** Out of their run, as with /dungeon leave (things back, out of the run's dimension); false when not in one. */
+	public static boolean leave(MinecraftServer server, ServerPlayer p, String why) {
+		Run r = playing.get(p.getUUID());
+		if (r == null) return false;
+		out(server, r, p, why, false);
+		return true;
+	}
+
 	public static boolean inRun(ServerPlayer p) {
 		return playing.containsKey(p.getUUID());
 	}

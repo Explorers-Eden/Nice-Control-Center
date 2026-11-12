@@ -833,8 +833,8 @@ public final class GameClaims {
 		Objective obj = server.getScoreboard().getObjective(TRIGGER);
 		if (obj == null) return;
 		for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-			// In the game worlds (Flying Fair, the game hub's dimension, dungeons, Rogue Runs) random, back and Set Home don't
-			// work; home and spawn do (the way out), except while playing a game.
+			// In the game worlds (Flying Fair, the game hub's dimension, dungeons, Rogue Runs) and in games, random, back and
+			// Set Home don't work; home and spawn do (the way out: in a game they leave it first, things back).
 			boolean world = eu.explorerseden.nicecontrolcenter.games.Parties.here(p);
 			boolean playing = playingNow(p);
 			// A teleport counting down when the game started (or started meanwhile) is called off.
@@ -846,7 +846,11 @@ public final class GameClaims {
 			int v = info.value();
 			String why = null;
 			// Teleports (random, spawn, home, back) and setting a home don't run while they play.
-			if (playing && (v == 3 || v == 4 || v == 6 || v == 15 || v == 5 || v == 16) || world && (v == 3 || v == 15 || v == 5 || v == 16)) {
+			if (playing && (v == 4 || v == 6)) {
+				eu.explorerseden.nicecontrolcenter.games.GameRuntime.leaveAny(server, p, "You left the game.");
+				continue;
+			}
+			if ((playing || world) && (v == 3 || v == 15 || v == 5 || v == 16)) {
 				server.getScoreboard().getOrCreatePlayerScore(p, obj).set(0);
 				p.sendOverlayMessage(Component.literal(playing ? "Not during a game" : "Not in the game worlds").withStyle(ChatFormatting.RED));
 				continue;
