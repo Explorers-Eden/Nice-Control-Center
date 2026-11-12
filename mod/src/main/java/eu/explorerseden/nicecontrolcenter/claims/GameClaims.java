@@ -571,21 +571,30 @@ public final class GameClaims {
 	}
 
 	/**
-	 * Survival players in a game play in its mode (adventure, or a game claim's own choice); out of it they're in
-	 * survival again (only if still in the mode the game put them in: a mode an admin gave them, or a dungeon's
+	 * Survival players in a game play in its mode (adventure, or a game claim's own choice), and so do creative players
+	 * while they play a game (a run, a round, a wave fight); out of it they're in their mode from before again (only if still in the mode the game put them in: a mode an admin gave them, or a dungeon's
 	 * spectating, is left alone). With {@code sweep}, kit items they still have outside a game vanish.
 	 */
 	public static void gameMode(ServerPlayer p, boolean sweep) {
 		String id = p.getStringUUID();
 		GameType want = playMode(p);
 		GameType now = p.gameMode.getGameModeForPlayer();
-		String set = adventure.get(id);
+		// Saved as "<mode we set>" or "<mode we set><<mode before>" (creative players who started a game).
+		String raw = adventure.get(id);
+		String set = raw == null ? null : raw.split("<", 2)[0];
+		String before = raw != null && raw.contains("<") ? raw.split("<", 2)[1] : null;
 		boolean ours = set != null && now.getName().equals(set);
+		// Playing a game right now (not just walking in a game area): creative players play too, in adventure unless
+		// the game says otherwise, and get creative back afterwards.
+		boolean playing = playingNow(p);
+		if (want == null && playing && (now == GameType.CREATIVE && set == null || ours)) want = GameType.ADVENTURE;
 		if (want != null) {
-			// From survival, or from the mode another game area put them in.
-			if (now != want && (now == GameType.SURVIVAL && set == null || ours)) {
+			boolean fromCreative = playing && now == GameType.CREATIVE && set == null && want != GameType.CREATIVE;
+			// From survival (or creative, when playing), or from the mode another game area put them in.
+			if (now != want && (now == GameType.SURVIVAL && set == null || fromCreative || ours)) {
 				p.setGameMode(want);
-				adventure.put(id, want.getName());
+				String keep = fromCreative ? GameType.CREATIVE.getName() : before;
+				adventure.put(id, want.getName() + (keep != null ? "<" + keep : ""));
 				saveAdventure();
 			}
 			return;
@@ -593,7 +602,7 @@ public final class GameClaims {
 		if (set != null) {
 			adventure.remove(id);
 			if (ours) {
-				p.setGameMode(GameType.SURVIVAL);
+				p.setGameMode(before != null ? GameType.byName(before, GameType.SURVIVAL) : GameType.SURVIVAL);
 				// Spectators or fliers coming back to survival in the air shouldn't fall to their death.
 				p.resetFallDistance();
 			}

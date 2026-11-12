@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.111.2
+- Creative players who start a game (a dungeon run, a Rogue Run, a wave fight, a quick round, a parkour, race or maze run) play it in adventure mode (or the game area's own mode) like everyone else, and are in creative again afterwards. Walking through a game area in creative without playing still leaves them as they are
 ## 1.111.1
 - Quick actions menu: what's blocked is left out on its own, nothing to pick any more. Players playing a game anywhere (a round, a wave fight, a parkour, race or maze run) get the in-game menu like in the dungeons and Rogue Runs: no teleports, Set Home, Claims, Pets, Market or Inbox; the Flying Fair menu only shows outside a game
 ## 1.111.0
