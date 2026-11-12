@@ -74,6 +74,26 @@ public final class FabledPause {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % 20 == 7) tick(server);
 		});
+		// Before the data pack's tick: no reset, race or class choice while paused (the pack runs those triggers for everyone).
+		ServerTickEvents.START_SERVER_TICK.register(FabledPause::triggers);
+	}
+
+	/** The data pack's triggers a paused player may not use: reset (race and class gone), choosing a race or a class. */
+	private static final List<String> BLOCKED = List.of("fabled_roots.dialog_trigger.reset", "fabled_roots.dialog_trigger.race", "fabled_roots.dialog_trigger.class");
+
+	private static void triggers(MinecraftServer server) {
+		var board = server.getScoreboard();
+		for (String name : BLOCKED) {
+			var obj = board.getObjective(name);
+			if (obj == null) continue;
+			for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+				if (!p.entityTags().contains(TAG)) continue;
+				var info = board.getPlayerScoreInfo(p, obj);
+				if (info == null || info.value() == 0) continue;
+				board.getOrCreatePlayerScore(p, obj).set(0);
+				p.sendOverlayMessage(net.minecraft.network.chat.Component.literal("Races and classes can't be changed or reset in the game worlds").withStyle(net.minecraft.ChatFormatting.RED));
+			}
+		}
 	}
 
 	private static void tick(MinecraftServer server) {
@@ -150,6 +170,12 @@ public final class FabledPause {
 		p.removeTag(TAG);
 		Map<String, List<String>> mine = saved.remove(p.getStringUUID());
 		if (mine == null) return;
+		// Race taken away meanwhile (an admin reset): nothing of the old one comes back; the race menu opens again.
+		if (!p.entityTags().contains("fabled_roots.has_race")) {
+			NiceControlCenter.LOGGER.info("Fabled Roots: {} lost their race while paused; their old race's values aren't put back", p.getGameProfile().name());
+			save();
+			return;
+		}
 		for (Map.Entry<String, List<String>> e : mine.entrySet()) {
 			Holder<Attribute> a = attribute(e.getKey());
 			AttributeInstance inst = a == null ? null : p.getAttribute(a);
