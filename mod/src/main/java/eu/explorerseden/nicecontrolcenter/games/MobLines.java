@@ -17,8 +17,11 @@ import eu.explorerseden.nicecontrolcenter.log.ConsoleRunner;
  * random sound, never an "ender" one, unless the line sets its own.
  */
 public final class MobLines {
-	/** One line: the mob, how many, its data ("" or "{…}"). */
-	public record Entry(String id, int count, String nbt) {
+	/** One line: the mob, how many, its data ("" or "{…}"), and how often a random pick takes it ("w5"; 1 when not set). */
+	public record Entry(String id, int count, String nbt, int weight) {
+		public Entry(String id, int count, String nbt) {
+			this(id, count, nbt, 1);
+		}
 	}
 
 	private MobLines() {
@@ -69,9 +72,38 @@ public final class MobLines {
 		String[] words = (brace >= 0 ? text.substring(0, brace) : text).strip().split("\\s+");
 		if (words.length == 0 || words[0].isEmpty()) return null;
 		String id = words[0].contains(":") ? words[0] : "minecraft:" + words[0];
-		int count = 1;
-		for (String w : words) if (w.matches("[xX]\\d{1,2}")) count = Math.max(1, Math.min(32, Integer.parseInt(w.substring(1))));
-		return new Entry(id.toLowerCase(Locale.ROOT), count, nbt);
+		int count = 1, weight = 1;
+		for (String w : words) {
+			if (w.matches("[xX]\\d{1,2}")) count = Math.max(1, Math.min(32, Integer.parseInt(w.substring(1))));
+			else if (w.matches("[wW]\\d{1,4}")) weight = Math.max(0, Math.min(1000, Integer.parseInt(w.substring(1))));
+		}
+		return new Entry(id.toLowerCase(Locale.ROOT), count, nbt, weight);
+	}
+
+	/** The weight a line sets ("w5"; 1 when not set, 0 = never picked at random). */
+	public static int weight(String line) {
+		Entry e = parse(line);
+		return e == null ? 0 : e.weight();
+	}
+
+	/** One entry at random, by weight (w5 comes five times as often as w1); null when the list is empty or all are w0. */
+	public static Entry pick(List<Entry> pool, java.util.Random random) {
+		int total = 0;
+		for (Entry e : pool) total += e.weight();
+		if (total <= 0) return null;
+		int n = random.nextInt(total);
+		for (Entry e : pool) if ((n -= e.weight()) < 0) return e;
+		return null;
+	}
+
+	/** One line at random, by its weight; null when there's none to pick. */
+	public static String pickLine(List<String> lines, java.util.Random random) {
+		int total = 0;
+		for (String l : lines) total += weight(l);
+		if (total <= 0) return null;
+		int n = random.nextInt(total);
+		for (String l : lines) if ((n -= weight(l)) < 0) return l;
+		return null;
 	}
 
 	/** Several lines split at commas (not the ones inside {…}, [...] or quotes). */

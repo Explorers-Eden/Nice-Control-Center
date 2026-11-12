@@ -107,14 +107,14 @@ final class Gallery {
 			r.walkers.put(m.getUUID(), new double[] { Integer.parseInt(k[0]), 0 });
 		}
 		if (now < r.nextWalker || r.walkers.size() >= a.maxAlive) return;
-		List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null && !e.id().startsWith("npc:")).toList();
+		List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null && e.weight() > 0 && !e.id().startsWith("npc:")).toList();
 		if (pool.isEmpty()) return;
 		Random random = QuickRuntime.random();
 		// More often as it goes on.
 		r.nextWalker = now + Math.round((700 + random.nextInt(900)) / (1 + r.elapsed() / 40_000.0));
 		int li = random.nextInt(lanes.size());
 		Games.Lane l = lanes.get(li);
-		MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+		MobLines.Entry e = MobLines.pick(pool, random);
 		String tag = WALKER + li + "_" + (r.walkerCount++);
 		MobLines.summon(server, l.from.dim, l.from.x, l.from.y, l.from.z, new MobLines.Entry(e.id(), 1, e.nbt()),
 				"NoAI:1b,Silent:1b,Invulnerable:1b,NoGravity:1b,Tags:[\"" + r.tag() + "\",\"" + tag + "\"]");

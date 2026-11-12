@@ -38,7 +38,9 @@ in the panel under **Games**. `<name>` is the game's one-word name.
     visitors from a watch point). Leaving the game or the area stops it at once.
 12. **Mobs** (wave fights, ghast deflect, colour floor, snowball gallery, maze): one mob pool, the same everywhere, one line per mob
     like `/summon`: `zombie`, `skeleton x2`, `husk {equipment:{mainhand:{id:"minecraft:iron_sword",count:1}}}`, or an NPC
-    `npc:knight`; plus how many at once and whether peaceful mobs fight.
+    `npc:knight`; plus how many at once and whether peaceful mobs fight. A weight `w5` makes a line come five times as
+    often as a plain one (`w1`, the default; `w0` never comes): `zombie w10`, `creeper w2`, `witch x2 w1`. The same
+    works for boss lists picked at random (wave arenas, rogue runs): `ncc:frost_warden w3`, `ravager w1`.
 13. Try a game: `/game try <name>` (wave fights and quick rounds): you play it alone (party size doesn't matter), and
     `/game leave` ends it. From the console a wave arena runs with nobody in it for 3 minutes. Scores:
     `/game top <name>`.

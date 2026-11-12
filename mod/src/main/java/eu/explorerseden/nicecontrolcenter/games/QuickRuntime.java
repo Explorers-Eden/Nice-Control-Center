@@ -720,9 +720,8 @@ public final class QuickRuntime {
 		List<LivingEntity> ghasts = level.getEntitiesOfClass(LivingEntity.class, box.inflate(32), e -> e.isAlive() && e.entityTags().contains(r.tag()));
 		// One new ghast every half second, up to the cap.
 		if (server.getTickCount() % 10 == 0 && ghasts.size() < a.maxAlive) {
-			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null).toList();
-			if (!pool.isEmpty()) {
-				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+			MobLines.Entry e = MobLines.pick(a.pool.stream().map(MobLines::parse).filter(x -> x != null).toList(), random);
+			if (e != null) {
 				Games.Pos at = a.mobSpawns.get(random.nextInt(a.mobSpawns.size()));
 				MobLines.summon(server, at.dim, at.x, at.y, at.z, new MobLines.Entry(e.id(), 1, e.nbt()), "Tags:[\"" + r.tag() + "\"]");
 			}
@@ -885,7 +884,7 @@ public final class QuickRuntime {
 			List<Integer> standing = new ArrayList<>();
 			for (int i = 0; i < 9; i++) if (!r.gone[i]) standing.add(i);
 			long mobs = level.getEntitiesOfClass(LivingEntity.class, box(a).inflate(8), e -> e.isAlive() && e.entityTags().contains(r.tag())).size();
-			MobLines.Entry e = MobLines.parse(a.pool.get(random.nextInt(a.pool.size())));
+			MobLines.Entry e = MobLines.parse(MobLines.pickLine(a.pool, random));
 			if (e != null && !standing.isEmpty() && mobs < a.maxAlive) {
 				BlockPos c = platform(a, standing.get(random.nextInt(standing.size())));
 				MobLines.summon(server, a.corner.dim, c.getX() + random.nextInt(a.platformSize) + 0.5, c.getY() + 1, c.getZ() + random.nextInt(a.platformSize) + 0.5, new MobLines.Entry(e.id(), 1, e.nbt()), "Tags:[\"" + r.tag() + "\"]");

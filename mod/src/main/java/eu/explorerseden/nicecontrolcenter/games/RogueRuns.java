@@ -260,10 +260,10 @@ final class RogueRuns {
 		if (spawns.isEmpty()) spawns.add(r.start);
 		for (BlockPos s : st.shops) RogueBoons.shopNpc(server, r, s, tag(r) + "_label");
 		if ("boss".equals(st.type) && !bossMarker) {
-			List<String> lines = d.bosses.stream().filter(x -> MobLines.parse(x) != null).toList();
-			if (!lines.isEmpty()) {
+			String line = MobLines.pickLine(d.bosses.stream().filter(x -> MobLines.parse(x) != null).toList(), random);
+			if (line != null) {
 				BlockPos far = farthest(spawns, r.start);
-				spawnLine(server, r, far, lines.get(random.nextInt(lines.size())), true);
+				spawnLine(server, r, far, line, true);
 				bossMarker = true;
 			}
 		}
@@ -278,10 +278,10 @@ final class RogueRuns {
 			int size = Math.max(1, r.players.size() - r.out.size());
 			int want = (int) Math.round((d.firstMobs + d.perRoom * Math.max(0, st.depth - 1)) * (1 + d.perPlayer / 100.0 * (size - 1)));
 			want = Math.min(40, want);
-			List<MobLines.Entry> pool = d.mobs.stream().map(MobLines::parse).filter(e -> e != null).toList();
+			List<MobLines.Entry> pool = d.mobs.stream().map(MobLines::parse).filter(e -> e != null && e.weight() > 0).toList();
 			int made = 0, i = 0;
 			while (made < want && !pool.isEmpty()) {
-				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+				MobLines.Entry e = MobLines.pick(pool, random);
 				for (int n = 0; n < Math.max(1, e.count()) && made < want; n++, made++) {
 					BlockPos at = spawns.get(i++ % spawns.size());
 					spawnOne(server, r, at, new MobLines.Entry(e.id(), 1, e.nbt()), false);

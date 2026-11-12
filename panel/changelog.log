@@ -1,3 +1,5 @@
+## 1.90.0
+- Games: the mob pool and boss list hints explain weights (`w5` = five times as often, `w0` never), also for rogue run mobs and bosses
 ## 1.89.0
 - Games → Games: "Quick actions menu in the game worlds": the Party button on or off, and which Nice Actions buttons to leave out in Flying Fair and the dungeons (the list comes from the server)
 ## 1.88.2

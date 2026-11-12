@@ -724,7 +724,7 @@ public final class GameRuntime {
 				}
 			}
 			if (mobs.size() >= a.maxAlive || mazeBuilding(a)) continue;
-			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null).toList();
+			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null && e.weight() > 0).toList();
 			if (pool.isEmpty()) continue;
 			ServerPlayer near = runners.get(random.nextInt(runners.size()));
 			for (int tries = 0; tries < 24; tries++) {
@@ -732,7 +732,7 @@ public final class GameRuntime {
 				double z = Math.floor(a.corner.z) + mazeCell(a, random.nextInt(a.size)) + a.mazePath / 2.0;
 				double d = Math.hypot(near.getX() - x, near.getZ() - z);
 				if (d < 12 || d > 32 || runners.stream().anyMatch(r -> Math.hypot(r.getX() - x, r.getZ() - z) < 12)) continue;
-				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+				MobLines.Entry e = MobLines.pick(pool, random);
 				MobLines.summon(server, a.corner.dim, x, Math.floor(a.corner.y) + 1, z, new MobLines.Entry(e.id(), 1, e.nbt()), "Tags:[\"" + tag + "\"]");
 				break;
 			}

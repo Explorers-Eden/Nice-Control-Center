@@ -811,16 +811,16 @@ public final class WaveRuntime {
 			List<String> bosses = a.bosses.stream().filter(x -> MobLines.parse(x) != null).toList();
 			if (a.bossEvery > 0 && g.wave % a.bossEvery == 0 && !bosses.isEmpty()) {
 				// In order: the n-th boss wave gets the n-th line (round again after the last); else one at random.
-				int i = "order".equals(a.bossOrder) ? (g.wave / a.bossEvery - 1) % bosses.size() : random.nextInt(bosses.size());
-				boss = MobLines.parse(bosses.get(i));
+				// (Weights only count for random picks; in order goes through every line.)
+				boss = "order".equals(a.bossOrder) ? MobLines.parse(bosses.get((g.wave / a.bossEvery - 1) % bosses.size())) : MobLines.parse(MobLines.pickLine(bosses, random));
 			}
 			// (A negative count marks the boss.)
 			if (boss != null) g.toSpawn.add(new MobLines.Entry(boss.id(), -1, boss.nbt()));
 			int size = Math.max(1, (int) g.players.stream().filter(g::in).count());
 			int want = (int) Math.round((a.firstWave + a.perWave * (g.wave - 1)) * (1 + a.perPlayer / 100.0 * (size - 1)));
-			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null).toList();
+			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null && e.weight() > 0).toList();
 			while (boss == null && g.toSpawn.size() < want && !pool.isEmpty()) {
-				MobLines.Entry e = pool.get(random.nextInt(pool.size()));
+				MobLines.Entry e = MobLines.pick(pool, random);
 				for (int i = 0; i < e.count() && g.toSpawn.size() < want; i++) g.toSpawn.add(e);
 			}
 		}

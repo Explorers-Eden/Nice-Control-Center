@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.109.0
+- Mob pools and boss lists get weights: `w5` in a line makes it come five times as often as a plain line (`w1`), `w0` never. Works in wave arenas (mob pool and random boss picks; "in order" still goes through every boss), the quick rounds, maze and snowball gallery pools, and rogue run mobs and bosses. Lines without a weight work as before
 ## 1.108.0
 - Nice Actions menu (G key) in Flying Fair, the game hub and the dungeons: a Party button, and what doesn't work there is left out (Set Home where homes can't be set, Land Claims where claiming isn't allowed; in the dungeons also the teleports, Claims, Pets, Market and Inbox). More can be left out in the panel. Elsewhere the menu stays as it was; the data pack isn't changed
 - Tested on the console only (both menus are built when the server starts); switching the menu when players enter and leave needs a player
