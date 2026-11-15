@@ -92,6 +92,8 @@ final class RogueRuns {
 		/** Rooms cleared (the score), bosses beaten. */
 		int cleared;
 		int bossesDown;
+		/** The boss line of this room's boss (for the trophy reward). */
+		String bossLine;
 		/** Run coins, boon stacks (boon id → count), boons on offer, rerolls left: per player. */
 		final Map<UUID, Integer> coins = new HashMap<>();
 		final Map<UUID, Map<String, Integer>> stacks = new HashMap<>();
@@ -307,6 +309,7 @@ final class RogueRuns {
 	private static void spawnLine(MinecraftServer server, Run r, BlockPos at, String line, boolean boss) {
 		MobLines.Entry e = MobLines.parse(line);
 		if (e == null) return;
+		if (boss && r.rogue != null) r.rogue.bossLine = e.id();
 		int count = boss || KatterBosses.is(e.id()) ? 1 : Math.max(1, e.count());
 		for (int i = 0; i < count; i++) spawnOne(server, r, at, new MobLines.Entry(e.id(), 1, e.nbt()), boss);
 	}
@@ -431,7 +434,7 @@ final class RogueRuns {
 			DungeonRuntime.rewardInside(server, r, "rogueRoom", st.depth, false);
 			if ("boss".equals(st.type)) {
 				st.bossesDown++;
-				DungeonRuntime.rewardInside(server, r, "rogueBoss", st.bossesDown, false);
+				eu.explorerseden.nicecontrolcenter.rewards.RewardsControl.withBoss(st.bossLine, () -> DungeonRuntime.rewardInside(server, r, "rogueBoss", st.bossesDown, false));
 			}
 		}
 		if (d.maxDepth > 0 && st.depth >= d.maxDepth) {

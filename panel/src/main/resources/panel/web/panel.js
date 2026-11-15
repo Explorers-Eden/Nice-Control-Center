@@ -2125,6 +2125,7 @@
       gm.scores = d.scores || null;
       gm.headSkins = d.headSkins || {};
       gm.songs = d.songs || [];
+      gm.weekly = d.weekly || null;
       try { gm.npcs = (await api('api/npcs')).settings.npcs; } catch (e) { gm.npcs = []; }
       await bossInfo();
       gm.dirty = false;
@@ -2257,6 +2258,16 @@
     gmRenderPools(edit);
   }
 
+  /** This week's top 3 of a board (games, dungeons, Rogue Runs) under a card's Best, with the week. */
+  function gmWeekly(key, show, weekly) {
+    const w = weekly || gm.weekly;
+    const b = w && w.boards ? w.boards[key] : null;
+    const top = b ? b.top.slice(0, 3) : [];
+    return `<b class="pn-gm-week"><i class="bi bi-calendar-week"></i> This week</b>`
+      + (top.length ? `<ol class="pn-gm-top">${top.map((t) => `<li><b>${esc(t.name)}</b><span>${esc(show(t.best, t))}</span></li>`).join('')}</ol>` : '<p class="pn-hint">Nobody yet this week.</p>')
+      + (w && w.week ? `<small class="pn-hint">${esc(w.week)}; ends Monday 00:00. Top 10 get the Rewards trigger "Places in a weekly leaderboard".</small>` : '');
+  }
+
   /** One game's card: { i, html, todo (setup steps left), runs, live }. */
   function gmCard(a, i) {
     const live = gm.live ? gm.live.find((x) => x.id === a.id) : null;
@@ -2383,7 +2394,8 @@
         </div>
         <div class="pn-subtabs pn-gm-tabs">${panes.map(([k, icon, l]) => `<button type="button" class="pn-subtab${k === cur ? ' active' : ''}" data-gtab="${k}"><i class="bi ${icon}"></i> ${l}</button>`).join('')}</div>
         <div class="pn-gm-body"><div>${panes.map(([k, , , h]) => `<div class="pn-gm-pane" data-pane="${k}"${k === cur ? '' : ' hidden'}>${h}</div>`).join('')}</div>
-          <aside class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}${runs ? `<small class="pn-hint">${runs} run${runs === 1 ? '' : 's'} in all</small>` : ''}</aside></div>
+          <aside class="pn-gm-board"><b><i class="bi bi-trophy"></i> Best</b>${board}${runs ? `<small class="pn-hint">${runs} run${runs === 1 ? '' : 's'} in all</small>` : ''}
+            ${gmWeekly('game:' + a.id, (v) => (heads ? `${v} / ${a.heads.length}` : gmScore(a.type, v)))}</aside></div>
       </section>`;
     return { i, html, todo, runs, live: live && live.playing ? 1 : 0 };
   }
@@ -2451,7 +2463,7 @@
         + `<label class="pn-field pn-field-wide"><span>Bosses: one line each, <code>mob {data}</code>; <code>w5</code> = five times as likely</span><textarea data-g="bosses" data-lines="1" rows="3" spellcheck="false" placeholder="ravager&#10;wither_skeleton {CustomName:'Bone King'}">${esc((a.bosses || []).join('\n'))}</textarea></label>`
         + `<div class="pn-field pn-field-wide"><span>In the list <button type="button" class="np-btn small" data-guide="bosses" title="Every built-in boss and what it does"><i class="bi bi-book"></i> All bosses</button></span><ul class="pn-gm-bosslist">${gmBossList(a)}</ul></div>`
         + field('katters', 'Add a built-in boss', `<select data-katters="1"><option value="">(pick one to add it)</option>`
-          + `<optgroup label="NCC">${[['frost_warden', 'The Frost Warden'], ['hive_queen', 'The Hive Queen'], ['ember_colossus', 'The Ember Colossus'], ['tempest', 'The Tempest'], ['drowned_admiral', 'The Drowned Admiral'], ['bone_architect', 'The Bone Architect'], ['creeper_king', 'The Creeper King'], ['echo_shepherd', 'The Echo Shepherd'], ['coven_matron', 'The Coven Matron'], ['phantom_monarch', 'The Phantom Monarch'], ['piglin_warlord', 'The Piglin Warlord'], ['ender_stalker', 'The Ender Stalker'], ['iron_tyrant', 'The Iron Tyrant'], ['purpur_sentinel', 'The Purpur Sentinel'], ['cinder_lord', 'The Cinder Lord'], ['weeping_ghast', 'The Weeping Ghast'], ['dire_alpha', 'The Dire Alpha'], ['heartwood_creaking', 'The Heartwood Creaking'], ['abyssal_eye', 'The Abyssal Eye'], ['rotting_giant', 'The Rotting Giant'], ['arch_evoker', 'The Arch-Evoker'], ['oxidized_engine', 'The Oxidized Engine'], ['ramlord', 'The Ramlord'], ['llama_matriarch', 'The Llama Matriarch'], ['panda_grandmaster', 'The Panda Grandmaster'], ['trickster_fox', 'The Trickster Fox'], ['glacier_bear', 'The Glacier Bear'], ['elder_sniffer', 'The Elder Sniffer'], ['shellguard', 'The Shellguard'], ['village_elder', 'The Village Elder'], ['master_smith', 'The Master Smith'], ['grand_librarian', 'The Grand Librarian'], ['harvest_keeper', 'The Harvest Keeper'], ['raid_captain', 'The Raid Captain'], ['headsman', 'The Headsman'], ['siege_engineer', 'The Siege Engineer'], ['beastmaster', 'The Beastmaster'], ['axolotl_sovereign', 'The Axolotl Sovereign'], ['caravan_camel', 'The Caravan Camel'], ['bog_frog_king', 'The Bog Frog King'], ['tusk_matriarch', 'The Tusk Matriarch']].map(([k, l]) => `<option value="ncc:${k}">${l}</option>`).join('')}</optgroup>`
+          + `<optgroup label="NCC">${[['frost_warden', 'The Frost Warden'], ['hive_queen', 'The Hive Queen'], ['ember_colossus', 'The Ember Colossus'], ['tempest', 'The Tempest'], ['drowned_admiral', 'The Drowned Admiral'], ['bone_architect', 'The Bone Architect'], ['creeper_king', 'The Creeper King'], ['echo_shepherd', 'The Echo Shepherd'], ['coven_matron', 'The Coven Matron'], ['phantom_monarch', 'The Phantom Monarch'], ['piglin_warlord', 'The Piglin Warlord'], ['ender_stalker', 'The Ender Stalker'], ['iron_tyrant', 'The Iron Tyrant'], ['purpur_sentinel', 'The Purpur Sentinel'], ['cinder_lord', 'The Cinder Lord'], ['weeping_ghast', 'The Weeping Ghast'], ['dire_alpha', 'The Dire Alpha'], ['heartwood_creaking', 'The Heartwood Creaking'], ['abyssal_eye', 'The Abyssal Eye'], ['rotting_giant', 'The Rotting Giant'], ['arch_evoker', 'The Arch-Evoker'], ['oxidized_engine', 'The Oxidized Engine'], ['ramlord', 'The Ramlord'], ['llama_matriarch', 'The Llama Matriarch'], ['panda_grandmaster', 'The Panda Grandmaster'], ['trickster_fox', 'The Trickster Fox'], ['glacier_bear', 'The Glacier Bear'], ['elder_sniffer', 'The Elder Sniffer'], ['shellguard', 'The Shellguard'], ['village_elder', 'The Village Elder'], ['master_smith', 'The Master Smith'], ['grand_librarian', 'The Grand Librarian'], ['harvest_keeper', 'The Harvest Keeper'], ['raid_captain', 'The Raid Captain'], ['headsman', 'The Headsman'], ['siege_engineer', 'The Siege Engineer'], ['beastmaster', 'The Beastmaster'], ['axolotl_sovereign', 'The Axolotl Sovereign'], ['caravan_camel', 'The Caravan Camel'], ['bog_frog_king', 'The Bog Frog King'], ['tusk_matriarch', 'The Tusk Matriarch'], ['spectral_stallion', 'The Spectral Stallion'], ['mimic_macaw', 'The Mimic Macaw'], ['cluckening', 'The Cluckening']].map(([k, l]) => `<option value="ncc:${k}">${l}</option>`).join('')}</optgroup>`
           + `<optgroup label="Katters Structures">${[['arachne', 'Arachne, Mother of Spiders'], ['raj', 'Raj Raksha'], ['rusta', 'Rústa, Chieftain of the Ravaged Lands'], ['tenku', 'Tenkū Mizu Gami (hovers on land)'], ['theron', 'Magus Theron the Betrayer']].map(([k, l]) => `<option value="katters:${k}">${l}</option>`).join('')}</optgroup></select>`)
         + '<p class="pn-hint pn-field-wide">Built-in bosses (NCC\'s own, and Katters Structures\' by Katter) fight with their own attacks, get the "% more health per wave" on their health, stay inside the fight box and drop nothing. Try one where you stand: <code>/game boss &lt;name&gt;</code>, gone again with <code>/game boss clear</code>. What each one does: <a href="#" data-guide="bosses">the boss guide</a>.</p>',
       rewards: lines('waveCommands', 'Commands after each cleared wave ({wave}, {player}, {game}): wave rewards')
@@ -3567,6 +3579,7 @@
       const d = await api('api/dungeons');
       dg.runs = d.runs || [];
       dg.scores = d.scores || {};
+      dg.weekly = d.weekly || null;
       const fresh = !dg.dirty || !dg.settings;
       if (fresh) {
         dg.settings = d.settings;
@@ -3656,7 +3669,8 @@
           ${field(rogue ? 'When the run is over' : 'When failed', text('failedMessage', rogue ? '■ {dungeon}: the run is over after {depth} rooms ({time}).' : '■ {dungeon}: the run is over.'), true)}
           ${field('Commands on entering ({player}, {party}, {dungeon})', lines('enterCommands'), true)}
           ${field('Commands at the end or on leaving ({time}, {deaths}' + (rogue ? ', {depth}' : '') + ')', lines('exitCommands'), true)}
-        </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> ${rogue ? 'Deepest runs' : 'Best clears'}</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}</div></div>
+        </div><div class="pn-gm-board"><b><i class="bi bi-trophy"></i> ${rogue ? 'Deepest runs' : 'Best clears'}</b>${board ? `<ol class="pn-gm-top">${board}</ol>` : '<p class="pn-hint">Not cleared yet.</p>'}
+          ${gmWeekly((rogue ? 'rogue:' : 'dungeon:') + d.id, (v, t) => (rogue ? `${v} rooms · ${gmClock(t.tie)}` : gmClock(v)), dg.weekly)}</div></div>
       </section>`;
     };
     $('pn-dg-list').innerHTML = s.dungeons.map((d, i) => (d.mode === 'rogue' ? '' : dgCard(d, i))).join('')
@@ -4153,9 +4167,9 @@
   const rwUnit = (sec) => RW_UNITS.slice().reverse().find(([, f]) => sec > 0 && sec % f === 0) || RW_UNITS[1];
   const RW_DEFAULT = { points: { amount: 10 }, fly: { seconds: 1800 }, claimblocks: { amount: 500 }, pet: {}, petslots: { amount: 1 }, listings: { amount: 2 }, coupons: { amount: 1, level: 3 },
     spotlight: { seconds: 86400 }, xp: { level: 2, seconds: 3600 }, haste: { level: 2, seconds: 3600 }, blockboost: { level: 2, seconds: 7200 },
-    bondboost: { level: 2, seconds: 7200 }, toolcare: { seconds: 3600 } };
+    bondboost: { level: 2, seconds: 7200 }, toolcare: { seconds: 3600 }, trophy: { target: '' } };
   const RW_ICONS = { points: 'bi-coin', fly: 'bi-feather', claimblocks: 'bi-bounding-box', pet: 'bi-emoji-smile', petslots: 'bi-people', listings: 'bi-shop', coupons: 'bi-ticket-perforated',
-    spotlight: 'bi-star', xp: 'bi-stars', haste: 'bi-lightning', blockboost: 'bi-graph-up-arrow', bondboost: 'bi-heart', toolcare: 'bi-tools' };
+    spotlight: 'bi-star', xp: 'bi-stars', haste: 'bi-lightning', blockboost: 'bi-graph-up-arrow', bondboost: 'bi-heart', toolcare: 'bi-tools', trophy: 'bi-trophy' };
 
   /** One "also give" row; src has the action types and pets, holder the attribute that tells the input handler whose it is. */
   function rwActionRow(a, ri, ai, src = rw, holder = `data-rule="${ri}"`) {
@@ -4165,7 +4179,8 @@
     const levelLabel = a.type === 'points' ? '+ per score (games)' : a.type === 'haste' ? 'Level (1–3)' : a.type === 'coupons' ? 'Each worth (currency items)' : 'Multiplier (×)';
     const [unit, factor] = rwUnit(a.seconds);
     const fields = [
-      f.includes('t') ? `<label class="pn-field"><span>Pet</span><select data-a="${ai}" data-ak="target">${src.pets.map((n) => `<option ${n === a.target ? 'selected' : ''}>${esc(n)}</option>`).join('') || '<option value="">no pets yet</option>'}</select></label>` : '',
+      f.includes('t') && a.type === 'trophy' ? `<label class="pn-field" style="min-width:260px"><span>Boss (empty: the one just beaten)</span><input type="text" list="pn-rw-bosses" data-a="${ai}" data-ak="target" value="${esc(a.target || '')}" placeholder="the boss just beaten" spellcheck="false"></label>`
+        : f.includes('t') ? `<label class="pn-field"><span>Pet</span><select data-a="${ai}" data-ak="target">${src.pets.map((n) => `<option ${n === a.target ? 'selected' : ''}>${esc(n)}</option>`).join('') || '<option value="">no pets yet</option>'}</select></label>` : '',
       f.includes('a') ? `<label class="pn-field"><span>${amountLabel}</span><input type="number" data-a="${ai}" data-ak="amount" value="${a.amount}"></label>` : '',
       f.includes('l') ? `<label class="pn-field"><span>${levelLabel}</span><input type="number" data-a="${ai}" data-ak="level" value="${a.level}" step="${a.type === 'coupons' || a.type === 'haste' ? 1 : 0.5}" min="${a.type === 'points' ? 0 : 1}"></label>` : '',
       f.includes('s') ? `<label class="pn-field"><span>For how long</span><span class="pn-rw-time"><input type="number" data-a="${ai}" data-ak="time" value="${a.seconds / factor}" min="1"><select data-a="${ai}" data-ak="unit">${RW_UNITS.map(([u, , l]) => `<option value="${u}" ${u === unit ? 'selected' : ''}>${l}</option>`).join('')}</select></span></label>` : '',
@@ -4203,6 +4218,9 @@
       rw.pointsName = d.pointsName || 'Points';
       rw.actions = (d.actions || []).map((t) => (t.id === 'points' ? { ...t, label: rw.pointsName } : t));
       rw.pets = d.pets || [];
+      // Bosses for trophies (from the boss guide): the field's suggestions and the looks list.
+      rw.bosses = await bossInfo();
+      $('pn-rw-bosses').innerHTML = Object.entries(rw.bosses).map(([k, b]) => `<option value="${esc(k)}">${esc(b.name)}</option>`).join('');
       rw.dirty = false;
       renderRewards();
       Dirty.reset('rewards');
@@ -4214,6 +4232,7 @@
   function renderRewards() {
     const s = rw.settings;
     const edit = can('settings.server');
+    rwTrophies();
     $('pn-rw-enabled').checked = s.enabled;
     $('pn-rw-enabled').disabled = !edit;
     const trig = (id) => rw.triggers.find((t) => t.id === id) || {};
@@ -4258,6 +4277,43 @@
     $('pn-rw-rules').querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = !edit; });
     $('pn-rw-save').disabled = !edit || !rw.dirty;
   }
+  $('pn-rw-trophies').addEventListener('input', (e) => {
+    const li = e.target.closest('[data-trophy]');
+    if (!li || !e.target.hasAttribute('data-tskin')) return;
+    rw.settings.trophySkins[li.dataset.trophy] = e.target.value.trim();
+    rwChanged(false);
+  });
+  $('pn-rw-trophies').addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-trm]');
+    if (rm) {
+      delete rw.settings.trophySkins[rm.closest('[data-trophy]').dataset.trophy];
+      rwChanged(false);
+      rwTrophies();
+      return;
+    }
+    if (!e.target.closest('#pn-rw-tadd')) return;
+    let k = $('pn-rw-tboss').value.trim().toLowerCase();
+    if (!k) return;
+    if (!k.includes(':')) k = (rw.bosses || {})['ncc:' + k] ? 'ncc:' + k : 'minecraft:' + k;
+    rw.settings.trophySkins = rw.settings.trophySkins || {};
+    if (!(k in rw.settings.trophySkins)) rw.settings.trophySkins[k] = '';
+    rwTrophies();
+    rwChanged(false);
+  });
+
+  /** Boss trophy looks: boss → head skin (the Rewards settings' trophySkins). */
+  function rwTrophies() {
+    const s = rw.settings;
+    s.trophySkins = s.trophySkins || {};
+    const rows = Object.entries(s.trophySkins);
+    const name = (k) => (rw.bosses || {})[k]?.name || k;
+    $('pn-rw-trophies').innerHTML = (rows.length ? `<ul class="pn-dg-runs">${rows.map(([k, v]) => `<li data-trophy="${esc(k)}"><b>${esc(name(k))}</b><small>${esc(k)}</small>
+        <input type="text" data-tskin value="${esc(v)}" placeholder="skin link, hash or base64" spellcheck="false" style="flex:1;min-width:200px">
+        <button type="button" class="np-btn small danger" data-trm title="Back to the default look"><i class="bi bi-x-lg"></i></button></li>`).join('')}</ul>` : '<p class="pn-hint">No own looks yet: every trophy uses its mob\'s vanilla head where there is one (skulls, creeper, piglin…), else a plain player head.</p>')
+      + `<div class="np-filters" data-dirty-ignore><input type="text" list="pn-rw-bosses" id="pn-rw-tboss" placeholder="ncc:frost_warden" spellcheck="false"><button type="button" class="np-btn small" id="pn-rw-tadd"><i class="bi bi-plus-lg"></i> Own look</button></div>`;
+    $('pn-rw-trophies').querySelectorAll('input, button').forEach((el) => { el.disabled = !can('settings.server'); });
+  }
+
 
   function rwChanged(rerender) {
     rw.dirty = true;

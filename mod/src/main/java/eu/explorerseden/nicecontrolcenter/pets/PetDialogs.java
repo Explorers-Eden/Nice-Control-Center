@@ -93,6 +93,11 @@ public final class PetDialogs {
 		return PetFollowers.head(player.level().getServer(), texture);
 	}
 
+	/** The same without a player (rewards). */
+	public static ItemStack headOf(net.minecraft.server.MinecraftServer server, String texture) {
+		return PetFollowers.head(server, texture);
+	}
+
 	private static DialogBody headRow(ServerPlayer player, String texture, Component description) {
 		ItemStack head = PetFollowers.head(player.level().getServer(), texture);
 		if (head.isEmpty()) return new PlainMessage(description, TEXT_WIDTH);

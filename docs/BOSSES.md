@@ -373,6 +373,37 @@ A great hoglin, 220 health, hits of 7. She never turns into a zoglin.
 - **Warped fungus:** every player gets two (game items, gone after the game). A hit with one in hand stuns her for
   4 seconds and uses it up.
 
+### The Spectral Stallion — `ncc:spectral_stallion`
+A great skeleton horse, 180 health, trailing soul particles.
+- **Laps:** every 15 s it gallops laps round the fight (the box's middle) for 6 seconds: 5 damage and a knock to
+  anyone in the way.
+- **Lightning traps:** every 10 s sparks mark the ground under up to three players, then lightning strikes there
+  (6 damage; it sets nothing alight).
+- **Ghost herd:** at a third of its health three glowing ghost horses join.
+
+### The Mimic Macaw — `ncc:mimic_macaw`
+A big parrot, 140 health, flying about 5 blocks above the nearest player.
+- **Mimicry:** every 6 s it answers with the kind of attack it took last: arrows → two arrows at everyone, fire →
+  fire rings under everyone (4 damage, set alight), a blast → a marked explosion that breaks nothing, a hit → a peck
+  dive (6 damage).
+- **Imitation:** every 15 s it squawks like a mob (zombie, skeleton, spider, husk, stray, witch) and one of it comes.
+- **Feather volley:** every 9 s feathers mark up to three players' spots: 3 damage and slowness there.
+
+### The Cluckening — `ncc:cluckening`
+A giant chicken, 150 health. It lays no eggs of its own.
+- **Egg barrage:** every 8 s six eggs arc onto spots near players: seven in ten hatch an angry chick, the rest pop
+  (4 damage).
+- **Flutter slam:** every 12 s feathers mark a player's spot, it flutters up and slams down there (6 damage, a knock).
+- **Feather storm:** every 20 s everyone within 7 blocks is weakened, floats (slow falling) and is pushed away.
+
+## Trophies
+
+The Rewards action **Boss trophy** gives a placeable head named after a boss ("The Frost Warden Trophy", with the day
+it was beaten) into the player's inbox. Set a boss, or leave it empty for the boss just beaten: that works on
+"Defeats a boss in a dungeon", "Defeats a boss in a rogue run" and "Clears a wave" when the wave was a boss wave.
+Bosses based on a mob with a vanilla head (skeletons, creepers, piglins, zombies, the wither skeleton) use that head;
+any boss can get its own skin on the Rewards page ("Boss trophy looks").
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't

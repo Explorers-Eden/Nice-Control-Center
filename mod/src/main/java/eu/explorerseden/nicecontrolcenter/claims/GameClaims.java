@@ -805,6 +805,11 @@ public final class GameClaims {
 
 	/** Items into the player's market inbox (mailbox parcels), with a line in chat. */
 	public static void inbox(ServerPlayer p, List<ItemStack> items) {
+		inbox(p, items, null);
+	}
+
+	/** The same, with its own line in chat (null: "… items you picked up went to your inbox"). */
+	public static void inbox(ServerPlayer p, List<ItemStack> items, String line) {
 		if (items.isEmpty()) return;
 		var data = MarketStore.data();
 		var box = data.mailbox(p.getStringUUID(), p.getPlainTextName());
@@ -818,7 +823,7 @@ public final class GameClaims {
 		}
 		data.mailChanged(box);
 		MarketStore.saveNow();
-		p.sendSystemMessage(Component.literal(n + " item" + (n == 1 ? "" : "s") + " you picked up went to your inbox: /inbox").withStyle(ChatFormatting.GOLD));
+		p.sendSystemMessage(Component.literal(line != null ? line : n + " item" + (n == 1 ? "" : "s") + " you picked up went to your inbox: /inbox").withStyle(ChatFormatting.GOLD));
 	}
 
 	// ---------------------------------------------------------------- homes and the back teleport (Nice Actions dialog)

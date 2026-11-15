@@ -383,6 +383,11 @@ public final class Panel {
 			webShop.register(routes);
 			// My SMP Profile on the website: claims, hubs and listings players change there (same token).
 			new WebProfile(webShop, claims, market, dashboard, server, audit, notices).register(routes);
+			// The weekly leaderboards for the website (games, dungeons, Rogue Runs; this week and last week).
+			routes.post("/info/web/weekly", ctx -> {
+				if (!webShop.tokenOk(ctx)) return;
+				Web.json(ctx, WeeklyBoards.read(serverDir.resolve(files.worldFolder())));
+			});
 			pets.register(routes);
 			new PackMirror(serverDir).register(routes);
 			new TweaksRoutes(serverDir, server, audit, map).register(routes);

@@ -102,6 +102,14 @@ public final class RewardActions {
 				MarketStore.saveNow();
 				return "+" + a.amount + " market listing slot" + (a.amount == 1 ? "" : "s");
 			}
+			case "trophy" -> {
+				String boss = a.target == null || a.target.isBlank() ? RewardsControl.currentBoss() : a.target.strip();
+				if (boss == null || boss.isBlank()) throw new Refused("no boss was just beaten (a trophy for \"the boss just beaten\" needs a boss trigger).");
+				if (online == null) throw new Refused(name + " has to be online for a trophy.");
+				net.minecraft.world.item.ItemStack st = Trophies.make(server, boss, RewardsControl.settings());
+				eu.explorerseden.nicecontrolcenter.claims.GameClaims.inbox(online, List.of(st), "Your trophy is in your inbox: /inbox");
+				return Trophies.title(boss) + " trophy (in your inbox)";
+			}
 			case "coupons" -> {
 				int value = (int) Math.round(a.level);
 				Perks.addCoupons(id, name, value, a.amount);

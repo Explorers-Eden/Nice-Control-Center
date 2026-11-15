@@ -127,6 +127,22 @@ final class WebShop {
 	}
 
 	/** The request body when the website's token is right; otherwise answered (404 while no token is set) and null. */
+	/** The website's token alone (for data that isn't about one player, like the weekly leaderboards). */
+	boolean tokenOk(Context ctx) {
+		ctx.header("Cache-Control", "no-store");
+		if (token.length == 0) {
+			ctx.status(HttpStatus.NOT_FOUND).result("Not found");
+			return false;
+		}
+		String h = ctx.header("Authorization");
+		byte[] given = h != null && h.startsWith("Bearer ") ? h.substring(7).strip().getBytes(StandardCharsets.UTF_8) : new byte[0];
+		if (!MessageDigest.isEqual(given, token)) {
+			error(ctx, HttpStatus.UNAUTHORIZED, "Wrong token.");
+			return false;
+		}
+		return true;
+	}
+
 	JsonObject authorized(Context ctx) {
 		ctx.header("Cache-Control", "no-store");
 		if (token.length == 0) {

@@ -1558,7 +1558,7 @@
 				<section class="np-card">
 					<h3 class="np-card-title"><i class="bi bi-gift"></i> Rewards</h3>
 					<p class="np-card-intro">Run commands and send a message when something happens: a player's first join, every login, a first trip to the Nether, an advancement, a level, an in-game time or date (the Nice Actions clock and calendar when the pack is installed), or simply every few minutes. Each rule can be for everyone or for one player, and run every time, once per player or once at all.</p>
-					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{date}</code> <code>{online}</code> <code>{rewards}</code> (what the rule gave). Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
+					<p class="pn-hint">Variables: <code>{player}</code> <code>{uuid}</code> <code>{x}</code> <code>{y}</code> <code>{z}</code> <code>{dimension}</code> <code>{value}</code> (the dimension, advancement, mob, level…) <code>{day}</code> <code>{time}</code> <code>{date}</code> <code>{online}</code> <code>{rewards}</code> (what the rule gave); for games also <code>{score}</code> <code>{game}</code>, and <code>{place}</code> for weekly leaderboard places. Commands run with full rights, at the player, so <code>@s</code> and <code>~ ~ ~</code> mean them.</p>
 					<div class="np-filters pn-rw-top">
 						<label class="np-check"><span class="np-switch"><input type="checkbox" id="pn-rw-enabled"><span></span></span> Rewards on</label>
 						<select id="pn-rw-add" aria-label="Add a rule">
@@ -1583,6 +1583,12 @@
 					</div>
 				</section>
 				<div id="pn-rw-rules" class="pn-rw-list"></div>
+				<section class="np-card" data-folded>
+					<h3 class="np-card-title"><i class="bi bi-trophy"></i> Boss trophy looks</h3>
+					<p class="np-card-intro">The reward <b>Boss trophy</b> gives a placeable head named after the boss (into the player's inbox), with the day it was beaten. Leave its boss empty to give the boss just beaten (on "Defeats a boss in a dungeon / rogue run" and "Clears a wave" when it was a boss wave). Each boss can have its own head skin here.</p>
+					<div id="pn-rw-trophies"></div>
+				</section>
+				<datalist id="pn-rw-bosses"></datalist>
 				<div class="pn-sticky-save"><button type="button" class="np-btn primary" id="pn-rw-save"><i class="bi bi-check2"></i> Save</button><span class="np-form-msg" id="pn-rw-msg"></span></div>
 			</div>
 

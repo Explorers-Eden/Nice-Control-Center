@@ -121,6 +121,8 @@ public final class DungeonRuntime {
 		/** Bosses alive when they were first counted, and how many are down since (for the boss rewards). */
 		int bossTotal;
 		int bossesDown;
+		/** The boss lines spawned, in order (for the trophy reward of "dungeonBoss"). */
+		final List<String> bossLines = new ArrayList<>();
 		/** Checkpoints reached at least once this run (going back to one doesn't count again). */
 		final Set<BlockPos> reached = new java.util.HashSet<>();
 		float bossHealth;
@@ -170,6 +172,8 @@ public final class DungeonRuntime {
 	private static Map<String, Map<String, Dungeons.Best>> scores = new LinkedHashMap<>();
 	private static Path scoresFile;
 	private static Path slotsFile;
+	/** The running server (for results recorded outside a tick's arguments). */
+	private static MinecraftServer current;
 	private static final Random random = new Random();
 
 	private record Selection(String name, String dim, BlockPos a, BlockPos b, long until, boolean room, boolean rogue) {
@@ -399,6 +403,7 @@ public final class DungeonRuntime {
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			modified = -1;
 			reload();
+			current = server;
 			slotsFile = server.getWorldPath(LevelResource.ROOT).resolve("nicecontrolcenter-dungeon-slots.json");
 			scoresFile = server.getWorldPath(LevelResource.ROOT).resolve(Dungeons.SCORES);
 			scores = Dungeons.readScores(scoresFile);
@@ -757,7 +762,8 @@ public final class DungeonRuntime {
 		// Each boss that went down since the last look (rewards "dungeonBoss", counted from the first).
 		while (r.bossesDown < r.bossTotal - alive.size()) {
 			r.bossesDown++;
-			rewardInside(server, r, "dungeonBoss", r.bossesDown, false);
+			String beaten = r.bossLines.isEmpty() ? null : r.bossLines.get(Math.min(r.bossesDown, r.bossLines.size()) - 1);
+			RewardsControl.withBoss(beaten, () -> rewardInside(server, r, "dungeonBoss", r.bossesDown, false));
 		}
 		float now = 0;
 		for (LivingEntity e : alive) now += e.getHealth();
@@ -1157,6 +1163,7 @@ public final class DungeonRuntime {
 	private static void spawn(MinecraftServer server, Run r, BlockPos at, String arg, boolean boss) {
 		MobLines.Entry e = MobLines.parse(arg);
 		if (e == null) return;
+		if (boss) r.bossLines.add(e.id());
 		// A Katters boss (katters:theron…): the whole fight; its bodies get the run's boss tag.
 		if (eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.is(e.id())) {
 			eu.explorerseden.nicecontrolcenter.games.bosses.KatterBosses.spawn(server, e.id(), Dungeons.dimension(r.dungeon.rogue()), at.getX() + 0.5, at.getY(), at.getZ() + 0.5, List.of(), boss ? r.bossTag() : null, !boss, p -> r.players.contains(p.getUUID()),
@@ -1316,6 +1323,7 @@ public final class DungeonRuntime {
 			best.names = new ArrayList<>(r.names.values());
 			best.at = System.currentTimeMillis();
 		}
+		for (UUID id : r.players) Weekly.record("dungeon", r.dungeon.id, r.dungeon.name, false, "time", server.getPlayerList().getPlayer(id), time, 0);
 		if (scoresFile != null) AsyncFiles.write(scoresFile, Json.GSON.toJson(scores));
 		end(server, r, (r.dungeon.clearedMessage.isEmpty() ? "■ {dungeon} cleared in {time}!" : r.dungeon.clearedMessage) + (record ? " A new best for " + (size == 1 ? "one player" : size + " players") + "!" : ""), ChatFormatting.GOLD);
 		for (UUID id : r.players) {
@@ -1359,6 +1367,8 @@ public final class DungeonRuntime {
 	private static boolean rogueScore(Run r, long time) {
 		int depth = r.rogue.cleared;
 		if (depth <= 0) return false;
+		MinecraftServer server = current;
+		if (server != null) for (UUID id : r.players) Weekly.record("rogue", r.dungeon.id, r.dungeon.name, true, "rooms", server.getPlayerList().getPlayer(id), depth, time);
 		int size = r.players.size();
 		Map<String, Dungeons.Best> board = scores.computeIfAbsent(r.dungeon.id, k -> new LinkedHashMap<>());
 		Dungeons.Best best = board.computeIfAbsent(String.valueOf(size), k -> new Dungeons.Best());

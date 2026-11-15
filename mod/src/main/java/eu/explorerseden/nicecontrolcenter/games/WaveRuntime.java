@@ -65,6 +65,8 @@ public final class WaveRuntime {
 
 	static final class Game {
 		final Arena arena;
+		/** This wave's boss ("ncc:frost_warden"), null when it's no boss wave (for the trophy reward). */
+		String waveBoss;
 		/** The kit each player drew (the same one again after a death). */
 		final Map<UUID, List<String>> kits = new HashMap<>();
 		/** The arena's blocks at the start: put back after each wave and at the end. */
@@ -802,6 +804,7 @@ public final class WaveRuntime {
 	private static void beginWave(MinecraftServer server, Game g, ServerLevel level) {
 		Arena a = g.arena;
 		g.toSpawn.clear();
+		g.waveBoss = null;
 		String written = a.waveLines.get(String.valueOf(g.wave));
 		if (written != null) {
 			for (MobLines.Entry e : MobLines.parseList(written)) for (int i = 0; i < e.count(); i++) g.toSpawn.add(e);
@@ -816,6 +819,7 @@ public final class WaveRuntime {
 			}
 			// (A negative count marks the boss.)
 			if (boss != null) g.toSpawn.add(new MobLines.Entry(boss.id(), -1, boss.nbt()));
+			g.waveBoss = boss == null ? null : boss.id();
 			int size = Math.max(1, (int) g.players.stream().filter(g::in).count());
 			int want = (int) Math.round((a.firstWave + a.perWave * (g.wave - 1)) * (1 + a.perPlayer / 100.0 * (size - 1)));
 			List<MobLines.Entry> pool = a.pool.stream().map(MobLines::parse).filter(e -> e != null && e.weight() > 0).toList();
@@ -850,7 +854,7 @@ public final class WaveRuntime {
 				String cmd = fill(line.strip().replaceFirst("^/", ""), a, p, wave).replace("{wave}", wave);
 				if (!cmd.isEmpty()) ConsoleRunner.run(server, "execute as " + p.getStringUUID() + " at @s run " + cmd, "Game");
 			}
-			RewardsControl.fireGame(server, "waveCleared", p, a.name, g.wave, false);
+			RewardsControl.withBoss(g.waveBoss, () -> RewardsControl.fireGame(server, "waveCleared", p, a.name, g.wave, false));
 		}
 		level.playSound(null, a.spawn.x, a.spawn.y, a.spawn.z, SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 1f, 1f);
 		if (a.rounds > 0 && g.wave >= a.rounds) {

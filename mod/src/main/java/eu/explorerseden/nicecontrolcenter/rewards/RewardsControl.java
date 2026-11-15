@@ -220,6 +220,26 @@ public final class RewardsControl {
 		}
 	}
 
+	/** The boss just beaten (for the "trophy" reward of boss triggers) while their rules run. */
+	private static final ThreadLocal<String> BOSS = new ThreadLocal<>();
+
+	/** The boss beaten in the trigger whose rules are running, or null. */
+	public static String currentBoss() {
+		return BOSS.get();
+	}
+
+	/** Runs the firing with the boss just beaten known (boss "ncc:frost_warden", "minecraft:ravager"…). */
+	public static void withBoss(String boss, Runnable firing) {
+		String was = BOSS.get();
+		BOSS.set(boss);
+		try {
+			firing.run();
+		} finally {
+			if (was == null) BOSS.remove();
+			else BOSS.set(was);
+		}
+	}
+
 	/** For game triggers: {score} and {game} while their rules run. */
 	private static final ThreadLocal<Map<String, String>> extra = ThreadLocal.withInitial(Map::of);
 
@@ -247,6 +267,26 @@ public final class RewardsControl {
 				if (!r.value.isBlank() && !r.value.strip().equalsIgnoreCase(arena)) continue;
 				if (r.number > 0 && (timed ? score > r.number * 1000L : score < r.number)) continue;
 				run(server, r, player, arena);
+			}
+		} finally {
+			extra.remove();
+		}
+	}
+
+	/**
+	 * A weekly leaderboard place (the week turned): rules for that board (value: the game's, dungeon's or Rogue Run's
+	 * name, empty = any) whose number covers the place (top … ; 0 = top 10). {score} is their result, {place} the place.
+	 */
+	public static void fireWeekly(MinecraftServer server, ServerPlayer player, String board, int place, long score) {
+		Rewards.Settings s = settings;
+		if (server == null || !s.enabled) return;
+		extra.set(Map.of("{score}", String.valueOf(score), "{game}", board, "{place}", String.valueOf(place)));
+		try {
+			for (Rewards.Rule r : s.rules) {
+				if (!r.enabled || !r.trigger.equals("weeklyPlace")) continue;
+				if (!r.value.isBlank() && !r.value.strip().equalsIgnoreCase(board)) continue;
+				if (place > (r.number > 0 ? r.number : 10)) continue;
+				run(server, r, player, board);
 			}
 		} finally {
 			extra.remove();

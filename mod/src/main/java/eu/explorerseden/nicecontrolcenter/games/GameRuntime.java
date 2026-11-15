@@ -1230,6 +1230,12 @@ public final class GameRuntime {
 					return 1;
 				})))
 				// A Katters boss right here, to see it fight (gone again with /game boss clear, or the next restart).
+				// The weekly leaderboards turn now (as if it were Monday): places and rewards are given.
+				.then(Commands.literal("week").requires(admin).then(Commands.literal("end").executes(ctx -> {
+					Weekly.turnNow(ctx.getSource().getServer());
+					ctx.getSource().sendSuccess(() -> Words.lit("The week is over: weekly places given, the boards start again."), true);
+					return 1;
+				})))
 				.then(Commands.literal("boss").requires(admin)
 						.then(Commands.literal("clear").executes(ctx -> {
 							// Collected first: discarding while walking the level's entities can throw halfway.
@@ -1828,6 +1834,7 @@ public final class GameRuntime {
 			sc.at = System.currentTimeMillis();
 		}
 		saveScores();
+		Weekly.record("game", a.id, a.name, Games.higherIsBetter(a.type), a.type, p, score, 0);
 		return better;
 	}
 
@@ -1836,6 +1843,7 @@ public final class GameRuntime {
 		Map<String, Games.Score> board = scores.computeIfAbsent(a.id, k -> new LinkedHashMap<>());
 		Games.Score sc = board.computeIfAbsent(p.getStringUUID(), k -> new Games.Score());
 		sc.name = p.getGameProfile().name();
+		Weekly.record("game", a.id, a.name, true, a.type, p, score, 0);
 		if (score <= sc.best && sc.at != 0) return;
 		sc.best = score;
 		sc.at = System.currentTimeMillis();

@@ -66,6 +66,7 @@ final class GamesRoutes {
 				songs = java.util.List.of();
 			}
 			out.put("songs", songs);
+			out.put("weekly", WeeklyBoards.read(serverDir.resolve(files.worldFolder())));
 			// Live (players in each arena now, top 10) while the server runs; else the saved scores.
 			JsonElement live = null;
 			try {
@@ -160,6 +161,7 @@ final class GamesRoutes {
 		routes.get("/api/dungeons", guard(Permissions.SERVER_VIEW, (ctx, me) -> {
 			Map<String, Object> out = new LinkedHashMap<>();
 			out.put("settings", Dungeons.readAll(dungeonsFile(), rogueFile()));
+			out.put("weekly", WeeklyBoards.read(serverDir.resolve(files.worldFolder())));
 			JsonElement live = null;
 			try {
 				live = dashboard.getElement("/api/dungeons");

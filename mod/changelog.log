@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.114.0
+- Three more animal bosses: ncc:spectral_stallion (a skeleton horse: trampling laps, lightning traps that set nothing alight, a ghost herd at a third), ncc:mimic_macaw (a flying parrot that answers with the attack it took last: arrows, fire rings, a blast or a peck dive; squawks like a mob and calls one; feather volleys) and ncc:cluckening (a giant chicken: egg barrages that hatch angry chicks or pop, a flutter slam, a feather storm). Untested with players
+- Rewards: a new reward, Boss trophy: a placeable head named after a boss with the day it was beaten, into the inbox; a set boss, or the boss just beaten (dungeon and Rogue Run bosses, boss waves). Bosses based on a mob with a vanilla head use it; any boss can get its own skin
+- Weekly leaderboards: each game, dungeon and Rogue Run keeps this week's best per player (world/nicecontrolcenter-weekly.json). The week ends Monday 00:00 server time: the top 10 of each board get the new Rewards trigger "Places in a weekly leaderboard" ({place}, {score}; offline players get it when they join), and last week's boards are kept. /game week end ends the week now
 ## 1.113.0
 - Four animal bosses: ncc:axolotl_sovereign (heals while wet, puddles under players, water jets, plays dead once below a quarter: fire wakes it, axolotl kin), ncc:caravan_camel (marked dashes, sandstorm, two husk riders who jump off at half health), ncc:bog_frog_king (tongue pull, leaps leaving slime blocks, bog slimes it swallows to heal) and ncc:tusk_matriarch (a hoglin: marked charges that throw players up, piglets at two thirds and one third; each player gets two warped fungi, and a hit with one stuns her). All in BOSSES.md; untested with players
 ## 1.112.8

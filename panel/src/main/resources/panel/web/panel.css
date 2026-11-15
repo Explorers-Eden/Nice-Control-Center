@@ -1310,3 +1310,5 @@ dialog.pn-confirm .np-form-actions { justify-content: center; gap: 10px; }
   background: rgba(var(--ink),.06); border: 1px solid rgba(var(--ink),.12); }
 .pn-pk-lines small { flex: none; color: var(--faint); font-variant-numeric: tabular-nums; padding-top: 6px; }
 .pn-pk-reactions td { vertical-align: top; }
+.pn-gm-week { display: block; margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(var(--ink),.08); }
+.pn-gm-week .bi { color: #7ab8ff; margin-right: 4px; }

@@ -132,7 +132,9 @@ A party of 1–4 (see Parties) fights waves of mobs.
   turrets) `ncc:shellguard` (an armadillo that curls up after quick hits, rolls, burrows), and the village bosses `ncc:village_elder`, `ncc:master_smith`, `ncc:grand_librarian` and `ncc:harvest_keeper` (the arena's own villagers and golems fight for them; knocked out, never killed), and the pillager bosses `ncc:raid_captain`, `ncc:headsman`, `ncc:siege_engineer` and `ncc:beastmaster`, and the animal bosses `ncc:axolotl_sovereign` (heals while wet, plays dead
 once: fire wakes it), `ncc:caravan_camel` (dashes, sandstorm, husk riders), `ncc:bog_frog_king` (tongue pull, leaps,
 swallows its slimes to heal) and `ncc:tusk_matriarch` (a hoglin: charges that throw players up, piglets; warped fungus
-stuns her). Every boss is described in
+stuns her), `ncc:spectral_stallion` (a skeleton horse: trampling laps, lightning traps, a ghost herd),
+`ncc:mimic_macaw` (a flying parrot that answers with the attack it took last and calls the mobs it imitates) and
+`ncc:cluckening` (a giant chicken: egg barrages, a flutter slam, a feather storm). Every boss is described in
   `BOSSES.md`. Same rules as the Katters bosses below;
   their chat lines only go to the game's players.
 - **Katters Structures bosses** (designed by Katter, built into the mod; no datapack needed): add `katters:arachne`,
@@ -208,6 +210,14 @@ Heads hidden in the world; players right-click them.
   (each joins the hunt). `head add` / `head remove` for a head you look at. Break one in creative to take it out.
 - Panel: reward every … heads (`{found}`, `{total}`), all found; where every head is.
 - Rewards trigger "Finds hidden heads".
+
+## Weekly leaderboards
+Every game, dungeon and Rogue Run keeps this week's best per player next to its all-time board (the panel shows the
+top 3 on each card, the website the top 10). The week ends Monday 00:00 server time: the top 10 of each board get the
+Rewards trigger **Places in a weekly leaderboard** (its value: the game's, dungeon's or Rogue Run's name, empty = any;
+its number: top … , e.g. 1 for the winner only, 0 for the top 10; `{place}` and `{score}` in commands). Players who
+are offline then get it when they next join. Then the boards start again; last week's stay readable.
+`/game week end` ends the week now (for testing).
 
 ## Parties
 Players who play together, in Flying Fair and the dungeons (and the game hub's dimension).

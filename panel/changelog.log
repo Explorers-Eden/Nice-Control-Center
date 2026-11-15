@@ -1,3 +1,8 @@
+## 1.95.0
+- Wave arenas: the three new animal bosses in the boss picker
+- Rewards: the Boss trophy reward (a boss, or empty for the one just beaten) and a "Boss trophy looks" card (own head skins per boss); the trigger "Places in a weekly leaderboard"
+- Games, arenas, dungeons and Rogue Runs: "This week" top 3 on each card under Best
+- Website: /info/web/weekly gives this week's and last week's leaderboards (website token)
 ## 1.94.0
 - Wave arenas: the four new animal bosses in the built-in boss picker (their descriptions come from the boss guide)
 ## 1.93.0

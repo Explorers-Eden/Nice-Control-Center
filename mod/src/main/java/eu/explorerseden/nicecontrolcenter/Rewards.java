@@ -46,6 +46,7 @@ public final class Rewards {
 			new Trigger("rogueRoom", "Clears a room in a rogue run", "Rogue run (empty: any)", "From room … of the run (0: every room)", false),
 			new Trigger("rogueBoss", "Defeats a boss in a rogue run", "Rogue run (empty: any)", "From boss … of the run (0: every one)", false),
 			new Trigger("rogueEnd", "Ends a rogue run", "Rogue run (empty: any)", "At least … rooms cleared (0: any)", false),
+			new Trigger("weeklyPlace", "Places in a weekly leaderboard", "Game, dungeon or rogue run (empty: any)", "Top … (1: first only; 0: top 10)", false),
 			new Trigger("leaveClaim", "Leaves their claims", "", "", false),
 			new Trigger("advancement", "Earns an advancement", "Advancement (empty: any)", "", false),
 			new Trigger("death", "Dies", "", "", false),
@@ -129,7 +130,8 @@ public final class Rewards {
 			new ActionType("haste", "Haste in their claims", "ls"),
 			new ActionType("blockboost", "Claim-block boost", "ls"),
 			new ActionType("bondboost", "Pet bond boost", "ls"),
-			new ActionType("toolcare", "Tool care (half wear)", "s"));
+			new ActionType("toolcare", "Tool care (half wear)", "s"),
+			new ActionType("trophy", "Boss trophy", "t"));
 
 	public static ActionType actionType(String id) {
 		for (ActionType a : ACTIONS) if (a.id().equals(id)) return a;
@@ -139,8 +141,12 @@ public final class Rewards {
 	public static final class Settings {
 		public boolean enabled = true;
 		public List<Rule> rules = new ArrayList<>();
+		/** Boss trophies' looks: boss ("ncc:frost_warden", "minecraft:ravager") → head skin (link, hash or base64). */
+		public Map<String, String> trophySkins = new LinkedHashMap<>();
 
 		public Settings fill() {
+			if (trophySkins == null) trophySkins = new LinkedHashMap<>();
+			trophySkins.entrySet().removeIf(e -> e.getKey() == null || e.getKey().isBlank() || e.getValue() == null || e.getValue().isBlank());
 			if (rules == null) rules = new ArrayList<>();
 			rules.removeIf(r -> r == null);
 			Set<String> ids = new HashSet<>();

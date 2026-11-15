@@ -35,7 +35,8 @@ public final class KatterBosses {
 			"trickster_fox", "glacier_bear", "elder_sniffer", "shellguard",
 			"village_elder", "master_smith", "grand_librarian", "harvest_keeper",
 			"raid_captain", "headsman", "siege_engineer", "beastmaster",
-			"axolotl_sovereign", "caravan_camel", "bog_frog_king", "tusk_matriarch");
+			"axolotl_sovereign", "caravan_camel", "bog_frog_king", "tusk_matriarch",
+			"spectral_stallion", "mimic_macaw", "cluckening");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -224,6 +225,9 @@ public final class KatterBosses {
 			case "ncc_caravan_camel" -> new CaravanCamelFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_bog_frog_king" -> new BogFrogKingFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_tusk_matriarch" -> new TuskMatriarchFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_spectral_stallion" -> new SpectralStallionFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_mimic_macaw" -> new MimicMacawFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_cluckening" -> new CluckeningFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 	}
@@ -278,6 +282,9 @@ public final class KatterBosses {
 			case "ncc_caravan_camel" -> "The Caravan Camel";
 			case "ncc_bog_frog_king" -> "The Bog Frog King";
 			case "ncc_tusk_matriarch" -> "The Tusk Matriarch";
+			case "ncc_spectral_stallion" -> "The Spectral Stallion";
+			case "ncc_mimic_macaw" -> "The Mimic Macaw";
+			case "ncc_cluckening" -> "The Cluckening";
 			default -> "Magus Theron the Betrayer";
 		};
 	}
