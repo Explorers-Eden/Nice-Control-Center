@@ -652,6 +652,31 @@ public abstract class BossFight {
 		temp.put(p, new Object[] { this.ticks + ticks, Blocks.AIR.defaultBlockState(), level.getBlockState(p).getBlock() });
 	}
 
+	/** A sound by its id ("entity.frog.tongue"), for sounds whose constants differ between versions. */
+	static SoundEvent snd(String id) {
+		return SoundEvent.createVariableRangeEvent(Identifier.withDefaultNamespace(id));
+	}
+
+	/** A helper that fights players (peaceful kinds too, hitting for {@code damage}); counts as a wave mob. */
+	LivingEntity minion(String id, double x, double y, double z, String snbt, float damage) {
+		Entity e = spawn(id, x, y, z, snbt, false, false);
+		if (e instanceof net.minecraft.world.entity.Mob m) eu.explorerseden.nicecontrolcenter.games.Aggro.make(m, damage);
+		return e instanceof LivingEntity l ? l : null;
+	}
+
+	/** A line of particles from one spot to another (a warned dash, a tongue, a lash). */
+	void line(Vec3 from, Vec3 to, net.minecraft.core.particles.ParticleOptions particle) {
+		for (double f = 0; f <= 1; f += 0.05) {
+			Vec3 q = from.add(to.subtract(from).scale(f));
+			level.sendParticles(particle, q.x, q.y, q.z, 1, 0, 0, 0, 0);
+		}
+	}
+
+	/** Heals a body by {@code amount} (not above its max). */
+	static void heal(LivingEntity e, float amount) {
+		if (!dead(e)) e.setHealth(Math.min(e.getMaxHealth(), e.getHealth() + amount));
+	}
+
 	/** Health share of a body (0–1). */
 	static float share(LivingEntity e) {
 		return e == null ? 0 : e.getHealth() / e.getMaxHealth();

@@ -340,6 +340,39 @@ A pillager (120 health) riding his ravager, Gorehorn (100 health, hits of 6). **
   every 15 s (four at most), and every 8 s he snares a player (a cobweb at their feet, slowness).
 - **He falls first:** Gorehorn goes berserk: faster, and it charges every 6 s.
 
+### Animal bosses
+
+### The Axolotl Sovereign — `ncc:axolotl_sovereign`
+A giant axolotl, 160 health. It never dries out.
+- **Wet:** it heals 2 health a second while in water or rain, or standing in one of its puddles.
+- **Puddles:** every 8 s water spreads under every player for 6 seconds.
+- **Water jet:** every 6 s a player further than 6 blocks takes 4, is slowed and pushed away.
+- **Plays dead:** once, below a quarter of its health, it goes limp for 6 seconds: untouchable and healing 4 a
+  second. Fire wakes it at once (flame arrows, fire aspect, anything that sets it alight).
+- **Axolotl kin:** every 15 s two small axolotls join (four at most) and bite.
+
+### The Caravan Camel — `ncc:caravan_camel`
+A big camel, 200 health, with two husk riders (24 health each, golden swords).
+- **Dash:** every 9 s a line of sand is marked, then it dashes along it: 6 damage and a hard knock.
+- **Sandstorm:** every 20 s everyone within 24 blocks is blinded and slowed for 4 seconds.
+- **At half health** the riders jump off and fight on foot.
+
+### The Bog Frog King — `ncc:bog_frog_king`
+A huge frog, 170 health.
+- **Tongue:** every 7 s the nearest player further than 3 blocks takes 4 and is pulled in.
+- **Leap:** every 10 s slime marks a player's spot, then it jumps there: a shockwave (5 damage) and slime blocks
+  around the landing for 5 seconds.
+- **Bog slimes:** every 15 s two slimes join (four at most).
+- **Gulp:** below half health it swallows one of its slimes every 12 s to heal 20. Kill the slimes first.
+
+### The Tusk Matriarch — `ncc:tusk_matriarch`
+A great hoglin, 220 health, hits of 7. She never turns into a zoglin.
+- **Charge:** every 8 s a line of crimson spores is marked, then she charges along it: 7 damage, and players are
+  thrown up into the air.
+- **Piglets:** at two thirds and one third of her health three baby hoglins join.
+- **Warped fungus:** every player gets two (game items, gone after the game). A hit with one in hand stuns her for
+  4 seconds and uses it up.
+
 ## Katters Structures bosses
 
 Designed by Katter for the Katters Structures datapack (Explorer's Eden), rebuilt in the mod. The datapack isn't

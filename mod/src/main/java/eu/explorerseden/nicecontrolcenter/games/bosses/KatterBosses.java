@@ -34,7 +34,8 @@ public final class KatterBosses {
 			"oxidized_engine", "ramlord", "llama_matriarch", "panda_grandmaster",
 			"trickster_fox", "glacier_bear", "elder_sniffer", "shellguard",
 			"village_elder", "master_smith", "grand_librarian", "harvest_keeper",
-			"raid_captain", "headsman", "siege_engineer", "beastmaster");
+			"raid_captain", "headsman", "siege_engineer", "beastmaster",
+			"axolotl_sovereign", "caravan_camel", "bog_frog_king", "tusk_matriarch");
 	/** Every boss as written in lists and markers. */
 	public static List<String> all() {
 		List<String> out = new ArrayList<>();
@@ -219,6 +220,10 @@ public final class KatterBosses {
 			case "ncc_headsman" -> new HeadsmanFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_siege_engineer" -> new SiegeEngineerFight(level, tags, bossTag, bar, x, y, z);
 			case "ncc_beastmaster" -> new BeastmasterFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_axolotl_sovereign" -> new AxolotlSovereignFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_caravan_camel" -> new CaravanCamelFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_bog_frog_king" -> new BogFrogKingFight(level, tags, bossTag, bar, x, y, z);
+			case "ncc_tusk_matriarch" -> new TuskMatriarchFight(level, tags, bossTag, bar, x, y, z);
 			default -> new TheronFight(level, tags, bossTag, bar, x, y, z);
 		};
 	}
@@ -269,6 +274,10 @@ public final class KatterBosses {
 			case "ncc_headsman" -> "The Headsman";
 			case "ncc_siege_engineer" -> "The Siege Engineer";
 			case "ncc_beastmaster" -> "The Beastmaster";
+			case "ncc_axolotl_sovereign" -> "The Axolotl Sovereign";
+			case "ncc_caravan_camel" -> "The Caravan Camel";
+			case "ncc_bog_frog_king" -> "The Bog Frog King";
+			case "ncc_tusk_matriarch" -> "The Tusk Matriarch";
 			default -> "Magus Theron the Betrayer";
 		};
 	}

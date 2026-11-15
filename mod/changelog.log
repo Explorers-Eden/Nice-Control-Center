@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.113.0
+- Four animal bosses: ncc:axolotl_sovereign (heals while wet, puddles under players, water jets, plays dead once below a quarter: fire wakes it, axolotl kin), ncc:caravan_camel (marked dashes, sandstorm, two husk riders who jump off at half health), ncc:bog_frog_king (tongue pull, leaps leaving slime blocks, bog slimes it swallows to heal) and ncc:tusk_matriarch (a hoglin: marked charges that throw players up, piglets at two thirds and one third; each player gets two warped fungi, and a hit with one stuns her). All in BOSSES.md; untested with players
 ## 1.112.8
 - Teleport Back can't take players into any game world (Flying Fair, the game hub's dimension, the dungeons, Rogue Runs), not only into the dungeons and game areas
 ## 1.112.7
