@@ -43,6 +43,12 @@ public final class Pregen {
 	private static volatile Map<String, Object> last;
 	/** Slow-mode cap on chunks in flight while players are online. */
 	private static final int SLOW_IN_FLIGHT = 4;
+	/**
+	 * A chunk waiting longer than this means the disk is falling behind (2026-11-16: the region storage thread
+	 * sat in fsync while a player joined; the join waits for its spawn chunks with no time limit and the
+	 * watchdog stopped the server). No new chunks until everything in flight is quicker again.
+	 */
+	private static final long DISK_SLOW_MS = 10_000;
 	private static volatile boolean shuttingDown;
 
 	/** What config/nicecontrolcenter-pregen.json holds per job. */
@@ -86,6 +92,12 @@ public final class Pregen {
 		volatile boolean pausedForPlayers;
 		/** Held while the heap stays nearly full after collections (Distant Horizons' LOD saves falling behind). */
 		volatile boolean pausedForMemory;
+		/** Someone is logging in: their spawn chunks go first (vanilla waits for them without a time limit). */
+		volatile boolean pausedForJoin;
+		/** A chunk in flight has waited more than DISK_SLOW_MS (the region files' disk is falling behind). */
+		volatile boolean pausedForDisk;
+		/** When each chunk in flight was asked for, by ChunkPos.toLong. */
+		final java.util.concurrent.ConcurrentHashMap<Long, Long> asked = new java.util.concurrent.ConcurrentHashMap<>();
 		long memoryCheckAt;
 		/** When the memory pause began, whether it asked for a full collection yet, the lowest share since. */
 		long pausedAt;
@@ -216,6 +228,19 @@ public final class Pregen {
 					LockSupport.parkNanos(1_000_000_000L);
 					continue;
 				}
+				boolean joining = joining(server);
+				if (joining != pausedForJoin) {
+					pausedForJoin = joining;
+					if (joining) NiceControlCenter.LOGGER.info("Pregen: holding back while a player is joining");
+				}
+				if (joining) {
+					LockSupport.parkNanos(250_000_000L);
+					continue;
+				}
+				if (diskHeld()) {
+					LockSupport.parkNanos(250_000_000L);
+					continue;
+				}
 				// Room left in the tick: back off when the server is busy.
 				float mspt = server.getCurrentSmoothedTickTime();
 				int budget = mspt > 45 ? 0 : mspt > 35 ? 2 : mspt > 25 ? 6 : MAX_IN_FLIGHT;
@@ -295,6 +320,21 @@ public final class Pregen {
 				}
 			}
 			return pausedForMemory;
+		}
+
+		/** True while a chunk in flight has waited too long; logs the start and the end of the hold. */
+		private boolean diskHeld() {
+			long now = System.currentTimeMillis();
+			long oldest = now;
+			for (Long t : asked.values()) oldest = Math.min(oldest, t);
+			long waited = now - oldest;
+			boolean held = pausedForDisk ? waited > DISK_SLOW_MS / 2 : waited > DISK_SLOW_MS;
+			if (held != pausedForDisk) {
+				pausedForDisk = held;
+				if (held) NiceControlCenter.LOGGER.warn("Pregen: holding back, a chunk has waited {} s (the disk is falling behind)", waited / 1000);
+				else NiceControlCenter.LOGGER.info("Pregen: chunks are quick again, carrying on");
+			}
+			return held;
 		}
 
 		volatile String lodResult = "finished";
@@ -392,22 +432,50 @@ public final class Pregen {
 		private void request(int cx, int cz) {
 			inFlight.incrementAndGet();
 			ChunkPos pos = new ChunkPos(cx, cz);
+			long key = ((long) cx & 0xFFFFFFFFL) | (((long) cz & 0xFFFFFFFFL) << 32);
+			asked.put(key, System.currentTimeMillis());
 			server.execute(() -> {
 				try {
 					level.getChunkSource().addTicketAndLoadWithRadius(ticket, pos, 0).whenComplete((result, error) -> {
 						server.execute(() -> level.getChunkSource().removeTicketWithRadius(ticket, pos, 0));
 						if (error == null && !(result instanceof ChunkResult<?> r && !r.isSuccess())) done.incrementAndGet();
 						else skipped.incrementAndGet();
+						asked.remove(key);
 						inFlight.decrementAndGet();
 						LockSupport.unpark(thread);
 					});
 				} catch (RuntimeException e) {
 					skipped.incrementAndGet();
+					asked.remove(key);
 					inFlight.decrementAndGet();
 					LockSupport.unpark(thread);
 				}
 			});
 		}
+	}
+
+	/**
+	 * Someone between login and being in the world (not counted by getPlayerCount yet): the join loads their
+	 * spawn chunks and the server thread waits for them, so pregen's chunks mustn't be ahead in the queue.
+	 * Server-list pings (status) don't count. Any thread.
+	 */
+	static boolean joining(MinecraftServer server) {
+		try {
+			var listener = server.getConnection();
+			if (listener == null) return false;
+			List<net.minecraft.network.Connection> all = listener.getConnections();
+			synchronized (all) {
+				for (net.minecraft.network.Connection c : all) {
+					if (!c.isConnected()) continue;
+					Object l = c.getPacketListener();
+					if (l instanceof net.minecraft.server.network.ServerLoginPacketListenerImpl
+							|| l instanceof net.minecraft.server.network.ServerConfigurationPacketListenerImpl) return true;
+				}
+			}
+		} catch (RuntimeException e) {
+			// The list changed under us: no harm, the next look sees it.
+		}
+		return false;
 	}
 
 	/** At mod start, while registries are still open. */
@@ -618,6 +686,8 @@ public final class Pregen {
 		out.put("players", j.players);
 		if (j.pausedForPlayers) out.put("paused", "players online");
 		else if (j.pausedForMemory) out.put("paused", "memory nearly full");
+		else if (j.pausedForJoin) out.put("paused", "a player is joining");
+		else if (j.pausedForDisk) out.put("paused", "disk busy");
 		out.put("done", done + skipped);
 		out.put("failed", skipped);
 		out.put("total", total);
