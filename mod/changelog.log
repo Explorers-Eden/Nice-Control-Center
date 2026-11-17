@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.114.2
+- Dungeons and Rogue Runs dimensions are as tall as the Flying Fair now: height 1024 from y 0 (was 384), logical height 512. What is built there stays where it is
 ## 1.114.1
 - Pregeneration holds back while a player is joining: the join waits for the player's spawn chunks with no time limit, and on 2026-11-16 those queued behind pregen's chunks while the disk was busy, so the server watchdog stopped the server. It also holds back when a chunk has waited over 10 seconds (the disk falling behind) and carries on when chunks are quick again. The panel shows "a player is joining" or "disk busy" as the pause reason
 ## 1.114.0
