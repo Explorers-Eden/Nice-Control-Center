@@ -1,4 +1,8 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.115.0
+- /points check takes a comparison before the amount: >, >=, =, !=, < or <= (points check {player} > 100); without one it is still "at least". It succeeds or fails and takes nothing, for execute store success and conditional command blocks
+- Games pay no reward points by themselves any more: their finish commands do (points give {player} {score*2}). Games that had points set get the same as points give lines at the top of their finish commands
+- Games: finishFrom, the score the finish commands need (race and maze: finished within so many seconds); 0 = always as before
 ## 1.114.2
 - Dungeons and Rogue Runs dimensions are as tall as the Flying Fair now: height 1024 from y 0 (was 384), logical height 512. What is built there stays where it is
 ## 1.114.1

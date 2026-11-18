@@ -106,9 +106,14 @@ public final class Games {
 			return title == null || title.isBlank() ? name : title.strip();
 		}
 
-		/** Points (reward points) when a score counts: this many, plus so many per score (not for timed games). */
-		public int pointsFixed = 0;
-		public double pointsPerScore = 0;
+		/**
+		 * The finish commands run only from this score on (race and maze: within this many seconds); 0 = always. Reward
+		 * points are paid by those commands (points give {player} {score*2}).
+		 */
+		public long finishFrom = 0;
+		/** Before mod 1.115.0 games paid reward points themselves: moved into a finish command on reading, then gone. */
+		public Integer pointsFixed;
+		public Double pointsPerScore;
 
 		/** The game's colour ("#ffc83d"): its entrance title and particles, watch point, start title; empty = gold. */
 		public String color = "";
@@ -453,9 +458,9 @@ public final class Games {
 					a.spawn = new Pos(a.start.dim, a.start.x, a.start.y, a.start.z, a.start.yaw);
 				}
 				if (a.color == null || !a.color.matches("#?[0-9a-fA-F]{6}")) a.color = "";
-				a.pointsFixed = Math.max(0, Math.min(1_000_000, a.pointsFixed));
-				a.pointsPerScore = Math.max(0, Math.min(10_000, a.pointsPerScore));
 				if (a.type == null || !TYPES.contains(a.type)) a.type = "parkour";
+				a.finishFrom = Math.max(0, Math.min(1_000_000_000L, a.finishFrom));
+				oldPoints(a);
 				if (a.palette == null || a.palette.isEmpty()) a.palette = new Arena().palette;
 				if (a.checkpoints == null) a.checkpoints = new ArrayList<>();
 				if (a.mode == null || !List.of("run", "boat", "elytra").contains(a.mode)) a.mode = "run";
@@ -620,6 +625,24 @@ public final class Games {
 	}
 
 	private static final java.util.regex.Pattern MATH = java.util.regex.Pattern.compile("\\{(\\w+)\\s*([*/+-])\\s*(\\d+(?:\\.\\d+)?)\\}");
+
+	/** The reward points a game paid itself before 1.115.0, as finish commands that pay the same. */
+	private static void oldPoints(Arena a) {
+		long fixed = a.pointsFixed == null ? 0 : Math.max(0, Math.min(1_000_000, a.pointsFixed));
+		double per = a.pointsPerScore == null ? 0 : Math.max(0, Math.min(10_000, a.pointsPerScore));
+		a.pointsFixed = null;
+		a.pointsPerScore = null;
+		if (a.finishCommands == null) a.finishCommands = new ArrayList<>();
+		// Race and maze scores are times: those only had the fixed amount.
+		if (per > 0 && higherIsBetter(a.type)) a.finishCommands.add(0, "points give {player} {score*" + (per == Math.rint(per) ? String.valueOf((long) per) : String.valueOf(per)) + "}");
+		if (fixed > 0) a.finishCommands.add(0, "points give {player} " + fixed);
+	}
+
+	/** Whether this score lets the finish commands run (finishFrom: at least that score, or for race and maze within that many seconds). */
+	public static boolean finishCounts(Arena a, long score) {
+		if (a.finishFrom <= 0) return true;
+		return higherIsBetter(a.type) ? score >= a.finishFrom : score <= a.finishFrom * 1000;
+	}
 
 	/**
 	 * Sums in commands: {score*2}, {score/10}, {jumps+5}, {wave-1} with the value of that name (whole numbers,

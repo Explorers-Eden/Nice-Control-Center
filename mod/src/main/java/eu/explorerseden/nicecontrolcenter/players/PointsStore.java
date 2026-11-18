@@ -261,8 +261,8 @@ public final class PointsStore {
 				.then(Commands.literal("take").requires(admin).then(Commands.argument("players", GameProfileArgument.gameProfile())
 						.then(Commands.argument("amount", IntegerArgumentType.integer(1, 1_000_000_000)).executes(ctx -> take(ctx, ""))
 								.then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx -> take(ctx, StringArgumentType.getString(ctx, "reason")))))))
-				.then(Commands.literal("check").requires(admin).then(Commands.argument("players", GameProfileArgument.gameProfile())
-						.then(Commands.argument("amount", IntegerArgumentType.integer(0, 1_000_000_000)).executes(PointsStore::check)))));
+				.then(Commands.literal("check").requires(admin).then(checkOps(Commands.argument("players", GameProfileArgument.gameProfile())
+						.then(Commands.argument("amount", IntegerArgumentType.integer(0, 1_000_000_000)).executes(ctx -> check(ctx, ">=")))))));
 	}
 
 	private static String why(CommandContext<CommandSourceStack> ctx, String reason) {
@@ -309,16 +309,49 @@ public final class PointsStore {
 		return done;
 	}
 
-	/** Succeeds (for execute if / conditional command blocks) when every player named has at least that many. */
-	private static int check(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+	/** The comparisons /points check takes before the amount (without one: at least). */
+	private static final List<String> CHECK_OPS = List.of(">", ">=", "=", "==", "!=", "<", "<=");
+
+	private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> checkOps(com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, ?> players) {
+		for (String op : CHECK_OPS) {
+			players.then(Commands.literal(op).then(Commands.argument("amount", IntegerArgumentType.integer(0, 1_000_000_000)).executes(ctx -> check(ctx, op))));
+		}
+		return players;
+	}
+
+	static boolean compare(long have, String op, long amount) {
+		return switch (op) {
+			case ">" -> have > amount;
+			case "=", "==" -> have == amount;
+			case "!=" -> have != amount;
+			case "<" -> have < amount;
+			case "<=" -> have <= amount;
+			default -> have >= amount;
+		};
+	}
+
+	private static String opWords(String op) {
+		return switch (op) {
+			case ">" -> "more than";
+			case "=", "==" -> "exactly";
+			case "!=" -> "other than";
+			case "<" -> "fewer than";
+			case "<=" -> "at most";
+			default -> "at least";
+		};
+	}
+
+	/** Succeeds (for execute if / execute store success / conditional command blocks) when every player named has the amount compared so (>, >=, =, !=, <, <=; at least without one). */
+	private static int check(CommandContext<CommandSourceStack> ctx, String op) throws CommandSyntaxException {
 		int amount = IntegerArgumentType.getInteger(ctx, "amount");
 		Collection<NameAndId> who = profiles(ctx);
 		for (NameAndId w : who) {
-			if (balance(w.id().toString()) < amount) {
-				throw new SimpleCommandExceptionType(Component.literal(w.name() + " has " + Points.amount(settings, balance(w.id().toString())) + ", fewer than " + amount + ".")).create();
+			long have = balance(w.id().toString());
+			if (!compare(have, op, amount)) {
+				throw new SimpleCommandExceptionType(Component.literal("No: " + w.name() + " has " + Points.amount(settings, have) + ", not " + opWords(op) + " " + amount + ".")).create();
 			}
 		}
-		ctx.getSource().sendSuccess(() -> Component.literal("Yes: at least " + Points.amount(settings, amount) + "."), false);
+		ctx.getSource().sendSuccess(() -> Component.literal("Yes: " + opWords(op) + " " + Points.amount(settings, amount) + "."), false);
 		return who.size();
 	}
 

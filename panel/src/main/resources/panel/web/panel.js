@@ -2373,7 +2373,7 @@
       ['mobs', 'bi-bug', 'Mobs', mobs ? grid(mobs) : ''],
       ['bosses', 'bi-emoji-angry', 'Bosses', fields.bosses ? grid(fields.bosses) : ''],
       ['music', 'bi-music-note-beamed', 'Music', music],
-      ['rewards', 'bi-gift', 'Rewards', sub('bi-coin', 'Points', gmPoints(a, field)) + sub('bi-terminal', 'Commands', (fields.rewards || '') + cmds) + sub('bi-chat-left-text', 'Messages', msgs)],
+      ['rewards', 'bi-gift', 'Rewards', sub('bi-coin', 'Points and when commands run', gmPoints(a, field)) + sub('bi-terminal', 'Commands', (fields.rewards || '') + cmds) + sub('bi-chat-left-text', 'Messages', msgs)],
     ].filter((p) => p[3]);
     const key = a.id || a.name;
     const cur = panes.some((p) => p[0] === gmTab[key]) ? gmTab[key] : 'general';
@@ -2527,14 +2527,17 @@
       + (songs.length ? '' : '<small class="pn-hint">The list fills once the server has started with this version.</small>');
   }
 
-  /** The game's own reward points (Rewards → Points), and the sums commands can do. */
+  /** When the finish commands run (the score they need), and the sums commands can do: reward points are paid by commands. */
   function gmPoints(a, field) {
     const timed = ['race', 'maze'].includes(a.type);
     const heads = a.type === 'heads';
-    const num = (k, step) => `<input type="number" data-g="${k}" value="${a[k] || 0}" min="0" step="${step}">`;
-    return field('pointsFixed', heads ? 'Points for finding them all' : timed ? 'Points for finishing' : 'Points when their score counts', num('pointsFixed', 1))
-      + (timed ? '' : field('pointsPerScore', heads ? '+ points per head found' : `+ points per ${gmWord[a.type] ? gmWord[a.type][0] : 'point'} (e.g. 0.5)`, num('pointsPerScore', 0.1)))
-      + '<p class="pn-hint pn-field-wide">Commands can do sums too: <code>{score*2}</code>, <code>{score/10}</code>, <code>{jumps*3}</code>, <code>{wave+5}</code>, <code>{score*1.5}</code> (rounded to whole numbers), e.g. <code>points give {player} {score*2}</code>.</p>';
+    const word = ['anvils', 'lava'].includes(a.type) ? 'seconds survived' : gmWord[a.type] ? gmWord[a.type][1] : 'points';
+    const from = heads ? ''
+      : field('finishFrom', timed ? 'Finish commands only within (seconds) <span class="pn-comment">0 = every finish.</span>'
+        : `Finish commands only from (${esc(word)}) <span class="pn-comment">Their score must reach this; 0 = always.</span>`,
+        `<input type="number" data-g="finishFrom" value="${a.finishFrom || 0}" min="0" step="1">`);
+    return from
+      + '<p class="pn-hint pn-field-wide">The game pays no points itself: give them in the commands below, e.g. <code>points give {player} 10</code> or <code>points give {player} {score*2}</code>. Sums: <code>{score*2}</code>, <code>{score/10}</code>, <code>{score+5}</code>, <code>{score*1.5}</code> (one step, rounded to whole numbers). Checks: <code>points check {player} &gt;= 100</code> (also <code>&gt;</code> <code>=</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code>) succeeds or fails, for <code>execute store success</code>.</p>';
   }
 
   /** A quick round's own fields (ghasts, colour floor, anvils, treasure, fishing, moles, targets, gallery, chef, lava), and what's still to set up in game. */

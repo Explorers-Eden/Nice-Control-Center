@@ -1,3 +1,5 @@
+## 1.96.0
+- Games, Rewards tab: "Points when their score counts" and "+ points per …" are gone (points come from the finish commands now); new "Finish commands only from" (race and maze: "only within" seconds), with a hint on sums and points checks
 ## 1.95.0
 - Wave arenas: the three new animal bosses in the boss picker
 - Rewards: the Boss trophy reward (a boss, or empty for the one just beaten) and a "Boss trophy looks" card (own head skins per boss); the trigger "Places in a weekly leaderboard"

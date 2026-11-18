@@ -359,7 +359,7 @@ public final class GameRuntime {
 			if (finished) {
 				String line = s.arena.finishMessage.isBlank() ? "■ " + s.arena.shown() + ": " + result : fill(s.arena.finishMessage, s.arena, p, result);
 				p.sendSystemMessage(Words.lit(line + (record ? " · new personal best!" : "")).withStyle(record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
-				commands(server, s.arena.finishCommands, s.arena, p, result);
+				if (Games.finishCounts(s.arena, score)) commands(server, s.arena.finishCommands, s.arena, p, result);
 			}
 			else if (why != null) p.sendSystemMessage(Words.lit(why).withStyle(ChatFormatting.GRAY));
 			// To the game hub spawn, else the start point (not after dying: the respawn does that; not when they left for another dimension).
@@ -369,7 +369,6 @@ public final class GameRuntime {
 			}
 			if (finished) {
 				RewardsControl.fireGame(server, "gameFinished", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));
-				points(p, s.arena, score, !Games.higherIsBetter(s.arena.type));
 				if (record) RewardsControl.fireGame(server, "gameRecord", p, s.arena.name, score, !Games.higherIsBetter(s.arena.type));
 			}
 		}
@@ -1854,15 +1853,6 @@ public final class GameRuntime {
 	static void leaveRun(MinecraftServer server, ServerPlayer p) {
 		Session s = sessions.get(p.getUUID());
 		if (s != null) end(server, s, "You left the game.", false);
-	}
-
-	/** The game's own points when a score counts: the fixed amount, plus so many per score (scores, not times). */
-	static void points(ServerPlayer p, Arena a, long score, boolean timed) {
-		long n = a.pointsFixed + (timed ? 0 : Math.round(a.pointsPerScore * score));
-		if (n <= 0 || !eu.explorerseden.nicecontrolcenter.players.PointsStore.settings().enabled) return;
-		// Quietly: the game shows its own score (the balance and its history say where they came from).
-		eu.explorerseden.nicecontrolcenter.players.PointsStore.add(p.getStringUUID(), p.getGameProfile().name(), n,
-				a.shown() + ": " + Games.scoreText(a.type, score, GameRuntime::clock));
 	}
 
 	/** The game of their parkour, race or maze run (null when none). */

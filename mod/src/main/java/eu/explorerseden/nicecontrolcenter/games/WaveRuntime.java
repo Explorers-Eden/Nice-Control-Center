@@ -986,9 +986,8 @@ public final class WaveRuntime {
 					: fill(a.loseMessage, a, p, score).replace("{wave}", score);
 			p.sendSystemMessage(Words.lit(line + (record ? " · new personal best!" : "")).withStyle(won ? ChatFormatting.GOLD : record ? ChatFormatting.GOLD : ChatFormatting.YELLOW));
 			if (finished && g.cleared > 0) {
-				commands(server, a.finishCommands, a, p, score);
+				if (Games.finishCounts(a, g.cleared)) commands(server, a.finishCommands, a, p, score);
 				RewardsControl.fireGame(server, "gameFinished", p, a.name, g.cleared, false);
-				GameRuntime.points(p, a, g.cleared, false);
 				if (record) RewardsControl.fireGame(server, "gameRecord", p, a.name, g.cleared, false);
 			}
 			GameType mode = g.watching.remove(id);

@@ -1182,9 +1182,8 @@ public final class QuickRuntime {
 		String shown = Games.scoreText(a.type, score, GameRuntime::clock);
 		if (record) p.sendSystemMessage(Words.lit("New personal best in " + a.shown() + ": " + shown + "!").withStyle(ChatFormatting.GOLD));
 		if (!a.finishMessage.isBlank()) p.sendSystemMessage(Words.lit(fill(a.finishMessage, a, p, String.valueOf(score))).withStyle(ChatFormatting.YELLOW));
-		commands(server, a.finishCommands, a, p, String.valueOf(score));
+		if (Games.finishCounts(a, score)) commands(server, a.finishCommands, a, p, String.valueOf(score));
 		RewardsControl.fireGame(server, "gameFinished", p, a.name, score, false);
-		GameRuntime.points(p, a, score, false);
 		if (record) RewardsControl.fireGame(server, "gameRecord", p, a.name, score, false);
 	}
 

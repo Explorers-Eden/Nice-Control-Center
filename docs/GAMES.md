@@ -24,9 +24,15 @@ in the panel under **Games**. `<name>` is the game's one-word name.
 8. **Start point / spawn**: where `create` was typed. Wave fights and quick rounds: that's the spawn, where players
    appear (`/game edit <name> spawn` moves it). Parkour, race, maze: the start point
    (`/game edit <name> start`).
-9. **Points** for a game: on its card, "Points when their score counts" (fixed) and "+ points per …" (per
-   score; timed games only get the fixed amount). Commands can do sums: `{score*2}`, `{score/10}`, `{jumps*3}`,
-   `{wave+5}`, `{score*1.5}` (rounded to a whole number), e.g. `points give {player} {score*2}`.
+9. **Points** for a game: the game pays none itself, its finish commands do, e.g. `points give {player} 10` or
+   `points give {player} {score*2}`. Commands can do sums: `{score*2}`, `{score/10}`, `{jumps*3}`, `{wave+5}`,
+   `{score*1.5}` (one step, rounded to a whole number). On the card's Rewards tab, "Finish commands only from"
+   sets the score they need (race and maze: "only within" so many seconds); 0 = always. Games set up before
+   1.115.0 with their own points got those as `points give` lines in their finish commands.
+   **Points checks** in commands: `points check <player> <amount>` (at least), or with `>`, `>=`, `=`, `!=`, `<`,
+   `<=` before the amount (`points check {player} > 100`), succeeds or fails and takes nothing. With
+   `execute store success score {player} <objective> run points check …` and then `execute if score …` a
+   command runs only then.
    **Rewards**: each game has commands (`{player}`, `{score}`, `{game}`). In **Rewards**, rules on
    "Finishes a game" / "Sets a personal best" (and the per-game triggers below) can give anything, including
    **Points** for the reward shops.
