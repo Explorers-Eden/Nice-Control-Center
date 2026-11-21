@@ -10,7 +10,7 @@ Every game is made the same way: build the place in game, create the game there 
 ## 2. Make a game
 
 1. Stand where the game should be (where players appear, or its corner for mazes and grids).
-2. `/game create <type> <name>`: the type is one of the templates (`parkour`, `race`, `maze`, `waves`, `ghasts`, `colorfloor`, `anvils`, `treasure`, `fishing`, `moles`, `targets`, `gallery`, `chef`, `lava`, `heads`).
+2. `/game create <type> <name>`: the type is one of the templates (`parkour`, `race`, `maze`, `waves`, `ghasts`, `colorfloor`, `anvils`, `treasure`, `fishing`, `moles`, `targets`, `gallery`, `chef`, `lava`, `cubes`, `heads`).
 3. Follow the hints it answers with. Each template's guide lists its steps.
 
 > The `<name>` is one word, used in all commands. Players see the **display name** (spaces allowed), set on the card or with `/game edit <name> title Sky Run`.

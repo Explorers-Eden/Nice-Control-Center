@@ -2105,13 +2105,13 @@
   const gmKeepOpen = () => { try { localStorage.setItem('pn-gm-open', JSON.stringify([...gmOpen])); } catch (e) { /* private window */ } };
   const GAME_ICONS = { parkour: 'bi-bricks', race: 'bi-flag', maze: 'bi-grid-3x3', waves: 'bi-shield-shaded',
     ghasts: 'bi-fire', colorfloor: 'bi-grid-3x3-gap', anvils: 'bi-cloud-hail', treasure: 'bi-gem', fishing: 'bi-water', heads: 'bi-person-bounding-box',
-    moles: 'bi-hammer', targets: 'bi-bullseye', gallery: 'bi-snow', chef: 'bi-cup-hot', lava: 'bi-thermometer-high' };
+    moles: 'bi-hammer', targets: 'bi-bullseye', gallery: 'bi-snow', chef: 'bi-cup-hot', lava: 'bi-thermometer-high', cubes: 'bi-box' };
   const GAME_LABELS = { waves: 'wave fight', ghasts: 'ghast deflect', colorfloor: 'colour floor', anvils: 'anvil rain', treasure: 'treasure grab', fishing: 'fishing frenzy', heads: 'head hunt',
-    moles: 'whack-a-mole', targets: 'target practice', gallery: 'snowball gallery', chef: 'cauldron chef', lava: 'rising lava' };
-  const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing', 'moles', 'targets', 'gallery', 'chef', 'lava'];
+    moles: 'whack-a-mole', targets: 'target practice', gallery: 'snowball gallery', chef: 'cauldron chef', lava: 'rising lava', cubes: 'sulfur cube pool' };
+  const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing', 'moles', 'targets', 'gallery', 'chef', 'lava', 'cubes'];
   const gmHigher = (type) => !['race', 'maze'].includes(type);
   const gmWord = { parkour: ['jump', 'jumps'], waves: ['wave', 'waves'], ghasts: ['ghast', 'ghasts'], colorfloor: ['colour', 'colours'], treasure: ['point', 'points'], fishing: ['point', 'points'], heads: ['head', 'heads'],
-    moles: ['point', 'points'], targets: ['point', 'points'], gallery: ['point', 'points'], chef: ['point', 'points'] };
+    moles: ['point', 'points'], targets: ['point', 'points'], gallery: ['point', 'points'], chef: ['point', 'points'], cubes: ['point', 'points'] };
   const gmScore = (type, v) => type === 'anvils' || type === 'lava' ? gmClock(v * 1000) : gmWord[type] ? `${v} ${gmWord[type][v === 1 ? 0 : 1]}` : gmClock(v);
   /** A game time like the mod shows it (Games.clock): MM:SS, or HH:MM:SS from an hour on. */
   const gmClock = (ms) => { const s = Math.floor(Math.max(0, ms) / 1000); const p = (n) => String(n).padStart(2, '0'); return s >= 3600 ? `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}` : `${p(Math.floor(s / 60))}:${p(s % 60)}`; };
@@ -2154,6 +2154,7 @@
     ['gallery', 'Snowball gallery', 'Mobs walk past on lanes; hit them, spare the villagers.', 'quick'],
     ['chef', 'Cauldron chef', 'Cook what the cook NPC orders and serve it.', 'quick'],
     ['lava', 'Rising lava', 'Lava fills the tower from below; the last one standing wins.', 'quick'],
+    ['cubes', 'Sulfur cube pool', 'Punch sulfur cubes into holes; the last hit scores (Minecraft 26.3).', 'quick'],
   ];
   /** Per card: the open tab (General, the game's own, Mobs, Bosses, Music, Rewards). */
   const gmTab = {};
@@ -2560,13 +2561,15 @@
       a.type === 'gallery' ? ok(lanes > 0, lanes ? `${lanes} lane${lanes === 1 ? '' : 's'}; more:` : 'Lanes (mobs walk them from start to end):', `/game edit ${n} lane add` + ' (at its start), then lane end (at its end)') : '',
       a.type === 'chef' ? ok(cook, cook ? `The cook: ${esc(a.chefNpc)}` : 'The cook: an NPC (Community → NPCs) standing in the kitchen, picked below', '') : '',
       a.type === 'chef' ? ok((a.chefStations || []).length > 0, (a.chefStations || []).length ? `${a.chefStations.length} supply chest${a.chefStations.length === 1 ? '' : 's'} (filled with what they held when set; again: station add)` : 'Supply chests (fill a chest with ingredients, look at it):', `/game edit ${n} station add`) : '',
+      a.type === 'cubes' ? ok((a.cubeHoles || []).length > 0, (a.cubeHoles || []).length ? `${a.cubeHoles.length} hole${a.cubeHoles.length === 1 ? '' : 's'}: ${a.cubeHoles.map((h) => `${p(h.pos)} (${h.points} pt${Math.abs(h.points) === 1 ? '' : 's'}${h.radius ? `, ${2 * h.radius + 1}×${2 * h.radius + 1}` : ''})`).join(' · ')}; more, or remove the nearest:` : 'Holes (dig the pit, stand in it):', `/game edit ${n} hole add <points> [radius]` + ' · hole remove') : '',
+      a.type === 'cubes' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} cube spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Cube spawns (optional; else at the player spawn):', a.mobSpawns.length ? '' : `/game edit ${n} mobspawn add`, true) : '',
       a.type === 'ghasts' ? ok(a.mobSpawns.length > 0, a.mobSpawns.length ? `${a.mobSpawns.length} ghast spawn${a.mobSpawns.length === 1 ? '' : 's'}` : 'Ghast spawns (up high):', `/game edit ${n} mobspawn add`) : '',
       ok(!!a.spectate, a.spectate ? `Spectator area ${p(a.spectate)}, ${gmSpecBox(a)}: the queue for the next round waits here, players who are out watch from here${gmSpecSpawns(a)}`
         : 'Spectator area (optional; where the queue for the next round waits and players who are out watch), a box or a radius around you:', a.spectate ? '' : `/game edit ${n} spectate corner1` + ' + corner2 · ' + `/game edit ${n} spectate [radius]`, true),
       ok(a.exitPads.length > 0, a.exitPads.length ? `${a.exitPads.length} exit pad${a.exitPads.length === 1 ? '' : 's'}` : 'Exit pads (optional):', a.exitPads.length ? '' : `/game edit ${n} back add`, true),
     ].filter(Boolean);
     const starter = { ghasts: ' (snowballs are handed out and refilled anyway)', fishing: ' (a fishing rod is handed out anyway)',
-      targets: ' (a bow and arrows are handed out, arrows refilled)', gallery: ' (snowballs are handed out and refilled anyway)' }[a.type] || '';
+      targets: ' (a bow and two stacks of arrows are handed out, topped up to a stack below 32)', gallery: ' (snowballs are handed out and refilled anyway)' }[a.type] || '';
     if (floor) steps.push(ok(true, 'After changing the platform size or gap, build the grid again:', `/game edit ${n} build`));
     const survival = floor || a.type === 'anvils' || a.type === 'lava';
     const mobs = {
@@ -2604,6 +2607,12 @@
         + field('chefPause', 'Seconds before the next order', num('chefPause', 0, 60))
         + `<label class="pn-field pn-field-wide"><span>Orders (one per line: <code>items = points</code>, items as <code>bread x2, cake</code>; picked at random; served within 20 seconds: +1)</span><textarea data-g="chefOrders" data-lines="1" rows="5" spellcheck="false" placeholder="bread x2, cookie x4 = 5">${esc((a.chefOrders || []).join('\n'))}</textarea></label>`
         + '<p class="pn-hint pn-field-wide">Their own things are always put aside. Players take ingredients from the supply chests, craft or cook them in the kitchen and right-click the cook to serve. The chests are filled again at each round and every 30 seconds.</p>',
+      cubes: field('cubeSize', 'Cube size', `<select data-g="cubeSize" data-num="1"><option value="1" ${(a.cubeSize || 1) === 1 ? 'selected' : ''}>small (about half a block)</option><option value="2" ${a.cubeSize === 2 ? 'selected' : ''}>full size (about a block)</option></select>`)
+        + field('maxAlive', 'Cubes rolling at once', num('maxAlive', 1, 30))
+        + field('cubePower', 'Punch strength (% of vanilla; at 100 a bouncy cube flies about 40 blocks)', num('cubePower', 10, 300))
+        + field('cubeShove', 'Punching another player shoves them (no damage)', `<select data-g="cubeShove" data-bool="1"><option value="true" ${a.cubeShove !== false ? 'selected' : ''}>yes</option><option value="false" ${a.cubeShove === false ? 'selected' : ''}>no</option></select>`)
+        + `<label class="pn-field pn-field-wide"><span>Cubes (one per line: <code>block=points wN</code>; the block the cube holds picks how it rolls, <code>wN</code> how often it comes; below 0 costs points)</span><textarea data-g="cubeBlocks" data-lines="1" rows="6" spellcheck="false" placeholder="minecraft:dirt=1 w4&#10;minecraft:soul_sand=-2">${esc((a.cubeBlocks || []).join('\n'))}</textarea></label>`
+        + '<p class="pn-hint pn-field-wide">Blocks: dirt, clay, mud rolls normally · planks and logs bounce · blue ice, packed ice, snow slide far · wool floats · soul sand is heavy · honeycomb block sticks · TNT is lit by the first punch and goes off (breaks nothing in the arena, hurts nobody). A cube scores the hole\'s points times its own for whoever punched it last; one that rolls in by itself scores nothing. Every cube shows its points: white 1, green 2, gold 3+, red costs. Needs Minecraft 26.3.</p>',
       lava: field('lavaSeconds', 'Seconds before the next layer at the start', num('lavaSeconds', 0.5, 120, 0.5)) + field('lavaSpeedUp', 'Faster each layer (s)', num('lavaSpeedUp', 0, 30, 0.05))
         + field('lavaFastest', 'Fastest (s)', num('lavaFastest', 0.5, 120, 0.5))
         + '<p class="pn-hint pn-field-wide">The lava fills the play box from its floor up, a layer at a time, only where there is air, and doesn\'t flow. Touching it is out. When it reaches the top, everyone still up made it. Afterwards all lava and fire in and near the box go, so build it of blocks that don\'t burn and don\'t put your own lava near it.</p>',
@@ -2669,6 +2678,7 @@
     if (e.target.type === 'checkbox') a[k] = e.target.checked;
     else if (e.target.type === 'number') a[k] = Number(e.target.value) || 0;
     else if (e.target.dataset.bool) a[k] = e.target.value === 'true';
+    else if (e.target.dataset.num) a[k] = Number(e.target.value) || 0;
     else if (k === 'waveLines') {
       // "5: husk x6, skeleton x2" per line → { "5": "husk x6, skeleton x2" }
       a[k] = {};

@@ -609,7 +609,8 @@ public final class GameClaims {
 			saveAdventure();
 		}
 		// (Not in a game area played in survival, nor in a parkour, race or maze run: they're still in the game there.)
-		if (sweep && gameClaimFor(p) == null && !eu.explorerseden.nicecontrolcenter.games.GameRuntime.inRun(p)
+		// (Nor while playing a round, wave game or dungeon: those hand out their own kit wherever they are.)
+		if (sweep && gameClaimFor(p) == null && !playing
 				&& (removeKits(p.getInventory()) | removeKits(p.getEnderChestInventory()))) {
 			p.inventoryMenu.broadcastChanges();
 		}

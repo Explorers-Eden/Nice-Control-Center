@@ -1483,6 +1483,39 @@ public final class GameRuntime {
 									a.galleryLanes.clear();
 									return "All lanes removed.";
 								}))))
+						// Sulfur cube pool: the holes cubes are punched into (standing in the pit).
+						.then(Commands.literal("hole")
+								.then(Commands.literal("add").then(Commands.argument("points", IntegerArgumentType.integer(-1000, 1000))
+										.executes(ctx -> addHole(ctx, 0))
+										.then(Commands.argument("radius", IntegerArgumentType.integer(0, 2))
+												.executes(ctx -> addHole(ctx, IntegerArgumentType.getInteger(ctx, "radius"))))))
+								.then(Commands.literal("remove").executes(ctx -> edit(ctx, (a, p) -> {
+									if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+									Games.Pos here = pos(p);
+									Games.Hole near = null;
+									for (Games.Hole h : a.cubeHoles) {
+										if (h.pos.dim.equals(here.dim) && h.pos.distanceSq(here) <= 9 && (near == null || h.pos.distanceSq(here) < near.pos.distanceSq(here))) near = h;
+									}
+									if (near == null) return "There's no hole within 3 blocks; nothing changed.";
+									a.cubeHoles.remove(near);
+									return "Hole at " + Math.round(near.pos.x) + ", " + Math.round(near.pos.y) + ", " + Math.round(near.pos.z) + " removed (" + a.cubeHoles.size() + " left).";
+								})))
+								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
+									if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+									a.cubeHoles.clear();
+									return "All holes removed.";
+								})))
+								.then(Commands.literal("list").executes(ctx -> edit(ctx, (a, p) -> {
+									if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+									if (a.cubeHoles.isEmpty()) return "No holes yet: /game edit " + a.name + " hole add <points> [radius], standing in the pit.";
+									StringBuilder b = new StringBuilder(a.cubeHoles.size() + (a.cubeHoles.size() == 1 ? " hole:" : " holes:"));
+									for (int i = 0; i < a.cubeHoles.size(); i++) {
+										Games.Hole h = a.cubeHoles.get(i);
+										b.append("\n").append(i + 1).append(". ").append(Math.round(h.pos.x)).append(", ").append(Math.round(h.pos.y)).append(", ").append(Math.round(h.pos.z))
+												.append(" · ").append(h.points).append(h.points == 1 ? " point" : " points").append(h.radius > 0 ? " · " + (2 * h.radius + 1) + "×" + (2 * h.radius + 1) : "");
+									}
+									return b.toString();
+								}))))
 						// Cauldron chef: supply chests, filled with what they hold now at each round.
 						.then(Commands.literal("station")
 								.then(Commands.literal("add").executes(ctx -> edit(ctx, (a, p) -> {
@@ -1569,6 +1602,24 @@ public final class GameRuntime {
 		return x * x + y * y + z * z;
 	}
 
+	/** Sulfur cube pool: the pit the player stands in becomes a hole (the same spot again replaces it). */
+	private static int addHole(CommandContext<CommandSourceStack> ctx, int radius) throws CommandSyntaxException {
+		int points = IntegerArgumentType.getInteger(ctx, "points");
+		return edit(ctx, (a, p) -> {
+			if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+			if (points == 0) return "A hole worth 0 points scores nothing; nothing changed.";
+			Games.Pos at = pos(p);
+			Games.Hole h = new Games.Hole();
+			h.pos = new Games.Pos(at.dim, Math.floor(at.x) + 0.5, Math.floor(at.y), Math.floor(at.z) + 0.5, 0);
+			h.points = points;
+			h.radius = radius;
+			a.cubeHoles.removeIf(x -> x.pos.dim.equals(h.pos.dim) && x.pos.distanceSq(h.pos) < 0.5);
+			a.cubeHoles.add(h);
+			return "Hole " + a.cubeHoles.size() + " here, worth " + points + (Math.abs(points) == 1 ? " point" : " points") + (radius > 0 ? " (" + (2 * radius + 1) + "×" + (2 * radius + 1) + ")" : " (this block)")
+					+ ": a cube counts once it drops to where you stand. Times the cube's own points.";
+		});
+	}
+
 	private static int edit(CommandContext<CommandSourceStack> ctx, Edit e) throws CommandSyntaxException {
 		ServerPlayer p = ctx.getSource().getPlayerOrException();
 		Arena a = arena(ctx);
@@ -1648,6 +1699,8 @@ public final class GameRuntime {
 					+ " lane add at a lane's start, lane end at its end (several). Mobs and their points are set in the panel.";
 			case "chef" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the kitchen, height included), fill chests with ingredients and"
 					+ " /game edit " + name + " station add looking at each, and put an NPC there as the cook (its name goes in the panel). Orders are set in the panel.";
+			case "cubes" -> "Players appear here (the spawn). Then: /game edit " + name + " corner1 / corner2 (the field, height included), dig the pits and stand in each:"
+					+ " /game edit " + name + " hole add <points> [radius 0-2]; cubes roll out at the spawn or at /game edit " + name + " mobspawn add spots. Needs Minecraft 26.3. Try it with /game try " + name + ".";
 			case "lava" -> "Players appear here (the spawn, at the bottom). Then: /game edit " + name + " corner1 / corner2 (the tower or cave the lava fills, height included;"
 					+ " build it of blocks that don't burn). Try it with /game try " + name + ".";
 			case "heads" -> "Set the heads' skin: /game edit " + name + " texture <url or value>, then /game edit " + name + " headitem gives you heads to hide (placing one adds it)."
@@ -1685,6 +1738,10 @@ public final class GameRuntime {
 				a.timeLimit = 90;
 			}
 			case "chef" -> a.timeLimit = 180;
+			case "cubes" -> {
+				a.maxAlive = 3;
+				a.timeLimit = 90;
+			}
 			case "lava" -> a.timeLimit = 0;
 			default -> {
 			}

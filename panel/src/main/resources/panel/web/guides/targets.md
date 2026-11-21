@@ -1,6 +1,6 @@
 # Target practice
 
-Target blocks appear in the box; players shoot them before they vanish. A bow and arrows are handed out, arrows refilled.
+Target blocks appear in the box; players shoot them before they vanish. A bow and two stacks of arrows are handed out; arrows are topped up to a stack whenever they drop below 32.
 
 ## Set it up
 

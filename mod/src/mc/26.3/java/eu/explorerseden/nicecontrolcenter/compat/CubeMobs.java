@@ -22,6 +22,16 @@ public final class CubeMobs {
 		}
 	}
 
+	/** Lights a TNT sulfur cube's fuse (sulfur cube pool: the first punch). */
+	public static void prime(net.minecraft.world.entity.Entity e) {
+		if (e instanceof SulfurCube cube && !cube.isPrimed()) cube.primeTime(true);
+	}
+
+	/** A sulfur cube with its fuse lit. */
+	public static boolean primed(net.minecraft.world.entity.Entity e) {
+		return e instanceof SulfurCube cube && cube.isPrimed();
+	}
+
 	/** The slimes' attack goal (protected in AbstractCubeMob). */
 	private static final java.lang.reflect.Constructor<?> ATTACK = attack();
 

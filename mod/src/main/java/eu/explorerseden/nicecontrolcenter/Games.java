@@ -24,12 +24,12 @@ import java.util.UUID;
 public final class Games {
 	public static final String FILE = "nicecontrolcenter-games.json";
 	public static final String SCORES = "nicecontrolcenter-games-scores.json";
-	public static final List<String> TYPES = List.of("parkour", "race", "maze", "waves", "ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava", "heads");
+	public static final List<String> TYPES = List.of("parkour", "race", "maze", "waves", "ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava", "cubes", "heads");
 	/** Quick rounds: everyone on the start pad during the join window plays the same round, each for their own score. */
 	/** Whack-a-mole hole blocks: lamps that light up while a head is up (waxed bulbs: they never age). */
 	public static final List<String> MOLE_HOLES = List.of("minecraft:redstone_lamp", "minecraft:waxed_copper_bulb", "minecraft:waxed_exposed_copper_bulb",
 			"minecraft:waxed_weathered_copper_bulb", "minecraft:waxed_oxidized_copper_bulb");
-	public static final List<String> QUICK = List.of("ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava");
+	public static final List<String> QUICK = List.of("ghasts", "colorfloor", "anvils", "treasure", "fishing", "moles", "targets", "gallery", "chef", "lava", "cubes");
 
 	public static boolean quick(String type) {
 		return QUICK.contains(type);
@@ -91,6 +91,13 @@ public final class Games {
 	public static final class Station {
 		public Pos pos;
 		public List<String> items = new ArrayList<>();
+	}
+
+	/** Sulfur cube pool: a pit cubes are punched into (marked in game), what it's worth, how far around it counts (0 = its block). */
+	public static final class Hole {
+		public Pos pos;
+		public int points = 1;
+		public int radius = 0;
 	}
 
 	public static final class Arena {
@@ -346,6 +353,18 @@ public final class Games {
 		public double lavaSpeedUp = 0.25;
 		public double lavaFastest = 2;
 
+		/** Sulfur cube pool (26.3): "minecraft:dirt=1 w4" (the block the cube holds = points, weight); below 0 costs. The block picks its physics. */
+		public List<String> cubeBlocks = new ArrayList<>(List.of("minecraft:dirt=1 w4", "minecraft:oak_planks=1 w2", "minecraft:blue_ice=2 w1",
+				"minecraft:white_wool=1 w1", "minecraft:soul_sand=-2 w1", "minecraft:tnt=3 w1"));
+		/** Sulfur cube pool: the cubes' size (1 = the small one, about half a block; 2 = the full-size one). */
+		public int cubeSize = 1;
+		/** Sulfur cube pool: the holes (marked in game). */
+		public List<Hole> cubeHoles = new ArrayList<>();
+		/** Sulfur cube pool: punching another player knocks them back (no damage). */
+		public boolean cubeShove = true;
+		/** Sulfur cube pool: how hard a punch sends a cube, % of vanilla (which sends a bouncy one 40 blocks). */
+		public int cubePower = 50;
+
 		// Head hunt: player heads hidden in the world; right-click to find one.
 		/** The heads' skin: a textures.minecraft.net URL, its hash, or the base64 value. */
 		public String headTexture = "";
@@ -573,6 +592,16 @@ public final class Games {
 				a.lavaSeconds = Math.max(0.5, Math.min(120, a.lavaSeconds == 0 ? 6 : a.lavaSeconds));
 				a.lavaSpeedUp = Math.max(0, Math.min(30, a.lavaSpeedUp));
 				a.lavaFastest = Math.max(0.5, Math.min(a.lavaSeconds, a.lavaFastest == 0 ? 2 : a.lavaFastest));
+				if (a.cubeBlocks == null) a.cubeBlocks = new ArrayList<>();
+				a.cubeBlocks.removeIf(x -> x == null || x.isBlank());
+				a.cubeSize = Math.max(1, Math.min(2, a.cubeSize));
+				a.cubePower = Math.max(10, Math.min(300, a.cubePower == 0 ? 50 : a.cubePower));
+				if (a.cubeHoles == null) a.cubeHoles = new ArrayList<>();
+				a.cubeHoles.removeIf(h -> h == null || h.pos == null || h.pos.dim == null);
+				for (Hole h : a.cubeHoles) {
+					h.points = Math.max(-1000, Math.min(1000, h.points));
+					h.radius = Math.max(0, Math.min(2, h.radius));
+				}
 				if (a.headTexture == null) a.headTexture = "";
 				if (a.heads == null) a.heads = new ArrayList<>();
 				a.heads.removeIf(x -> x == null || x.dim == null);
@@ -618,7 +647,7 @@ public final class Games {
 			case "ghasts" -> score + (score == 1 ? " ghast" : " ghasts");
 			case "colorfloor" -> score + (score == 1 ? " colour" : " colours");
 			case "anvils", "lava" -> clock(score * 1000);
-			case "treasure", "fishing", "moles", "targets", "gallery", "chef" -> score + (score == 1 ? " point" : " points");
+			case "treasure", "fishing", "moles", "targets", "gallery", "chef", "cubes" -> score + (score == 1 ? " point" : " points");
 			case "heads" -> score + (score == 1 ? " head" : " heads");
 			default -> clock.apply(score);
 		};

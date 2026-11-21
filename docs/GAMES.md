@@ -185,7 +185,7 @@ gets a bite almost at once.
   appear inside a block are put on top of it.
 
 **Target practice** (`targets`): target blocks appear in the box; shoot them before they vanish.
-- Created at the spawn (where they shoot from); `corner1` / `corner2`. Players get a bow and arrows (refilled).
+- Created at the spawn (where they shoot from); `corner1` / `corner2`. Players get a bow and two stacks of arrows (topped up to 64 below 32).
 - A hit: 1 + a point per 10 blocks from the spawn, twice that for a bullseye. Panel: on the walls or floating
   anywhere, seconds a target stays, targets at once. Targets only go where there's air.
 
@@ -209,6 +209,19 @@ gets a bite almost at once.
 - The lava only goes where there's air and doesn't flow. Afterwards all lava and fire in and near the box go (also
   after a crash), so build with blocks that don't burn and keep your own lava away from it.
 - Panel: seconds before the next layer at the start, how much faster each layer, the fastest.
+
+**Sulfur cube pool** (`cubes`, Minecraft 26.3): sulfur cubes holding a block roll around the field; punching one into
+a hole scores the hole's points times the cube's for whoever hit it last.
+- Created at the spawn; `corner1` / `corner2` around the field. Dig the pits and stand in each:
+  `/game edit <name> hole add <points> [radius 0-2]` (`hole remove` the nearest, `hole clear`, `hole list`). Cubes roll
+  out at `mobspawn add` spots, or at the spawn.
+- A cube holding a block takes no damage, only knockback; the block picks how it rolls (planks bounce, ice slides,
+  wool floats, soul sand is heavy, honeycomb sticks, TNT goes off after the first punch without breaking or hurting
+  anything). Each cube shows its points: white 1, green 2, gold 3+, red costs.
+- Players punching each other only shove (or nothing, with shoving off). A cube that rolls in by itself, leaves the
+  field or sits untouched for 20 s comes back elsewhere without scoring.
+- Panel: the cubes (`minecraft:dirt=1 w4`: block = points, weight), cube size, cubes at once, punch strength (% of
+  vanilla, 50 by default: at 100 a bouncy cube flies about 40 blocks), shoving.
 
 ## Head hunt (`heads`)
 Heads hidden in the world; players right-click them.

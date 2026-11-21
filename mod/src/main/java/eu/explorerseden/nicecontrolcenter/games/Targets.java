@@ -43,11 +43,14 @@ final class Targets {
 			level.sendParticles(ParticleTypes.SMOKE, at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5, 6, 0.3, 0.3, 0.3, 0.01);
 			it.remove();
 		}
-		// Kit rounds keep the arrows coming.
-		if (QuickRuntime.kit(a) && level.getGameTime() % 20 == 0) {
+		// Kit rounds keep the arrows coming (once a second; this runs every other tick, so not by the world's tick count,
+		// which may be odd on every call and then never refilled).
+		watchDraws(level, r, alive);
+		if (QuickRuntime.kit(a) && now >= r.nextRefill) {
+			r.nextRefill = now + 1000;
 			for (ServerPlayer p : alive) {
 				int have = p.getInventory().countItem(Items.ARROW);
-				if (have < 8) GameClaims.giveKitItem(p, new ItemStack(Items.ARROW, 16 - have), "quick");
+				if (have < 32) GameClaims.giveKitItem(p, new ItemStack(Items.ARROW, 64 - have), "quick");
 			}
 		}
 		if (now < r.nextTarget || r.targets.size() >= a.maxAlive) return;
@@ -120,6 +123,32 @@ final class Targets {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Bow draws let go of early (under a second): logged with what changed meanwhile, to find out what cuts draws short
+	 * (2026-11: draws sometimes ended or fired early in target practice).
+	 */
+	private static void watchDraws(ServerLevel level, QuickRuntime.Round r, List<ServerPlayer> alive) {
+		long tick = level.getServer().getTickCount();
+		for (ServerPlayer p : alive) {
+			ItemStack using = p.isUsingItem() ? p.getUseItem() : ItemStack.EMPTY;
+			Object[] d = r.draws.get(p.getUUID());
+			if (using.is(Items.BOW) && d == null) {
+				r.draws.put(p.getUUID(), new Object[] { tick, using, using.getDamageValue(), p.getInventory().countItem(Items.ARROW), p.gameMode.getGameModeForPlayer(), using.getComponents().hashCode() });
+				continue;
+			}
+			if (d == null || using.is(Items.BOW) && using == d[1]) continue;
+			r.draws.remove(p.getUUID());
+			long held = tick - (long) d[0];
+			if (held >= 20) continue;
+			ItemStack bow = (ItemStack) d[1];
+			ItemStack hand = p.getMainHandItem();
+			eu.explorerseden.nicecontrolcenter.NiceControlCenter.LOGGER.info("Games: {} let go of the bow after {} ticks in {} (bow {}; damage {} → {}; arrows {} → {}; mode {} → {}; still using {})",
+					p.getGameProfile().name(), held, r.arena.name,
+					hand == bow ? (bow.getComponents().hashCode() == (int) d[5] ? "same" : "same stack, changed") : hand.is(Items.BOW) ? "replaced by another stack" : "not in hand",
+					d[2], bow.getDamageValue(), d[3], p.getInventory().countItem(Items.ARROW), d[4], p.gameMode.getGameModeForPlayer(), using.isEmpty() ? "nothing" : using.getItem());
+		}
 	}
 
 	/** Every target still up gone (round over). */

@@ -1,4 +1,9 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.116.0
+- New quick round: sulfur cube pool (cubes, Minecraft 26.3). Sulfur cubes holding a block roll around the field; punching one into a hole scores the hole's points times the cube's for whoever hit it last. The block picks how it rolls (planks bounce, ice slides, wool floats, soul sand is heavy, honeycomb sticks); TNT cubes are lit by the first punch and go off without breaking or hurting anything; bad cubes cost points. Every cube shows its points, colour-coded. Holes: /game edit {game} hole add {points} [radius], hole remove|clear|list; cube spawns with mobspawn add. Punch strength, cube size, cubes at once and shoving (players punching each other only push) are set in the panel
+- Target practice: two stacks of arrows at the start, topped up to 64 whenever they drop below 32. The top-up could stop working altogether after a restart (it waited for a world tick it never saw)
+- Kit items are no longer swept away once a second from players in a round, wave game or dungeon outside a game area
+- Target practice: a bow draw let go of within a second is logged with what changed meanwhile (to find what cuts draws short)
 ## 1.115.4
 - /npc place {npc}: it stands where you are (the same as /npc move). /npc summon makes a fighting copy that roams and attacks, as in mob pools; it now says so, and /npc summon clear removes such copies outside games
 ## 1.115.3

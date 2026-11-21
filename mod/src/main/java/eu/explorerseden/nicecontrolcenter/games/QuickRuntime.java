@@ -129,6 +129,9 @@ public final class QuickRuntime {
 		// Target practice: targets up (→ until ms), when the next one comes.
 		final Map<BlockPos, Long> targets = new HashMap<>();
 		long nextTarget;
+		long nextRefill;
+		/** Bow draws going on: tick started, the stack, its damage, arrows, game mode, components hash. */
+		final Map<UUID, Object[]> draws = new HashMap<>();
 		// Snowball gallery: mobs walking (entity → lane, how far along 0–1), when the next one starts, a counter for their tags.
 		final Map<UUID, double[]> walkers = new HashMap<>();
 		long nextWalker;
@@ -143,6 +146,10 @@ public final class QuickRuntime {
 		long nextLava;
 		double lavaGap;
 		String lavaKey;
+		// Sulfur cube pool: who punched each cube last, when it was last touched (ms), when the next cube may come.
+		final Map<UUID, UUID> cubeHitter = new HashMap<>();
+		final Map<UUID, Long> cubeTouched = new HashMap<>();
+		long nextCube;
 
 		Round(Arena arena) {
 			this.arena = arena;
@@ -198,6 +205,8 @@ public final class QuickRuntime {
 			p.sendOverlayMessage(Words.lit("+1 ghast · " + n).withStyle(ChatFormatting.GOLD));
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.6f);
 		});
+		// Sulfur cube pool: who hit a cube last, shoves between players.
+		Cubes.register();
 		// Whack-a-mole: hitting or right-clicking a head (adventure mode doesn't send hits on blocks); nobody breaks one.
 		AttackBlockCallback.EVENT.register((player, level, hand, pos, dir) -> player instanceof ServerPlayer p && !level.isClientSide() && Moles.hit(p, pos) ? InteractionResult.SUCCESS : InteractionResult.PASS);
 		UseBlockCallback.EVENT.register((player, level, hand, hit) -> hand == InteractionHand.MAIN_HAND && player instanceof ServerPlayer p && !level.isClientSide() && Moles.hit(p, hit.getBlockPos())
@@ -433,6 +442,7 @@ public final class QuickRuntime {
 		String own = switch (a.type) {
 			case "gallery" -> Gallery.check(a);
 			case "chef" -> Chef.check(a);
+			case "cubes" -> Cubes.check(a);
 			default -> null;
 		};
 		if (own != null) return own;
@@ -473,7 +483,7 @@ public final class QuickRuntime {
 			buildGrid(level, r);
 			r.nextCallAt = r.started + 3000;
 		}
-		r.nextMole = r.nextTarget = r.nextWalker = r.started + 1500;
+		r.nextMole = r.nextTarget = r.nextWalker = r.nextCube = r.started + 1500;
 		if (a.type.equals("lava")) Lava.start(level, r);
 		Games.Pos spawn = spawnOf(a);
 		for (ServerPlayer p : going) {
@@ -509,6 +519,7 @@ public final class QuickRuntime {
 			case "gallery" -> "Hit the mobs walking past with snowballs; leave the villagers alone" + (time.isEmpty() ? "." : " (" + time + ").");
 			case "chef" -> "Gather and cook what " + (a.chefNpc.isBlank() ? "the cook" : a.chefNpc) + " orders, then right-click " + (a.chefNpc.isBlank() ? "them" : a.chefNpc) + " to serve it" + (time.isEmpty() ? "." : " (" + time + ").");
 			case "lava" -> "The lava is rising: climb and stay out of it as long as you can.";
+			case "cubes" -> "Punch the sulfur cubes into the holes: the last one to hit a cube scores it. Red cubes cost points, TNT cubes go off" + (time.isEmpty() ? "." : " (" + time + ").");
 			default -> "Catch as much as you can" + (time.isEmpty() ? "." : " (" + time + ").");
 		};
 	}
@@ -518,7 +529,7 @@ public final class QuickRuntime {
 		return switch (a.type) {
 			case "ghasts" -> List.of(new ItemStack(Items.SNOWBALL, 16));
 			case "fishing" -> List.of(new ItemStack(Items.FISHING_ROD));
-			case "targets" -> List.of(new ItemStack(Items.BOW), new ItemStack(Items.ARROW, 16));
+			case "targets" -> List.of(new ItemStack(Items.BOW), new ItemStack(Items.ARROW, 64), new ItemStack(Items.ARROW, 64));
 			case "gallery" -> List.of(new ItemStack(Items.SNOWBALL, 16));
 			case "moles" -> a.moleMace ? List.of(Moles.mace()) : List.of();
 			default -> List.of();
@@ -664,6 +675,7 @@ public final class QuickRuntime {
 			case "targets" -> Targets.tick(level, r, alive);
 			case "gallery" -> Gallery.tick(server, level, r, alive);
 			case "chef" -> Chef.tick(level, r, alive);
+			case "cubes" -> Cubes.tick(server, level, r, alive);
 			case "lava" -> {
 				if (Lava.tick(level, r, alive)) {
 					end(server, r, "The lava reached the top: you outlasted it!");
@@ -1308,6 +1320,9 @@ public final class QuickRuntime {
 		if (a.type.equals("targets")) Targets.clear(level, r);
 		if (a.type.equals("lava")) Lava.end(level, r);
 		if (a.type.equals("chef")) Chef.clear(r);
+		r.draws.clear();
+		r.cubeHitter.clear();
+		r.cubeTouched.clear();
 		r.walkers.clear();
 	}
 
