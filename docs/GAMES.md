@@ -32,7 +32,7 @@ in the panel under **Games**. `<name>` is the game's one-word name.
    **Points checks** in commands: `points check <player> <amount>` (at least), or with `>`, `>=`, `=`, `!=`, `<`,
    `<=` before the amount (`points check {player} > 100`), succeeds or fails and takes nothing. With
    `execute store success score {player} <objective> run points check …` and then `execute if score …` a
-   command runs only then.
+   command runs only then. Without an amount, `points check <player>` shows the player's balance.
    **Rewards**: each game has commands (`{player}`, `{score}`, `{game}`). In **Rewards**, rules on
    "Finishes a game" / "Sets a personal best" (and the per-game triggers below) can give anything, including
    **Points** for the reward shops.

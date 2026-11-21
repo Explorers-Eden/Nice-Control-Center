@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.115.2
+- /points check {player} without an amount shows their balance (it was an incomplete command); the result is the balance, for execute store result
 ## 1.115.1
 - Game entrance labels: an empty line between the game's info (name, subtitle, players) and its best three
 ## 1.115.0

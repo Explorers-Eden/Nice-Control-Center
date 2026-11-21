@@ -261,7 +261,7 @@ public final class PointsStore {
 				.then(Commands.literal("take").requires(admin).then(Commands.argument("players", GameProfileArgument.gameProfile())
 						.then(Commands.argument("amount", IntegerArgumentType.integer(1, 1_000_000_000)).executes(ctx -> take(ctx, ""))
 								.then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx -> take(ctx, StringArgumentType.getString(ctx, "reason")))))))
-				.then(Commands.literal("check").requires(admin).then(checkOps(Commands.argument("players", GameProfileArgument.gameProfile())
+				.then(Commands.literal("check").requires(admin).then(checkOps(Commands.argument("players", GameProfileArgument.gameProfile()).executes(PointsStore::show)
 						.then(Commands.argument("amount", IntegerArgumentType.integer(0, 1_000_000_000)).executes(ctx -> check(ctx, ">=")))))));
 	}
 
@@ -353,6 +353,17 @@ public final class PointsStore {
 		}
 		ctx.getSource().sendSuccess(() -> Component.literal("Yes: " + opWords(op) + " " + Points.amount(settings, amount) + "."), false);
 		return who.size();
+	}
+
+	/** /points check <players> without an amount: each one's balance (returns the last one's, for execute store result). */
+	private static int show(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+		long last = 0;
+		for (NameAndId w : profiles(ctx)) {
+			long have = balance(w.id().toString());
+			last = have;
+			ctx.getSource().sendSuccess(() -> Component.literal(w.name() + " has " + Points.amount(settings, have) + ".").withStyle(ChatFormatting.GOLD), false);
+		}
+		return (int) Math.min(Integer.MAX_VALUE, last);
 	}
 
 	private static Collection<NameAndId> profiles(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
