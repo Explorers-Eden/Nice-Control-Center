@@ -1,1 +1,10 @@
+// The plugins' own libraries (shadow needs log4j, commons-io …) come from Maven Central: the plugin portal no longer
+// serves them, and a build without a filled Gradle cache (Docker, CI) can't find them there.
+pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		mavenCentral()
+	}
+}
+
 rootProject.name = 'nice-control-center-panel'
