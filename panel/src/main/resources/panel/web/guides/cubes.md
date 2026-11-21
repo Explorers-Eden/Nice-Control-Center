@@ -1,4 +1,4 @@
-# Sulfur cube pool
+# Brimstone Billiards
 
 Sulfur cubes holding a block roll around a field. Punch them into the holes: whoever hit a cube last scores the hole's points times the cube's. Needs Minecraft 26.3.
 

@@ -146,7 +146,7 @@ public final class QuickRuntime {
 		long nextLava;
 		double lavaGap;
 		String lavaKey;
-		// Sulfur cube pool: who punched each cube last, when it was last touched (ms), when the next cube may come.
+		// Brimstone Billiards: who punched each cube last, when it was last touched (ms), when the next cube may come.
 		final Map<UUID, UUID> cubeHitter = new HashMap<>();
 		final Map<UUID, Long> cubeTouched = new HashMap<>();
 		long nextCube;
@@ -205,7 +205,7 @@ public final class QuickRuntime {
 			p.sendOverlayMessage(Words.lit("+1 ghast · " + n).withStyle(ChatFormatting.GOLD));
 			p.level().playSound(null, p.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6f, 1.6f);
 		});
-		// Sulfur cube pool: who hit a cube last, shoves between players.
+		// Brimstone Billiards: who hit a cube last, shoves between players.
 		Cubes.register();
 		// Whack-a-mole: hitting or right-clicking a head (adventure mode doesn't send hits on blocks); nobody breaks one.
 		AttackBlockCallback.EVENT.register((player, level, hand, pos, dir) -> player instanceof ServerPlayer p && !level.isClientSide() && Moles.hit(p, pos) ? InteractionResult.SUCCESS : InteractionResult.PASS);

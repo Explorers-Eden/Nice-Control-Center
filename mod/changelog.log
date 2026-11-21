@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.116.1
+- The sulfur cube game is called Brimstone Billiards now (the type stays cubes: /game create cubes {name})
 ## 1.116.0
 - New quick round: sulfur cube pool (cubes, Minecraft 26.3). Sulfur cubes holding a block roll around the field; punching one into a hole scores the hole's points times the cube's for whoever hit it last. The block picks how it rolls (planks bounce, ice slides, wool floats, soul sand is heavy, honeycomb sticks); TNT cubes are lit by the first punch and go off without breaking or hurting anything; bad cubes cost points. Every cube shows its points, colour-coded. Holes: /game edit {game} hole add {points} [radius], hole remove|clear|list; cube spawns with mobspawn add. Punch strength, cube size, cubes at once and shoving (players punching each other only push) are set in the panel
 - Target practice: two stacks of arrows at the start, topped up to 64 whenever they drop below 32. The top-up could stop working altogether after a restart (it waited for a world tick it never saw)

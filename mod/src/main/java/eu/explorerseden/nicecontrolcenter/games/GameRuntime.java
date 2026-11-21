@@ -1483,14 +1483,14 @@ public final class GameRuntime {
 									a.galleryLanes.clear();
 									return "All lanes removed.";
 								}))))
-						// Sulfur cube pool: the holes cubes are punched into (standing in the pit).
+						// Brimstone Billiards: the holes cubes are punched into (standing in the pit).
 						.then(Commands.literal("hole")
 								.then(Commands.literal("add").then(Commands.argument("points", IntegerArgumentType.integer(-1000, 1000))
 										.executes(ctx -> addHole(ctx, 0))
 										.then(Commands.argument("radius", IntegerArgumentType.integer(0, 2))
 												.executes(ctx -> addHole(ctx, IntegerArgumentType.getInteger(ctx, "radius"))))))
 								.then(Commands.literal("remove").executes(ctx -> edit(ctx, (a, p) -> {
-									if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+									if (!a.type.equals("cubes")) return "Only Brimstone Billiards games have holes.";
 									Games.Pos here = pos(p);
 									Games.Hole near = null;
 									for (Games.Hole h : a.cubeHoles) {
@@ -1501,12 +1501,12 @@ public final class GameRuntime {
 									return "Hole at " + Math.round(near.pos.x) + ", " + Math.round(near.pos.y) + ", " + Math.round(near.pos.z) + " removed (" + a.cubeHoles.size() + " left).";
 								})))
 								.then(Commands.literal("clear").executes(ctx -> edit(ctx, (a, p) -> {
-									if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+									if (!a.type.equals("cubes")) return "Only Brimstone Billiards games have holes.";
 									a.cubeHoles.clear();
 									return "All holes removed.";
 								})))
 								.then(Commands.literal("list").executes(ctx -> edit(ctx, (a, p) -> {
-									if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+									if (!a.type.equals("cubes")) return "Only Brimstone Billiards games have holes.";
 									if (a.cubeHoles.isEmpty()) return "No holes yet: /game edit " + a.name + " hole add <points> [radius], standing in the pit.";
 									StringBuilder b = new StringBuilder(a.cubeHoles.size() + (a.cubeHoles.size() == 1 ? " hole:" : " holes:"));
 									for (int i = 0; i < a.cubeHoles.size(); i++) {
@@ -1602,11 +1602,11 @@ public final class GameRuntime {
 		return x * x + y * y + z * z;
 	}
 
-	/** Sulfur cube pool: the pit the player stands in becomes a hole (the same spot again replaces it). */
+	/** Brimstone Billiards: the pit the player stands in becomes a hole (the same spot again replaces it). */
 	private static int addHole(CommandContext<CommandSourceStack> ctx, int radius) throws CommandSyntaxException {
 		int points = IntegerArgumentType.getInteger(ctx, "points");
 		return edit(ctx, (a, p) -> {
-			if (!a.type.equals("cubes")) return "Only sulfur cube pools have holes.";
+			if (!a.type.equals("cubes")) return "Only Brimstone Billiards games have holes.";
 			if (points == 0) return "A hole worth 0 points scores nothing; nothing changed.";
 			Games.Pos at = pos(p);
 			Games.Hole h = new Games.Hole();

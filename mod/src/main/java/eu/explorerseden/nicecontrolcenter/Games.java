@@ -93,7 +93,7 @@ public final class Games {
 		public List<String> items = new ArrayList<>();
 	}
 
-	/** Sulfur cube pool: a pit cubes are punched into (marked in game), what it's worth, how far around it counts (0 = its block). */
+	/** Brimstone Billiards: a pit cubes are punched into (marked in game), what it's worth, how far around it counts (0 = its block). */
 	public static final class Hole {
 		public Pos pos;
 		public int points = 1;
@@ -353,16 +353,16 @@ public final class Games {
 		public double lavaSpeedUp = 0.25;
 		public double lavaFastest = 2;
 
-		/** Sulfur cube pool (26.3): "minecraft:dirt=1 w4" (the block the cube holds = points, weight); below 0 costs. The block picks its physics. */
+		/** Brimstone Billiards (26.3): "minecraft:dirt=1 w4" (the block the cube holds = points, weight); below 0 costs. The block picks its physics. */
 		public List<String> cubeBlocks = new ArrayList<>(List.of("minecraft:dirt=1 w4", "minecraft:oak_planks=1 w2", "minecraft:blue_ice=2 w1",
 				"minecraft:white_wool=1 w1", "minecraft:soul_sand=-2 w1", "minecraft:tnt=3 w1"));
-		/** Sulfur cube pool: the cubes' size (1 = the small one, about half a block; 2 = the full-size one). */
+		/** Brimstone Billiards: the cubes' size (1 = the small one, about half a block; 2 = the full-size one). */
 		public int cubeSize = 1;
-		/** Sulfur cube pool: the holes (marked in game). */
+		/** Brimstone Billiards: the holes (marked in game). */
 		public List<Hole> cubeHoles = new ArrayList<>();
-		/** Sulfur cube pool: punching another player knocks them back (no damage). */
+		/** Brimstone Billiards: punching another player knocks them back (no damage). */
 		public boolean cubeShove = true;
-		/** Sulfur cube pool: how hard a punch sends a cube, % of vanilla (which sends a bouncy one 40 blocks). */
+		/** Brimstone Billiards: how hard a punch sends a cube, % of vanilla (which sends a bouncy one 40 blocks). */
 		public int cubePower = 50;
 
 		// Head hunt: player heads hidden in the world; right-click to find one.

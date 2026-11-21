@@ -210,7 +210,7 @@ gets a bite almost at once.
   after a crash), so build with blocks that don't burn and keep your own lava away from it.
 - Panel: seconds before the next layer at the start, how much faster each layer, the fastest.
 
-**Sulfur cube pool** (`cubes`, Minecraft 26.3): sulfur cubes holding a block roll around the field; punching one into
+**Brimstone Billiards** (`cubes`, Minecraft 26.3): sulfur cubes holding a block roll around the field; punching one into
 a hole scores the hole's points times the cube's for whoever hit it last.
 - Created at the spawn; `corner1` / `corner2` around the field. Dig the pits and stand in each:
   `/game edit <name> hole add <points> [radius 0-2]` (`hole remove` the nearest, `hole clear`, `hole list`). Cubes roll
