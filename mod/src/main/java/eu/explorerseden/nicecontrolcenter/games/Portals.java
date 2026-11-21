@@ -349,6 +349,8 @@ public final class Portals {
 		String who = whoLine(a);
 		if (!who.isEmpty()) t.append(Words.lit("\n" + who).withStyle(st -> st.withBold(false).withColor(ChatFormatting.AQUA)));
 		List<Games.Score> top = GameRuntime.top(a, 3);
+		// An empty line between the game's info and its best scores.
+		t.append(Words.lit("\n"));
 		String[] medal = { "1st", "2nd", "3rd" };
 		for (int i = 0; i < top.size(); i++) {
 			Games.Score sc = top.get(i);
