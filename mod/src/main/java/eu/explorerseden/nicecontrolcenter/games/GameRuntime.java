@@ -155,7 +155,7 @@ public final class GameRuntime {
 	public static void toHubAfterRespawn(MinecraftServer server, ServerPlayer p) {
 		boolean ok = toHub(server, p);
 		Games.Pos hub = settings.hub;
-		NiceControlCenter.LOGGER.info("Games: {} respawned: {}", p.getGameProfile().name(),
+		NiceControlCenter.LOGGER.debug("Games: {} respawned: {}", p.getGameProfile().name(),
 				ok ? "to the hub spawn in " + hub.dim : "no hub spawn to go to (none set, or its dimension is missing)");
 		if (ok) hubCheck.put(p.getUUID(), (long) server.getTickCount() + 5);
 	}
@@ -171,7 +171,7 @@ public final class GameRuntime {
 			if (p == null || hub == null || !p.isAlive()) continue;
 			boolean there = dim(p).equals(hub.dim) && p.distanceToSqr(hub.x, hub.y, hub.z) <= 4 * 4;
 			if (there) continue;
-			NiceControlCenter.LOGGER.info("Games: {} was moved away from the hub spawn after respawning (now in {} at {} {} {}): sent back", p.getGameProfile().name(), dim(p),
+			NiceControlCenter.LOGGER.debug("Games: {} was moved away from the hub spawn after respawning (now in {} at {} {} {}): sent back", p.getGameProfile().name(), dim(p),
 					Math.round(p.getX()), Math.round(p.getY()), Math.round(p.getZ()));
 			toHub(server, p);
 		}
@@ -331,6 +331,7 @@ public final class GameRuntime {
 			}
 		}
 		Cleanup.refresh(p);
+		NiceControlCenter.LOGGER.info("Games: {} started {}", p.getGameProfile().name(), a.name);
 		level.playSound(null, p.blockPosition(), SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 0.8f, 1.6f);
 		String hint = switch (a.type) {
 			case "parkour" -> "Jump as far as you can!";
@@ -354,6 +355,8 @@ public final class GameRuntime {
 		long score = Games.higherIsBetter(s.arena.type) ? s.progress : s.millis();
 		boolean record = false;
 		if (finished && p != null) record = recordScore(s.arena, p, score);
+		NiceControlCenter.LOGGER.info("Games: {} ended {}: {}", p != null ? p.getGameProfile().name() : s.player, s.arena.name,
+				finished ? Games.scoreText(s.arena.type, score, GameRuntime::clock) + (record ? " (a new best)" : "") : "gave up" + (why == null ? "" : " (" + why + ")"));
 		if (p != null) {
 			String result = Games.higherIsBetter(s.arena.type) ? s.progress + " jump" + (s.progress == 1 ? "" : "s") : clock(score);
 			if (finished) {

@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.116.3
+- Game log lines: only who started a game and how it ended, with the score ("Games: NiceRon ended Bow_down: 42 points"); parkour, race and maze runs log theirs too. Deaths, respawns, hub moves, bosses, clean-ups, queues and the weekly roundup are debug lines now. The target practice bow-draw lines are gone
 ## 1.116.2
 - Brimstone Billiards is called Sulfur Billiards now (the type stays cubes)
 ## 1.116.1

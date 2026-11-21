@@ -225,7 +225,7 @@ public final class WaveRuntime {
 		if (playing.containsKey(p.getUUID()) || QuickRuntime.inGame(p) || GameRuntime.inRun(p)) return "You're already in a game: /game leave first.";
 		unqueue(p.getUUID());
 		String err = start(server, a, List.of(p));
-		if (err == null) NiceControlCenter.LOGGER.info("Games: wave arena {} tried by {}", a.name, p.getGameProfile().name());
+		if (err == null) NiceControlCenter.LOGGER.debug("Games: wave arena {} tried by {}", a.name, p.getGameProfile().name());
 		return err;
 	}
 
@@ -239,7 +239,7 @@ public final class WaveRuntime {
 		games.put(a.id, g);
 		clearBox(server, g);
 		g.blocks = ArenaSnapshot.take(GameRuntime.levelOf(server, a.spawn.dim), box(a), a.name);
-		NiceControlCenter.LOGGER.info("Games: wave arena {} tried from the console: wave 1 in 3 seconds, ends in 3 minutes", a.name);
+		NiceControlCenter.LOGGER.debug("Games: wave arena {} tried from the console: wave 1 in 3 seconds, ends in 3 minutes", a.name);
 		return null;
 	}
 
@@ -557,7 +557,7 @@ public final class WaveRuntime {
 			m.sendSystemMessage(Words.lit("Every arena of " + pool + " is busy: you're number " + q.size() + " in the queue and play in the first one that's free"
 					+ (level != null ? ". Wait here." : ".") + " /game leave leaves it.").withStyle(ChatFormatting.GOLD));
 		}
-		NiceControlCenter.LOGGER.info("Games: {} queued for the arena pool {} ({} waiting)", party.get(0).getGameProfile().name(), pool, q.size());
+		NiceControlCenter.LOGGER.debug("Games: {} queued for the arena pool {} ({} waiting)", party.get(0).getGameProfile().name(), pool, q.size());
 	}
 
 	/** The first party of each pool's queue goes to the first free arena of the pool (its usual countdown there). */
@@ -654,7 +654,7 @@ public final class WaveRuntime {
 		}
 		g.nextAt = System.currentTimeMillis() + a.breakSeconds * 1000L;
 		level.playSound(null, a.spawn.x, a.spawn.y, a.spawn.z, SoundEvents.RAID_HORN.value(), SoundSource.PLAYERS, 1f, 1f);
-		NiceControlCenter.LOGGER.info("Games: wave arena {} started by {}", a.name, String.join(", ", g.names.values()));
+		NiceControlCenter.LOGGER.info("Games: {} started {}", String.join(", ", g.names.values()), a.name);
 		return null;
 	}
 
@@ -998,14 +998,14 @@ public final class WaveRuntime {
 			if (p.isAlive()) finishFor(server, a, p);
 			else afterRespawn.put(id, a);
 		}
-		NiceControlCenter.LOGGER.info("Games: wave arena {} ended ({}) after {} waves: {}", a.name, won ? "cleared" : why == null ? "over" : why, g.cleared, String.join(", ", g.names.values()));
+		NiceControlCenter.LOGGER.info("Games: {} ended ({}): {} {}", a.name, won ? "cleared" : why == null ? "over" : why, String.join(", ", g.names.values()), Games.scoreText("waves", g.cleared, GameRuntime::clock));
 	}
 
 	/** The arena's blocks as they were at the start (cobwebs, fire, placed or broken blocks). */
 	private static void restoreBlocks(Game g) {
 		if (g.blocks == null) return;
 		int n = g.blocks.restore();
-		if (n > 0) NiceControlCenter.LOGGER.info("Games: wave arena {}: {} blocks put back as built", g.arena.name, n);
+		if (n > 0) NiceControlCenter.LOGGER.debug("Games: wave arena {}: {} blocks put back as built", g.arena.name, n);
 	}
 
 	/** Mobs of the game (and anything left lying in the box) gone. */
@@ -1017,7 +1017,7 @@ public final class WaveRuntime {
 		ConsoleRunner.quiet(server, "kill @e[tag=" + g.tag() + "]");
 		int left = Cleanup.leftovers(level, box.inflate(2));
 		Cleanup.items(level, box.inflate(2));
-		if (left > 0) NiceControlCenter.LOGGER.info("Games: wave arena {}: {} untagged leftovers removed", g.arena.name, left);
+		if (left > 0) NiceControlCenter.LOGGER.debug("Games: wave arena {}: {} untagged leftovers removed", g.arena.name, left);
 	}
 
 	// ---------------------------------------------------------------- helpers

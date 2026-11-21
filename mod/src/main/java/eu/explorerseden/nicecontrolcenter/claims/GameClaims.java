@@ -132,9 +132,9 @@ public final class GameClaims {
 				// (Not while a dungeon brings them back to its checkpoint.)
 				if (GameRuntime.hubCovers(p) && !eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p) && !eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) && !eu.explorerseden.nicecontrolcenter.games.QuickRuntime.inGame(p)) {
 					toHubOnRespawn.add(p.getUUID());
-					NiceControlCenter.LOGGER.info("Games: {} died in {}: respawns at the hub spawn", p.getGameProfile().name(), p.level().dimension().identifier());
+					NiceControlCenter.LOGGER.debug("Games: {} died in {}: respawns at the hub spawn", p.getGameProfile().name(), p.level().dimension().identifier());
 				} else if (GameRuntime.hubCovers(p)) {
-					NiceControlCenter.LOGGER.info("Games: {} died in {}: their game brings them back ({})", p.getGameProfile().name(), p.level().dimension().identifier(),
+					NiceControlCenter.LOGGER.debug("Games: {} died in {}: their game brings them back ({})", p.getGameProfile().name(), p.level().dimension().identifier(),
 							eu.explorerseden.nicecontrolcenter.games.DungeonRuntime.respawnsInside(p) ? "dungeon checkpoint" : eu.explorerseden.nicecontrolcenter.games.WaveRuntime.inGame(p) ? "wave arena" : "quick round");
 				}
 				died(p);
@@ -169,7 +169,7 @@ public final class GameClaims {
 			eu.explorerseden.nicecontrolcenter.Games.Pos hub = GameRuntime.settings().hub;
 			if (hub == null || !p.isAlive() || !p.level().dimension().identifier().toString().equals(hub.dim)) return;
 			if (p.distanceToSqr(hub.x, hub.y, hub.z) <= 4 * 4) return;
-			NiceControlCenter.LOGGER.info("Games: {} joined in {} away from the hub spawn: sent there", p.getGameProfile().name(), hub.dim);
+			NiceControlCenter.LOGGER.debug("Games: {} joined in {} away from the hub spawn: sent there", p.getGameProfile().name(), hub.dim);
 			GameRuntime.toHub(server, p);
 		}));
 		// No ender pearls in games: they'd throw players out of the game or over its walls.

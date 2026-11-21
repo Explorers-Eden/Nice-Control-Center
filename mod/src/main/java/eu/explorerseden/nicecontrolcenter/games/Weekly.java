@@ -165,7 +165,7 @@ public final class Weekly {
 		data.boards = new LinkedHashMap<>();
 		data.week = now;
 		save();
-		NiceControlCenter.LOGGER.info("Games: week {} is over; {} weekly places on {} boards given (offline players get theirs when they join)", ended, given, last.size());
+		NiceControlCenter.LOGGER.debug("Games: week {} is over; {} weekly places on {} boards given (offline players get theirs when they join)", ended, given, last.size());
 	}
 
 	/** Places from a week that turned while they were offline. */

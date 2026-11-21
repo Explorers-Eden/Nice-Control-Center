@@ -39,7 +39,7 @@ final class ArenaSnapshot {
 		int dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
 		if (dx <= 0 || dy <= 0 || dz <= 0) return null;
 		if ((long) dx * dy * dz > MAX_BLOCKS) {
-			NiceControlCenter.LOGGER.info("Games: arena {} is too big ({} blocks) to be put back after its waves", name, (long) dx * dy * dz);
+			NiceControlCenter.LOGGER.debug("Games: arena {} is too big ({} blocks) to be put back after its waves", name, (long) dx * dy * dz);
 			return null;
 		}
 		ArenaSnapshot s = new ArenaSnapshot(level, x0, y0, z0, dx, dy, dz);

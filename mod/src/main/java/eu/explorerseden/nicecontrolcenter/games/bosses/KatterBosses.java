@@ -173,7 +173,7 @@ public final class KatterBosses {
 		}
 		f.viewers = viewers;
 		fights.add(f);
-		NiceControlCenter.LOGGER.info("Games: boss {} summoned in {} at {} {} {}{}", f.name(), dim, Math.round(x), Math.round(y), Math.round(z),
+		NiceControlCenter.LOGGER.debug("Games: boss {} summoned in {} at {} {} {}{}", f.name(), dim, Math.round(x), Math.round(y), Math.round(z),
 				healthScale > 1.001f ? " (health x" + String.format(Locale.ROOT, "%.2f", healthScale) + ")" : "");
 		return f;
 	}

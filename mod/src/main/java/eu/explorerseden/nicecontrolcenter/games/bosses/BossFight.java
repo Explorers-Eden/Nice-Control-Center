@@ -237,9 +237,9 @@ public abstract class BossFight {
 		if (!rallied.isEmpty()) {
 			int n = rallied.size();
 			calm();
-			NiceControlCenter.LOGGER.info("Games: boss {} let go of {} villagers and golems", name(), n);
+			NiceControlCenter.LOGGER.debug("Games: boss {} let go of {} villagers and golems", name(), n);
 		}
-		NiceControlCenter.LOGGER.info("Games: boss {} gone", name());
+		NiceControlCenter.LOGGER.debug("Games: boss {} gone", name());
 	}
 
 	// ---------------------------------------------------------------- the village on its side

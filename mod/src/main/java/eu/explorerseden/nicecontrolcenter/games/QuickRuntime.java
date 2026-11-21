@@ -130,8 +130,6 @@ public final class QuickRuntime {
 		final Map<BlockPos, Long> targets = new HashMap<>();
 		long nextTarget;
 		long nextRefill;
-		/** Bow draws going on: tick started, the stack, its damage, arrows, game mode, components hash. */
-		final Map<UUID, Object[]> draws = new HashMap<>();
 		// Snowball gallery: mobs walking (entity → lane, how far along 0–1), when the next one starts, a counter for their tags.
 		final Map<UUID, double[]> walkers = new HashMap<>();
 		long nextWalker;
@@ -504,7 +502,7 @@ public final class QuickRuntime {
 		}
 		if (a.type.equals("chef")) Chef.start(level, r);
 		level.playSound(null, spawn.x, spawn.y, spawn.z, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 1f, 2f);
-		NiceControlCenter.LOGGER.info("Games: quick round {} started with {}", a.name, String.join(", ", r.names.values()));
+		NiceControlCenter.LOGGER.info("Games: {} started {}", String.join(", ", r.names.values()), a.name);
 	}
 
 	private static String goal(Arena a) {
@@ -1258,7 +1256,8 @@ public final class QuickRuntime {
 			}
 			if (!n.players.isEmpty()) rounds.put(a.id, n);
 		}
-		if (wasPlaying) NiceControlCenter.LOGGER.info("Games: quick round {} ended: {}", a.name, String.join(", ", r.counted.stream().map(id -> r.names.get(id) + " " + r.score.getOrDefault(id, 0L)).toList()));
+		if (wasPlaying) NiceControlCenter.LOGGER.info("Games: {} ended: {}", a.name, String.join(", ", r.counted.stream()
+				.map(id -> r.names.get(id) + " " + Games.scoreText(a.type, r.score.getOrDefault(id, 0L), GameRuntime::clock)).toList()));
 	}
 
 	/** The top three, to everyone who played. */
@@ -1320,7 +1319,6 @@ public final class QuickRuntime {
 		if (a.type.equals("targets")) Targets.clear(level, r);
 		if (a.type.equals("lava")) Lava.end(level, r);
 		if (a.type.equals("chef")) Chef.clear(r);
-		r.draws.clear();
 		r.cubeHitter.clear();
 		r.cubeTouched.clear();
 		r.walkers.clear();
