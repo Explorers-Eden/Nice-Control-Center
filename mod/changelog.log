@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.116.2
+- Brimstone Billiards is called Sulfur Billiards now (the type stays cubes)
 ## 1.116.1
 - The sulfur cube game is called Brimstone Billiards now (the type stays cubes: /game create cubes {name})
 ## 1.116.0

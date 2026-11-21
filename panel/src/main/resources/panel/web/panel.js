@@ -2107,7 +2107,7 @@
     ghasts: 'bi-fire', colorfloor: 'bi-grid-3x3-gap', anvils: 'bi-cloud-hail', treasure: 'bi-gem', fishing: 'bi-water', heads: 'bi-person-bounding-box',
     moles: 'bi-hammer', targets: 'bi-bullseye', gallery: 'bi-snow', chef: 'bi-cup-hot', lava: 'bi-thermometer-high', cubes: 'bi-box' };
   const GAME_LABELS = { waves: 'wave fight', ghasts: 'ghast deflect', colorfloor: 'colour floor', anvils: 'anvil rain', treasure: 'treasure grab', fishing: 'fishing frenzy', heads: 'head hunt',
-    moles: 'whack-a-mole', targets: 'target practice', gallery: 'snowball gallery', chef: 'cauldron chef', lava: 'rising lava', cubes: 'brimstone billiards' };
+    moles: 'whack-a-mole', targets: 'target practice', gallery: 'snowball gallery', chef: 'cauldron chef', lava: 'rising lava', cubes: 'sulfur billiards' };
   const GM_QUICK = ['ghasts', 'colorfloor', 'anvils', 'treasure', 'fishing', 'moles', 'targets', 'gallery', 'chef', 'lava', 'cubes'];
   const gmHigher = (type) => !['race', 'maze'].includes(type);
   const gmWord = { parkour: ['jump', 'jumps'], waves: ['wave', 'waves'], ghasts: ['ghast', 'ghasts'], colorfloor: ['colour', 'colours'], treasure: ['point', 'points'], fishing: ['point', 'points'], heads: ['head', 'heads'],
@@ -2154,7 +2154,7 @@
     ['gallery', 'Snowball gallery', 'Mobs walk past on lanes; hit them, spare the villagers.', 'quick'],
     ['chef', 'Cauldron chef', 'Cook what the cook NPC orders and serve it.', 'quick'],
     ['lava', 'Rising lava', 'Lava fills the tower from below; the last one standing wins.', 'quick'],
-    ['cubes', 'Brimstone Billiards', 'Punch sulfur cubes into holes; the last hit scores (Minecraft 26.3).', 'quick'],
+    ['cubes', 'Sulfur Billiards', 'Punch sulfur cubes into holes; the last hit scores (Minecraft 26.3).', 'quick'],
   ];
   /** Per card: the open tab (General, the game's own, Mobs, Bosses, Music, Rewards). */
   const gmTab = {};

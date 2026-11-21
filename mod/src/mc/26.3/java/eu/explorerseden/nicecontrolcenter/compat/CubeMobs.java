@@ -22,7 +22,7 @@ public final class CubeMobs {
 		}
 	}
 
-	/** Lights a TNT sulfur cube's fuse (Brimstone Billiards: the first punch). */
+	/** Lights a TNT sulfur cube's fuse (Sulfur Billiards: the first punch). */
 	public static void prime(net.minecraft.world.entity.Entity e) {
 		if (e instanceof SulfurCube cube && !cube.isPrimed()) cube.primeTime(true);
 	}

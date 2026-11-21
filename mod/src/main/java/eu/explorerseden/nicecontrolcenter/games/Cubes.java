@@ -40,7 +40,7 @@ import eu.explorerseden.nicecontrolcenter.NiceControlCenter;
 import eu.explorerseden.nicecontrolcenter.compat.CubeMobs;
 
 /**
- * Brimstone Billiards (quick round "cubes", Minecraft 26.3): sulfur cubes holding a block roll around the play box. A cube
+ * Sulfur Billiards (quick round "cubes", Minecraft 26.3): sulfur cubes holding a block roll around the play box. A cube
  * holding a block takes no damage from punches, only knockback (vanilla), so it plays like a ball; the block picks its
  * physics (planks bounce, ice slides, soul sand is heavy, TNT explodes). Whoever punched a cube last when it drops into
  * a hole (marked in game) scores the hole's points times the cube's; bad cubes cost. Players punching each other only
@@ -101,7 +101,7 @@ public final class Cubes {
 
 	/** Why it can't run yet (null when it can). */
 	static String check(Arena a) {
-		if (!available()) return "Brimstone Billiards needs Minecraft 26.3 (there are no sulfur cubes before it).";
+		if (!available()) return "Sulfur Billiards needs Minecraft 26.3 (there are no sulfur cubes before it).";
 		if (a.cubeHoles.isEmpty()) return a.name + " has no holes yet (/game edit " + a.name + " hole add <points>, standing in the pit).";
 		if (kinds(a).isEmpty()) return a.name + " has no cube blocks (panel).";
 		return null;
