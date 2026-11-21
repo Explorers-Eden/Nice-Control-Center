@@ -274,7 +274,7 @@ Panel: Community → NPCs; in game `/npc`.
   uploaded through MineSkin once, which needs a free API key from mineskin.org (NPCs page, top).
 - `/npc create <name>` where it should stand (facing your way), or `/npc adopt <name>` next to a mannequin you made
   before (keeps skin, pose, name, equipment). `/npc skin <name> <player name|link|base64>`, `/npc pose`, `/npc equip`
-  (what you wear and hold), `/npc move`, `/npc remove`, `/npc list`.
+  (what you wear and hold), `/npc place` (or `/npc move`: it stands where you are), `/npc summon` (a fighting copy that roams, as in mob pools), `/npc remove`, `/npc list`.
 - Walking: `/npc path <name> add [seconds to wait]` at each checkpoint in order; `remove` (the last), `clear`.
   The panel picks how: round and round, back and forth, or to random checkpoints (a different one each time).
 - Panel: actions on a right-click and on a hit (`say: Hello {player}!`, `player: spawn`, or a command as the server),

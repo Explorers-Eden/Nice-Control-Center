@@ -1,3 +1,5 @@
+## 1.96.2
+- NPCs: "Not placed" names /npc place, and that /npc summon only makes a roaming fighting copy
 ## 1.96.1
 - Discord chat bridge: faces by the player's skin texture (sent by mod 1.115.3), so they aren't a cached Steve
 - NPCs: the MineSkin API key is optional now

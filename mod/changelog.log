@@ -1,4 +1,6 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.115.4
+- /npc place {npc}: it stands where you are (the same as /npc move). /npc summon makes a fighting copy that roams and attacks, as in mob pools; it now says so, and /npc summon clear removes such copies outside games
 ## 1.115.3
 - Discord chat bridge: players' faces come from their skin itself (texture), not their player id; face sites cached many players as a plain Steve
 - NPC skins from picture links work without a MineSkin API key (the key is optional, it only makes uploads faster); a refused key is tried again without it

@@ -857,6 +857,14 @@ public final class NpcRuntime {
 		return m;
 	}
 
+	/** /npc move and /npc place: it stands where the player is. */
+	private static int placeHere(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+		Npc n = npc(ctx);
+		if (n == null) return fail(ctx, "There's no such NPC.");
+		n.spot = spot(ctx.getSource().getPlayerOrException());
+		return saved(ctx, n.name + " stands here now.");
+	}
+
 	private static Entity load(ServerLevel level, String type, String snbt) {
 		try {
 			EntityType<?> t = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse(type));
@@ -1093,12 +1101,9 @@ public final class NpcRuntime {
 					return saved(ctx, "Made the NPC " + name + " here. Skin, pose, actions and lines: Community → NPCs in the panel, or /npc skin|pose|equip|path|shop.");
 				})))
 				.then(Commands.literal("adopt").then(Commands.argument("name", StringArgumentType.word()).executes(NpcRuntime::adopt)))
-				.then(Commands.literal("move").then(npcArg.get().executes(ctx -> {
-					Npc n = npc(ctx);
-					if (n == null) return fail(ctx, "There's no such NPC.");
-					n.spot = spot(ctx.getSource().getPlayerOrException());
-					return saved(ctx, n.name + " stands here now.");
-				})))
+				.then(Commands.literal("move").then(npcArg.get().executes(NpcRuntime::placeHere)))
+				// The same as move, under the name people look for.
+				.then(Commands.literal("place").then(npcArg.get().executes(NpcRuntime::placeHere)))
 				.then(Commands.literal("remove").then(npcArg.get().executes(ctx -> {
 					Npc n = npc(ctx);
 					if (n == null) return fail(ctx, "There's no such NPC.");
@@ -1169,13 +1174,31 @@ public final class NpcRuntime {
 							return saved(ctx, n.name + " opens the shop " + shop.name + " on a right-click.");
 						}))))
 				// A hostile one now (as in a mob pool), e.g. for a fight made with command blocks.
-				.then(Commands.literal("summon").then(npcArg.get().then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.Vec3Argument.vec3()).executes(ctx -> {
+				.then(Commands.literal("summon")
+						// Fighting copies outside games (summoned by hand) go away; game worlds and arena boxes keep theirs.
+						.then(Commands.literal("clear").executes(ctx -> {
+							int n = 0;
+							for (ServerLevel level : ctx.getSource().getServer().getAllLevels()) {
+								for (Entity e : level.getAllEntities()) {
+									if (e == null || e.isRemoved() || !e.entityTags().contains(HOSTILE)
+											|| eu.explorerseden.nicecontrolcenter.games.GameRuntime.inArenaBox(level, e.blockPosition())
+											|| eu.explorerseden.nicecontrolcenter.games.Parties.gameWorld(level.dimension().identifier().toString())) continue;
+									if (e.entityTags().contains(BODY)) n++;
+									e.discard();
+								}
+							}
+							int count = n;
+							NiceControlCenter.LOGGER.info("NPCs: {} fighting copies outside game arenas removed", count);
+							ctx.getSource().sendSuccess(() -> Component.literal(count + (count == 1 ? " fighting copy" : " fighting copies") + " outside games removed."), true);
+							return count;
+						}))
+						.then(npcArg.get().then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.Vec3Argument.vec3()).executes(ctx -> {
 					Npc n = npc(ctx);
 					if (n == null) return fail(ctx, "There's no such NPC.");
 					Vec3 at = net.minecraft.commands.arguments.coordinates.Vec3Argument.getVec3(ctx, "pos");
 					String dim = ctx.getSource().getLevel().dimension().identifier().toString();
 					if (!spawnHostile(ctx.getSource().getServer(), dim, at.x, at.y, at.z, n.name, List.of())) return fail(ctx, "Could not summon it.");
-					ctx.getSource().sendSuccess(() -> Component.literal("Summoned " + n.name + " to fight."), true);
+					ctx.getSource().sendSuccess(() -> Component.literal("Summoned a fighting copy of " + n.name + " (it roams and attacks, like in a mob pool). To make it stand here: /npc place " + n.name + "."), true);
 					return 1;
 				}))))
 				.then(Commands.literal("list").executes(ctx -> {

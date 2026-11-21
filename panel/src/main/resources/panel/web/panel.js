@@ -2981,7 +2981,7 @@
           ${shop ? `<span class="np-chip gold"><i class="bi bi-shop"></i> ${esc(shop.title || shop.name)}</span>` : ''}
           <span class="pn-rw-actions"><button type="button" class="np-btn small danger" data-nact="delete" title="Remove the NPC"><i class="bi bi-trash"></i></button></span>
         </div>
-        <p class="pn-hint">${n.spot ? `<i class="bi bi-geo-alt"></i> Stands at ${where}. Move it with <code>/npc move ${esc(n.name)}</code>.` : `<i class="bi bi-geo-alt"></i> Not placed: only a hostile for mob pools, or <code>/npc move ${esc(n.name)}</code> where it should stand.`} In mob pools: <code>npc:${esc(n.name)}</code></p>
+        <p class="pn-hint">${n.spot ? `<i class="bi bi-geo-alt"></i> Stands at ${where}. Move it with <code>/npc place ${esc(n.name)}</code>.` : `<i class="bi bi-geo-alt"></i> Not placed: stand where it should be and type <code>/npc place ${esc(n.name)}</code>. (<code>/npc summon</code> only makes a fighting copy that roams, as in mob pools.)`} In mob pools: <code>npc:${esc(n.name)}</code></p>
         <div class="pn-rw-grid">
           <h4 class="pn-ps-sub pn-field-wide"><i class="bi bi-tag"></i> Name and look</h4>
           ${field('Name (one word, for commands and mob pools)', `<input type="text" data-n="name" value="${esc(n.name)}" maxlength="32">`)}
