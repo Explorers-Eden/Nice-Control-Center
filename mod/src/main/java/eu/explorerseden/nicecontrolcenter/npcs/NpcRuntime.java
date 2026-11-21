@@ -425,14 +425,7 @@ public final class NpcRuntime {
 		for (Npc n : settings.npcs) {
 			if (!Npcs.pictureLink(n.skin) || n.skin.equals(n.skinSource) || uploading.contains(n.id)) continue;
 			String id = n.id, link = n.skin, key = settings.mineskinKey;
-			if (key.isBlank()) {
-				if (!n.skinError.startsWith("Set a MineSkin")) {
-					n.skinError = "Set a MineSkin API key (NPCs page) to use picture links.";
-					save();
-				}
-				continue;
-			}
-			if (n.skinError.endsWith("[" + key.hashCode() + "|" + link.hashCode() + "]")) continue;
+			if (n.skinError.endsWith("[2|" + key.hashCode() + "|" + link.hashCode() + "]")) continue;
 			uploading.add(id);
 			NiceControlCenter.LOGGER.info("NPCs: uploading the skin of {} through MineSkin", n.name);
 			MineSkin.upload(link, key).whenComplete((value, error) -> server.execute(() -> {
@@ -448,7 +441,7 @@ public final class NpcRuntime {
 				} else {
 					String why = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
 					// Remembers what failed, so it isn't tried again until the link or the key changes.
-					now.skinError = "MineSkin: " + why + " [" + key.hashCode() + "|" + link.hashCode() + "]";
+					now.skinError = "MineSkin: " + why + " [2|" + key.hashCode() + "|" + link.hashCode() + "]";
 					NiceControlCenter.LOGGER.warn("NPCs: the skin of {} could not be uploaded: {}", now.name, why);
 				}
 				save();
@@ -1119,7 +1112,6 @@ public final class NpcRuntime {
 					if (profile(s) == null && !Npcs.pictureLink(s)) return fail(ctx, "Use a player name, a link to the skin picture, a textures.minecraft.net hash, or the base64 value.");
 					n.skin = s;
 					if (Npcs.pictureLink(s)) {
-						if (settings.mineskinKey.isBlank()) return fail(ctx, "Picture links need a MineSkin API key (free at mineskin.org): set it on the NPCs page first.");
 						saved(ctx, n.name + ": uploading the picture through MineSkin; it shows in a few seconds.");
 						uploadSkins(ctx.getSource().getServer());
 						return 1;

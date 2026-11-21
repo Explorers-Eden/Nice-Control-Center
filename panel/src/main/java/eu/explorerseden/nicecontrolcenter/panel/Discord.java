@@ -896,7 +896,10 @@ public final class Discord implements Notifier {
 		if (type.equals("start") || type.equals("stop")) online.clear();
 		if (type.equals("chat")) {
 			if (e.has("uuid")) races.put(e.get("uuid").getAsString(), e.has("race") ? e.get("race").getAsString().toLowerCase(Locale.ROOT) : "");
-			if (settings.enabled && settings.chatToDiscord) chat(e.has("uuid") ? e.get("uuid").getAsString() : null,
+			// The face by the skin's texture hash when the mod sends it (always current), else by player id.
+			String face = e.has("skin") && e.get("skin").getAsString().matches("[0-9a-f]{20,80}") ? e.get("skin").getAsString()
+					: e.has("uuid") ? e.get("uuid").getAsString() : null;
+			if (settings.enabled && settings.chatToDiscord) chat(face,
 					chatName(name, e.has("race") ? e.get("race").getAsString() : ""), e.has("text") ? e.get("text").getAsString() : "");
 			return;
 		}
@@ -1093,7 +1096,7 @@ public final class Discord implements Notifier {
 	}
 
 	/** Game → Discord through a webhook, so each message shows the player's name and head. */
-	private void chat(String uuid, String name, String text) {
+	private void chat(String face, String name, String text) {
 		TextChannel channel = channel();
 		if (channel == null || text.isBlank()) return;
 		String url = webhook(channel);
@@ -1112,7 +1115,7 @@ public final class Discord implements Notifier {
 		body.addProperty("username", name);
 		// The player's head; without a player (admins from the panel) the bot's own picture.
 		JDA bot = jda;
-		String avatar = uuid != null ? "https://mc-heads.net/avatar/" + uuid + "/64"
+		String avatar = face != null ? "https://mc-heads.net/avatar/" + face + "/64"
 				: bot != null && bot.getStatus() == JDA.Status.CONNECTED ? bot.getSelfUser().getEffectiveAvatarUrl() : null;
 		if (avatar != null) body.addProperty("avatar_url", avatar);
 		JsonObject allowed = new JsonObject();

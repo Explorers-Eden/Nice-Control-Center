@@ -2956,7 +2956,7 @@
     $('pn-nc-enabled').disabled = !edit;
     $('pn-nc-add').disabled = !edit;
     $('pn-nc-key').value = s.mineskinKey || '';
-    $('pn-nc-key').placeholder = nc.keySet && !nc.removed.mineskinKey ? 'saved (type a new one to replace it)' : 'for skins from picture links';
+    $('pn-nc-key').placeholder = nc.keySet && !nc.removed.mineskinKey ? 'saved (type a new one to replace it)' : 'optional, for picture links';
     $('pn-nc-key').disabled = !edit;
     $('pn-nc-key-clear').hidden = !nc.keySet || !!nc.removed.mineskinKey;
     const opt = (v, cur, label) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(label)}</option>`;

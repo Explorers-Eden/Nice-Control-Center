@@ -25,36 +25,54 @@ final class MineSkin {
 	private MineSkin() {
 	}
 
-	/** The texture value for the picture at the link; fails with a message to show. */
+	/**
+	 * The texture value for the picture at the link; fails with a message to show. The key is optional (MineSkin
+	 * works without one, just slower); a refused key is tried once more without it.
+	 */
 	static CompletableFuture<String> upload(String link, String key) {
 		return CompletableFuture.supplyAsync(() -> {
 			try {
-				JsonObject body = new JsonObject();
-				body.addProperty("url", link);
-				body.addProperty("visibility", "unlisted");
-				JsonObject answer = send(HttpRequest.newBuilder(URI.create(API + "/v2/generate")).timeout(Duration.ofSeconds(60))
-						.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())), key);
-				String value = find(answer);
-				// Queued instead of done: asked again until it is (about a minute at most).
-				String job = answer.has("job") && answer.get("job").isJsonObject() && answer.getAsJsonObject("job").has("id")
-						? answer.getAsJsonObject("job").get("id").getAsString() : null;
-				for (int i = 0; value == null && job != null && i < 30; i++) {
-					Thread.sleep(2000);
-					answer = send(HttpRequest.newBuilder(URI.create(API + "/v2/queue/" + job)).timeout(Duration.ofSeconds(30)).GET(), key);
-					value = find(answer);
-					String status = answer.has("job") && answer.get("job").isJsonObject() && answer.getAsJsonObject("job").has("status")
-							? answer.getAsJsonObject("job").get("status").getAsString() : "";
-					if (status.equals("failed")) break;
-				}
-				if (value == null) throw new IllegalStateException(problem(answer));
-				return value;
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				throw new IllegalStateException("interrupted");
-			} catch (java.io.IOException e) {
-				throw new IllegalStateException("MineSkin can't be reached: " + e.getMessage());
+				return generate(link, key);
+			} catch (KeyRefused e) {
+				return generate(link, null);
 			}
 		});
+	}
+
+	/** MineSkin said no to the API key. */
+	private static final class KeyRefused extends IllegalStateException {
+		KeyRefused(String message) {
+			super(message);
+		}
+	}
+
+	private static String generate(String link, String key) {
+		try {
+			JsonObject body = new JsonObject();
+			body.addProperty("url", link);
+			body.addProperty("visibility", "unlisted");
+			JsonObject answer = send(HttpRequest.newBuilder(URI.create(API + "/v2/generate")).timeout(Duration.ofSeconds(60))
+					.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString())), key);
+			String value = find(answer);
+			// Queued instead of done: asked again until it is (about a minute at most).
+			String job = answer.has("job") && answer.get("job").isJsonObject() && answer.getAsJsonObject("job").has("id")
+					? answer.getAsJsonObject("job").get("id").getAsString() : null;
+			for (int i = 0; value == null && job != null && i < 30; i++) {
+				Thread.sleep(2000);
+				answer = send(HttpRequest.newBuilder(URI.create(API + "/v2/queue/" + job)).timeout(Duration.ofSeconds(30)).GET(), key);
+				value = find(answer);
+				String status = answer.has("job") && answer.get("job").isJsonObject() && answer.getAsJsonObject("job").has("status")
+						? answer.getAsJsonObject("job").get("status").getAsString() : "";
+				if (status.equals("failed")) break;
+			}
+			if (value == null) throw new IllegalStateException(problem(answer));
+			return value;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("interrupted");
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException("MineSkin can't be reached: " + e.getMessage());
+		}
 	}
 
 	private static JsonObject send(HttpRequest.Builder b, String key) throws java.io.IOException, InterruptedException {
@@ -69,7 +87,7 @@ final class MineSkin {
 		}
 		if (!e.isJsonObject()) throw new java.io.IOException("HTTP " + r.statusCode());
 		JsonObject o = e.getAsJsonObject();
-		if (r.statusCode() == 401 || r.statusCode() == 403) throw new IllegalStateException("MineSkin refused the API key (" + problem(o) + ")");
+		if ((r.statusCode() == 401 || r.statusCode() == 403) && key != null && !key.isBlank()) throw new KeyRefused("MineSkin refused the API key (" + problem(o) + ")");
 		return o;
 	}
 

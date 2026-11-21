@@ -1,4 +1,7 @@
 # Minecraft Version(s): 26.1–26.3
+## 1.115.3
+- Discord chat bridge: players' faces come from their skin itself (texture), not their player id; face sites cached many players as a plain Steve
+- NPC skins from picture links work without a MineSkin API key (the key is optional, it only makes uploads faster); a refused key is tried again without it
 ## 1.115.2
 - /points check {player} without an amount shows their balance (it was an incomplete command); the result is the balance, for execute store result
 ## 1.115.1

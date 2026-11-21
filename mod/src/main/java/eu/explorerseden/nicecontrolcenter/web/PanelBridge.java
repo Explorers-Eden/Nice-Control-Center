@@ -70,6 +70,15 @@ public final class PanelBridge {
 			event.addProperty("type", "chat");
 			event.addProperty("uuid", sender.getUUID().toString());
 			event.addProperty("name", sender.getGameProfile().name());
+			// The skin's texture hash: face sites cache faces by player id for a long time (often a plain Steve),
+			// by texture they're always the current skin.
+			for (com.mojang.authlib.properties.Property p : sender.getGameProfile().properties().get("textures")) {
+				String hash = eu.explorerseden.nicecontrolcenter.Pets.skinHash(p.value());
+				if (hash != null) {
+					event.addProperty("skin", hash);
+					break;
+				}
+			}
 			// Fabled Roots' race, for "[Oakhearted] Name" on Discord.
 			String race = eu.explorerseden.nicecontrolcenter.players.PlayerInspector.race(sender.entityTags());
 			if (race != null) event.addProperty("race", race);

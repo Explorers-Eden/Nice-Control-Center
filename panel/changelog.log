@@ -1,3 +1,6 @@
+## 1.96.1
+- Discord chat bridge: faces by the player's skin texture (sent by mod 1.115.3), so they aren't a cached Steve
+- NPCs: the MineSkin API key is optional now
 ## 1.96.0
 - Games, Rewards tab: "Points when their score counts" and "+ points per …" are gone (points come from the finish commands now); new "Finish commands only from" (race and maze: "only within" seconds), with a hint on sums and points checks
 ## 1.95.0
